@@ -17,7 +17,7 @@ export default function RoleSelector() {
       }}>
         
         <div style={{
-          maxWidth: '90rem', // Wider container for 4 cards
+          maxWidth: '90rem',
           margin: '0 auto',
           padding: '3rem 1.5rem',
           textAlign: 'center'
@@ -25,7 +25,7 @@ export default function RoleSelector() {
           
           <div style={{ marginBottom: '3rem' }}>
             <h1 style={{
-              fontSize: '3rem',
+              fontSize: 'clamp(2rem, 5vw, 3rem)', // Responsive font size
               fontWeight: 'bold',
               color: '#223848',
               marginBottom: '1rem',
@@ -34,7 +34,7 @@ export default function RoleSelector() {
               Welcome to Lux Libris!
             </h1>
             <p style={{
-              fontSize: '1.25rem',
+              fontSize: 'clamp(1rem, 3vw, 1.25rem)', // Responsive font size
               color: '#ADD4EA',
               marginBottom: '2rem'
             }}>
@@ -42,52 +42,52 @@ export default function RoleSelector() {
             </p>
           </div>
 
-          {/* FIXED: 4 Cards in One Row */}
+          {/* MOBILE-RESPONSIVE: 4 Cards on Desktop, 1 Column on Mobile */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)', // Force exactly 4 columns
-            gap: '1.25rem', // Slightly smaller gap to fit better
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', // Responsive grid
+            gap: '1.25rem',
             marginBottom: '3rem',
-            maxWidth: '85rem', // Control max width
+            maxWidth: '85rem',
             margin: '0 auto 3rem auto'
           }}>
             
             {/* Student Card */}
             <RoleCard
-  icon="🧑‍🎓"
-  title="Student"
-  description="Connect to your school&apos;s reading program and start your journey!"
-  features={[
-    "🏫 Connect to your school",
-    "📚 Interactive bookshelf",
-    "🏆 Saint achievements", 
-    "🔥 Reading streaks",
-    "🎯 Personal goals"
-  ]}
-  buttonText="Join My School&apos;s Program"
-  onClick={() => router.push('/legal?type=student')}
-  gradient="from-blue-400 to-purple-500"
-  installPrompt={true}
-/>
+              icon="🧑‍🎓"
+              title="Student"
+              description="Connect to your school&apos;s reading program and start your journey!"
+              features={[
+                "🏫 Connect to your school",
+                "📚 Interactive bookshelf",
+                "🏆 Saint achievements", 
+                "🔥 Reading streaks",
+                "🎯 Personal goals"
+              ]}
+              buttonText="Join My School&apos;s Program"
+              onClick={() => router.push('/legal?type=student')}
+              gradient="from-blue-400 to-purple-500"
+              installPrompt={true}
+            />
 
             {/* Parent Card - School Connected */}
             <RoleCard
-  icon="👨‍👩‍👧‍👦"
-  title="Parent"
-  description="Support your child&apos;s school reading program"
-  features={[
-    "🏫 Connect to your child&apos;s school",
-    "👀 Basic progress viewing (FREE)",
-    "🔐 Quiz code access",
-    "⭐ Premium analytics ($10/yr)",
-    "🎉 Celebrate achievements"
-  ]}
-  buttonText="Support My Child"
-  onClick={() => router.push('/splash?type=parent')}
-  gradient="from-green-400 to-teal-500"
-  installPrompt={true}
-  highlight="Basic access FREE with school!"
-/>
+              icon="👨‍👩‍👧‍👦"
+              title="Parent"
+              description="Support your child&apos;s school reading program"
+              features={[
+                "🏫 Connect to your child&apos;s school",
+                "👀 Basic progress viewing (FREE)",
+                "🔐 Quiz code access",
+                "⭐ Premium analytics ($10/yr)",
+                "🎉 Celebrate achievements"
+              ]}
+              buttonText="Support My Child"
+              onClick={() => router.push('/splash?type=parent')}
+              gradient="from-green-400 to-teal-500"
+              installPrompt={true}
+              highlight="Basic access FREE with school!"
+            />
 
             {/* Teacher Card - Future Phase */}
             <RoleCard
@@ -111,22 +111,22 @@ export default function RoleSelector() {
 
             {/* Admin Card */}
             <RoleCard
-  icon="👑"
-  title="School Admin"
-  description="Set up and manage your school&apos;s reading program"
-  features={[
-    "🏫 School configuration",
-    "📚 Book selection from 20 nominees",
-    "🏆 Achievement setup",
-    "👥 Student management",
-    "📊 Program analytics"
-  ]}
-  buttonText="Configure School"
-onClick={() => router.push('/admin/school-onboarding')}
-  gradient="from-purple-500 to-pink-500"
-  installPrompt={false}
-  highlight="For librarians & principals"
-/>
+              icon="👑"
+              title="School Admin"
+              description="Set up and manage your school&apos;s reading program"
+              features={[
+                "🏫 School configuration",
+                "📚 Book selection from 20 nominees",
+                "🏆 Achievement setup",
+                "👥 Student management",
+                "📊 Program analytics"
+              ]}
+              buttonText="Configure School"
+              onClick={() => router.push('/admin/school-onboarding')}
+              gradient="from-purple-500 to-pink-500"
+              installPrompt={false}
+              highlight="For librarians & principals"
+            />
           </div>
 
           {/* Simplified Independent Option - Post-Pilot */}
@@ -140,7 +140,7 @@ onClick={() => router.push('/admin/school-onboarding')}
             margin: '0 auto 3rem auto'
           }}>
             <h3 style={{
-              fontSize: '1.25rem',
+              fontSize: 'clamp(1.125rem, 3vw, 1.25rem)',
               fontWeight: 'bold',
               color: '#223848',
               marginBottom: '0.75rem',
@@ -151,7 +151,7 @@ onClick={() => router.push('/admin/school-onboarding')}
             <p style={{
               color: '#6b7280',
               marginBottom: '1rem',
-              fontSize: '1rem'
+              fontSize: 'clamp(0.875rem, 2.5vw, 1rem)'
             }}>
               Independent options coming soon! For now, encourage your school to join the pilot.
             </p>
@@ -172,7 +172,7 @@ onClick={() => router.push('/admin/school-onboarding')}
                 transition: 'all 0.2s',
                 display: 'inline-block',
                 textAlign: 'center',
-                fontSize: '0.9rem'
+                fontSize: 'clamp(0.8rem, 2vw, 0.9rem)'
               }}>
                 📧 Contact Your School
               </a>
@@ -186,7 +186,7 @@ onClick={() => router.push('/admin/school-onboarding')}
                 transition: 'all 0.2s',
                 display: 'inline-block',
                 textAlign: 'center',
-                fontSize: '0.9rem',
+                fontSize: 'clamp(0.8rem, 2vw, 0.9rem)',
                 border: '2px solid #ADD4EA'
               }}>
                 📋 Pilot Information
@@ -214,7 +214,7 @@ onClick={() => router.push('/admin/school-onboarding')}
             margin: '0 auto 3rem auto'
           }}>
             <h3 style={{
-              fontSize: '1.25rem',
+              fontSize: 'clamp(1.125rem, 3vw, 1.25rem)',
               fontWeight: 'bold',
               color: '#223848',
               marginBottom: '1rem',
@@ -225,7 +225,8 @@ onClick={() => router.push('/admin/school-onboarding')}
             <p style={{
               color: '#6b7280',
               marginBottom: '1rem',
-              textAlign: 'center'
+              textAlign: 'center',
+              fontSize: 'clamp(0.875rem, 2.5vw, 1rem)'
             }}>
               We&apos;re currently piloting with select Catholic schools. Interested in bringing Lux Libris to your school?
             </p>
@@ -261,7 +262,7 @@ onClick={() => router.push('/admin/school-onboarding')}
             margin: '0 auto'
           }}>
             <h3 style={{
-              fontSize: '1.5rem',
+              fontSize: 'clamp(1.25rem, 3vw, 1.5rem)',
               fontWeight: 'bold',
               color: '#223848',
               marginBottom: '1rem',
@@ -271,7 +272,8 @@ onClick={() => router.push('/admin/school-onboarding')}
             </h3>
             <p style={{
               color: '#6b7280',
-              marginBottom: '1rem'
+              marginBottom: '1rem',
+              fontSize: 'clamp(0.875rem, 2.5vw, 1rem)'
             }}>
               For the best experience, install Lux Libris on your device:
             </p>
@@ -314,7 +316,7 @@ function RoleCard({ icon, title, description, features, buttonText, onClick, gra
   const cardStyle = {
     background: disabled ? '#f8f9fa' : 'white',
     borderRadius: '1rem',
-    padding: '1.75rem',
+    padding: 'clamp(1.25rem, 3vw, 1.75rem)', // Responsive padding
     boxShadow: disabled ? '0 4px 10px rgba(0, 0, 0, 0.05)' : '0 10px 25px rgba(0, 0, 0, 0.1)',
     border: disabled ? '2px dashed #d1d5db' : '1px solid rgba(195, 224, 222, 0.4)',
     transition: 'transform 0.2s',
@@ -323,7 +325,8 @@ function RoleCard({ icon, title, description, features, buttonText, onClick, gra
     height: 'auto',
     display: 'flex',
     flexDirection: 'column',
-    opacity: disabled ? 0.6 : 1
+    opacity: disabled ? 0.6 : 1,
+    minHeight: '400px' // Ensure consistent card height
   }
 
   return (
@@ -342,7 +345,7 @@ function RoleCard({ icon, title, description, features, buttonText, onClick, gra
           color: 'white',
           padding: '0.25rem 0.75rem',
           borderRadius: '1rem',
-          fontSize: '0.7rem',
+          fontSize: 'clamp(0.6rem, 2vw, 0.7rem)',
           fontWeight: 'bold',
           whiteSpace: 'nowrap'
         }}>
@@ -351,8 +354,8 @@ function RoleCard({ icon, title, description, features, buttonText, onClick, gra
       )}
       
       <div style={{
-        width: '3.5rem',
-        height: '3.5rem',
+        width: 'clamp(3rem, 8vw, 3.5rem)', // Responsive icon size
+        height: 'clamp(3rem, 8vw, 3.5rem)',
         background: disabled ? '#9ca3af' : 
                    gradient.includes('blue') ? 'linear-gradient(135deg, #60a5fa, #a78bfa)' :
                    gradient.includes('green') ? 'linear-gradient(135deg, #34d399, #14b8a6)' :
@@ -362,14 +365,14 @@ function RoleCard({ icon, title, description, features, buttonText, onClick, gra
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        fontSize: '1.75rem',
+        fontSize: 'clamp(1.5rem, 4vw, 1.75rem)', // Responsive emoji size
         margin: '0 auto 1.25rem'
       }}>
         {icon}
       </div>
       
       <h3 style={{
-        fontSize: '1.375rem',
+        fontSize: 'clamp(1.125rem, 3vw, 1.375rem)', // Responsive title
         fontWeight: 'bold',
         color: disabled ? '#6b7280' : '#223848',
         marginBottom: '1rem',
@@ -382,7 +385,7 @@ function RoleCard({ icon, title, description, features, buttonText, onClick, gra
         color: disabled ? '#9ca3af' : '#6b7280',
         marginBottom: '1.25rem',
         lineHeight: '1.4',
-        fontSize: '0.95rem',
+        fontSize: 'clamp(0.85rem, 2.5vw, 0.95rem)', // Responsive description
         flexGrow: 1
       }}>
         {description}
@@ -396,7 +399,7 @@ function RoleCard({ icon, title, description, features, buttonText, onClick, gra
       }}>
         {features.map((feature, index) => (
           <li key={index} style={{
-            fontSize: '0.8rem',
+            fontSize: 'clamp(0.75rem, 2vw, 0.8rem)', // Responsive features
             color: disabled ? '#9ca3af' : '#6b7280',
             marginBottom: '0.4rem'
           }}>
@@ -412,10 +415,10 @@ function RoleCard({ icon, title, description, features, buttonText, onClick, gra
             width: '100%',
             background: '#d1d5db',
             color: '#6b7280',
-            padding: '0.65rem 1rem',
+            padding: '0.75rem 1rem', // Larger touch target
             borderRadius: '0.5rem',
             textAlign: 'center',
-            fontSize: '0.85rem',
+            fontSize: 'clamp(0.8rem, 2.5vw, 0.85rem)',
             marginTop: 'auto',
             boxSizing: 'border-box'
           }}>
@@ -423,32 +426,33 @@ function RoleCard({ icon, title, description, features, buttonText, onClick, gra
           </div>
         ) : (
           <button onClick={onClick} style={{
- display: 'block',
-width: '100%',
-background: gradient.includes('blue') ? 'linear-gradient(135deg, #60a5fa, #a78bfa)' :
-gradient.includes('green') ? 'linear-gradient(135deg, #34d399, #14b8a6)' :
-gradient.includes('amber') ? 'linear-gradient(135deg, #fbbf24, #f59e0b)' :
-'linear-gradient(135deg, #a855f7, #ec4899)',
-color: 'white',
-padding: '0.65rem 1rem',
-borderRadius: '0.5rem',
-border: 'none',
-fontWeight: '600',
-transition: 'all 0.2s',
-textAlign: 'center',
-fontSize: '0.85rem',
-marginTop: 'auto',
-boxSizing: 'border-box',
-cursor: 'pointer'
- }}>
-{buttonText}
-</button>
- )}
+            display: 'block',
+            width: '100%',
+            background: gradient.includes('blue') ? 'linear-gradient(135deg, #60a5fa, #a78bfa)' :
+                       gradient.includes('green') ? 'linear-gradient(135deg, #34d399, #14b8a6)' :
+                       gradient.includes('amber') ? 'linear-gradient(135deg, #fbbf24, #f59e0b)' :
+                       'linear-gradient(135deg, #a855f7, #ec4899)',
+            color: 'white',
+            padding: '0.75rem 1rem', // Larger touch target for mobile
+            borderRadius: '0.5rem',
+            border: 'none',
+            fontWeight: '600',
+            transition: 'all 0.2s',
+            textAlign: 'center',
+            fontSize: 'clamp(0.8rem, 2.5vw, 0.85rem)',
+            marginTop: 'auto',
+            boxSizing: 'border-box',
+            cursor: 'pointer',
+            minHeight: '44px' // Minimum touch target size
+          }}>
+            {buttonText}
+          </button>
+        )}
       </div>
       
       {installPrompt && !disabled && (
         <p style={{
-          fontSize: '0.7rem',
+          fontSize: 'clamp(0.65rem, 2vw, 0.7rem)',
           color: '#ADD4EA',
           marginTop: '0.75rem',
           fontStyle: 'italic'
