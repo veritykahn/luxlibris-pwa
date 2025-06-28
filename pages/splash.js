@@ -19,39 +19,49 @@ export default function Splash() {
     return () => clearTimeout(timer);
   }, [navigated]);
 
-  const navigateAfterDelay = async () => {
-    if (navigated) return;
-    setNavigated(true);
+  // Add this debug logging to your navigateAfterDelay function:
 
-    try {
-      // Check what type of user and route accordingly
-      const userType = router.query.type;
-      
-      if (userType === 'school-admin') {
-  // SCHOOL ADMIN - splash comes AFTER onboarding, so go to dashboard
-  router.push('/admin/school-dashboard');
-} else {
-        // STUDENT FLOW - check legal acceptance
-        const hasAcceptedLegal = localStorage.getItem('hasAcceptedLegal') === 'true';
-        
-        if (!hasAcceptedLegal) {
-          router.push('/legal?type=student');
+const navigateAfterDelay = async () => {
+  if (navigated) return;
+  setNavigated(true);
+
+  try {
+    // CHECK WHAT WE'RE GETTING
+    console.log('🔍 SPLASH DEBUG:');
+    console.log('router.query:', router.query);
+    console.log('router.query.type:', router.query.type);
+    console.log('Full URL:', window.location.href);
+    
+    // Check what type of user and route accordingly
+    const userType = router.query.type;
+    console.log('userType detected:', userType);
+    
+    if (userType === 'school-admin') {
+      console.log('✅ Going to school dashboard');
+      // SCHOOL ADMIN - splash comes AFTER onboarding, so go to dashboard
+      router.push('/admin/school-dashboard');
+    } else {
+      console.log('❌ Going to student flow, userType was:', userType);
+      // STUDENT FLOW - check legal acceptance
+      const hasAcceptedLegal = localStorage.getItem('hasAcceptedLegal') === 'true';
+      if (!hasAcceptedLegal) {
+        router.push('/legal?type=student');
+      } else {
+        const studentData = localStorage.getItem('studentData');
+        if (studentData) {
+          // Returning student
+          router.push('/student-dashboard');
         } else {
-          const studentData = localStorage.getItem('studentData');
-          if (studentData) {
-            // Returning student
-            router.push('/student-dashboard');
-          } else {
-            // New student - go to onboarding
-            router.push('/student-onboarding');
-          }
+          // New student - go to onboarding
+          router.push('/student-onboarding');
         }
       }
-    } catch (error) {
-      console.error('Navigation error:', error);
-      router.push('/role-selector');
     }
-  };
+  } catch (error) {
+    console.error('Navigation error:', error);
+    router.push('/role-selector');
+  }
+};
 
   const handleVideoLoaded = () => {
     setIsVideoLoaded(true);
