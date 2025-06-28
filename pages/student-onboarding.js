@@ -156,8 +156,8 @@ export default function StudentOnboarding() {
     localStorage.setItem('studentId', docRef.id);
     localStorage.setItem('studentData', JSON.stringify(studentData));
     
-   // Redirect to dashboard
-router.push('/student-dashboard');
+   // Redirect to splash screen, then dashboard
+router.push('/splash?type=student');
   } catch (error) {
     console.error('Error completing onboarding:', error);
     alert('Error saving your information. Please try again.');
