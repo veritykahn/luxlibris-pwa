@@ -8,22 +8,31 @@ export default function SchoolAdminOnboarding() {
   const [loading, setLoading] = useState(false)
   const [nominees, setNominees] = useState([])
   
-  // Form data
-  const [schoolData, setSchoolData] = useState({
-    name: '',
-    city: '',
-    state: '',
-    email: '',
-    selectedNominees: [],
-    achievementTiers: [
-      { books: 5, reward: 'Recognition at Mass' },
-      { books: 10, reward: 'Certificate' },
-      { books: 15, reward: 'Pizza Party' },
-      { books: 20, reward: 'Medal' },
-      { books: 100, reward: 'Plaque' }
-    ],
-    parentCode: 'HFCS2025'
-  })
+  // In your schoolData state, add:
+const [schoolData, setSchoolData] = useState({
+  name: '',
+  city: '',
+  state: '',
+  email: '',
+  selectedNominees: [],
+  achievementTiers: [
+    { books: 5, reward: 'Recognition at Mass' },
+    { books: 10, reward: 'Certificate' },
+    { books: 15, reward: 'Pizza Party' },
+    { books: 20, reward: 'Medal' },
+    { books: 100, reward: 'Plaque' }
+  ],
+  parentCode: 'HFCS2025',
+  submissionOptions: {
+    quiz: true, // Always enabled
+    presentToTeacher: false,
+    submitReview: false,
+    createStoryboard: false,
+    bookReport: false,
+    discussWithLibrarian: false,
+    actOutScene: false
+  }
+})
 
   // Fetch nominees on load
   useEffect(() => {
@@ -55,7 +64,7 @@ export default function SchoolAdminOnboarding() {
   }
 
   const handleNext = () => {
-    if (currentStep < 5) setCurrentStep(currentStep + 1)
+    if (currentStep < 6) setCurrentStep(currentStep + 1)
   }
 
   const handleBack = () => {
@@ -72,12 +81,12 @@ export default function SchoolAdminOnboarding() {
         active: true,
         students: []
       })
-      
-      alert('🎉 School setup complete! Redirecting to your admin dashboard...')
-      // TODO: Redirect to admin dashboard
+
+      // Navigate to school dashboard
+      window.location.href = '/admin/school-dashboard'
+
     } catch (error) {
-      console.error('Error creating school:', error)
-      alert('Error creating school. Please try again.')
+      console.error('Error creating school. Please try again.')
     }
     setLoading(false)
   }
@@ -162,7 +171,7 @@ export default function SchoolAdminOnboarding() {
             
             {/* Progress Indicator */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              {[1, 2, 3, 4, 5].map(step => (
+              {[1, 2, 3, 4, 5, 6].map(step => (
                 <div
                   key={step}
                   style={{
@@ -532,9 +541,109 @@ export default function SchoolAdminOnboarding() {
                 </div>
               </div>
             )}
+            {/* Step 5: Submission Options */}
+{currentStep === 5 && (
+  <div>
+    <h2 style={{
+      fontSize: '2rem',
+      fontWeight: 'bold',
+      color: '#223848',
+      marginBottom: '1rem',
+      fontFamily: 'Georgia, serif'
+    }}>
+      📝 Book Completion Options
+    </h2>
+    <p style={{ color: '#ADD4EA', marginBottom: '2rem' }}>
+      When students finish a book, what options should they have? Quizzes are always available.
+    </p>
+    
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+      gap: '1rem',
+      marginBottom: '2rem'
+    }}>
+      {[
+        { key: 'quiz', label: '📝 Take Quiz', description: 'Parent code required, auto-graded', disabled: true },
+        { key: 'presentToTeacher', label: '🗣️ Present to Teacher', description: 'Oral presentation or discussion' },
+        { key: 'submitReview', label: '✍️ Submit Written Review', description: 'Written book review or summary' },
+        { key: 'createStoryboard', label: '🎨 Create Storyboard', description: 'Visual art or comic strip' },
+        { key: 'bookReport', label: '📚 Traditional Book Report', description: 'Formal written report' },
+        { key: 'discussWithLibrarian', label: '💬 Discussion with Librarian', description: 'One-on-one book discussion' },
+        { key: 'actOutScene', label: '🎭 Act Out Scene', description: 'Performance or dramatic reading' }
+      ].map(option => (
+        <div
+          key={option.key}
+          style={{
+            padding: '1rem',
+            border: '1px solid #e5e7eb',
+            borderRadius: '0.5rem',
+            background: option.disabled ? '#f9fafb' : 'white',
+            opacity: option.disabled ? 0.7 : 1
+          }}
+        >
+          <label style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '0.75rem',
+            cursor: option.disabled ? 'not-allowed' : 'pointer'
+          }}>
+            <input
+              type="checkbox"
+              checked={schoolData.submissionOptions[option.key]}
+              disabled={option.disabled}
+              onChange={(e) => setSchoolData(prev => ({
+                ...prev,
+                submissionOptions: {
+                  ...prev.submissionOptions,
+                  [option.key]: e.target.checked
+                }
+              }))}
+              style={{
+                marginTop: '0.25rem',
+                cursor: option.disabled ? 'not-allowed' : 'pointer'
+              }}
+            />
+            <div>
+              <div style={{
+                fontSize: '0.875rem',
+                fontWeight: '600',
+                color: '#223848',
+                marginBottom: '0.25rem'
+              }}>
+                {option.label} {option.disabled && '(Always Available)'}
+              </div>
+              <div style={{
+                fontSize: '0.75rem',
+                color: '#6b7280',
+                lineHeight: '1.3'
+              }}>
+                {option.description}
+              </div>
+            </div>
+          </label>
+        </div>
+      ))}
+    </div>
+    
+    <div style={{
+      background: 'linear-gradient(135deg, #FFFCF5, #ADD4EA)',
+      borderRadius: '0.75rem',
+      padding: '1rem',
+      border: '1px solid #ADD4EA'
+    }}>
+      <h4 style={{ color: '#223848', marginBottom: '0.5rem' }}>
+        💡 How It Works
+      </h4>
+      <p style={{ color: '#223848', fontSize: '0.875rem', margin: 0 }}>
+        Students will see these options when they complete a book. Non-quiz submissions go to your approval queue for review.
+      </p>
+    </div>
+  </div>
+)}
 
-            {/* Step 5: Review */}
-            {currentStep === 5 && (
+            {/* Step 6: Review */}
+            {currentStep === 6 && (
               <div>
                 <h2 style={{
                   fontSize: '2rem',
@@ -576,6 +685,25 @@ export default function SchoolAdminOnboarding() {
                       `${tier.books} books: ${tier.reward}`
                     )}
                   />
+                  <ReviewCard
+                    title="📝 Submission Options"
+                    items={[
+                      'Quiz: Always available',
+                      ...Object.entries(schoolData.submissionOptions || {})
+                        .filter(([key, enabled]) => enabled && key !== 'quiz')
+                        .map(([key, enabled]) => {
+                          const labels = {
+                            presentToTeacher: 'Present to Teacher',
+                            submitReview: 'Submit Review',
+                            createStoryboard: 'Create Storyboard',
+                            bookReport: 'Book Report',
+                            discussWithLibrarian: 'Discuss with Librarian',
+                            actOutScene: 'Act Out Scene'
+                          }
+                          return labels[key]
+                        })
+                    ]}
+                  />
                 </div>
                 
                 <div style={{
@@ -615,7 +743,7 @@ export default function SchoolAdminOnboarding() {
                 ← Back
               </ActionButton>
               
-              {currentStep < 5 && (
+              {currentStep < 6 && (
                 <ActionButton 
                   onClick={handleNext}
                   disabled={
