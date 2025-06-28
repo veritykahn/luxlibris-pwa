@@ -28,9 +28,9 @@ export default function Splash() {
       const userType = router.query.type;
       
       if (userType === 'school-admin') {
-        // SCHOOL ADMIN - splash comes AFTER onboarding, so go to dashboard
-        router.push('/admin/school-dashboard');
-      } else {
+  // SCHOOL ADMIN - splash comes AFTER onboarding, so go to dashboard
+  router.push('/admin/school-dashboard');
+} else {
         // STUDENT FLOW - check legal acceptance
         const hasAcceptedLegal = localStorage.getItem('hasAcceptedLegal') === 'true';
         
