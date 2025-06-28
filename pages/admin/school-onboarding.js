@@ -82,8 +82,8 @@ const [schoolData, setSchoolData] = useState({
         students: []
       })
 
-      // Navigate to school dashboard
-      window.location.href = '/admin/school-dashboard'
+      // Navigate to splash screen, then dashboard
+window.location.href = '/splash?type=school-admin'
 
     } catch (error) {
       console.error('Error creating school. Please try again.')

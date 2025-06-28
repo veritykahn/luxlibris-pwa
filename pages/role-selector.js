@@ -122,7 +122,7 @@ export default function RoleSelector() {
     "📊 Program analytics"
   ]}
   buttonText="Configure School"
-  onClick={() => router.push('/splash?type=school-admin')}
+onClick={() => router.push('/admin/school-onboarding')}
   gradient="from-purple-500 to-pink-500"
   installPrompt={false}
   highlight="For librarians & principals"

@@ -24,29 +24,28 @@ export default function Splash() {
     setNavigated(true);
 
     try {
-      // Check if user has accepted legal terms
-      const hasAcceptedLegal = localStorage.getItem('hasAcceptedLegal') === 'true';
+      // Check what type of user and route accordingly
+      const userType = router.query.type;
       
-      if (!hasAcceptedLegal) {
-        // If coming from a specific role, pass it as query param
-        const userType = router.query.type || 'student';
-        router.push(`/legal?type=${userType}`);
+      if (userType === 'school-admin') {
+        // SCHOOL ADMIN - splash comes AFTER onboarding, so go to dashboard
+        router.push('/admin/school-dashboard');
       } else {
-        // Check what type of user and route accordingly
-        const userType = router.query.type;
-        const studentData = localStorage.getItem('studentData');
+        // STUDENT FLOW - check legal acceptance
+        const hasAcceptedLegal = localStorage.getItem('hasAcceptedLegal') === 'true';
         
-        if (userType === 'admin') {
-          router.push('/god-mode');
-        } else if (userType === 'school-admin') {
-          router.push('/admin-onboarding');
-        } else if (studentData) {
-  // Returning student
-  router.push('/student-dashboard');
-} else {
-  // New student - go straight to onboarding
-  router.push('/student-onboarding');
-}
+        if (!hasAcceptedLegal) {
+          router.push('/legal?type=student');
+        } else {
+          const studentData = localStorage.getItem('studentData');
+          if (studentData) {
+            // Returning student
+            router.push('/student-dashboard');
+          } else {
+            // New student - go to onboarding
+            router.push('/student-onboarding');
+          }
+        }
       }
     } catch (error) {
       console.error('Navigation error:', error);
