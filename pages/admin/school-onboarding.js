@@ -221,8 +221,8 @@ export default function SchoolAdminOnboarding() {
                   marginBottom: '2rem',
                   lineHeight: '1.6'
                 }}>
-                  Let's set up your school's reading program in just a few steps. 
-                  You'll configure your book list, achievement rewards, and get everything ready for your students!
+                  Let&apos;s set up your school&apos;s reading program in just a few steps. 
+                  You&apos;ll configure your book list, achievement rewards, and get everything ready for your students!
                 </p>
                 
                 <div style={{
@@ -233,7 +233,7 @@ export default function SchoolAdminOnboarding() {
                   border: '1px solid rgba(195, 224, 222, 0.4)'
                 }}>
                   <h3 style={{ color: '#223848', marginBottom: '1rem', fontFamily: 'Georgia, serif' }}>
-                    🎯 What we'll set up:
+                    🎯 What we&apos;ll set up:
                   </h3>
                   <div style={{
                     display: 'grid',
@@ -249,7 +249,7 @@ export default function SchoolAdminOnboarding() {
                 </div>
                 
                 <ActionButton onClick={handleNext} primary>
-                  Let's Get Started! 🚀
+                  Let&apos;s Get Started! 🚀
                 </ActionButton>
               </div>
             )}
@@ -316,7 +316,7 @@ export default function SchoolAdminOnboarding() {
                 }}>
                   📚 Select Your Nominees
                 </h2>
-                <p style={{                   color: '#ADD4EA', marginBottom: '1rem' }}>
+                <p style={{ color: '#ADD4EA', marginBottom: '1rem' }}>
                   Choose which books from the 2025-26 master list your students can read.
                 </p>
                 <p style={{ 
@@ -439,7 +439,7 @@ export default function SchoolAdminOnboarding() {
                               WebkitBoxOrient: 'vertical',
                               overflow: 'hidden'
                             }}>
-                              "{book.luxLibrisReview.substring(0, 120)}..."
+                              &quot;{book.luxLibrisReview.substring(0, 120)}...&quot;
                             </p>
                           )}
                         </div>
@@ -717,7 +717,7 @@ function ActionButton({ children, onClick, primary, secondary, disabled, loading
 
   const primaryStyle = {
     ...baseStyle,
-                      background: 'linear-gradient(135deg, #C3E0DE, #A1E5DB)',
+    background: 'linear-gradient(135deg, #C3E0DE, #A1E5DB)',
     color: 'white'
   }
 

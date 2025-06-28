@@ -54,7 +54,7 @@ export default function RoleSelector() {
             <RoleCard
               icon="🧑‍🎓"
               title="Student"
-              description="Connect to your school's reading program and start your journey!"
+              description="Connect to your school&apos;s reading program and start your journey!"
               features={[
                 "🏫 Connect to your school",
                 "📚 Interactive bookshelf",
@@ -62,7 +62,7 @@ export default function RoleSelector() {
                 "🔥 Reading streaks",
                 "🎯 Personal goals"
               ]}
-              buttonText="Join My School's Program"
+              buttonText="Join My School&apos;s Program"
               href="/student-onboarding"
               gradient="from-blue-400 to-purple-500"
               installPrompt={true}
@@ -72,9 +72,9 @@ export default function RoleSelector() {
             <RoleCard
               icon="👨‍👩‍👧‍👦"
               title="Parent"
-              description="Support your child's school reading program"
+              description="Support your child&apos;s school reading program"
               features={[
-                "🏫 Connect to your child's school",
+                "🏫 Connect to your child&apos;s school",
                 "👀 Basic progress viewing (FREE)",
                 "🔐 Quiz code access",
                 "⭐ Premium analytics ($10/yr)",
@@ -111,7 +111,7 @@ export default function RoleSelector() {
             <RoleCard
               icon="👑"
               title="School Admin"
-              description="Set up and manage your school's reading program"
+              description="Set up and manage your school&apos;s reading program"
               features={[
                 "🏫 School configuration",
                 "📚 Book selection from 20 nominees",
@@ -225,7 +225,7 @@ export default function RoleSelector() {
               marginBottom: '1rem',
               textAlign: 'center'
             }}>
-              We're currently piloting with select Catholic schools. Interested in bringing Lux Libris to your school?
+              We&apos;re currently piloting with select Catholic schools. Interested in bringing Lux Libris to your school?
             </p>
             <div style={{
               display: 'flex',
@@ -283,14 +283,14 @@ export default function RoleSelector() {
                 <strong style={{ color: '#223848' }}>📱 iPhone/iPad:</strong>
                 <br />
                 <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                  Tap Share → "Add to Home Screen"
+                  Tap Share → &quot;Add to Home Screen&quot;
                 </span>
               </div>
               <div>
                 <strong style={{ color: '#223848' }}>🤖 Android:</strong>
                 <br />
                 <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                  Tap "Install App" when prompted
+                  Tap &quot;Install App&quot; when prompted
                 </span>
               </div>
               <div>
