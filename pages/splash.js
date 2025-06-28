@@ -19,26 +19,22 @@ export default function Splash() {
     return () => clearTimeout(timer);
   }, [navigated]);
 
-  // Add this debug logging to your navigateAfterDelay function:
-
-const navigateAfterDelay = async () => {
+  const navigateAfterDelay = async () => {
   if (navigated) return;
   setNavigated(true);
 
   try {
-    // CHECK WHAT WE'RE GETTING
-    console.log('🔍 SPLASH DEBUG:');
-    console.log('router.query:', router.query);
-    console.log('router.query.type:', router.query.type);
-    console.log('Full URL:', window.location.href);
+    // Get userType from URL parameters directly (more reliable than router.query)
+    const urlParams = new URLSearchParams(window.location.search);
+    const userType = urlParams.get('type');
     
-    // Check what type of user and route accordingly
-    const userType = router.query.type;
-    console.log('userType detected:', userType);
+    console.log('🔍 SPLASH DEBUG:');
+    console.log('URL params:', urlParams.toString());
+    console.log('userType from URL:', userType);
+    console.log('router.query (for comparison):', router.query);
     
     if (userType === 'school-admin') {
       console.log('✅ Going to school dashboard');
-      // SCHOOL ADMIN - splash comes AFTER onboarding, so go to dashboard
       router.push('/admin/school-dashboard');
     } else {
       console.log('❌ Going to student flow, userType was:', userType);
