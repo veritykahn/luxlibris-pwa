@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { useRouter } from 'next/router'
 import Head from 'next/head'
 
 export default function RoleSelector() {
+  const router = useRouter()
   return (
     <>
       <Head>
@@ -52,40 +54,40 @@ export default function RoleSelector() {
             
             {/* Student Card */}
             <RoleCard
-              icon="🧑‍🎓"
-              title="Student"
-              description="Connect to your school&apos;s reading program and start your journey!"
-              features={[
-                "🏫 Connect to your school",
-                "📚 Interactive bookshelf",
-                "🏆 Saint achievements", 
-                "🔥 Reading streaks",
-                "🎯 Personal goals"
-              ]}
-              buttonText="Join My School&apos;s Program"
-              href="/student-onboarding"
-              gradient="from-blue-400 to-purple-500"
-              installPrompt={true}
-            />
+  icon="🧑‍🎓"
+  title="Student"
+  description="Connect to your school&apos;s reading program and start your journey!"
+  features={[
+    "🏫 Connect to your school",
+    "📚 Interactive bookshelf",
+    "🏆 Saint achievements", 
+    "🔥 Reading streaks",
+    "🎯 Personal goals"
+  ]}
+  buttonText="Join My School&apos;s Program"
+  onClick={() => router.push('/legal?type=student')}
+  gradient="from-blue-400 to-purple-500"
+  installPrompt={true}
+/>
 
             {/* Parent Card - School Connected */}
             <RoleCard
-              icon="👨‍👩‍👧‍👦"
-              title="Parent"
-              description="Support your child&apos;s school reading program"
-              features={[
-                "🏫 Connect to your child&apos;s school",
-                "👀 Basic progress viewing (FREE)",
-                "🔐 Quiz code access",
-                "⭐ Premium analytics ($10/yr)",
-                "🎉 Celebrate achievements"
-              ]}
-              buttonText="Support My Child"
-              href="/parent-onboarding"
-              gradient="from-green-400 to-teal-500"
-              installPrompt={true}
-              highlight="Basic access FREE with school!"
-            />
+  icon="👨‍👩‍👧‍👦"
+  title="Parent"
+  description="Support your child&apos;s school reading program"
+  features={[
+    "🏫 Connect to your child&apos;s school",
+    "👀 Basic progress viewing (FREE)",
+    "🔐 Quiz code access",
+    "⭐ Premium analytics ($10/yr)",
+    "🎉 Celebrate achievements"
+  ]}
+  buttonText="Support My Child"
+  onClick={() => router.push('/splash?type=parent')}
+  gradient="from-green-400 to-teal-500"
+  installPrompt={true}
+  highlight="Basic access FREE with school!"
+/>
 
             {/* Teacher Card - Future Phase */}
             <RoleCard
@@ -109,22 +111,22 @@ export default function RoleSelector() {
 
             {/* Admin Card */}
             <RoleCard
-              icon="👑"
-              title="School Admin"
-              description="Set up and manage your school&apos;s reading program"
-              features={[
-                "🏫 School configuration",
-                "📚 Book selection from 20 nominees",
-                "🏆 Achievement setup",
-                "👥 Student management",
-                "📊 Program analytics"
-              ]}
-              buttonText="Configure School"
-              href="/admin/school-onboarding"
-              gradient="from-purple-500 to-pink-500"
-              installPrompt={false}
-              highlight="For librarians & principals"
-            />
+  icon="👑"
+  title="School Admin"
+  description="Set up and manage your school&apos;s reading program"
+  features={[
+    "🏫 School configuration",
+    "📚 Book selection from 20 nominees",
+    "🏆 Achievement setup",
+    "👥 Student management",
+    "📊 Program analytics"
+  ]}
+  buttonText="Configure School"
+  onClick={() => router.push('/splash?type=school-admin')}
+  gradient="from-purple-500 to-pink-500"
+  installPrompt={false}
+  highlight="For librarians & principals"
+/>
           </div>
 
           {/* Simplified Independent Option - Post-Pilot */}
@@ -308,7 +310,7 @@ export default function RoleSelector() {
   )
 }
 
-function RoleCard({ icon, title, description, features, buttonText, href, gradient, installPrompt, highlight, disabled = false }) {
+function RoleCard({ icon, title, description, features, buttonText, onClick, gradient, installPrompt, highlight, disabled = false }) {
   const cardStyle = {
     background: disabled ? '#f8f9fa' : 'white',
     borderRadius: '1rem',
@@ -420,27 +422,28 @@ function RoleCard({ icon, title, description, features, buttonText, href, gradie
             {buttonText}
           </div>
         ) : (
-          <a href={href} style={{
-            display: 'block',
-            width: '100%',
-            background: gradient.includes('blue') ? 'linear-gradient(135deg, #60a5fa, #a78bfa)' :
-                       gradient.includes('green') ? 'linear-gradient(135deg, #34d399, #14b8a6)' :
-                       gradient.includes('amber') ? 'linear-gradient(135deg, #fbbf24, #f59e0b)' :
-                       'linear-gradient(135deg, #a855f7, #ec4899)',
-            color: 'white',
-            padding: '0.65rem 1rem',
-            borderRadius: '0.5rem',
-            textDecoration: 'none',
-            fontWeight: '600',
-            transition: 'all 0.2s',
-            textAlign: 'center',
-            fontSize: '0.85rem',
-            marginTop: 'auto',
-            boxSizing: 'border-box'
-          }}>
-            {buttonText}
-          </a>
-        )}
+          <button onClick={onClick} style={{
+ display: 'block',
+width: '100%',
+background: gradient.includes('blue') ? 'linear-gradient(135deg, #60a5fa, #a78bfa)' :
+gradient.includes('green') ? 'linear-gradient(135deg, #34d399, #14b8a6)' :
+gradient.includes('amber') ? 'linear-gradient(135deg, #fbbf24, #f59e0b)' :
+'linear-gradient(135deg, #a855f7, #ec4899)',
+color: 'white',
+padding: '0.65rem 1rem',
+borderRadius: '0.5rem',
+border: 'none',
+fontWeight: '600',
+transition: 'all 0.2s',
+textAlign: 'center',
+fontSize: '0.85rem',
+marginTop: 'auto',
+boxSizing: 'border-box',
+cursor: 'pointer'
+ }}>
+{buttonText}
+</button>
+ )}
       </div>
       
       {installPrompt && !disabled && (
