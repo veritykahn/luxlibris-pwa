@@ -473,7 +473,7 @@ export default function SchoolAdminOnboarding() {
                     fontSize: 'clamp(0.75rem, 2.5vw, 0.875rem)', 
                     margin: '0 0 0.5rem 0' 
                   }}>
-                    Tiers scale with your selection: 20%, 40%, 60%, 80%, and 100% of selected books.
+                    Tiers scale with your selection: 25%, 50%, 75%, and 100% of selected books.
                   </p>
                   <p style={{ 
                     color: '#223848', 
