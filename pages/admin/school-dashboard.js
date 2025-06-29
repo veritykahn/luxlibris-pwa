@@ -183,6 +183,7 @@ export default function SchoolAdminDashboard() {
     <>
       <Head>
         <title>School Admin Dashboard - Lux Libris</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       </Head>
       
       <div style={{
@@ -191,68 +192,87 @@ export default function SchoolAdminDashboard() {
         fontFamily: 'system-ui, -apple-system, sans-serif'
       }}>
         
-        {/* Header */}
+        {/* Header - Mobile Optimized */}
         <header style={{
           background: 'rgba(255, 255, 255, 0.95)',
           backdropFilter: 'blur(10px)',
           borderBottom: '1px solid rgba(195, 224, 222, 0.3)',
-          padding: '1rem 0'
+          padding: '1rem 0',
+          position: 'sticky',
+          top: 0,
+          zIndex: 100
         }}>
           <div style={{
             maxWidth: '80rem',
             margin: '0 auto',
-            padding: '0 1.5rem',
+            padding: '0 1rem', // Reduced for mobile
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between'
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '0.5rem'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.75rem',
+              minWidth: 0, // Allow shrinking
+              flex: 1
+            }}>
               <div style={{
-                width: '3rem',
-                height: '3rem',
+                width: '2.5rem', // Smaller on mobile
+                height: '2.5rem',
                 background: 'linear-gradient(135deg, #C3E0DE, #A1E5DB)',
                 borderRadius: '50%',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '1.5rem'
+                fontSize: '1.25rem',
+                flexShrink: 0
               }}>
                 🏫
               </div>
-              <div>
+              <div style={{ minWidth: 0 }}>
                 <h1 style={{
-                  fontSize: '1.5rem',
+                  fontSize: 'clamp(1.1rem, 4vw, 1.5rem)', // Responsive font
                   fontWeight: 'bold',
                   color: '#223848',
                   margin: 0,
-                  fontFamily: 'Georgia, serif'
+                  fontFamily: 'Georgia, serif',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
                 }}>
-                  {school?.name || 'School Admin'} Dashboard
+                  {school?.name || 'School Admin'}
                 </h1>
                 <p style={{
                   color: '#6b7280',
-                  fontSize: '0.875rem',
-                  margin: 0
+                  fontSize: '0.75rem',
+                  margin: 0,
+                  display: window.innerWidth > 480 ? 'block' : 'none' // Hide subtitle on very small screens
                 }}>
                   Manage your Lux Libris reading program
                 </p>
               </div>
             </div>
             
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <button style={{
-                padding: '0.5rem 1rem',
-                background: 'linear-gradient(135deg, #C3E0DE, #A1E5DB)',
-                color: '#223848',
-                borderRadius: '0.5rem',
-                fontSize: '0.875rem',
-                fontWeight: '600',
-                border: 'none',
-                cursor: 'pointer'
-              }}>
-                ⚙️ Settings
-              </button>
-            </div>
+            <button style={{
+              padding: '0.5rem 0.75rem',
+              background: 'linear-gradient(135deg, #C3E0DE, #A1E5DB)',
+              color: '#223848',
+              borderRadius: '0.5rem',
+              fontSize: '0.75rem',
+              fontWeight: '600',
+              border: 'none',
+              cursor: 'pointer',
+              flexShrink: 0,
+              minHeight: '36px', // Touch target
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.25rem'
+            }}>
+              ⚙️ Settings
+            </button>
           </div>
         </header>
 
@@ -260,19 +280,19 @@ export default function SchoolAdminDashboard() {
         <div style={{
           maxWidth: '80rem',
           margin: '0 auto',
-          padding: '2rem 1.5rem'
+          padding: '1rem' // Reduced padding for mobile
         }}>
           
-          {/* Quick Stats */}
+          {/* Quick Stats - Mobile Optimized Grid */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '1rem',
-            marginBottom: '2rem'
+            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', // Smaller minimum for mobile
+            gap: '0.75rem', // Reduced gap
+            marginBottom: '1.5rem'
           }}>
             <StatCard
               icon="🧑‍🎓"
-              title="Total Students"
+              title="Students"
               value={students.length}
               subtitle="Active readers"
               color="#ADD4EA"
@@ -286,66 +306,79 @@ export default function SchoolAdminDashboard() {
             />
             <StatCard
               icon="⏳"
-              title="Pending Reviews"
+              title="Pending"
               value={pendingSubmissions.length}
               subtitle="Need approval"
               color="#A1E5DB"
             />
             <StatCard
               icon="🏆"
-              title="Goal Progress"
+              title="Progress"
               value={`${Math.round((students.reduce((sum, s) => sum + (s.booksReadThisYear || 0), 0) / students.reduce((sum, s) => sum + (s.goal || 10), 0)) * 100)}%`}
-              subtitle="School average"
+              subtitle="School avg"
               color="#B6DFEB"
             />
           </div>
 
-          {/* Navigation Tabs */}
+          {/* Navigation Tabs - Mobile Optimized */}
           <div style={{
             background: 'white',
             borderRadius: '1rem 1rem 0 0',
             padding: '0',
-            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)'
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+            overflow: 'hidden'
           }}>
             <div style={{
               display: 'flex',
-              borderBottom: '1px solid #e5e7eb'
+              borderBottom: '1px solid #e5e7eb',
+              overflowX: 'auto', // Allow horizontal scroll on mobile
+              scrollbarWidth: 'none', // Firefox
+              msOverflowStyle: 'none' // IE
             }}>
               {[
-                { id: 'students', label: '👥 Students', count: students.length },
-                { id: 'submissions', label: '📋 Submissions', count: pendingSubmissions.length },
-                { id: 'reports', label: '📊 Reports', count: null },
-                { id: 'settings', label: '⚙️ Settings', count: null }
+                { id: 'students', label: '👥 Students', shortLabel: 'Students', count: students.length },
+                { id: 'submissions', label: '📋 Submissions', shortLabel: 'Pending', count: pendingSubmissions.length },
+                { id: 'reports', label: '📊 Reports', shortLabel: 'Reports', count: null },
+                { id: 'settings', label: '⚙️ Settings', shortLabel: 'Settings', count: null }
               ].map(tab => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   style={{
-                    padding: '1rem 1.5rem',
+                    padding: '0.75rem 1rem',
                     border: 'none',
                     background: activeTab === tab.id ? '#ADD4EA' : 'transparent',
                     color: activeTab === tab.id ? '#223848' : '#6b7280',
                     fontWeight: activeTab === tab.id ? '600' : '500',
                     borderRadius: activeTab === tab.id ? '0.5rem 0.5rem 0 0' : '0',
                     cursor: 'pointer',
-                    fontSize: '0.875rem',
+                    fontSize: '0.75rem',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '0.5rem'
+                    gap: '0.25rem',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                    minHeight: '44px' // Touch target
                   }}
                 >
-                  {tab.label}
+                  {/* Show short label on small screens */}
+                  <span style={{ display: window.innerWidth > 480 ? 'inline' : 'none' }}>
+                    {tab.label}
+                  </span>
+                  <span style={{ display: window.innerWidth <= 480 ? 'inline' : 'none' }}>
+                    {tab.shortLabel}
+                  </span>
                   {tab.count !== null && (
                     <span style={{
                       background: activeTab === tab.id ? '#223848' : '#C3E0DE',
                       color: activeTab === tab.id ? 'white' : '#223848',
                       borderRadius: '50%',
-                      width: '1.25rem',
-                      height: '1.25rem',
+                      width: '1.125rem',
+                      height: '1.125rem',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontSize: '0.75rem',
+                      fontSize: '0.625rem',
                       fontWeight: 'bold'
                     }}>
                       {tab.count}
@@ -360,9 +393,9 @@ export default function SchoolAdminDashboard() {
           <div style={{
             background: 'white',
             borderRadius: '0 0 1rem 1rem',
-            padding: '2rem',
+            padding: 'clamp(1rem, 4vw, 2rem)', // Responsive padding
             boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
-            minHeight: '24rem'
+            minHeight: '20rem' // Reduced for mobile
           }}>
             
             {/* Students Tab */}
@@ -371,11 +404,13 @@ export default function SchoolAdminDashboard() {
                 <div style={{
                   display: 'flex',
                   justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: '1.5rem'
+                  alignItems: 'flex-start',
+                  marginBottom: '1.5rem',
+                  flexWrap: 'wrap',
+                  gap: '1rem'
                 }}>
                   <h2 style={{
-                    fontSize: '1.5rem',
+                    fontSize: 'clamp(1.25rem, 5vw, 1.5rem)',
                     fontWeight: 'bold',
                     color: '#223848',
                     margin: 0,
@@ -386,7 +421,7 @@ export default function SchoolAdminDashboard() {
                   <button
                     onClick={() => setShowAddStudent(true)}
                     style={{
-                      padding: '0.75rem 1.5rem',
+                      padding: '0.75rem 1rem',
                       background: 'linear-gradient(135deg, #ADD4EA, #C3E0DE)',
                       color: '#223848',
                       border: 'none',
@@ -395,14 +430,17 @@ export default function SchoolAdminDashboard() {
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '0.5rem'
+                      gap: '0.5rem',
+                      fontSize: '0.875rem',
+                      minHeight: '44px', // Touch target
+                      flexShrink: 0
                     }}
                   >
                     ➕ Add Student
                   </button>
                 </div>
 
-                {/* Add Student Modal */}
+                {/* Add Student Modal - Mobile Optimized */}
                 {showAddStudent && (
                   <div style={{
                     position: 'fixed',
@@ -414,15 +452,16 @@ export default function SchoolAdminDashboard() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    zIndex: 1000
+                    zIndex: 1000,
+                    padding: '1rem' // Add padding for mobile
                   }}>
                     <div style={{
                       background: 'white',
                       borderRadius: '1rem',
-                      padding: '2rem',
+                      padding: 'clamp(1rem, 4vw, 2rem)',
                       maxWidth: '28rem',
-                      width: '90%',
-                      maxHeight: '80vh',
+                      width: '100%',
+                      maxHeight: '90vh', // More space on mobile
                       overflowY: 'auto'
                     }}>
                       <h3 style={{
@@ -454,7 +493,8 @@ export default function SchoolAdminDashboard() {
                             border: '1px solid #d1d5db',
                             borderRadius: '0.5rem',
                             fontSize: '1rem',
-                            boxSizing: 'border-box'
+                            boxSizing: 'border-box',
+                            minHeight: '44px' // Touch target
                           }}
                           placeholder="Emma"
                         />
@@ -481,7 +521,8 @@ export default function SchoolAdminDashboard() {
                             border: '1px solid #d1d5db',
                             borderRadius: '0.5rem',
                             fontSize: '1rem',
-                            boxSizing: 'border-box'
+                            boxSizing: 'border-box',
+                            minHeight: '44px'
                           }}
                           placeholder="K"
                         />
@@ -506,7 +547,8 @@ export default function SchoolAdminDashboard() {
                             border: '1px solid #d1d5db',
                             borderRadius: '0.5rem',
                             fontSize: '1rem',
-                            boxSizing: 'border-box'
+                            boxSizing: 'border-box',
+                            minHeight: '44px'
                           }}
                         >
                           <option>4th Grade</option>
@@ -539,26 +581,31 @@ export default function SchoolAdminDashboard() {
                             border: '1px solid #d1d5db',
                             borderRadius: '0.5rem',
                             fontSize: '1rem',
-                            boxSizing: 'border-box'
+                            boxSizing: 'border-box',
+                            minHeight: '44px'
                           }}
                         />
                       </div>
 
                       <div style={{
                         display: 'flex',
-                        gap: '1rem',
-                        justifyContent: 'flex-end'
+                        gap: '0.75rem',
+                        justifyContent: 'flex-end',
+                        flexWrap: 'wrap'
                       }}>
                         <button
                           onClick={() => setShowAddStudent(false)}
                           style={{
-                            padding: '0.75rem 1.5rem',
+                            padding: '0.75rem 1.25rem',
                             background: '#f3f4f6',
                             color: '#374151',
                             border: 'none',
                             borderRadius: '0.5rem',
                             fontWeight: '600',
-                            cursor: 'pointer'
+                            cursor: 'pointer',
+                            minHeight: '44px',
+                            flex: '1',
+                            minWidth: '100px'
                           }}
                         >
                           Cancel
@@ -567,7 +614,7 @@ export default function SchoolAdminDashboard() {
                           onClick={addStudent}
                           disabled={!newStudent.firstName || !newStudent.lastInitial}
                           style={{
-                            padding: '0.75rem 1.5rem',
+                            padding: '0.75rem 1.25rem',
                             background: newStudent.firstName && newStudent.lastInitial 
                               ? 'linear-gradient(135deg, #ADD4EA, #C3E0DE)' 
                               : '#d1d5db',
@@ -575,7 +622,10 @@ export default function SchoolAdminDashboard() {
                             border: 'none',
                             borderRadius: '0.5rem',
                             fontWeight: '600',
-                            cursor: newStudent.firstName && newStudent.lastInitial ? 'pointer' : 'not-allowed'
+                            cursor: newStudent.firstName && newStudent.lastInitial ? 'pointer' : 'not-allowed',
+                            minHeight: '44px',
+                            flex: '1',
+                            minWidth: '120px'
                           }}
                         >
                           Add Student
@@ -585,7 +635,7 @@ export default function SchoolAdminDashboard() {
                   </div>
                 )}
 
-                {/* Students List */}
+                {/* Students List - Mobile Optimized */}
                 <div style={{
                   display: 'grid',
                   gap: '1rem'
@@ -593,10 +643,10 @@ export default function SchoolAdminDashboard() {
                   {students.length === 0 ? (
                     <div style={{
                       textAlign: 'center',
-                      padding: '3rem',
+                      padding: '2rem 1rem',
                       color: '#6b7280'
                     }}>
-                      <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>👥</div>
+                      <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>👥</div>
                       <h3 style={{ color: '#223848', marginBottom: '0.5rem' }}>No students yet</h3>
                       <p>Add your first student to get started!</p>
                     </div>
@@ -613,7 +663,7 @@ export default function SchoolAdminDashboard() {
             {activeTab === 'submissions' && (
               <div>
                 <h2 style={{
-                  fontSize: '1.5rem',
+                  fontSize: 'clamp(1.25rem, 5vw, 1.5rem)',
                   fontWeight: 'bold',
                   color: '#223848',
                   marginBottom: '1.5rem',
@@ -625,10 +675,10 @@ export default function SchoolAdminDashboard() {
                 {pendingSubmissions.length === 0 ? (
                   <div style={{
                     textAlign: 'center',
-                    padding: '3rem',
+                    padding: '2rem 1rem',
                     color: '#6b7280'
                   }}>
-                    <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📋</div>
+                    <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>📋</div>
                     <h3 style={{ color: '#223848', marginBottom: '0.5rem' }}>All caught up!</h3>
                     <p>No pending submissions to review.</p>
                   </div>
@@ -636,19 +686,22 @@ export default function SchoolAdminDashboard() {
                   <div style={{ display: 'grid', gap: '1rem' }}>
                     {pendingSubmissions.map(submission => (
                       <div key={submission.id} style={{
-                        padding: '1.5rem',
+                        padding: '1.25rem',
                         border: '1px solid #e5e7eb',
                         borderRadius: '0.75rem',
                         display: 'flex',
                         justifyContent: 'space-between',
-                        alignItems: 'center'
+                        alignItems: 'flex-start',
+                        flexWrap: 'wrap',
+                        gap: '1rem'
                       }}>
-                        <div>
+                        <div style={{ flex: 1, minWidth: '200px' }}>
                           <h4 style={{
-                            fontSize: '1.1rem',
+                            fontSize: '1rem',
                             fontWeight: '600',
                             color: '#223848',
-                            margin: '0 0 0.25rem 0'
+                            margin: '0 0 0.25rem 0',
+                            lineHeight: '1.3'
                           }}>
                             {submission.studentName} completed &quot;{submission.book}&quot;
                           </h4>
@@ -660,29 +713,38 @@ export default function SchoolAdminDashboard() {
                             Submitted {submission.submittedAt}
                           </p>
                         </div>
-                        <div style={{ display: 'flex', gap: '0.75rem' }}>
+                        <div style={{ 
+                          display: 'flex', 
+                          gap: '0.5rem',
+                          flexWrap: 'wrap',
+                          justifyContent: 'flex-end'
+                        }}>
                           <button
                             onClick={() => approveSubmission(submission.id)}
                             style={{
-                              padding: '0.5rem 1rem',
+                              padding: '0.5rem 0.75rem',
                               background: 'linear-gradient(135deg, #34d399, #10b981)',
                               color: 'white',
                               border: 'none',
                               borderRadius: '0.5rem',
                               fontWeight: '600',
-                              cursor: 'pointer'
+                              cursor: 'pointer',
+                              fontSize: '0.75rem',
+                              minHeight: '36px'
                             }}
                           >
                             ✅ Approve
                           </button>
                           <button style={{
-                            padding: '0.5rem 1rem',
+                            padding: '0.5rem 0.75rem',
                             background: '#f3f4f6',
                             color: '#374151',
                             border: 'none',
                             borderRadius: '0.5rem',
                             fontWeight: '600',
-                            cursor: 'pointer'
+                            cursor: 'pointer',
+                            fontSize: '0.75rem',
+                            minHeight: '36px'
                           }}>
                             👁️ Review
                           </button>
@@ -698,7 +760,7 @@ export default function SchoolAdminDashboard() {
             {activeTab === 'reports' && (
               <div>
                 <h2 style={{
-                  fontSize: '1.5rem',
+                  fontSize: 'clamp(1.25rem, 5vw, 1.5rem)',
                   fontWeight: 'bold',
                   color: '#223848',
                   marginBottom: '1.5rem',
@@ -709,8 +771,8 @@ export default function SchoolAdminDashboard() {
                 
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-                  gap: '1.5rem',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                  gap: '1rem',
                   marginBottom: '2rem'
                 }}>
                   <ReportCard
@@ -739,7 +801,7 @@ export default function SchoolAdminDashboard() {
             {activeTab === 'settings' && (
               <div>
                 <h2 style={{
-                  fontSize: '1.5rem',
+                  fontSize: 'clamp(1.25rem, 5vw, 1.5rem)',
                   fontWeight: 'bold',
                   color: '#223848',
                   marginBottom: '1.5rem',
@@ -750,7 +812,7 @@ export default function SchoolAdminDashboard() {
                 
                 <div style={{
                   display: 'grid',
-                  gap: '1.5rem'
+                  gap: '1rem'
                 }}>
                   <SettingsCard
                     title="🏫 School Information"
@@ -782,6 +844,11 @@ export default function SchoolAdminDashboard() {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
         }
+        
+        /* Hide scrollbar for tab navigation */
+        .tab-container::-webkit-scrollbar {
+          display: none;
+        }
       `}</style>
     </>
   )
@@ -791,21 +858,26 @@ function StatCard({ icon, title, value, subtitle, color }) {
   return (
     <div style={{
       background: 'white',
-      borderRadius: '1rem',
-      padding: '1.5rem',
+      borderRadius: '0.75rem',
+      padding: 'clamp(0.75rem, 3vw, 1.25rem)',
       boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
-      border: `1px solid ${color}20`
+      border: `1px solid ${color}20`,
+      minHeight: '100px' // Ensure consistent height
     }}>
       <div style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: '0.75rem'
+        marginBottom: '0.5rem'
       }}>
-        <span style={{ fontSize: '1.5rem' }}>{icon}</span>
+        <span style={{ 
+          fontSize: 'clamp(1rem, 3vw, 1.25rem)' 
+        }}>
+          {icon}
+        </span>
         <div style={{
-          width: '3rem',
-          height: '3rem',
+          width: 'clamp(2rem, 6vw, 2.5rem)',
+          height: 'clamp(2rem, 6vw, 2.5rem)',
           background: `${color}15`,
           borderRadius: '50%',
           display: 'flex',
@@ -813,32 +885,34 @@ function StatCard({ icon, title, value, subtitle, color }) {
           justifyContent: 'center'
         }}>
           <div style={{
-            width: '1.5rem',
-            height: '1.5rem',
+            width: '60%',
+            height: '60%',
             background: color,
             borderRadius: '50%'
           }}></div>
         </div>
       </div>
       <h3 style={{
-        fontSize: '1.75rem',
+        fontSize: 'clamp(1.25rem, 4vw, 1.5rem)',
         fontWeight: 'bold',
         color: '#223848',
-        margin: '0 0 0.25rem 0'
+        margin: '0 0 0.125rem 0',
+        lineHeight: '1.1'
       }}>
         {value}
       </h3>
       <p style={{
-        fontSize: '0.875rem',
+        fontSize: 'clamp(0.6rem, 2.5vw, 0.75rem)',
         color: '#6b7280',
-        margin: 0
+        margin: 0,
+        fontWeight: '600'
       }}>
         {title}
       </p>
       <p style={{
-        fontSize: '0.75rem',
+        fontSize: 'clamp(0.55rem, 2vw, 0.65rem)',
         color: '#9ca3af',
-        margin: '0.25rem 0 0 0'
+        margin: '0.125rem 0 0 0'
       }}>
         {subtitle}
       </p>
@@ -851,44 +925,50 @@ function StudentCard({ student }) {
 
   return (
     <div style={{
-      padding: '1.5rem',
+      padding: 'clamp(1rem, 3vw, 1.5rem)',
       border: '1px solid #e5e7eb',
       borderRadius: '0.75rem',
       display: 'grid',
       gridTemplateColumns: '1fr auto',
-      gap: '1.5rem',
-      alignItems: 'center'
+      gap: 'clamp(0.75rem, 3vw, 1.5rem)',
+      alignItems: 'center',
+      '@media (max-width: 640px)': {
+        gridTemplateColumns: '1fr',
+        gap: '1rem'
+      }
     }}>
       <div>
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '1rem',
-          marginBottom: '0.75rem'
+          gap: '0.75rem',
+          marginBottom: '0.75rem',
+          flexWrap: 'wrap'
         }}>
           <div style={{
-            width: '2.5rem',
-            height: '2.5rem',
+            width: '2.25rem',
+            height: '2.25rem',
             background: 'linear-gradient(135deg, #ADD4EA, #C3E0DE)',
             borderRadius: '50%',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '1.25rem'
+            fontSize: '1.125rem',
+            flexShrink: 0
           }}>
             👤
           </div>
-          <div>
+          <div style={{ minWidth: 0, flex: 1 }}>
             <h4 style={{
-              fontSize: '1.1rem',
+              fontSize: 'clamp(0.9rem, 3vw, 1.1rem)',
               fontWeight: '600',
               color: '#223848',
-              margin: '0 0 0.25rem 0'
+              margin: '0 0 0.125rem 0'
             }}>
               {student.firstName} {student.lastInitial}.
             </h4>
             <p style={{
-              fontSize: '0.875rem',
+              fontSize: 'clamp(0.7rem, 2.5vw, 0.875rem)',
               color: '#6b7280',
               margin: 0
             }}>
@@ -897,8 +977,13 @@ function StudentCard({ student }) {
           </div>
         </div>
         
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ flex: 1 }}>
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '1rem',
+          flexWrap: 'wrap'
+        }}>
+          <div style={{ flex: 1, minWidth: '120px' }}>
             <div style={{
               display: 'flex',
               justifyContent: 'space-between',
@@ -906,13 +991,13 @@ function StudentCard({ student }) {
               marginBottom: '0.25rem'
             }}>
               <span style={{
-                fontSize: '0.75rem',
+                fontSize: '0.625rem',
                 color: '#6b7280'
               }}>
                 Progress
               </span>
               <span style={{
-                fontSize: '0.75rem',
+                fontSize: '0.625rem',
                 fontWeight: '600',
                 color: '#223848'
               }}>
@@ -939,18 +1024,26 @@ function StudentCard({ student }) {
           
           <div style={{
             display: 'flex',
-            gap: '1rem',
-            fontSize: '0.75rem',
+            gap: '0.75rem',
+            fontSize: '0.625rem',
             color: '#6b7280'
           }}>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontWeight: '600', color: '#223848' }}>
+              <div style={{ 
+                fontWeight: '600', 
+                color: '#223848',
+                fontSize: '0.75rem'
+              }}>
                 {student.saintCount || 0}
               </div>
               <div>Saints</div>
             </div>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontWeight: '600', color: '#223848' }}>
+              <div style={{ 
+                fontWeight: '600', 
+                color: '#223848',
+                fontSize: '0.75rem'
+              }}>
                 {student.readingStreak || 0}
               </div>
               <div>Streak</div>
@@ -959,28 +1052,35 @@ function StudentCard({ student }) {
         </div>
       </div>
       
-      <div style={{ display: 'flex', gap: '0.5rem' }}>
+      <div style={{ 
+        display: 'flex', 
+        gap: '0.375rem',
+        flexWrap: 'wrap',
+        justifyContent: 'flex-end'
+      }}>
         <button style={{
-          padding: '0.5rem 1rem',
+          padding: '0.5rem 0.75rem',
           background: '#f3f4f6',
           color: '#374151',
           border: 'none',
           borderRadius: '0.5rem',
-          fontSize: '0.875rem',
+          fontSize: '0.75rem',
           fontWeight: '600',
-          cursor: 'pointer'
+          cursor: 'pointer',
+          minHeight: '36px'
         }}>
           📊 View
         </button>
         <button style={{
-          padding: '0.5rem 1rem',
+          padding: '0.5rem 0.75rem',
           background: 'linear-gradient(135deg, #ADD4EA, #C3E0DE)',
           color: '#223848',
           border: 'none',
           borderRadius: '0.5rem',
-          fontSize: '0.875rem',
+          fontSize: '0.75rem',
           fontWeight: '600',
-          cursor: 'pointer'
+          cursor: 'pointer',
+          minHeight: '36px'
         }}>
           ✏️ Edit
         </button>
@@ -992,13 +1092,13 @@ function StudentCard({ student }) {
 function ReportCard({ title, description, buttonText, comingSoon }) {
   return (
     <div style={{
-      padding: '1.5rem',
+      padding: 'clamp(1rem, 3vw, 1.5rem)',
       border: '1px solid #e5e7eb',
       borderRadius: '0.75rem',
       background: 'white'
     }}>
       <h3 style={{
-        fontSize: '1.1rem',
+        fontSize: 'clamp(0.9rem, 3vw, 1.1rem)',
         fontWeight: '600',
         color: '#223848',
         margin: '0 0 0.5rem 0'
@@ -1007,7 +1107,7 @@ function ReportCard({ title, description, buttonText, comingSoon }) {
       </h3>
       <p style={{
         color: '#6b7280',
-        fontSize: '0.875rem',
+        fontSize: 'clamp(0.75rem, 2.5vw, 0.875rem)',
         margin: '0 0 1rem 0',
         lineHeight: '1.4'
       }}>
@@ -1019,9 +1119,10 @@ function ReportCard({ title, description, buttonText, comingSoon }) {
         color: comingSoon ? '#9ca3af' : '#223848',
         border: 'none',
         borderRadius: '0.5rem',
-        fontSize: '0.875rem',
+        fontSize: '0.75rem',
         fontWeight: '600',
-        cursor: comingSoon ? 'not-allowed' : 'pointer'
+        cursor: comingSoon ? 'not-allowed' : 'pointer',
+        minHeight: '36px'
       }}>
         {comingSoon ? 'Coming Soon' : buttonText}
       </button>
@@ -1032,17 +1133,22 @@ function ReportCard({ title, description, buttonText, comingSoon }) {
 function SettingsCard({ title, description, buttonText, comingSoon }) {
   return (
     <div style={{
-      padding: '1.5rem',
+      padding: 'clamp(1rem, 3vw, 1.5rem)',
       border: '1px solid #e5e7eb',
       borderRadius: '0.75rem',
       background: 'white',
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center'
+      display: 'grid',
+      gridTemplateColumns: '1fr auto',
+      gap: '1rem',
+      alignItems: 'center',
+      '@media (max-width: 640px)': {
+        gridTemplateColumns: '1fr',
+        gap: '0.75rem'
+      }
     }}>
       <div>
         <h3 style={{
-          fontSize: '1.1rem',
+          fontSize: 'clamp(0.9rem, 3vw, 1.1rem)',
           fontWeight: '600',
           color: '#223848',
           margin: '0 0 0.5rem 0'
@@ -1051,7 +1157,7 @@ function SettingsCard({ title, description, buttonText, comingSoon }) {
         </h3>
         <p style={{
           color: '#6b7280',
-          fontSize: '0.875rem',
+          fontSize: 'clamp(0.75rem, 2.5vw, 0.875rem)',
           margin: 0,
           lineHeight: '1.4'
         }}>
@@ -1064,10 +1170,12 @@ function SettingsCard({ title, description, buttonText, comingSoon }) {
         color: comingSoon ? '#9ca3af' : '#223848',
         border: 'none',
         borderRadius: '0.5rem',
-        fontSize: '0.875rem',
+        fontSize: '0.75rem',
         fontWeight: '600',
         cursor: comingSoon ? 'not-allowed' : 'pointer',
-        whiteSpace: 'nowrap'
+        whiteSpace: 'nowrap',
+        minHeight: '36px',
+        justifySelf: 'end'
       }}>
         {comingSoon ? 'Coming Soon' : buttonText}
       </button>
