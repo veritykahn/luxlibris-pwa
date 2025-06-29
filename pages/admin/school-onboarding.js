@@ -45,27 +45,25 @@ export default function SchoolAdminOnboarding() {
   }, [schoolData.selectedNominees])
 
   const calculateAchievementTiers = (bookCount) => {
-    if (bookCount === 0) return []
-    
-    // Create 4-5 tiers at reasonable intervals
-    const tier1 = Math.max(1, Math.ceil(bookCount * 0.2))  // 20% - minimum 1 book
-    const tier2 = Math.max(2, Math.ceil(bookCount * 0.4))  // 40% - minimum 2 books
-    const tier3 = Math.max(3, Math.ceil(bookCount * 0.6))  // 60% - minimum 3 books
-    const tier4 = Math.max(4, Math.ceil(bookCount * 0.8))  // 80% - minimum 4 books
-    const tier5 = bookCount                                // 100% - all selected books
-    
-    // Lifetime goal scales with program scope (4.5x multiplier for multi-year journey)
-    const lifetimeGoal = Math.max(25, Math.ceil(bookCount * 5))
-    
-    return [
-      { books: tier1, reward: 'Recognition at Mass', type: 'basic' },
-      { books: tier2, reward: 'Certificate', type: 'basic' },
-      { books: tier3, reward: 'Pizza Party', type: 'basic' },
-      { books: tier4, reward: 'Medal', type: 'basic' },
-      { books: tier5, reward: 'Annual Trophy', type: 'annual' },
-      { books: lifetimeGoal, reward: 'Plaque', type: 'lifetime' }
-    ]
-  }
+  if (bookCount === 0) return []
+  
+  // 4 tiers with clean percentage breakpoints
+  const tier1 = Math.max(1, Math.ceil(bookCount * 0.25))  // 25%
+  const tier2 = Math.max(2, Math.ceil(bookCount * 0.50))  // 50%
+  const tier3 = Math.max(3, Math.ceil(bookCount * 0.75))  // 75%
+  const tier4 = bookCount                                 // 100%
+  
+  // Lifetime goal: 5x multiplier for 5-year program (4th-8th grade)
+  const lifetimeGoal = Math.max(25, Math.ceil(bookCount * 5))
+  
+  return [
+    { books: tier1, reward: 'Recognition at Mass', type: 'basic' },
+    { books: tier2, reward: 'Certificate', type: 'basic' },
+    { books: tier3, reward: 'Party', type: 'basic' },
+    { books: tier4, reward: 'Medal', type: 'annual' },
+    { books: lifetimeGoal, reward: 'Plaque', type: 'lifetime' }
+  ]
+}
 
   const fetchNominees = async () => {
     try {
