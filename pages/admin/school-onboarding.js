@@ -55,7 +55,7 @@ export default function SchoolAdminOnboarding() {
     const tier5 = bookCount                                // 100% - all selected books
     
     // Lifetime goal scales with program scope (4.5x multiplier for multi-year journey)
-    const lifetimeGoal = Math.max(25, Math.ceil(bookCount * 4.5))
+    const lifetimeGoal = Math.max(25, Math.ceil(bookCount * 5))
     
     return [
       { books: tier1, reward: 'Recognition at Mass', type: 'basic' },
@@ -415,7 +415,7 @@ export default function SchoolAdminOnboarding() {
                 
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))',
                   gap: '0.75rem',
                   maxHeight: '50vh',
                   overflowY: 'auto',
