@@ -102,6 +102,30 @@ export default function StudentOnboarding() {
     loadSchools();
   }, []);
 
+  useEffect(() => {
+  // Pre-populate from account creation data
+  const tempStudentData = localStorage.getItem('tempStudentData');
+  const accountData = localStorage.getItem('luxlibris_student_profile');
+  
+  if (tempStudentData) {
+    const parsed = JSON.parse(tempStudentData);
+    setFormData(prev => ({
+      ...prev,
+      firstName: parsed.firstName || '',
+      lastInitial: parsed.lastInitial || ''
+    }));
+  }
+  
+  if (accountData) {
+    const parsed = JSON.parse(accountData);
+    setFormData(prev => ({
+      ...prev,
+      schoolId: parsed.schoolId || '',
+      schoolName: parsed.schoolName || ''
+    }));
+  }
+}, []);
+
   const loadSchools = async () => {
     try {
       const schoolsCollection = collection(db, 'schools');
