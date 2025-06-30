@@ -77,6 +77,9 @@ export default function StudentAccountCreation() {
             localStorage.setItem('luxlibris_account_created', 'true')
           }
 
+console.log('Account created successfully, redirecting to legal...') // ADD THIS LINE
+
+
           // Redirect to legal acceptance first
           router.push('/legal?flow=student-onboarding')
           
