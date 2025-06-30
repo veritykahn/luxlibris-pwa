@@ -15,14 +15,21 @@ export default function Legal() {
     localStorage.setItem('acceptedTermsVersion', '2025.06.27');
     
     // Navigate based on user type (could be passed as query param)
-    const userType = router.query.type || 'student';
+    const flow = router.query.flow || 'student-onboarding';
 
-if (userType === 'student') {
-  router.push('/student-onboarding');
-} else if (userType === 'school-admin') {
-  router.push('/admin-onboarding');
-} else {
-  router.push('/student-onboarding'); // Default to student
+// Route based on flow parameter
+switch (flow) {
+  case 'student-onboarding':
+    router.push('/student-onboarding');
+    break;
+  case 'parent-onboarding':
+    router.push('/parent-onboarding');
+    break;
+  case 'admin-onboarding':
+    router.push('/admin/school-onboarding');
+    break;
+  default:
+    router.push('/student-onboarding');
 }
     
     setIsLoading(false);
@@ -84,15 +91,14 @@ if (userType === 'student') {
             marginBottom: '16px'
           }}>
             Welcome to Lux Libris!
-          </h2>
           <p style={{
-            fontSize: '16px',
-            color: '#223848',
-            lineHeight: '1.5',
-            marginBottom: '24px'
-          }}>
-            By continuing to use this app, you agree to our Terms of Service and Privacy Policy. Please read carefully.
-          </p>
+  fontSize: '16px',
+  color: '#223848',
+  lineHeight: '1.5',
+  marginBottom: '24px'
+}}>
+  Welcome to your reading journey! As you read amazing books, you'll unlock beautiful <strong>Little Luminaries™</strong> saint achievements created exclusively for Lux Libris. By continuing, you agree to our Terms of Service and Privacy Policy.
+</p>
         </div>
 
 
@@ -151,14 +157,18 @@ This data is used exclusively for tracking reading progress, generating achievem
           />
 
           <Section
-            title="🎨 Intellectual Property"
-            content="All content within Lux Libris is protected:
-• Original code, designs, and educational concepts
-• Saint achievement system and reward structures
-• App artwork, animations, and user interface
-• Unauthorized reproduction or commercial use is prohibited
-• Educational fair use permitted with attribution"
-          />
+  title="🎨 Little Luminaries™ & Intellectual Property"
+  content="Lux Libris features original Little Luminaries™ saint artwork:
+- 137 original chibi-style saint characters created exclusively for Lux Libris
+- Proprietary saint achievement system and reward structure
+- Little Luminaries™ is a trademark of Lux Libris
+- Original artwork by Dr. Verity Kahn, all rights reserved
+- Students enjoy these achievements as part of the educational program
+- Unauthorized reproduction, distribution, or commercial use is prohibited
+- Educational fair use permitted with proper attribution
+
+All other content including app design, user interface, educational concepts, and achievement systems are also protected by copyright and trademark law."
+/>
 
           <Section
             title="📋 School Administrator Rights"

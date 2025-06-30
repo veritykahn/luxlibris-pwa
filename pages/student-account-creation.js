@@ -77,8 +77,8 @@ export default function StudentAccountCreation() {
             localStorage.setItem('luxlibris_account_created', 'true')
           }
 
-          // Redirect to student onboarding
-          router.push('/student-onboarding')
+          // Redirect to legal acceptance first
+          router.push('/legal?flow=student-onboarding')
           
         } catch (error) {
           console.error('Account creation error:', error)
