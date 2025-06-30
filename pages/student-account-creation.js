@@ -38,10 +38,10 @@ export default function StudentAccountCreation() {
         try {
           // Create Firebase Auth account with just school code
           const authResult = await authHelpers.createStudentAccount(
-            '', // No firstName yet - will be collected in onboarding
-            '', // No lastInitial yet - will be collected in onboarding  
-            studentData.schoolJoinCode.toUpperCase()
-          )
+  `temp_${studentData.schoolJoinCode.toLowerCase()}_${Date.now()}`, // Temporary identifier
+  '', // No lastInitial yet - will be collected in onboarding  
+  studentData.schoolJoinCode.toUpperCase()
+)
 
           // Store school data for onboarding to use
           if (typeof window !== 'undefined') {
