@@ -9,8 +9,6 @@ export default function StudentAccountCreation() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [studentData, setStudentData] = useState({
-    firstName: '',
-    lastInitial: '',
     schoolJoinCode: ''
   })
   const [schoolData, setSchoolData] = useState(null)
@@ -21,62 +19,39 @@ export default function StudentAccountCreation() {
 
     try {
       if (step === 1) {
-        // Validate basic info
-        if (!studentData.firstName.trim()) {
-          setError('Please enter your first name')
-          setLoading(false)
-          return
-        }
-        if (!studentData.lastInitial.trim()) {
-          setError('Please enter your last initial')
-          setLoading(false)
-          return
-        }
-        setStep(2)
-      } else if (step === 2) {
         // Verify school join code
         if (!studentData.schoolJoinCode.trim()) {
           setError('Please enter your school join code')
           setLoading(false)
           return
         }
-
         const verification = await dbHelpers.verifySchoolJoinCode(studentData.schoolJoinCode.toUpperCase())
-        
         if (!verification.valid) {
           setError(verification.error)
           setLoading(false)
           return
         }
-
         setSchoolData(verification.school)
-        setStep(3)
-      } else if (step === 3) {
-        // Create account
+        setStep(2)
+      } else if (step === 2) {
+        // Create account (no name needed yet)
         try {
-          // Create Firebase Auth account
+          // Create Firebase Auth account with just school code
           const authResult = await authHelpers.createStudentAccount(
-            studentData.firstName,
-            studentData.lastInitial,
+            '', // No firstName yet - will be collected in onboarding
+            '', // No lastInitial yet - will be collected in onboarding  
             studentData.schoolJoinCode.toUpperCase()
           )
 
-          // Create student profile in database
-          const studentProfile = await dbHelpers.createStudentProfile(
-            authResult.uid,
-            studentData,
-            schoolData
-          )
-
-          // Store session data for onboarding
+          // Store school data for onboarding to use
           if (typeof window !== 'undefined') {
-            localStorage.setItem('luxlibris_student_profile', JSON.stringify({
-              ...studentProfile,
-              uid: authResult.uid
+            localStorage.setItem('tempSchoolData', JSON.stringify({
+              schoolId: schoolData.id,
+              schoolName: schoolData.name,
+              schoolJoinCode: studentData.schoolJoinCode
             }))
             localStorage.setItem('luxlibris_account_created', 'true')
           }
-
 
           // Redirect to legal acceptance first
           router.push('/legal?flow=student-onboarding')
@@ -170,7 +145,7 @@ export default function StudentAccountCreation() {
             marginBottom: '2rem',
             gap: '0.5rem'
           }}>
-            {[1, 2, 3].map(stepNum => (
+            {[1, 2].map(stepNum => (
               <div key={stepNum} style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -192,7 +167,7 @@ export default function StudentAccountCreation() {
                 }}>
                   {stepNum}
                 </div>
-                {stepNum < 3 && (
+                {stepNum < 2 && (
                   <div style={{
                     width: '2rem',
                     height: '2px',
@@ -206,99 +181,8 @@ export default function StudentAccountCreation() {
           {/* Step Content */}
           <div style={{ marginBottom: '2rem' }}>
             
-            {/* Step 1: Basic Info */}
+            {/* Step 1: School Join Code */}
             {step === 1 && (
-              <div>
-                <h2 style={{
-                  fontSize: '1.25rem',
-                  fontWeight: '600',
-                  color: '#223848',
-                  marginBottom: '1.5rem',
-                  textAlign: 'center'
-                }}>
-                  Tell us about yourself
-                </h2>
-
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <label style={{
-                    display: 'block',
-                    fontSize: '0.875rem',
-                    fontWeight: '600',
-                    color: '#374151',
-                    marginBottom: '0.5rem'
-                  }}>
-                    First Name *
-                  </label>
-                  <input
-                    type="text"
-                    value={studentData.firstName}
-                    onChange={(e) => setStudentData(prev => ({ 
-                      ...prev, 
-                      firstName: e.target.value 
-                    }))}
-                    placeholder="Emma"
-                    style={{
-                      width: '100%',
-                      padding: '0.875rem',
-                      border: '2px solid #e5e7eb',
-                      borderRadius: '0.75rem',
-                      fontSize: '1rem',
-                      boxSizing: 'border-box',
-                      transition: 'border-color 0.2s',
-                      outline: 'none'
-                    }}
-                    onFocus={(e) => e.target.style.borderColor = '#ADD4EA'}
-                    onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
-                  />
-                </div>
-
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <label style={{
-                    display: 'block',
-                    fontSize: '0.875rem',
-                    fontWeight: '600',
-                    color: '#374151',
-                    marginBottom: '0.5rem'
-                  }}>
-                    Last Initial *
-                  </label>
-                  <input
-                    type="text"
-                    maxLength="1"
-                    value={studentData.lastInitial}
-                    onChange={(e) => setStudentData(prev => ({ 
-  ...prev, 
-  lastInitial: e.target.value.slice(0, 1).toUpperCase() 
-}))}
-                    placeholder="K"
-                    style={{
-                      width: '100%',
-                      padding: '0.875rem',
-                      border: '2px solid #e5e7eb',
-                      borderRadius: '0.75rem',
-                      fontSize: '1rem',
-                      boxSizing: 'border-box',
-                      transition: 'border-color 0.2s',
-                      outline: 'none',
-                      textAlign: 'center',
-                      fontWeight: 'bold'
-                    }}
-                    onFocus={(e) => e.target.style.borderColor = '#ADD4EA'}
-                    onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
-                  />
-                  <p style={{
-                    fontSize: '0.75rem',
-                    color: '#6b7280',
-                    margin: '0.5rem 0 0 0'
-                  }}>
-                    We only need your last initial for privacy
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Step 2: School Join Code */}
-            {step === 2 && (
               <div>
                 <h2 style={{
                   fontSize: '1.25rem',
@@ -361,11 +245,28 @@ export default function StudentAccountCreation() {
                     Ask your teacher if you don&apos;t have this code
                   </p>
                 </div>
+
+                <div style={{
+                  background: 'rgba(173, 212, 234, 0.1)',
+                  border: '1px solid rgba(173, 212, 234, 0.3)',
+                  borderRadius: '0.5rem',
+                  padding: '1rem',
+                  marginBottom: '1rem'
+                }}>
+                  <p style={{
+                    color: '#223848',
+                    fontSize: '0.875rem',
+                    margin: 0,
+                    lineHeight: '1.4'
+                  }}>
+                    💡 <strong>Next step:</strong> After verifying your school, you&apos;ll add your name and preferences in the setup process.
+                  </p>
+                </div>
               </div>
             )}
 
-            {/* Step 3: Confirmation */}
-            {step === 3 && schoolData && (
+            {/* Step 2: Confirmation */}
+            {step === 2 && schoolData && (
               <div>
                 <h2 style={{
                   fontSize: '1.25rem',
@@ -374,7 +275,7 @@ export default function StudentAccountCreation() {
                   marginBottom: '1rem',
                   textAlign: 'center'
                 }}>
-                  Confirm your account
+                  Ready to create your account?
                 </h2>
 
                 <div style={{
@@ -390,12 +291,9 @@ export default function StudentAccountCreation() {
                     color: '#223848',
                     margin: '0 0 1rem 0'
                   }}>
-                    Account Details:
+                    School Details:
                   </h3>
                   <div style={{ fontSize: '0.875rem', color: '#374151', lineHeight: '1.6' }}>
-                    <p style={{ margin: '0 0 0.5rem 0' }}>
-                      <strong>Name:</strong> {studentData.firstName} {studentData.lastInitial}.
-                    </p>
                     <p style={{ margin: '0 0 0.5rem 0' }}>
                       <strong>School:</strong> {schoolData.name}
                     </p>
@@ -406,6 +304,23 @@ export default function StudentAccountCreation() {
                       <strong>Join Code:</strong> {studentData.schoolJoinCode}
                     </p>
                   </div>
+                </div>
+
+                <div style={{
+                  background: 'rgba(16, 185, 129, 0.1)',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  borderRadius: '0.5rem',
+                  padding: '1rem',
+                  marginBottom: '1.5rem'
+                }}>
+                  <p style={{
+                    fontSize: '0.875rem',
+                    color: '#065f46',
+                    margin: 0,
+                    lineHeight: '1.4'
+                  }}>
+                    <strong>🎉 Almost there!</strong> Next you&apos;ll add your name, grade, and reading preferences to complete your Lux Libris profile.
+                  </p>
                 </div>
 
                 <div style={{
@@ -421,7 +336,7 @@ export default function StudentAccountCreation() {
                     margin: 0,
                     lineHeight: '1.4'
                   }}>
-                    <strong>📧 Parent/Guardian:</strong> After creating your account, you&apos;ll get a special link to share with your parent or guardian so they can track your reading progress!
+                    <strong>📧 Parent/Guardian:</strong> After setup, you&apos;ll get a special link to share with your parent or guardian so they can track your reading progress!
                   </p>
                 </div>
               </div>
@@ -506,7 +421,7 @@ export default function StudentAccountCreation() {
                   animation: 'spin 1s linear infinite'
                 }}></div>
               )}
-              {step === 3 ? 'Create Account' : 'Next'}
+              {step === 2 ? 'Create Account' : 'Next'}
             </button>
           </div>
 
