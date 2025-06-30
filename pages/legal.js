@@ -84,14 +84,15 @@ switch (flow) {
         {/* Welcome Section */}
         <div style={{ marginBottom: '24px' }}>
           <h2 style={{
-            fontSize: '24px',
-            fontWeight: 'bold',
-            fontFamily: 'Didot, serif',
-            color: '#223848',
-            marginBottom: '16px'
-          }}>
-            Welcome to Lux Libris!
-          <p style={{
+fontSize: '24px',
+fontWeight: 'bold',
+fontFamily: 'Didot, serif',
+color: '#223848',
+marginBottom: '16px'
+ }}>
+ Welcome to Lux Libris!
+</h2>
+<p style={{
   fontSize: '16px',
   color: '#223848',
   lineHeight: '1.5',

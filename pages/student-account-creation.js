@@ -266,9 +266,9 @@ export default function StudentAccountCreation() {
                     maxLength="1"
                     value={studentData.lastInitial}
                     onChange={(e) => setStudentData(prev => ({ 
-                      ...prev, 
-                      lastInitial: e.target.value.toUpperCase() 
-                    }))}
+  ...prev, 
+  lastInitial: e.target.value.slice(0, 1).toUpperCase() 
+}))}
                     placeholder="K"
                     style={{
                       width: '100%',
