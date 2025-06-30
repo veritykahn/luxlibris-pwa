@@ -19,17 +19,20 @@ export default function Home() {
               Lux Libris
             </h1>
           </div>
-          <nav className="hidden md:flex space-x-6">
-            <a href="#features" className="text-slate-600 hover:text-teal-600 transition-colors">
-              Features
-            </a>
-            <a href="#for-schools" className="text-slate-600 hover:text-teal-600 transition-colors">
-              For Schools
-            </a>
-            <a href="#contact" className="text-slate-600 hover:text-teal-600 transition-colors">
-              Contact
-            </a>
-          </nav>
+          <nav className="hidden md:flex space-x-6 items-center">
+  <a href="#features" className="text-slate-600 hover:text-teal-600 transition-colors">
+    Features
+  </a>
+  <a href="#for-schools" className="text-slate-600 hover:text-teal-600 transition-colors">
+    For Schools
+  </a>
+  <a href="#contact" className="text-slate-600 hover:text-teal-600 transition-colors">
+    Contact
+  </a>
+  <Link href="/student-sign-in" className="bg-teal-600 hover:bg-teal-700 text-white px-6 py-2 rounded-full text-sm font-semibold transition-all">
+    Sign In
+  </Link>
+</nav>
         </div>
       </header>
 
@@ -126,7 +129,7 @@ export default function Home() {
                   <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                     <span className="text-blue-600 text-lg">🏆</span>
                   </div>
-                  <span className="text-slate-700">Saint Achievements</span>
+                  <span className="text-slate-700">Little Luminaries™ Saints</span>
                 </div>
                 <div className="flex items-center space-x-3">
                   <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center">
@@ -176,8 +179,8 @@ export default function Home() {
               </div>
               <h3 className="text-xl font-bold text-slate-800 mb-3">Easy Management</h3>
               <p className="text-slate-600">
-                No more paper tracking! Automated progress monitoring and instant reporting for teachers
-              </p>
+  Students collect beautiful Little Luminaries™ saints, unlock achievements, and build reading streaks that keep them engaged
+</p>
             </div>
 
             <div className="text-center p-6">
