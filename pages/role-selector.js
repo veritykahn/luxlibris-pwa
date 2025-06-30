@@ -181,7 +181,7 @@ export default function RoleSelector() {
                 "🎯 Personal goals"
               ]}
               buttonText="Join My School&apos;s Program"
-              onClick={() => router.push('/legal?type=student')} // WORKING!
+              onClick={() => router.push('/student-account-creation')} // UPDATED!
               gradient="from-blue-400 to-purple-500"
               installPrompt={true}
             />
