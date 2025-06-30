@@ -1,13 +1,69 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
 
 export default function RoleSelector() {
   const router = useRouter()
+  const [deferredPrompt, setDeferredPrompt] = useState(null)
+  const [showInstallButton, setShowInstallButton] = useState(false)
+  const [isInstalled, setIsInstalled] = useState(false)
+
+  useEffect(() => {
+    // Check if already installed
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setIsInstalled(true)
+    }
+
+    // Listen for beforeinstallprompt event
+    const handleBeforeInstallPrompt = (e) => {
+      // Prevent Chrome 67 and earlier from automatically showing the prompt
+      e.preventDefault()
+      // Stash the event so it can be triggered later
+      setDeferredPrompt(e)
+      setShowInstallButton(true)
+    }
+
+    // Listen for app installed event
+    const handleAppInstalled = () => {
+      setIsInstalled(true)
+      setShowInstallButton(false)
+      setDeferredPrompt(null)
+    }
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+    window.addEventListener('appinstalled', handleAppInstalled)
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+      window.removeEventListener('appinstalled', handleAppInstalled)
+    }
+  }, [])
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return
+
+    // Show the install prompt
+    deferredPrompt.prompt()
+
+    // Wait for the user to respond to the prompt
+    const { outcome } = await deferredPrompt.userChoice
+
+    if (outcome === 'accepted') {
+      console.log('User accepted the install prompt')
+    } else {
+      console.log('User dismissed the install prompt')
+    }
+
+    // Clear the deferredPrompt
+    setDeferredPrompt(null)
+    setShowInstallButton(false)
+  }
+
   return (
     <>
       <Head>
         <title>Join Lux Libris - Select Your Role</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       </Head>
       
       <div style={{
@@ -25,7 +81,7 @@ export default function RoleSelector() {
           
           <div style={{ marginBottom: '3rem' }}>
             <h1 style={{
-              fontSize: 'clamp(2rem, 5vw, 3rem)', // Responsive font size
+              fontSize: 'clamp(2rem, 5vw, 3rem)',
               fontWeight: 'bold',
               color: '#223848',
               marginBottom: '1rem',
@@ -34,25 +90,85 @@ export default function RoleSelector() {
               Welcome to Lux Libris!
             </h1>
             <p style={{
-              fontSize: 'clamp(1rem, 3vw, 1.25rem)', // Responsive font size
+              fontSize: 'clamp(1rem, 3vw, 1.25rem)',
               color: '#ADD4EA',
               marginBottom: '2rem'
             }}>
               Choose your role to get started with your reading journey
             </p>
+
+            {/* PWA Install Button - Real Functionality */}
+            {showInstallButton && !isInstalled && (
+              <div style={{
+                background: 'linear-gradient(135deg, #10b981, #34d399)',
+                color: 'white',
+                padding: '1rem 1.5rem',
+                borderRadius: '1rem',
+                marginBottom: '2rem',
+                display: 'inline-block',
+                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
+              }}>
+                <p style={{
+                  margin: '0 0 0.75rem 0',
+                  fontSize: '1rem',
+                  fontWeight: '600'
+                }}>
+                  📱 Install Lux Libris as an App!
+                </p>
+                <button
+                  onClick={handleInstallClick}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.2)',
+                    color: 'white',
+                    border: '2px solid white',
+                    borderRadius: '0.5rem',
+                    padding: '0.75rem 1.5rem',
+                    fontSize: '1rem',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = 'white'
+                    e.target.style.color = '#10b981'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = 'rgba(255, 255, 255, 0.2)'
+                    e.target.style.color = 'white'
+                  }}
+                >
+                  🚀 Install Now
+                </button>
+              </div>
+            )}
+
+            {isInstalled && (
+              <div style={{
+                background: 'linear-gradient(135deg, #8b5cf6, #a855f7)',
+                color: 'white',
+                padding: '0.75rem 1.5rem',
+                borderRadius: '1rem',
+                marginBottom: '2rem',
+                display: 'inline-block',
+                fontSize: '1rem',
+                fontWeight: '600'
+              }}>
+                ✅ App Installed! You&apos;re ready to go!
+              </div>
+            )}
           </div>
 
           {/* MOBILE-RESPONSIVE: 4 Cards on Desktop, 1 Column on Mobile */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', // Responsive grid
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
             gap: '1.25rem',
             marginBottom: '3rem',
             maxWidth: '85rem',
             margin: '0 auto 3rem auto'
           }}>
             
-            {/* Student Card */}
+            {/* Student Card - UPDATED TO USE ACCOUNT CREATION */}
             <RoleCard
               icon="🧑‍🎓"
               title="Student"
@@ -65,7 +181,7 @@ export default function RoleSelector() {
                 "🎯 Personal goals"
               ]}
               buttonText="Join My School&apos;s Program"
-              onClick={() => router.push('/legal?type=student')}
+              onClick={() => router.push('/student-account-creation')} // UPDATED!
               gradient="from-blue-400 to-purple-500"
               installPrompt={true}
             />
@@ -252,7 +368,7 @@ export default function RoleSelector() {
             </div>
           </div>
 
-          {/* PWA Install Info - Professional Credibility */}
+          {/* PWA Install Instructions - Enhanced */}
           <div style={{
             padding: '2rem',
             background: 'rgba(255, 255, 255, 0.8)',
@@ -270,13 +386,39 @@ export default function RoleSelector() {
             }}>
               📱 Install as an App
             </h3>
-            <p style={{
-              color: '#6b7280',
-              marginBottom: '1rem',
-              fontSize: 'clamp(0.875rem, 2.5vw, 1rem)'
-            }}>
-              For the best experience, install Lux Libris on your device:
-            </p>
+            
+            {!showInstallButton && !isInstalled && (
+              <p style={{
+                color: '#6b7280',
+                marginBottom: '1rem',
+                fontSize: 'clamp(0.875rem, 2.5vw, 1rem)'
+              }}>
+                For the best experience, install Lux Libris on your device:
+              </p>
+            )}
+            
+            {showInstallButton && (
+              <p style={{
+                color: '#10b981',
+                marginBottom: '1rem',
+                fontSize: 'clamp(0.875rem, 2.5vw, 1rem)',
+                fontWeight: '600'
+              }}>
+                ✨ Your device supports app installation! Click the green button above to install.
+              </p>
+            )}
+
+            {isInstalled && (
+              <p style={{
+                color: '#8b5cf6',
+                marginBottom: '1rem',
+                fontSize: 'clamp(0.875rem, 2.5vw, 1rem)',
+                fontWeight: '600'
+              }}>
+                🎉 Great! Lux Libris is installed as an app on your device!
+              </p>
+            )}
+            
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
@@ -294,7 +436,7 @@ export default function RoleSelector() {
                 <strong style={{ color: '#223848' }}>🤖 Android:</strong>
                 <br />
                 <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                  Tap &quot;Install App&quot; when prompted
+                  Look for &quot;Install App&quot; prompt or menu option
                 </span>
               </div>
               <div>
@@ -316,7 +458,7 @@ function RoleCard({ icon, title, description, features, buttonText, onClick, gra
   const cardStyle = {
     background: disabled ? '#f8f9fa' : 'white',
     borderRadius: '1rem',
-    padding: 'clamp(1.25rem, 3vw, 1.75rem)', // Responsive padding
+    padding: 'clamp(1.25rem, 3vw, 1.75rem)',
     boxShadow: disabled ? '0 4px 10px rgba(0, 0, 0, 0.05)' : '0 10px 25px rgba(0, 0, 0, 0.1)',
     border: disabled ? '2px dashed #d1d5db' : '1px solid rgba(195, 224, 222, 0.4)',
     transition: 'transform 0.2s',
@@ -326,7 +468,7 @@ function RoleCard({ icon, title, description, features, buttonText, onClick, gra
     display: 'flex',
     flexDirection: 'column',
     opacity: disabled ? 0.6 : 1,
-    minHeight: '400px' // Ensure consistent card height
+    minHeight: '400px'
   }
 
   return (
@@ -354,7 +496,7 @@ function RoleCard({ icon, title, description, features, buttonText, onClick, gra
       )}
       
       <div style={{
-        width: 'clamp(3rem, 8vw, 3.5rem)', // Responsive icon size
+        width: 'clamp(3rem, 8vw, 3.5rem)',
         height: 'clamp(3rem, 8vw, 3.5rem)',
         background: disabled ? '#9ca3af' : 
                    gradient.includes('blue') ? 'linear-gradient(135deg, #60a5fa, #a78bfa)' :
@@ -365,14 +507,14 @@ function RoleCard({ icon, title, description, features, buttonText, onClick, gra
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        fontSize: 'clamp(1.5rem, 4vw, 1.75rem)', // Responsive emoji size
+        fontSize: 'clamp(1.5rem, 4vw, 1.75rem)',
         margin: '0 auto 1.25rem'
       }}>
         {icon}
       </div>
       
       <h3 style={{
-        fontSize: 'clamp(1.125rem, 3vw, 1.375rem)', // Responsive title
+        fontSize: 'clamp(1.125rem, 3vw, 1.375rem)',
         fontWeight: 'bold',
         color: disabled ? '#6b7280' : '#223848',
         marginBottom: '1rem',
@@ -385,7 +527,7 @@ function RoleCard({ icon, title, description, features, buttonText, onClick, gra
         color: disabled ? '#9ca3af' : '#6b7280',
         marginBottom: '1.25rem',
         lineHeight: '1.4',
-        fontSize: 'clamp(0.85rem, 2.5vw, 0.95rem)', // Responsive description
+        fontSize: 'clamp(0.85rem, 2.5vw, 0.95rem)',
         flexGrow: 1
       }}>
         {description}
@@ -399,7 +541,7 @@ function RoleCard({ icon, title, description, features, buttonText, onClick, gra
       }}>
         {features.map((feature, index) => (
           <li key={index} style={{
-            fontSize: 'clamp(0.75rem, 2vw, 0.8rem)', // Responsive features
+            fontSize: 'clamp(0.75rem, 2vw, 0.8rem)',
             color: disabled ? '#9ca3af' : '#6b7280',
             marginBottom: '0.4rem'
           }}>
@@ -415,7 +557,7 @@ function RoleCard({ icon, title, description, features, buttonText, onClick, gra
             width: '100%',
             background: '#d1d5db',
             color: '#6b7280',
-            padding: '0.75rem 1rem', // Larger touch target
+            padding: '0.75rem 1rem',
             borderRadius: '0.5rem',
             textAlign: 'center',
             fontSize: 'clamp(0.8rem, 2.5vw, 0.85rem)',
@@ -433,7 +575,7 @@ function RoleCard({ icon, title, description, features, buttonText, onClick, gra
                        gradient.includes('amber') ? 'linear-gradient(135deg, #fbbf24, #f59e0b)' :
                        'linear-gradient(135deg, #a855f7, #ec4899)',
             color: 'white',
-            padding: '0.75rem 1rem', // Larger touch target for mobile
+            padding: '0.75rem 1rem',
             borderRadius: '0.5rem',
             border: 'none',
             fontWeight: '600',
@@ -443,7 +585,7 @@ function RoleCard({ icon, title, description, features, buttonText, onClick, gra
             marginTop: 'auto',
             boxSizing: 'border-box',
             cursor: 'pointer',
-            minHeight: '44px' // Minimum touch target size
+            minHeight: '44px'
           }}>
             {buttonText}
           </button>
