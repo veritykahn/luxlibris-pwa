@@ -98,7 +98,7 @@ marginBottom: '16px'
   lineHeight: '1.5',
   marginBottom: '24px'
 }}>
-  Welcome to your reading journey! As you read amazing books, you'll unlock beautiful <strong>Little Luminaries™</strong> saint achievements created exclusively for Lux Libris. By continuing, you agree to our Terms of Service and Privacy Policy.
+  Welcome to your reading journey! As you read amazing books, you&apos;ll unlock beautiful <strong>Little Luminaries™</strong> saint achievements created exclusively for Lux Libris. By continuing, you agree to our Terms of Service and Privacy Policy.
 </p>
         </div>
 
