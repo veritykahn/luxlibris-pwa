@@ -1,7 +1,12 @@
+'use client'
+
 import Image from 'next/image'
 import Link from 'next/link'
+import { useState } from 'react'
 
 export default function Home() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
   return (
     <main className="min-h-screen bg-gradient-to-br from-teal-50 to-blue-50" style={{fontFamily: 'Avenir, -apple-system, BlinkMacSystemFont, system-ui, sans-serif', letterSpacing: '0.12em'}}>
       {/* Header */}
@@ -19,28 +24,83 @@ export default function Home() {
               Lux Libris
             </h1>
           </div>
+
+          {/* Desktop Navigation */}
           <nav className="hidden md:flex space-x-6 items-center">
-  <a href="#features" className="text-slate-600 hover:text-teal-600 transition-colors">
-    Features
-  </a>
-  <a href="#for-schools" className="text-slate-600 hover:text-teal-600 transition-colors">
-    For Schools
-  </a>
-  <a href="#contact" className="text-slate-600 hover:text-teal-600 transition-colors">
-    Contact
-  </a>
-  <Link href="/student-sign-in" className="bg-teal-600 hover:bg-teal-700 text-white px-6 py-2 rounded-full text-sm font-semibold transition-all">
-    Sign In
-  </Link>
-</nav>
+            <a href="#features" className="text-slate-600 hover:text-teal-600 transition-colors">
+              Features
+            </a>
+            <a href="#for-schools" className="text-slate-600 hover:text-teal-600 transition-colors">
+              For Schools
+            </a>
+            <a href="#contact" className="text-slate-600 hover:text-teal-600 transition-colors">
+              Contact
+            </a>
+            {/* FIXED: Updated link to /sign-in */}
+            <Link href="/sign-in" className="bg-teal-600 hover:bg-teal-700 text-white px-6 py-2 rounded-full text-sm font-semibold transition-all">
+              Sign In
+            </Link>
+          </nav>
+
+          {/* Mobile Navigation */}
+          <div className="md:hidden flex items-center space-x-3">
+            {/* ADDED: Mobile Sign-In Button (always visible) */}
+            <Link href="/sign-in" className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-full text-sm font-semibold transition-all">
+              Sign In
+            </Link>
+            
+            {/* Mobile Menu Toggle */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="text-slate-600 hover:text-teal-600 transition-colors p-2"
+              aria-label="Toggle mobile menu"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {mobileMenuOpen ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                )}
+              </svg>
+            </button>
+          </div>
         </div>
+
+        {/* ADDED: Mobile Menu Dropdown */}
+        {mobileMenuOpen && (
+          <div className="md:hidden bg-white border-t border-slate-200">
+            <div className="px-6 py-4 space-y-3">
+              <a 
+                href="#features" 
+                className="block text-slate-600 hover:text-teal-600 transition-colors py-2"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Features
+              </a>
+              <a 
+                href="#for-schools" 
+                className="block text-slate-600 hover:text-teal-600 transition-colors py-2"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                For Schools
+              </a>
+              <a 
+                href="#contact" 
+                className="block text-slate-600 hover:text-teal-600 transition-colors py-2"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Contact
+              </a>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-b from-teal-50 via-blue-50 to-white">
         <div className="max-w-6xl mx-auto px-6 py-20 text-center">
           <div className="mb-8">
-            <h2 className="text-5xl md:text-6xl font-bold text-slate-800 mb-6" 
+            <h2 className="text-5xl md:text-6xl font-bold text-slate-800 mb-6"
                 style={{fontFamily: 'Didot, Georgia, serif', letterSpacing: '0.02em'}}>
               Illuminating the World Through
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-500 to-blue-600">
@@ -48,8 +108,8 @@ export default function Home() {
               </span>
             </h2>
             <p className="text-xl text-slate-600 max-w-3xl mx-auto mb-8 leading-relaxed">
-              The Lux Libris Award curates 20 exceptional books each year—spanning diverse voices, 
-              cultures, and experiences from around the globe. Rooted in Catholic faith, we guide 
+              The Lux Libris Award curates 20 exceptional books each year—spanning diverse voices,
+              cultures, and experiences from around the globe. Rooted in Catholic faith, we guide
               readers to engage with the world through the lens of truth, goodness, and beauty.
             </p>
           </div>
@@ -157,11 +217,10 @@ export default function Home() {
               Forming the Whole Child
             </h2>
             <p className="text-xl text-slate-600 max-w-2xl mx-auto">
-              Built by a Catholic school librarian who understands that stories illuminate minds, 
+              Built by a Catholic school librarian who understands that stories illuminate minds,
               hearts, and souls—cultivating empathy, expanding knowledge, and inspiring action.
             </p>
           </div>
-
           <div className="grid md:grid-cols-3 gap-8">
             <div className="text-center p-6">
               <div className="w-16 h-16 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -172,17 +231,15 @@ export default function Home() {
                 Students collect saints, unlock achievements, and build reading streaks that keep them engaged
               </p>
             </div>
-
             <div className="text-center p-6">
               <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl">📊</span>
               </div>
               <h3 className="text-xl font-bold text-slate-800 mb-3">Easy Management</h3>
               <p className="text-slate-600">
-  Students collect beautiful Little Luminaries™ saints, unlock achievements, and build reading streaks that keep them engaged
-</p>
+                Students collect beautiful Little Luminaries™ saints, unlock achievements, and build reading streaks that keep them engaged
+              </p>
             </div>
-
             <div className="text-center p-6">
               <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl">✝️</span>
