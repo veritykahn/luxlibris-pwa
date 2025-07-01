@@ -699,13 +699,15 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
     if (Array.isArray(genresString)) {
       if (genresString.length === 0) return '';
       const primaryGenre = genresString[0];
-      return primaryGenre.length > 15 ? primaryGenre.substring(0, 15) + '...' : primaryGenre;
+      // Increased limit and made it responsive
+      return primaryGenre.length > 25 ? primaryGenre.substring(0, 25) + '...' : primaryGenre;
     }
     
     // Handle string format from Firebase "Mythology, Adventure"
     const genres = genresString.split(',').map(g => g.trim());
     const primaryGenre = genres[0];
-    return primaryGenre.length > 15 ? primaryGenre.substring(0, 15) + '...' : primaryGenre;
+    // Increased limit and made it responsive
+    return primaryGenre.length > 25 ? primaryGenre.substring(0, 25) + '...' : primaryGenre;
   };
 
   const getAllGenres = (genresString) => {
@@ -814,12 +816,15 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
           }}>
             <div style={{
               backgroundColor: 'rgba(255,255,255,0.2)',
-              fontSize: '10px',
-              padding: '3px 8px',
-              borderRadius: '10px',
+              fontSize: '9px',
+              padding: '4px 10px',
+              borderRadius: '12px',
               fontWeight: 'bold',
               color: '#FFFFFF',
-              border: '1px solid rgba(255,255,255,0.3)'
+              border: '1px solid rgba(255,255,255,0.3)',
+              lineHeight: '1.2',
+              maxWidth: '140px',
+              textAlign: 'center'
             }}>
               {getGenreDisplay(book.genres)}
             </div>
