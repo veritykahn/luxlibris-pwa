@@ -287,7 +287,7 @@ export default function StudentNominees() {
               color: currentTheme.textSecondary,
               marginBottom: '24px'
             }}>
-              Your school hasn't selected their book nominees yet.
+              Your school hasn&apos;t selected their book nominees yet.
             </p>
             <button
               onClick={() => router.push('/student-dashboard')}
@@ -986,7 +986,7 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
               fontStyle: 'italic',
               fontWeight: '500'
             }}>
-              "{book.luxLibrisReview}"
+              &quot;{book.luxLibrisReview}&quot;
             </p>
           </div>
         )}
