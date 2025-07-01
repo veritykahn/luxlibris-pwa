@@ -97,9 +97,11 @@ export default function StudentAccountCreation() {
   return (
     <>
       <Head>
-        <title>Join Your School - Lux Libris</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      </Head>
+  <title>Join Your School - Lux Libris</title>
+  <meta name="description" content="Connect to your school's Lux Libris reading program and start your journey" />
+  <link rel="icon" href="/images/lux_libris_logo.png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+</Head>
 
       <div style={{
         minHeight: '100vh',

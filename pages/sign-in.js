@@ -127,9 +127,11 @@ export default function SignIn() {
   return (
     <>
       <Head>
-        <title>Sign In - Lux Libris</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      </Head>
+  <title>Sign In - Lux Libris</title>
+  <meta name="description" content="Sign in to access your Lux Libris reading journey" />
+  <link rel="icon" href="/images/lux_libris_logo.png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+</Head>
 
       <div style={{
         minHeight: '100vh',

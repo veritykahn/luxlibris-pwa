@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
+import Head from 'next/head'
 
 export default function Legal() {
   const router = useRouter();
@@ -46,6 +47,13 @@ export default function Legal() {
   };
 
   return (
+  <>
+    <Head>
+      <title>Terms & Privacy - Lux Libris</title>
+      <meta name="description" content="Lux Libris Terms of Service and Privacy Policy for students, parents, and schools" />
+      <link rel="icon" href="/images/lux_libris_logo.png" />
+    </Head>
+    
     <div style={{
       backgroundColor: '#FFFCF5',
       minHeight: '100vh',
@@ -331,6 +339,7 @@ All other content including app design, user interface, educational concepts, an
         </div>
       </div>
     </div>
+    </>
   );
 }
 

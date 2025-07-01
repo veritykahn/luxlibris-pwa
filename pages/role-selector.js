@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 
 export default function RoleSelector() {
   const router = useRouter()
-  const { user, loading } = useAuth()
+  const { user, userProfile, loading, getDashboardUrl } = useAuth()
   const [deferredPrompt, setDeferredPrompt] = useState(null)
   const [showInstallButton, setShowInstallButton] = useState(false)
   const [isInstalled, setIsInstalled] = useState(false)
@@ -13,9 +13,9 @@ export default function RoleSelector() {
 
   useEffect(() => {
     // Redirect if already authenticated
-    if (user && !loading) {
-      // Route based on user type when we implement user roles
-      router.push('/student-dashboard')
+    if (!loading && user && userProfile) {
+      console.log('🔄 User already authenticated, redirecting to dashboard...')
+      router.push(getDashboardUrl())
       return
     }
 
@@ -58,7 +58,7 @@ export default function RoleSelector() {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
       window.removeEventListener('appinstalled', handleAppInstalled)
     }
-  }, [user, loading, router])
+  }, [user, userProfile, loading, router, getDashboardUrl])
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) {
@@ -91,26 +91,32 @@ export default function RoleSelector() {
   // Show loading while checking auth state
   if (loading) {
     return (
-      <div style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #FFFCF5 0%, #C3E0DE 50%, #A1E5DB 100%)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{
-            width: '50px',
-            height: '50px',
-            border: '3px solid #ADD4EA',
-            borderTop: '3px solid #223848',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            margin: '0 auto 1rem'
-          }}></div>
-          <p style={{ color: '#223848', fontSize: '1.125rem' }}>Loading Lux Libris...</p>
+      <>
+        <Head>
+          <title>Lux Libris - Select Your Role</title>
+          <link rel="icon" href="/images/lux_libris_logo.png" />
+        </Head>
+        <div style={{
+          minHeight: '100vh',
+          background: 'linear-gradient(135deg, #FFFCF5 0%, #C3E0DE 50%, #A1E5DB 100%)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{
+              width: '50px',
+              height: '50px',
+              border: '3px solid #ADD4EA',
+              borderTop: '3px solid #223848',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite',
+              margin: '0 auto 1rem'
+            }}></div>
+            <p style={{ color: '#223848', fontSize: '1.125rem' }}>Loading Lux Libris...</p>
+          </div>
         </div>
-      </div>
+      </>
     )
   }
 
@@ -119,6 +125,7 @@ export default function RoleSelector() {
       <Head>
         <title>Join Lux Libris - Select Your Role</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link rel="icon" href="/images/lux_libris_logo.png" />
       </Head>
       
       <div style={{
@@ -225,7 +232,7 @@ export default function RoleSelector() {
             margin: '0 auto 3rem auto'
           }}>
             
-            {/* Student Card - FIXED CLICK HANDLER */}
+            {/* Student Card */}
             <RoleCard
               icon="🧑‍🎓"
               title="Student"
@@ -243,7 +250,7 @@ export default function RoleSelector() {
               installPrompt={true}
             />
 
-            {/* Parent Card - IMPROVED FLOW */}
+            {/* Parent Card */}
             <RoleCard
               icon="👨‍👩‍👧‍👦"
               title="Parent"
@@ -256,7 +263,7 @@ export default function RoleSelector() {
                 "🎉 Celebrate achievements"
               ]}
               buttonText="Support My Child"
-              onClick={() => router.push('/parent-account-creation')} // TODO: Create this page
+              onClick={() => router.push('/parent-account-creation')}
               gradient="from-green-400 to-teal-500"
               installPrompt={true}
               highlight="Basic access FREE with school!"
@@ -282,7 +289,7 @@ export default function RoleSelector() {
               disabled={true}
             />
 
-            {/* Admin Card - FIXED CLICK HANDLER */}
+            {/* Admin Card */}
             <RoleCard
               icon="👑"
               title="School Admin"
@@ -302,6 +309,7 @@ export default function RoleSelector() {
             />
           </div>
 
+          {/* Rest of the component stays the same... */}
           {/* Simplified Independent Option */}
           <div style={{
             background: 'rgba(255, 255, 255, 0.7)',

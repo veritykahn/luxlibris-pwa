@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
 import { getStudentData, updateStudentData } from '../lib/firebase';
 import { createParentInviteCode } from '../lib/parentLinking';
+import Head from 'next/head'
 
 export default function StudentSettings() {
   const router = useRouter();
@@ -248,6 +249,13 @@ export default function StudentSettings() {
   }
 
   return (
+  <>
+    <Head>
+      <title>Student Settings - Lux Libris</title>
+      <meta name="description" content="Customize your reading experience, themes, and account settings" />
+      <link rel="icon" href="/images/lux_libris_logo.png" />
+    </Head>
+    
     <div style={{
       backgroundColor: previewTheme.background,
       minHeight: '100vh',
@@ -738,7 +746,8 @@ export default function StudentSettings() {
             {showSuccess}
           </div>
         )}
-      </div>
+     </div>
     </div>
-  );
+  </>
+);
 }

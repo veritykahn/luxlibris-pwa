@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
 import { getStudentData, getSchoolNominees, addBookToBookshelf } from '../lib/firebase';
+import Head from 'next/head';
 
 export default function StudentNominees() {
   const router = useRouter();
@@ -222,313 +223,329 @@ export default function StudentNominees() {
 
   if (nominees.length === 0) {
     return (
-      <div style={{
-        backgroundColor: currentTheme.background,
-        minHeight: '100vh',
-        fontFamily: 'system-ui, -apple-system, sans-serif'
-      }}>
-        {/* Header */}
-        <div style={{
-          background: `linear-gradient(135deg, ${currentTheme.secondary}, ${currentTheme.secondary}CC)`,
-          padding: '20px 24px',
-          borderRadius: '0 0 20px 20px'
-        }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '16px'
-          }}>
-            <button
-              onClick={() => router.back()}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: currentTheme.textPrimary,
-                fontSize: '20px',
-                cursor: 'pointer',
-                padding: '4px'
-              }}
-            >
-              ←
-            </button>
-            <h1 style={{
-              fontFamily: 'Didot, serif',
-              fontSize: '20px',
-              color: currentTheme.textPrimary,
-              margin: 0
-            }}>
-              Book Nominees
-            </h1>
-          </div>
-        </div>
+      <>
+        <Head>
+          <title>Book Nominees - Lux Libris</title>
+          <meta name="description" content="Browse and select books from your school's curated reading collection" />
+          <link rel="icon" href="/images/lux_libris_logo.png" />
+        </Head>
         
         <div style={{
-          padding: '40px 20px',
-          textAlign: 'center'
+          backgroundColor: currentTheme.background,
+          minHeight: '100vh',
+          fontFamily: 'system-ui, -apple-system, sans-serif'
         }}>
-          <div style={{ fontSize: '64px', marginBottom: '20px' }}>📚</div>
-          <h2 style={{
-            fontSize: '24px',
-            color: currentTheme.textPrimary,
-            marginBottom: '12px'
+          {/* Header */}
+          <div style={{
+            background: `linear-gradient(135deg, ${currentTheme.secondary}, ${currentTheme.secondary}CC)`,
+            padding: '20px 24px',
+            borderRadius: '0 0 20px 20px'
           }}>
-            No Books Available
-          </h2>
-          <p style={{
-            fontSize: '16px',
-            color: currentTheme.textSecondary,
-            marginBottom: '24px'
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '16px'
+            }}>
+              <button
+                onClick={() => router.back()}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: currentTheme.textPrimary,
+                  fontSize: '20px',
+                  cursor: 'pointer',
+                  padding: '4px'
+                }}
+              >
+                ←
+              </button>
+              <h1 style={{
+                fontFamily: 'Didot, serif',
+                fontSize: '20px',
+                color: currentTheme.textPrimary,
+                margin: 0
+              }}>
+                Book Nominees
+              </h1>
+            </div>
+          </div>
+          
+          <div style={{
+            padding: '40px 20px',
+            textAlign: 'center'
           }}>
-            Your school hasn&apos;t selected their book nominees yet.
-          </p>
-          <button
-            onClick={() => router.push('/student-dashboard')}
-            style={{
-              backgroundColor: currentTheme.primary,
+            <div style={{ fontSize: '64px', marginBottom: '20px' }}>📚</div>
+            <h2 style={{
+              fontSize: '24px',
               color: currentTheme.textPrimary,
-              border: 'none',
-              padding: '12px 24px',
-              borderRadius: '12px',
+              marginBottom: '12px'
+            }}>
+              No Books Available
+            </h2>
+            <p style={{
               fontSize: '16px',
-              fontWeight: '600',
-              cursor: 'pointer'
-            }}
-          >
-            ← Back to Dashboard
-          </button>
+              color: currentTheme.textSecondary,
+              marginBottom: '24px'
+            }}>
+              Your school hasn't selected their book nominees yet.
+            </p>
+            <button
+              onClick={() => router.push('/student-dashboard')}
+              style={{
+                backgroundColor: currentTheme.primary,
+                color: currentTheme.textPrimary,
+                border: 'none',
+                padding: '12px 24px',
+                borderRadius: '12px',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
+              ← Back to Dashboard
+            </button>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   const currentBook = nominees[currentCardIndex];
 
   return (
-    <div style={{
-      backgroundColor: currentTheme.background,
-      minHeight: '100vh',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
-      paddingBottom: '20px'
-    }}>
-      {/* Header */}
+    <>
+      <Head>
+        <title>Book Nominees - Lux Libris</title>
+        <meta name="description" content="Browse and select books from your school's curated reading collection" />
+        <link rel="icon" href="/images/lux_libris_logo.png" />
+      </Head>
+      
       <div style={{
-        background: `linear-gradient(135deg, ${currentTheme.secondary}, ${currentTheme.secondary}CC)`,
-        padding: '20px 24px',
-        borderRadius: '0 0 20px 20px',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
+        backgroundColor: currentTheme.background,
+        minHeight: '100vh',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        paddingBottom: '20px'
       }}>
+        {/* Header */}
         <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between'
+          background: `linear-gradient(135deg, ${currentTheme.secondary}, ${currentTheme.secondary}CC)`,
+          padding: '20px 24px',
+          borderRadius: '0 0 20px 20px',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
         }}>
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '16px'
+            justifyContent: 'space-between'
           }}>
-            <button
-              onClick={() => router.back()}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: currentTheme.textPrimary,
-                fontSize: '20px',
-                cursor: 'pointer',
-                padding: '4px'
-              }}
-            >
-              ←
-            </button>
-            <h1 style={{
-              fontFamily: 'Didot, serif',
-              fontSize: '20px',
-              color: currentTheme.textPrimary,
-              margin: 0
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '16px'
             }}>
-              Book Nominees
-            </h1>
-          </div>
-          <div style={{
-            fontSize: '14px',
-            color: currentTheme.textPrimary,
-            backgroundColor: `${currentTheme.primary}30`,
-            padding: '4px 12px',
-            borderRadius: '12px'
-          }}>
-            {currentCardIndex + 1} of {nominees.length}
-          </div>
-        </div>
-      </div>
-
-      {/* Swipeable Card Display */}
-      <div 
-        style={{
-          padding: '20px',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          minHeight: 'calc(100vh - 200px)'
-        }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-      >
-        {/* Main Card with Pokemon styling */}
-        <div style={{
-          position: 'relative',
-          width: '100%',
-          maxWidth: '360px',
-          marginBottom: '20px'
-        }}>
-          <BookCard 
-            book={currentBook} 
-            theme={currentTheme}
-            onAddBook={handleAddToBookshelf}
-            isAddingBook={isAddingBook}
-          />
-        </div>
-
-        {/* Swipe Hint */}
-        <div style={{
-          fontSize: '12px',
-          color: currentTheme.textSecondary,
-          textAlign: 'center',
-          marginBottom: '20px'
-        }}>
-          👈 Swipe left/right to browse books 👉
-        </div>
-
-        {/* Quick Browse - Horizontal Scrollable */}
-        <div style={{
-          width: '100%',
-          maxWidth: '400px'
-        }}>
-          <h3 style={{
-            fontSize: '16px',
-            fontWeight: 'bold',
-            color: currentTheme.textPrimary,
-            margin: '0 0 12px 0',
-            textAlign: 'center'
-          }}>
-            Quick Browse
-          </h3>
-          <div style={{
-            display: 'flex',
-            gap: '8px',
-            overflowX: 'auto',
-            padding: '8px 0',
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none'
-          }}>
-            {nominees.map((book, index) => (
               <button
-                key={book.id}
-                onClick={() => goToCard(index)}
-                className="quick-browse-item"
+                onClick={() => router.back()}
                 style={{
-                  flexShrink: 0,
-                  width: '64px',
-                  height: '96px',
-                  borderRadius: '8px',
-                  border: index === currentCardIndex 
-                    ? `3px solid ${currentTheme.primary}` 
-                    : `2px solid ${currentTheme.primary}40`,
+                  background: 'none',
+                  border: 'none',
+                  color: currentTheme.textPrimary,
+                  fontSize: '20px',
                   cursor: 'pointer',
-                  overflow: 'hidden',
-                  backgroundColor: currentTheme.surface,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '24px',
-                  transition: 'all 0.2s ease',
-                  transform: index === currentCardIndex ? 'scale(1.1)' : 'scale(1)',
-                  touchAction: 'manipulation'
+                  padding: '4px'
                 }}
               >
-                {book.coverImageUrl ? (
-                  <img 
-                    src={book.coverImageUrl} 
-                    alt={book.title}
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover'
-                    }}
-                  />
-                ) : (
-                  '📚'
-                )}
+                ←
               </button>
-            ))}
+              <h1 style={{
+                fontFamily: 'Didot, serif',
+                fontSize: '20px',
+                color: currentTheme.textPrimary,
+                margin: 0
+              }}>
+                Book Nominees
+              </h1>
+            </div>
+            <div style={{
+              fontSize: '14px',
+              color: currentTheme.textPrimary,
+              backgroundColor: `${currentTheme.primary}30`,
+              padding: '4px 12px',
+              borderRadius: '12px'
+            }}>
+              {currentCardIndex + 1} of {nominees.length}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Success Message */}
-      {showAddMessage && (
-        <div style={{
-          position: 'fixed',
-          bottom: '20px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          backgroundColor: currentTheme.primary,
-          color: currentTheme.textPrimary,
-          padding: '12px 24px',
-          borderRadius: '24px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-          zIndex: 1000,
-          fontSize: '14px',
-          fontWeight: '600',
-          maxWidth: '90vw',
-          textAlign: 'center'
-        }}>
-          {showAddMessage}
+        {/* Swipeable Card Display */}
+        <div 
+          style={{
+            padding: '20px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            minHeight: 'calc(100vh - 200px)'
+          }}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          {/* Main Card with Pokemon styling */}
+          <div style={{
+            position: 'relative',
+            width: '100%',
+            maxWidth: '360px',
+            marginBottom: '20px'
+          }}>
+            <BookCard 
+              book={currentBook} 
+              theme={currentTheme}
+              onAddBook={handleAddToBookshelf}
+              isAddingBook={isAddingBook}
+            />
+          </div>
+
+          {/* Swipe Hint */}
+          <div style={{
+            fontSize: '12px',
+            color: currentTheme.textSecondary,
+            textAlign: 'center',
+            marginBottom: '20px'
+          }}>
+            👈 Swipe left/right to browse books 👉
+          </div>
+
+          {/* Quick Browse - Horizontal Scrollable */}
+          <div style={{
+            width: '100%',
+            maxWidth: '400px'
+          }}>
+            <h3 style={{
+              fontSize: '16px',
+              fontWeight: 'bold',
+              color: currentTheme.textPrimary,
+              margin: '0 0 12px 0',
+              textAlign: 'center'
+            }}>
+              Quick Browse
+            </h3>
+            <div style={{
+              display: 'flex',
+              gap: '8px',
+              overflowX: 'auto',
+              padding: '8px 0',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none'
+            }}>
+              {nominees.map((book, index) => (
+                <button
+                  key={book.id}
+                  onClick={() => goToCard(index)}
+                  className="quick-browse-item"
+                  style={{
+                    flexShrink: 0,
+                    width: '64px',
+                    height: '96px',
+                    borderRadius: '8px',
+                    border: index === currentCardIndex 
+                      ? `3px solid ${currentTheme.primary}` 
+                      : `2px solid ${currentTheme.primary}40`,
+                    cursor: 'pointer',
+                    overflow: 'hidden',
+                    backgroundColor: currentTheme.surface,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '24px',
+                    transition: 'all 0.2s ease',
+                    transform: index === currentCardIndex ? 'scale(1.1)' : 'scale(1)',
+                    touchAction: 'manipulation'
+                  }}
+                >
+                  {book.coverImageUrl ? (
+                    <img 
+                      src={book.coverImageUrl} 
+                      alt={book.title}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover'
+                      }}
+                    />
+                  ) : (
+                    '📚'
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
-      )}
 
-      {/* Loading Animation CSS */}
-      <style jsx>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        
-        /* Hide scrollbar for webkit browsers */
-        ::-webkit-scrollbar {
-          display: none;
-        }
-        
-        /* Mobile optimizations */
-        @media (max-width: 480px) {
-          .cover-stats-container {
-            flex-direction: column !important;
-            align-items: center !important;
+        {/* Success Message */}
+        {showAddMessage && (
+          <div style={{
+            position: 'fixed',
+            bottom: '20px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: currentTheme.primary,
+            color: currentTheme.textPrimary,
+            padding: '12px 24px',
+            borderRadius: '24px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+            zIndex: 1000,
+            fontSize: '14px',
+            fontWeight: '600',
+            maxWidth: '90vw',
+            textAlign: 'center'
+          }}>
+            {showAddMessage}
+          </div>
+        )}
+
+        {/* Loading Animation CSS */}
+        <style jsx>{`
+          @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
           }
           
-          .book-cover {
-            width: 120px !important;
-            height: 180px !important;
-            margin-bottom: 12px;
+          /* Hide scrollbar for webkit browsers */
+          ::-webkit-scrollbar {
+            display: none;
           }
           
-          .quick-browse-item {
-            width: 56px !important;
-            height: 84px !important;
-          }
-        }
-        
-        @media (max-width: 350px) {
-          .action-buttons {
-            flex-direction: column !important;
+          /* Mobile optimizations */
+          @media (max-width: 480px) {
+            .cover-stats-container {
+              flex-direction: column !important;
+              align-items: center !important;
+            }
+            
+            .book-cover {
+              width: 120px !important;
+              height: 180px !important;
+              margin-bottom: 12px;
+            }
+            
+            .quick-browse-item {
+              width: 56px !important;
+              height: 84px !important;
+            }
           }
           
-          .action-buttons button {
-            width: 100% !important;
+          @media (max-width: 350px) {
+            .action-buttons {
+              flex-direction: column !important;
+            }
+            
+            .action-buttons button {
+              width: 100% !important;
+            }
           }
-        }
-      `}</style>
-    </div>
+        `}</style>
+      </div>
+    </>
   );
 }
 
@@ -969,7 +986,7 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
               fontStyle: 'italic',
               fontWeight: '500'
             }}>
-              &quot;{book.luxLibrisReview}&quot;
+              "{book.luxLibrisReview}"
             </p>
           </div>
         )}

@@ -1,5 +1,5 @@
 {
-  "name": "Lux Libris - Catholic Reading Program",
+  "name": "Lux Libris",
   "short_name": "Lux Libris",
   "description": "Transform your reading journey with saint achievements and interactive book tracking",
   "start_url": "/",
@@ -16,7 +16,7 @@
       "purpose": "maskable any"
     },
     {
-      "src": "/images/lux_libris_logo.png", 
+      "src": "/images/lux_libris_logo.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable any"

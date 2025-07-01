@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
 import { getStudentData, getSchoolNominees } from '../lib/firebase';
+import Head from 'next/head'
 
 export default function StudentDashboard() {
   const router = useRouter();
@@ -272,6 +273,13 @@ export default function StudentDashboard() {
     : studentData.firstName;
 
   return (
+  <>
+    <Head>
+      <title>Student Dashboard - Lux Libris</title>
+      <meta name="description" content="Track your reading progress, collect saints, and achieve your reading goals" />
+      <link rel="icon" href="/images/lux_libris_logo.png" />
+    </Head>
+    
     <div style={{
       backgroundColor: currentTheme.background,
       minHeight: '100vh',
@@ -511,6 +519,7 @@ export default function StudentDashboard() {
         }
       `}</style>
     </div>
+    </>
   );
 }
 

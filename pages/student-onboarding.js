@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { db, authHelpers, dbHelpers } from '../lib/firebase';
 import { collection, addDoc, getDocs, query, where, doc, getDoc, setDoc } from 'firebase/firestore';
+import Head from 'next/head'
 
 export default function StudentOnboarding() {
   const router = useRouter();
@@ -334,6 +335,13 @@ export default function StudentOnboarding() {
   const selectedTheme = themes.find(theme => theme.assetPrefix === formData.selectedTheme);
 
   return (
+  <>
+    <Head>
+      <title>Welcome to Lux Libris - Student Setup</title>
+      <meta name="description" content="Set up your reading profile and join your school's program" />
+      <link rel="icon" href="/images/lux_libris_logo.png" />
+    </Head>
+    
     <div style={{ 
       backgroundColor: selectedTheme.background, 
       minHeight: '100vh',
@@ -589,7 +597,8 @@ export default function StudentOnboarding() {
         </div>
       </div>
     </div>
-  );
+  </>
+);
 }
 
 // Component pages (simplified for diocese structure)
