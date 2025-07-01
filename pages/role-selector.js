@@ -63,7 +63,7 @@ export default function RoleSelector() {
   const handleInstallClick = async () => {
     if (!deferredPrompt) {
       // Fallback for browsers that don't support the install prompt
-      alert('To install this app:\n\n📱 iPhone/iPad: Tap Share → "Add to Home Screen"\n🤖 Android: Look for "Install App" in browser menu\n💻 Desktop: Look for install icon in address bar')
+      alert('To install this app:\n\n📱 iPhone/iPad: Tap Share → &quot;Add to Home Screen&quot;\n🤖 Android: Look for &quot;Install App&quot; in browser menu\n💻 Desktop: Look for install icon in address bar')
       return
     }
 

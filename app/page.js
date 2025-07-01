@@ -108,7 +108,7 @@ export default function Home() {
             maxWidth: '90%'
           }}>
             <p style={{ margin: '0 0 0.5rem 0', fontWeight: '600' }}>
-              ✅ You've been signed out of your admin account
+              ✅ You&apos;ve been signed out of your admin account
             </p>
             <p style={{ margin: 0, fontSize: '0.9rem', opacity: 0.9 }}>
               Please sign in below to access your school dashboard
