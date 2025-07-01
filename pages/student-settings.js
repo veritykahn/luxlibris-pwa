@@ -366,26 +366,61 @@ export default function StudentSettings() {
           </p>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
-            <input
-              type="number"
-              min="1"
-              max="100"
-              value={newGoal}
-              onChange={(e) => setNewGoal(parseInt(e.target.value) || 1)}
-              style={{
-                padding: '12px',
-                border: `2px solid ${previewTheme.primary}50`,
-                borderRadius: '8px',
-                fontSize: '16px',
-                fontWeight: 'bold',
-                width: '80px',
-                textAlign: 'center',
-                backgroundColor: previewTheme.background,
-                color: previewTheme.textPrimary
-              }}
-            />
-            <span style={{ fontSize: '16px', color: previewTheme.textPrimary }}>books this year</span>
-          </div>
+  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+    <button
+      onClick={() => setNewGoal(Math.max(1, newGoal - 1))}
+      style={{
+        backgroundColor: previewTheme.primary,
+        color: previewTheme.textPrimary,
+        border: 'none',
+        borderRadius: '8px',
+        width: '40px',
+        height: '40px',
+        fontSize: '20px',
+        fontWeight: 'bold',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}
+    >
+      −
+    </button>
+    <div style={{
+      padding: '12px 16px',
+      border: `2px solid ${previewTheme.primary}50`,
+      borderRadius: '8px',
+      fontSize: '18px',
+      fontWeight: 'bold',
+      minWidth: '60px',
+      textAlign: 'center',
+      backgroundColor: previewTheme.background,
+      color: previewTheme.textPrimary
+    }}>
+      {newGoal}
+    </div>
+    <button
+      onClick={() => setNewGoal(Math.min(100, newGoal + 1))}
+      style={{
+        backgroundColor: previewTheme.primary,
+        color: previewTheme.textPrimary,
+        border: 'none',
+        borderRadius: '8px',
+        width: '40px',
+        height: '40px',
+        fontSize: '20px',
+        fontWeight: 'bold',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}
+    >
+      +
+    </button>
+  </div>
+  <span style={{ fontSize: '16px', color: previewTheme.textPrimary }}>books this year</span>
+</div>
 
           {newGoal !== studentData.personalGoal && (
             <button
