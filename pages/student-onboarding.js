@@ -312,7 +312,7 @@ export default function StudentOnboarding() {
       console.log('✅ Global user profile created for AuthContext');
       
       // Store student ID in localStorage for PWA
-      localStorage.setItem('studentId', studentRef.id);
+      localStorage.setItem('studentId', studentDocRef.id);
       localStorage.setItem('studentData', JSON.stringify(studentData));
       
       // Clean up temp data
