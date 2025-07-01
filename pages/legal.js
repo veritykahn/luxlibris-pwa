@@ -1,11 +1,21 @@
-// pages/legal.js
-import { useState } from 'react';
+// pages/legal.js - FIXED to be static for returning users
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Legal() {
   const router = useRouter();
+  const { userProfile, hasCompletedOnboarding } = useAuth();
   const [hasAccepted, setHasAccepted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isReturningUser, setIsReturningUser] = useState(false);
+
+  useEffect(() => {
+    // Check if this is a returning user who has already completed onboarding
+    if (userProfile && hasCompletedOnboarding()) {
+      setIsReturningUser(true);
+    }
+  }, [userProfile, hasCompletedOnboarding]);
 
   const acceptAndProceed = async () => {
     setIsLoading(true);
@@ -17,20 +27,20 @@ export default function Legal() {
     // Navigate based on user type (could be passed as query param)
     const flow = router.query.flow || 'student-onboarding';
 
-// Route based on flow parameter
-switch (flow) {
-  case 'student-onboarding':
-    router.push('/student-onboarding');
-    break;
-  case 'parent-onboarding':
-    router.push('/parent-onboarding');
-    break;
-  case 'admin-onboarding':
-    router.push('/admin/school-onboarding');
-    break;
-  default:
-    router.push('/student-onboarding');
-}
+    // Route based on flow parameter
+    switch (flow) {
+      case 'student-onboarding':
+        router.push('/student-onboarding');
+        break;
+      case 'parent-onboarding':
+        router.push('/parent-onboarding');
+        break;
+      case 'admin-onboarding':
+        router.push('/admin/school-onboarding');
+        break;
+      default:
+        router.push('/student-onboarding');
+    }
     
     setIsLoading(false);
   };
@@ -81,27 +91,30 @@ switch (flow) {
         maxWidth: '800px',
         margin: '0 auto'
       }}>
-        {/* Welcome Section */}
+        {/* Welcome Section - Different for returning users */}
         <div style={{ marginBottom: '24px' }}>
           <h2 style={{
-fontSize: '24px',
-fontWeight: 'bold',
-fontFamily: 'Didot, serif',
-color: '#223848',
-marginBottom: '16px'
- }}>
- Welcome to Lux Libris!
-</h2>
-<p style={{
-  fontSize: '16px',
-  color: '#223848',
-  lineHeight: '1.5',
-  marginBottom: '24px'
-}}>
-  Welcome to your reading journey! As you read amazing books, you&apos;ll unlock beautiful <strong>Little Luminaries™</strong> saint achievements created exclusively for Lux Libris. By continuing, you agree to our Terms of Service and Privacy Policy.
-</p>
+            fontSize: '24px',
+            fontWeight: 'bold',
+            fontFamily: 'Didot, serif',
+            color: '#223848',
+            marginBottom: '16px'
+          }}>
+            {isReturningUser ? 'Terms Already Accepted' : 'Welcome to Lux Libris!'}
+          </h2>
+          <p style={{
+            fontSize: '16px',
+            color: '#223848',
+            lineHeight: '1.5',
+            marginBottom: '24px'
+          }}>
+            {isReturningUser ? (
+              <>You have already accepted our Terms of Service and Privacy Policy. This page is for reference only.</>
+            ) : (
+              <>Welcome to your reading journey! As you read amazing books, you&apos;ll unlock beautiful <strong>Little Luminaries™</strong> saint achievements created exclusively for Lux Libris. By continuing, you agree to our Terms of Service and Privacy Policy.</>
+            )}
+          </p>
         </div>
-
 
         {/* Main Title */}
         <h2 style={{
@@ -158,8 +171,8 @@ This data is used exclusively for tracking reading progress, generating achievem
           />
 
           <Section
-  title="🎨 Little Luminaries™ & Intellectual Property"
-  content="Lux Libris features original Little Luminaries™ saint artwork:
+            title="🎨 Little Luminaries™ & Intellectual Property"
+            content="Lux Libris features original Little Luminaries™ saint artwork:
 - 137 original chibi-style saint characters created exclusively for Lux Libris
 - Proprietary saint achievement system and reward structure
 - Little Luminaries™ is a trademark of Lux Libris
@@ -169,7 +182,7 @@ This data is used exclusively for tracking reading progress, generating achievem
 - Educational fair use permitted with proper attribution
 
 All other content including app design, user interface, educational concepts, and achievement systems are also protected by copyright and trademark law."
-/>
+          />
 
           <Section
             title="📋 School Administrator Rights"
@@ -238,34 +251,65 @@ All other content including app design, user interface, educational concepts, an
             textAlign: 'center',
             margin: 0
           }}>
-            By tapping &quot;I Accept & Continue&quot;, you acknowledge that you have read, understood, and agree to be bound by these Terms of Service and Privacy Policy.
+            {isReturningUser ? (
+              'Terms were accepted during account creation. For the most current version, please visit luxlibris.org'
+            ) : (
+              'By tapping "I Accept & Continue", you acknowledge that you have read, understood, and agree to be bound by these Terms of Service and Privacy Policy.'
+            )}
           </p>
         </div>
 
-        {/* Acceptance Button */}
-        <div style={{ textAlign: 'center' }}>
-          <button
-            onClick={acceptAndProceed}
-            disabled={isLoading}
-            style={{
-              backgroundColor: '#ADD4EA',
-              color: '#223848',
-              border: 'none',
-              padding: '16px 32px',
-              borderRadius: '12px',
-              fontSize: '18px',
-              fontWeight: '600',
-              letterSpacing: '1.2px',
-              cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              width: '100%',
-              maxWidth: '300px',
-              opacity: isLoading ? 0.7 : 1
-            }}
-          >
-            {isLoading ? 'Processing...' : 'I Accept & Continue'}
-          </button>
-        </div>
+        {/* Acceptance Button - Only show for new users */}
+        {!isReturningUser && (
+          <div style={{ textAlign: 'center' }}>
+            <button
+              onClick={acceptAndProceed}
+              disabled={isLoading}
+              style={{
+                backgroundColor: '#ADD4EA',
+                color: '#223848',
+                border: 'none',
+                padding: '16px 32px',
+                borderRadius: '12px',
+                fontSize: '18px',
+                fontWeight: '600',
+                letterSpacing: '1.2px',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                width: '100%',
+                maxWidth: '300px',
+                opacity: isLoading ? 0.7 : 1
+              }}
+            >
+              {isLoading ? 'Processing...' : 'I Accept & Continue'}
+            </button>
+          </div>
+        )}
+
+        {/* Go Back Button for returning users */}
+        {isReturningUser && (
+          <div style={{ textAlign: 'center' }}>
+            <button
+              onClick={() => router.back()}
+              style={{
+                backgroundColor: '#C3E0DE',
+                color: '#223848',
+                border: 'none',
+                padding: '16px 32px',
+                borderRadius: '12px',
+                fontSize: '18px',
+                fontWeight: '600',
+                letterSpacing: '1.2px',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                width: '100%',
+                maxWidth: '300px'
+              }}
+            >
+              ← Go Back
+            </button>
+          </div>
+        )}
 
         {/* Reference Note */}
         <div style={{

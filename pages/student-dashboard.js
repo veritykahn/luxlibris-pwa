@@ -1,17 +1,19 @@
-// pages/student-dashboard.js
+// pages/student-dashboard.js - UPDATED to use Firebase instead of localStorage
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { db } from '../lib/firebase';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { useAuth } from '../contexts/AuthContext';
+import { getStudentData, getSchoolNominees } from '../lib/firebase';
 
 export default function StudentDashboard() {
   const router = useRouter();
+  const { user, userProfile, isAuthenticated, loading } = useAuth();
   const [studentData, setStudentData] = useState(null);
   const [currentTheme, setCurrentTheme] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showComingSoon, setShowComingSoon] = useState('');
+  const [nominees, setNominees] = useState([]);
 
-  // Mock data that will be replaced with real Firebase data
+  // Real dashboard data from Firebase
   const [dashboardData, setDashboardData] = useState({
     booksReadThisYear: 0,
     totalBooksRead: 0,
@@ -96,53 +98,63 @@ export default function StudentDashboard() {
   };
 
   useEffect(() => {
-    loadStudentData();
-  }, []);
+    if (!loading && isAuthenticated && user) {
+      loadStudentData();
+    } else if (!loading && !isAuthenticated) {
+      router.push('/role-selector');
+    }
+  }, [loading, isAuthenticated, user]);
 
   const loadStudentData = async () => {
     try {
-      // Try to get student data from localStorage first (PWA offline support)
-      const savedStudentData = localStorage.getItem('studentData');
-      const studentId = localStorage.getItem('studentId');
+      console.log('📚 Loading student data from Firebase...');
       
-      if (savedStudentData) {
-        const parsed = JSON.parse(savedStudentData);
-        setStudentData(parsed);
-        setCurrentTheme(themes[parsed.selectedTheme] || themes.classic_lux);
-        
-        // If we have studentId, try to fetch fresh data from Firebase
-        if (studentId) {
-          try {
-            const studentDoc = await getDoc(doc(db, 'students', studentId));
-            if (studentDoc.exists()) {
-              const freshData = studentDoc.data();
-              setStudentData(freshData);
-              setCurrentTheme(themes[freshData.selectedTheme] || themes.classic_lux);
-              localStorage.setItem('studentData', JSON.stringify(freshData));
-            }
-          } catch (firebaseError) {
-            console.log('Using offline data, Firebase unavailable:', firebaseError);
-          }
-        }
-      } else {
-        // No saved data, redirect to onboarding
+      // Get student data using Firebase helper function
+      const firebaseStudentData = await getStudentData(user.uid);
+      
+      if (!firebaseStudentData) {
+        console.log('❌ No student data found, redirecting to onboarding');
         router.push('/student-onboarding');
         return;
       }
-
-      // TODO: Load real dashboard data from Firebase
-      // For now, using mock data that matches the localStorage structure
+      
+      console.log('✅ Student data loaded:', firebaseStudentData.firstName);
+      setStudentData(firebaseStudentData);
+      
+      // Set theme
+      const selectedTheme = firebaseStudentData.selectedTheme || 'classic_lux';
+      setCurrentTheme(themes[selectedTheme]);
+      
+      // Load school nominees if we have school info
+      if (firebaseStudentData.dioceseId && firebaseStudentData.schoolId) {
+        try {
+          const schoolNominees = await getSchoolNominees(
+            firebaseStudentData.dioceseId, 
+            firebaseStudentData.schoolId
+          );
+          setNominees(schoolNominees);
+          console.log('📖 Loaded', schoolNominees.length, 'nominee books');
+        } catch (error) {
+          console.error('Error loading nominees:', error);
+        }
+      }
+      
+      // Calculate real dashboard data from Firebase
+      const bookshelf = firebaseStudentData.bookshelf || [];
+      const completedBooks = bookshelf.filter(book => book.completed);
+      const inProgressBooks = bookshelf.filter(book => !book.completed && book.currentProgress > 0);
+      
       setDashboardData({
-        booksReadThisYear: studentData?.booksSubmittedThisYear || 0,
-        totalBooksRead: studentData?.lifetimeBooksSubmitted || 0,
-        saintCount: studentData?.saintUnlocks?.length || 0,
-        readingStreak: studentData?.readingStreaks?.current || 0,
-        currentlyReading: null, // Will be fetched from bookProgress collection
-        recentlyCompleted: [] // Will be fetched from bookProgress collection
+        booksReadThisYear: firebaseStudentData.booksSubmittedThisYear || 0,
+        totalBooksRead: firebaseStudentData.lifetimeBooksSubmitted || 0,
+        saintCount: firebaseStudentData.saintUnlocks?.length || 0,
+        readingStreak: firebaseStudentData.readingStreaks?.current || 0,
+        currentlyReading: inProgressBooks.length > 0 ? inProgressBooks[0] : null,
+        recentlyCompleted: completedBooks.slice(-3).reverse() // Last 3 completed books
       });
 
     } catch (error) {
-      console.error('Error loading student data:', error);
+      console.error('❌ Error loading student data:', error);
       router.push('/student-onboarding');
     }
     
@@ -172,8 +184,14 @@ export default function StudentDashboard() {
   };
 
   const handleTabClick = (tabName) => {
-    setShowComingSoon(`${tabName} coming soon! 🚀`);
-    setTimeout(() => setShowComingSoon(''), 3000);
+    if (tabName === 'Nominees') {
+      router.push('/student-nominees');
+    } else if (tabName === 'Bookshelf') {
+      router.push('/student-bookshelf');
+    } else {
+      setShowComingSoon(`${tabName} coming soon! 🚀`);
+      setTimeout(() => setShowComingSoon(''), 3000);
+    }
   };
 
   const handleSettingsClick = () => {
@@ -181,10 +199,49 @@ export default function StudentDashboard() {
   };
 
   const handleStartReading = () => {
-    setShowComingSoon('Book selection coming soon! 📖');
-    setTimeout(() => setShowComingSoon(''), 3000);
+    if (nominees.length > 0) {
+      router.push('/student-nominees');
+    } else {
+      setShowComingSoon('Select your books first! 📖');
+      setTimeout(() => setShowComingSoon(''), 3000);
+    }
   };
 
+  const getCurrentlyReadingTitle = () => {
+    if (!dashboardData.currentlyReading) return 'No books in progress';
+    
+    // Find the book title from nominees
+    const book = nominees.find(n => n.id === dashboardData.currentlyReading.bookId);
+    return book ? book.title : 'Unknown Book';
+  };
+
+  // Show loading while authentication is checking
+  if (loading) {
+    return (
+      <div style={{
+        backgroundColor: '#FFFCF5',
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            width: '40px',
+            height: '40px',
+            border: '3px solid #ADD4EA30',
+            borderTop: '3px solid #ADD4EA',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 16px'
+          }} />
+          <p style={{ color: '#223848' }}>Checking your account...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading while student data is loading
   if (isLoading || !studentData || !currentTheme) {
     return (
       <div style={{
@@ -311,11 +368,33 @@ export default function StudentDashboard() {
         {/* Currently Reading */}
         {dashboardData.currentlyReading && (
           <CurrentlyReadingCard
-            book={dashboardData.currentlyReading}
+            bookTitle={getCurrentlyReadingTitle()}
+            progress={dashboardData.currentlyReading}
             theme={currentTheme}
             onTap={() => handleTabClick('Book Details')}
           />
         )}
+
+        {/* Quick Access Buttons */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '12px',
+          marginBottom: '20px'
+        }}>
+          <QuickActionButton
+            emoji="🎴"
+            label="Browse Books"
+            onClick={() => handleTabClick('Nominees')}
+            theme={currentTheme}
+          />
+          <QuickActionButton
+            emoji="📚"
+            label="My Bookshelf"
+            onClick={() => handleTabClick('Bookshelf')}
+            theme={currentTheme}
+          />
+        </div>
 
         {/* Reading Streak */}
         <ReadingStreakCard
@@ -326,13 +405,14 @@ export default function StudentDashboard() {
         {/* Recently Completed */}
         <RecentlyCompletedCard
           books={dashboardData.recentlyCompleted}
+          nominees={nominees}
           theme={currentTheme}
         />
 
         {/* Quick Stats */}
         <QuickStatsCard
           saintCount={dashboardData.saintCount}
-          goalPercentage={Math.round((dashboardData.booksReadThisYear / studentData.currentYearGoal) * 100)}
+          goalPercentage={Math.round((dashboardData.booksReadThisYear / (studentData.currentYearGoal || 1)) * 100)}
           theme={currentTheme}
         />
       </div>
@@ -422,6 +502,14 @@ export default function StudentDashboard() {
           {showComingSoon}
         </div>
       )}
+
+      {/* Loading Animation CSS */}
+      <style jsx>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }
@@ -500,8 +588,50 @@ function ProgressWheel({ title, current, goal, color, emoji }) {
   );
 }
 
+// Quick Action Button Component
+function QuickActionButton({ emoji, label, onClick, theme }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        backgroundColor: theme.surface,
+        border: `1px solid ${theme.primary}30`,
+        borderRadius: '12px',
+        padding: '16px 12px',
+        cursor: 'pointer',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '8px',
+        transition: 'all 0.2s ease'
+      }}
+      onMouseOver={(e) => {
+        e.target.style.backgroundColor = `${theme.primary}20`;
+        e.target.style.transform = 'scale(1.02)';
+      }}
+      onMouseOut={(e) => {
+        e.target.style.backgroundColor = theme.surface;
+        e.target.style.transform = 'scale(1)';
+      }}
+    >
+      <span style={{ fontSize: '24px' }}>{emoji}</span>
+      <span style={{
+        fontSize: '12px',
+        fontWeight: '600',
+        color: theme.textPrimary
+      }}>
+        {label}
+      </span>
+    </button>
+  );
+}
+
 // Currently Reading Card
-function CurrentlyReadingCard({ book, theme, onTap }) {
+function CurrentlyReadingCard({ bookTitle, progress, theme, onTap }) {
+  const progressPercent = progress.totalPages > 0 
+    ? Math.round((progress.currentProgress / progress.totalPages) * 100)
+    : 0;
+
   return (
     <div style={{
       backgroundColor: theme.surface,
@@ -560,14 +690,14 @@ function CurrentlyReadingCard({ book, theme, onTap }) {
             color: theme.textPrimary,
             margin: '0 0 4px 0'
           }}>
-            {book}
+            {bookTitle}
           </p>
           <p style={{
             fontSize: '12px',
             color: theme.textSecondary,
             margin: 0
           }}>
-            Tap to continue reading
+            {progressPercent}% complete - Tap to continue
           </p>
         </div>
         <span style={{ color: theme.primary, fontSize: '16px' }}>→</span>
@@ -632,7 +762,7 @@ function ReadingStreakCard({ streak, theme }) {
 }
 
 // Recently Completed Card
-function RecentlyCompletedCard({ books, theme }) {
+function RecentlyCompletedCard({ books, nominees, theme }) {
   return (
     <div style={{
       backgroundColor: theme.surface,
@@ -674,60 +804,66 @@ function RecentlyCompletedCard({ books, theme }) {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {books.slice(0, 2).map((book, index) => (
-            <div
-              key={index}
-              style={{
-                backgroundColor: `${theme.accent}20`,
-                borderRadius: '12px',
-                padding: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px'
-              }}
-            >
-              <div style={{
-                width: '30px',
-                height: '45px',
-                backgroundColor: `${theme.accent}50`,
-                borderRadius: '4px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '16px'
-              }}>
-                📚
-              </div>
-              <div style={{ flex: 1 }}>
-                <p style={{
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  color: theme.textPrimary,
-                  margin: '0 0 2px 0'
+          {books.slice(0, 2).map((book, index) => {
+            // Find book title from nominees
+            const nominee = nominees.find(n => n.id === book.bookId);
+            const title = nominee ? nominee.title : 'Unknown Book';
+            
+            return (
+              <div
+                key={index}
+                style={{
+                  backgroundColor: `${theme.accent}20`,
+                  borderRadius: '12px',
+                  padding: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px'
+                }}
+              >
+                <div style={{
+                  width: '30px',
+                  height: '45px',
+                  backgroundColor: `${theme.accent}50`,
+                  borderRadius: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '16px'
                 }}>
-                  {book.title}
-                </p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ display: 'flex' }}>
-                    {[...Array(5)].map((_, i) => (
-                      <span key={i} style={{
-                        color: i < book.rating ? '#FFD700' : '#DDD',
-                        fontSize: '12px'
-                      }}>
-                        ⭐
-                      </span>
-                    ))}
-                  </div>
-                  <span style={{
-                    fontSize: '10px',
-                    color: theme.textSecondary
+                  📚
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    color: theme.textPrimary,
+                    margin: '0 0 2px 0'
                   }}>
-                    Earned: {book.saint}
-                  </span>
+                    {title}
+                  </p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ display: 'flex' }}>
+                      {[...Array(5)].map((_, i) => (
+                        <span key={i} style={{
+                          color: i < (book.rating || 0) ? '#FFD700' : '#DDD',
+                          fontSize: '12px'
+                        }}>
+                          ⭐
+                        </span>
+                      ))}
+                    </div>
+                    <span style={{
+                      fontSize: '10px',
+                      color: theme.textSecondary
+                    }}>
+                      Just finished!
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
@@ -757,9 +893,9 @@ function QuickStatsCard({ saintCount, goalPercentage, theme }) {
         gridTemplateColumns: 'repeat(3, 1fr)',
         gap: '8px'
       }}>
-        <StatChip emoji="👑" label="Saints" value={`${saintCount}/138`} theme={theme} />
-        <StatChip emoji="🏆" label="Rank" value="#42" theme={theme} />
-        <StatChip emoji="🎯" label="Goal" value={`${goalPercentage}%`} theme={theme} />
+        <StatChip emoji="👑" label="Saints" value={`${saintCount}/137`} theme={theme} />
+        <StatChip emoji="📚" label="Books" value={goalPercentage > 0 ? `${Math.min(goalPercentage, 100)}%` : '0%'} theme={theme} />
+        <StatChip emoji="🏆" label="Goal" value={`${goalPercentage}%`} theme={theme} />
       </div>
     </div>
   );
