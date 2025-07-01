@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
-import { db } from '../../lib/firebase'
+import { db, authHelpers } from '../../lib/firebase'
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, setDoc } from 'firebase/firestore'
 
 export default function GodModeAdmin() {
@@ -137,6 +137,93 @@ export default function GodModeAdmin() {
     return `${diocesePrefix}-${locationPrefix}-ADMIN-${year}`
   }
 
+  // Delete diocese (and all its schools)
+  const handleDeleteDiocese = async (dioceseId, dioceseName) => {
+    const confirmed = window.confirm(`⚠️ DELETE ENTIRE DIOCESE?
+
+This will permanently delete:
+• Diocese: ${dioceseName}
+• ALL schools in this diocese
+• ALL students in these schools
+• ALL data associated with this diocese
+
+This action CANNOT be undone!
+
+Type "DELETE" to confirm:`)
+    
+    if (confirmed) {
+      const userInput = window.prompt('Type "DELETE" to confirm:')
+      if (userInput === 'DELETE') {
+        try {
+          setLoading(true)
+          console.log('🗑️ Deleting entire diocese:', dioceseName)
+          
+          // Delete all schools in diocese first
+          const schoolsRef = collection(db, `dioceses/${dioceseId}/schools`)
+          const schoolsSnapshot = await getDocs(schoolsRef)
+          
+          for (const schoolDoc of schoolsSnapshot.docs) {
+            await deleteDoc(doc(db, `dioceses/${dioceseId}/schools`, schoolDoc.id))
+            console.log('🗑️ Deleted school:', schoolDoc.data().name)
+          }
+          
+          // Delete the diocese itself
+          await deleteDoc(doc(db, 'dioceses', dioceseId))
+          console.log('✅ Diocese deleted successfully')
+          
+          alert(`Diocese "${dioceseName}" and all its schools have been deleted.`)
+          fetchDioceses()
+        } catch (error) {
+          console.error('❌ Error deleting diocese:', error)
+          alert('Error deleting diocese: ' + error.message)
+        }
+        setLoading(false)
+      } else {
+        alert('Deletion cancelled - you must type "DELETE" exactly.')
+      }
+    }
+  }
+
+  // Delete individual school
+  const handleDeleteSchool = async (dioceseId, schoolId, schoolName) => {
+    const confirmed = window.confirm(`⚠️ DELETE SCHOOL?
+
+This will permanently delete:
+• School: ${schoolName}
+• ALL students in this school
+• ALL data associated with this school
+
+This action CANNOT be undone!
+
+Click OK to confirm deletion.`)
+    
+    if (confirmed) {
+      try {
+        setLoading(true)
+        console.log('🗑️ Deleting school:', schoolName)
+        
+        // Delete all students in school first
+        const studentsRef = collection(db, `dioceses/${dioceseId}/schools/${schoolId}/students`)
+        const studentsSnapshot = await getDocs(studentsRef)
+        
+        for (const studentDoc of studentsSnapshot.docs) {
+          await deleteDoc(doc(db, `dioceses/${dioceseId}/schools/${schoolId}/students`, studentDoc.id))
+        }
+        
+        // Delete the school itself
+        await deleteDoc(doc(db, `dioceses/${dioceseId}/schools`, schoolId))
+        console.log('✅ School deleted successfully')
+        
+        alert(`School "${schoolName}" and all its students have been deleted.`)
+        fetchDioceses()
+      } catch (error) {
+        console.error('❌ Error deleting school:', error)
+        alert('Error deleting school: ' + error.message)
+      }
+      setLoading(false)
+    }
+  }
+
   // Create new diocese
   const handleCreateDiocese = async () => {
     if (!newDiocese.name || !newDiocese.location) {
@@ -192,6 +279,18 @@ export default function GodModeAdmin() {
     
     try {
       setLoading(true)
+      console.log('🏫 Creating school with Firebase Auth account...')
+      
+      // 🔥 STEP 1: Create Firebase Auth account for the admin
+      console.log('🔐 Creating admin Firebase Auth account...')
+      const adminAuthResult = await authHelpers.createAdminAccount(
+        newSchool.adminEmail,
+        newSchool.adminPassword,
+        { name: newSchool.name, dioceseId: newSchool.dioceseId }
+      )
+      console.log('✅ Admin Firebase Auth account created with UID:', adminAuthResult.uid)
+      
+      // 🔥 STEP 2: Create school document in database
       const schoolData = {
         name: newSchool.name,
         city: newSchool.city,
@@ -199,6 +298,7 @@ export default function GodModeAdmin() {
         email: newSchool.email,
         adminEmail: newSchool.adminEmail,
         adminPassword: newSchool.adminPassword, // In production, this should be hashed
+        adminAuthUID: adminAuthResult.uid, // Link to Firebase Auth account
         studentAccessCode: codes.studentAccessCode,
         parentQuizCode: codes.parentQuizCode,
         createdAt: new Date(),
@@ -210,16 +310,55 @@ export default function GodModeAdmin() {
       
       // Add school to the specific diocese's schools subcollection
       const schoolRef = collection(db, `dioceses/${newSchool.dioceseId}/schools`)
-      await addDoc(schoolRef, schoolData)
+      const schoolDocRef = await addDoc(schoolRef, schoolData)
+      console.log('✅ School document created with ID:', schoolDocRef.id)
       
-      alert(`School created successfully!\nStudent Access Code: ${codes.studentAccessCode}\nParent Quiz Code: ${codes.parentQuizCode}\nAdmin Email: ${newSchool.adminEmail}\nAdmin Password: ${newSchool.adminPassword}`)
+      // 🔥 STEP 3: Create global admin user profile for AuthContext
+      const adminProfile = {
+        uid: adminAuthResult.uid,
+        email: newSchool.adminEmail,
+        accountType: 'admin',
+        schoolId: schoolDocRef.id,
+        dioceseId: newSchool.dioceseId,
+        schoolName: newSchool.name,
+        permissions: ['manage_students', 'approve_submissions', 'view_reports'],
+        accountCreated: new Date()
+      }
+      
+      await addDoc(collection(db, 'users'), adminProfile)
+      console.log('✅ Admin profile created in global users collection')
+      
+      alert(`🎉 School & Admin Account Created Successfully!
+
+📚 School: ${newSchool.name}
+👨‍💼 Admin: ${newSchool.adminEmail}
+🔑 Admin Password: ${newSchool.adminPassword}
+
+📋 Access Codes:
+🎓 Student Code: ${codes.studentAccessCode}
+👨‍👩‍👧‍👦 Parent Code: ${codes.parentQuizCode}
+
+✅ Admin can now sign in at: /admin/school-onboarding`)
       
       setNewSchool({ name: '', city: '', state: '', email: '', dioceseId: '', adminEmail: '', adminPassword: '' })
       setShowCreateSchool(false)
       fetchDioceses()
     } catch (error) {
-      console.error('Error creating school:', error)
-      alert('Error creating school')
+      console.error('❌ Error creating school:', error)
+      
+      // Better error handling with specific messages
+      let errorMessage = 'Error creating school: '
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage += 'An admin account with this email already exists.'
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage += 'Password should be at least 6 characters.'
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage += 'Invalid email address format.'
+      } else {
+        errorMessage += error.message
+      }
+      
+      alert(errorMessage)
     }
     setLoading(false)
   }
@@ -529,8 +668,8 @@ export default function GodModeAdmin() {
             )}
             
             {!loading && activeTab === 'overview' && <OverviewTab nominees={nominees} dioceses={dioceses} />}
-            {!loading && activeTab === 'dioceses' && <DiocesesTab dioceses={dioceses} showCreateDiocese={showCreateDiocese} setShowCreateDiocese={setShowCreateDiocese} newDiocese={newDiocese} setNewDiocese={setNewDiocese} handleCreateDiocese={handleCreateDiocese} />}
-            {!loading && activeTab === 'schools' && <SchoolsTab dioceses={dioceses} showCreateSchool={showCreateSchool} setShowCreateSchool={setShowCreateSchool} newSchool={newSchool} setNewSchool={setNewSchool} handleCreateSchool={handleCreateSchool} />}
+            {!loading && activeTab === 'dioceses' && <DiocesesTab dioceses={dioceses} showCreateDiocese={showCreateDiocese} setShowCreateDiocese={setShowCreateDiocese} newDiocese={newDiocese} setNewDiocese={setNewDiocese} handleCreateDiocese={handleCreateDiocese} handleDeleteDiocese={handleDeleteDiocese} handleDeleteSchool={handleDeleteSchool} />}
+            {!loading && activeTab === 'schools' && <SchoolsTab dioceses={dioceses} showCreateSchool={showCreateSchool} setShowCreateSchool={setShowCreateSchool} newSchool={newSchool} setNewSchool={setNewSchool} handleCreateSchool={handleCreateSchool} handleDeleteSchool={handleDeleteSchool} />}
             {!loading && activeTab === 'nominees' && <NomineesTab nominees={nominees} setNominees={setNominees} />}
             {!loading && activeTab === 'saints' && <SaintsTab />}
             {!loading && activeTab === 'analytics' && <AnalyticsTab />}
@@ -542,8 +681,196 @@ export default function GodModeAdmin() {
   )
 }
 
-// Enhanced component functions with new functionality
-function DiocesesTab({ dioceses, showCreateDiocese, setShowCreateDiocese, newDiocese, setNewDiocese, handleCreateDiocese }) {
+// Enhanced component functions with delete functionality
+function DiocesesTab({ dioceses, showCreateDiocese, setShowCreateDiocese, newDiocese, setNewDiocese, handleCreateDiocese, handleDeleteDiocese, handleDeleteSchool }) {
+  return (
+    <div style={{ color: 'white' }}>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '1.5rem'
+      }}>
+        <h2 style={{
+          fontSize: '1.5rem',
+          fontWeight: 'bold',
+          fontFamily: 'Georgia, serif'
+        }}>
+          Diocese Management
+        </h2>
+        <ActionButton text="+ Create Diocese" onClick={() => setShowCreateDiocese(true)} />
+      </div>
+
+      {showCreateDiocese && (
+        <div style={{
+          background: 'rgba(168, 85, 247, 0.2)',
+          borderRadius: '0.5rem',
+          padding: '1.5rem',
+          marginBottom: '1.5rem',
+          border: '1px solid rgba(168, 85, 247, 0.3)'
+        }}>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem' }}>
+            Create New Diocese
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+            <input
+              type="text"
+              placeholder="Diocese Name (e.g., Diocese of Test)"
+              value={newDiocese.name}
+              onChange={(e) => setNewDiocese({...newDiocese, name: e.target.value})}
+              style={{
+                padding: '0.75rem',
+                borderRadius: '0.5rem',
+                border: '1px solid rgba(168, 85, 247, 0.3)',
+                background: 'rgba(0, 0, 0, 0.3)',
+                color: 'white'
+              }}
+            />
+            <input
+              type="text"
+              placeholder="Location (e.g., Demo City, TX)"
+              value={newDiocese.location}
+              onChange={(e) => setNewDiocese({...newDiocese, location: e.target.value})}
+              style={{
+                padding: '0.75rem',
+                borderRadius: '0.5rem',
+                border: '1px solid rgba(168, 85, 247, 0.3)',
+                background: 'rgba(0, 0, 0, 0.3)',
+                color: 'white'
+              }}
+            />
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <ActionButton text="✅ Create Diocese" onClick={handleCreateDiocese} />
+            <ActionButton text="❌ Cancel" onClick={() => setShowCreateDiocese(false)} />
+          </div>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        {dioceses.map(diocese => (
+          <div key={diocese.id} style={{
+            background: 'rgba(139, 92, 246, 0.2)',
+            borderRadius: '0.5rem',
+            padding: '1rem',
+            border: '1px solid rgba(139, 92, 246, 0.3)'
+          }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              marginBottom: '0.5rem'
+            }}>
+              <div>
+                <h3 style={{
+                  fontSize: '1.125rem',
+                  fontWeight: 'bold',
+                  marginBottom: '0.25rem'
+                }}>
+                  ⛪ {diocese.name}
+                </h3>
+                <p style={{ color: '#c084fc', margin: '0.25rem 0' }}>
+                  📍 {diocese.location}
+                </p>
+                <p style={{
+                  fontSize: '0.875rem',
+                  color: '#a78bfa',
+                  margin: '0.25rem 0'
+                }}>
+                  🔑 Admin Code: <strong>{diocese.adminCode}</strong>
+                </p>
+                <p style={{
+                  fontSize: '0.875rem',
+                  color: '#a78bfa',
+                  margin: 0
+                }}>
+                  🏫 {diocese.schools?.length || 0} schools
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  onClick={() => handleDeleteDiocese(diocese.id, diocese.name)}
+                  style={{
+                    background: 'rgba(239, 68, 68, 0.8)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.375rem',
+                    padding: '0.5rem',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem',
+                    fontWeight: '600'
+                  }}
+                  title="Delete Diocese (⚠️ Deletes ALL schools!)"
+                >
+                  🗑️ Delete
+                </button>
+              </div>
+            </div>
+            
+            {diocese.schools && diocese.schools.length > 0 && (
+              <div style={{ marginTop: '1rem' }}>
+                <h4 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '0.5rem', color: '#e879f9' }}>
+                  Schools in this Diocese:
+                </h4>
+                <div style={{ display: 'grid', gap: '0.5rem' }}>
+                  {diocese.schools.map(school => (
+                    <div key={school.id} style={{
+                      background: 'rgba(59, 130, 246, 0.2)',
+                      borderRadius: '0.375rem',
+                      padding: '0.75rem',
+                      border: '1px solid rgba(59, 130, 246, 0.3)'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <p style={{ fontWeight: '600', margin: 0 }}>🏫 {school.name}</p>
+                          <p style={{ fontSize: '0.875rem', color: '#93c5fd', margin: '0.25rem 0' }}>
+                            📧 {school.adminEmail} | 🔑 {school.studentAccessCode}
+                          </p>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.25rem' }}>
+                          <span style={{
+                            padding: '0.25rem 0.5rem',
+                            borderRadius: '0.25rem',
+                            fontSize: '0.75rem',
+                            background: 'rgba(34, 197, 94, 0.3)',
+                            color: '#86efac'
+                          }}>
+                            {school.status || 'Active'}
+                          </span>
+                          <button
+                            onClick={() => handleDeleteSchool(diocese.id, school.id, school.name)}
+                            style={{
+                              background: 'rgba(239, 68, 68, 0.6)',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '0.25rem',
+                              padding: '0.25rem 0.5rem',
+                              cursor: 'pointer',
+                              fontSize: '0.75rem'
+                            }}
+                            title="Delete School"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      
+      {dioceses.length === 0 && (
+        <div style={{ textAlign: 'center', color: '#c084fc', padding: '2rem' }}>
+          <p>No dioceses created yet. Create your first diocese above!</p>
+        </div>
+      )}
+    </div>
+  )
+}
   return (
     <div style={{ color: 'white' }}>
       <div style={{
@@ -698,7 +1025,231 @@ function DiocesesTab({ dioceses, showCreateDiocese, setShowCreateDiocese, newDio
   )
 }
 
-function SchoolsTab({ dioceses, showCreateSchool, setShowCreateSchool, newSchool, setNewSchool, handleCreateSchool }) {
+function SchoolsTab({ dioceses, showCreateSchool, setShowCreateSchool, newSchool, setNewSchool, handleCreateSchool, handleDeleteSchool }) {
+  return (
+    <div style={{ color: 'white' }}>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '1.5rem'
+      }}>
+        <h2 style={{
+          fontSize: '1.5rem',
+          fontWeight: 'bold',
+          fontFamily: 'Georgia, serif'
+        }}>
+          School Management
+        </h2>
+        <ActionButton text="+ Create School" onClick={() => setShowCreateSchool(true)} />
+      </div>
+
+      {showCreateSchool && (
+        <div style={{
+          background: 'rgba(59, 130, 246, 0.2)',
+          borderRadius: '0.5rem',
+          padding: '1.5rem',
+          marginBottom: '1.5rem',
+          border: '1px solid rgba(59, 130, 246, 0.3)'
+        }}>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem' }}>
+            Create New School
+          </h3>
+          
+          <div style={{ display: 'grid', gap: '1rem', marginBottom: '1rem' }}>
+            <select
+              value={newSchool.dioceseId}
+              onChange={(e) => setNewSchool({...newSchool, dioceseId: e.target.value})}
+              style={{
+                padding: '0.75rem',
+                borderRadius: '0.5rem',
+                border: '1px solid rgba(59, 130, 246, 0.3)',
+                background: 'rgba(0, 0, 0, 0.3)',
+                color: 'white'
+              }}
+            >
+              <option value="">Select Diocese</option>
+              {dioceses.map(diocese => (
+                <option key={diocese.id} value={diocese.id}>{diocese.name}</option>
+              ))}
+            </select>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+              <input
+                type="text"
+                placeholder="School Name"
+                value={newSchool.name}
+                onChange={(e) => setNewSchool({...newSchool, name: e.target.value})}
+                style={{
+                  padding: '0.75rem',
+                  borderRadius: '0.5rem',
+                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  background: 'rgba(0, 0, 0, 0.3)',
+                  color: 'white'
+                }}
+              />
+              <input
+                type="text"
+                placeholder="City"
+                value={newSchool.city}
+                onChange={(e) => setNewSchool({...newSchool, city: e.target.value})}
+                style={{
+                  padding: '0.75rem',
+                  borderRadius: '0.5rem',
+                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  background: 'rgba(0, 0, 0, 0.3)',
+                  color: 'white'
+                }}
+              />
+              <input
+                type="text"
+                placeholder="State"
+                value={newSchool.state}
+                onChange={(e) => setNewSchool({...newSchool, state: e.target.value})}
+                style={{
+                  padding: '0.75rem',
+                  borderRadius: '0.5rem',
+                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  background: 'rgba(0, 0, 0, 0.3)',
+                  color: 'white'
+                }}
+              />
+            </div>
+            
+            <input
+              type="email"
+              placeholder="School Email"
+              value={newSchool.email}
+              onChange={(e) => setNewSchool({...newSchool, email: e.target.value})}
+              style={{
+                padding: '0.75rem',
+                borderRadius: '0.5rem',
+                border: '1px solid rgba(59, 130, 246, 0.3)',
+                background: 'rgba(0, 0, 0, 0.3)',
+                color: 'white'
+              }}
+            />
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <input
+                type="email"
+                placeholder="Admin Email"
+                value={newSchool.adminEmail}
+                onChange={(e) => setNewSchool({...newSchool, adminEmail: e.target.value})}
+                style={{
+                  padding: '0.75rem',
+                  borderRadius: '0.5rem',
+                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  background: 'rgba(0, 0, 0, 0.3)',
+                  color: 'white'
+                }}
+              />
+              <input
+                type="password"
+                placeholder="Admin Password"
+                value={newSchool.adminPassword}
+                onChange={(e) => setNewSchool({...newSchool, adminPassword: e.target.value})}
+                style={{
+                  padding: '0.75rem',
+                  borderRadius: '0.5rem',
+                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  background: 'rgba(0, 0, 0, 0.3)',
+                  color: 'white'
+                }}
+              />
+            </div>
+          </div>
+          
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <ActionButton text="✅ Create School" onClick={handleCreateSchool} />
+            <ActionButton text="❌ Cancel" onClick={() => setShowCreateSchool(false)} />
+          </div>
+        </div>
+      )}
+
+      {/* Display all schools from all dioceses */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        {dioceses.map(diocese => 
+          diocese.schools?.map(school => (
+            <div key={`${diocese.id}-${school.id}`} style={{
+              background: 'rgba(59, 130, 246, 0.2)',
+              borderRadius: '0.5rem',
+              padding: '1rem',
+              border: '1px solid rgba(59, 130, 246, 0.3)'
+            }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start'
+              }}>
+                <div>
+                  <h3 style={{
+                    fontSize: '1.125rem',
+                    fontWeight: 'bold',
+                    marginBottom: '0.25rem'
+                  }}>
+                    🏫 {school.name}
+                  </h3>
+                  <p style={{ color: '#93c5fd', margin: '0.25rem 0' }}>
+                    📍 {school.city}, {school.state} | ⛪ {diocese.name}
+                  </p>
+                  <p style={{
+                    fontSize: '0.875rem',
+                    color: '#a78bfa',
+                    margin: '0.25rem 0'
+                  }}>
+                    📧 Admin: {school.adminEmail}
+                  </p>
+                  <p style={{
+                    fontSize: '0.875rem',
+                    color: '#a78bfa',
+                    margin: 0
+                  }}>
+                    🔑 Student Code: <strong>{school.studentAccessCode}</strong> | 
+                    🧩 Parent Code: <strong>{school.parentQuizCode}</strong>
+                  </p>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{
+                    padding: '0.25rem 0.5rem',
+                    borderRadius: '0.25rem',
+                    fontSize: '0.75rem',
+                    background: 'rgba(34, 197, 94, 0.3)',
+                    color: '#86efac'
+                  }}>
+                    {school.status || 'Active'}
+                  </span>
+                  <button
+                    onClick={() => handleDeleteSchool(diocese.id, school.id, school.name)}
+                    style={{
+                      background: 'rgba(239, 68, 68, 0.8)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '0.25rem',
+                      padding: '0.5rem',
+                      cursor: 'pointer',
+                      fontSize: '0.875rem',
+                      fontWeight: '600'
+                    }}
+                    title="Delete School"
+                  >
+                    🗑️ Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+      
+      {dioceses.every(diocese => !diocese.schools || diocese.schools.length === 0) && (
+        <div style={{ textAlign: 'center', color: '#c084fc', padding: '2rem' }}>
+          <p>No schools created yet. Create your first school above!</p>
+        </div>
+      )}
+    </div>
+  )
+}
   return (
     <div style={{ color: 'white' }}>
       <div style={{
