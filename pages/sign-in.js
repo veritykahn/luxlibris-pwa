@@ -610,7 +610,7 @@ export default function SignIn() {
                       margin: 0,
                       lineHeight: '1.4'
                     }}>
-                      👨‍👩‍👧‍👦 <strong>Parent Access:</strong> Coming soon! For now, basic progress viewing is included with your school's subscription.
+                      👨‍👩‍👧‍👦 <strong>Parent Access:</strong> Coming soon! For now, basic progress viewing is included with your school&apos;s subscription.
                     </p>
                   </div>
                 </div>
