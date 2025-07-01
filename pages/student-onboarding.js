@@ -741,16 +741,6 @@ function InfoPage({ formData, setFormData, selectedTheme, grades }) {
             textTransform: 'uppercase'
           }}
         />
-        {formData.firstName && formData.lastInitial && (
-          <p style={{
-            fontSize: '12px',
-            color: selectedTheme.primary,
-            margin: '8px 0 0 0',
-            fontWeight: '600'
-          }}>
-            📧 Your username will be: {formData.firstName.toLowerCase().replace(/[^a-z0-9]/g, '')}{formData.lastInitial.toLowerCase()}{formData.grade}
-          </p>
-        )}
       </div>
 
       {/* Grade Selection */}
@@ -929,8 +919,8 @@ function ThemePage({ formData, setFormData, themes }) {
 
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-        gap: '16px'
+        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+        gap: 'clamp(8px, 2vw, 16px)'
       }}>
         {themes.map(theme => {
           const isSelected = theme.assetPrefix === formData.selectedTheme;
@@ -939,7 +929,7 @@ function ThemePage({ formData, setFormData, themes }) {
               key={theme.assetPrefix}
               onClick={() => setFormData({...formData, selectedTheme: theme.assetPrefix})}
               style={{
-                padding: '12px',
+                padding: 'clamp(8px, 2vw, 12px)',
                 backgroundColor: theme.surface,
                 border: `${isSelected ? '3px' : '2px'} solid ${isSelected ? theme.primary : `${theme.primary}50`}`,
                 borderRadius: '16px',
@@ -947,19 +937,53 @@ function ThemePage({ formData, setFormData, themes }) {
                 transition: 'all 0.3s ease',
                 boxShadow: isSelected ? `0 8px 24px ${theme.primary}40` : '0 2px 8px rgba(0,0,0,0.1)',
                 transform: isSelected ? 'scale(1.05)' : 'scale(1)',
-                position: 'relative'
+                position: 'relative',
+                minWidth: 0
               }}
             >
               {/* Theme Name */}
               <div style={{
-                fontSize: '13px',
+                fontSize: 'clamp(11px, 2.5vw, 13px)',
                 fontWeight: '600',
                 color: theme.textPrimary,
                 textAlign: 'center',
                 lineHeight: '1.2',
-                marginBottom: '4px'
+                marginBottom: 'clamp(4px, 1.5vw, 8px)'
               }}>
                 {theme.name}
+              </div>
+              
+              {/* Theme Preview Images */}
+              <div style={{
+                display: 'flex',
+                gap: 'clamp(2px, 1vw, 4px)',
+                justifyContent: 'center',
+                marginBottom: 'clamp(2px, 1vw, 4px)'
+              }}>
+                {/* Bookshelf Preview */}
+                <img 
+                  src={`/images/bookshelves/${theme.assetPrefix}.png`}
+                  alt={`${theme.name} bookshelf`}
+                  style={{
+                    width: 'clamp(45px, 12vw, 60px)',
+                    height: 'clamp(34px, 9vw, 45px)',
+                    objectFit: 'cover',
+                    borderRadius: '4px',
+                    border: `1px solid ${theme.primary}30`
+                  }}
+                />
+                {/* Trophy Case Preview */}
+                <img 
+                  src={`/images/trophy_cases/${theme.assetPrefix}.png`}
+                  alt={`${theme.name} trophy case`}
+                  style={{
+                    width: 'clamp(45px, 12vw, 60px)',
+                    height: 'clamp(34px, 9vw, 45px)',
+                    objectFit: 'cover',
+                    borderRadius: '4px',
+                    border: `1px solid ${theme.primary}30`
+                  }}
+                />
               </div>
               
               {/* Selected Indicator */}
@@ -971,12 +995,12 @@ function ThemePage({ formData, setFormData, themes }) {
                   backgroundColor: theme.primary,
                   color: 'white',
                   borderRadius: '50%',
-                  width: '24px',
-                  height: '24px',
+                  width: 'clamp(20px, 5vw, 24px)',
+                  height: 'clamp(20px, 5vw, 24px)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '12px',
+                  fontSize: 'clamp(10px, 2.5vw, 12px)',
                   fontWeight: 'bold',
                   boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
                 }}>
