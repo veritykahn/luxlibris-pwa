@@ -2,13 +2,15 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { db } from '../lib/firebase';
-import { collection, addDoc, getDocs, query, where } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, doc, getDoc } from 'firebase/firestore';
 
 export default function StudentOnboarding() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [schools, setSchools] = useState([]);
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [generatedUsername, setGeneratedUsername] = useState('');
   
   // Student data
   const [formData, setFormData] = useState({
@@ -17,6 +19,9 @@ export default function StudentOnboarding() {
     grade: '4th Grade',
     schoolId: '',
     schoolName: '',
+    schoolCity: '',
+    schoolState: '',
+    population: '', // This will be auto-filled and greyed out
     currentYearGoal: 10,
     selectedTheme: 'classic_lux'
   });
@@ -100,31 +105,32 @@ export default function StudentOnboarding() {
 
   useEffect(() => {
     loadSchools();
+    loadExistingData();
   }, []);
 
-  useEffect(() => {
-  // Pre-populate from account creation data
-  const tempStudentData = localStorage.getItem('tempStudentData');
-  const accountData = localStorage.getItem('luxlibris_student_profile');
-  
-  if (tempStudentData) {
-    const parsed = JSON.parse(tempStudentData);
-    setFormData(prev => ({
-      ...prev,
-      firstName: parsed.firstName || '',
-      lastInitial: parsed.lastInitial || ''
-    }));
-  }
-  
-  if (accountData) {
-    const parsed = JSON.parse(accountData);
-    setFormData(prev => ({
-      ...prev,
-      schoolId: parsed.schoolId || '',
-      schoolName: parsed.schoolName || ''
-    }));
-  }
-}, []);
+  const loadExistingData = () => {
+    // Pre-populate from account creation data
+    const tempStudentData = localStorage.getItem('tempStudentData');
+    const accountData = localStorage.getItem('luxlibris_student_profile');
+    
+    if (tempStudentData) {
+      const parsed = JSON.parse(tempStudentData);
+      setFormData(prev => ({
+        ...prev,
+        firstName: parsed.firstName || '',
+        lastInitial: parsed.lastInitial || ''
+      }));
+    }
+    
+    if (accountData) {
+      const parsed = JSON.parse(accountData);
+      setFormData(prev => ({
+        ...prev,
+        schoolId: parsed.schoolId || '',
+        schoolName: parsed.schoolName || ''
+      }));
+    }
+  };
 
   const loadSchools = async () => {
     try {
@@ -138,6 +144,59 @@ export default function StudentOnboarding() {
     } catch (error) {
       console.error('Error loading schools:', error);
     }
+  };
+
+  const handleSchoolSelection = async (schoolId) => {
+    const selectedSchool = schools.find(s => s.id === schoolId);
+    if (selectedSchool) {
+      setFormData(prev => ({
+        ...prev,
+        schoolId: schoolId,
+        schoolName: selectedSchool.name,
+        schoolCity: selectedSchool.city,
+        schoolState: selectedSchool.state,
+        population: `${selectedSchool.city}, ${selectedSchool.state}` // Auto-fill population field
+      }));
+    }
+  };
+
+  const generateUsername = async (firstName, lastInitial, grade, schoolCode) => {
+    // Extract grade number (4, 5, 6, 7, 8)
+    const gradeNum = grade.charAt(0);
+    
+    // Create base username: EmmaK4
+    const baseUsername = `${firstName}${lastInitial}${gradeNum}`;
+    
+    // Check for existing usernames in this school to avoid duplicates
+    const usersCollection = collection(db, 'users');
+    const q = query(
+      usersCollection, 
+      where('schoolId', '==', formData.schoolId)
+    );
+    const querySnapshot = await getDocs(q);
+    
+    // Get all existing usernames for this school
+    const existingUsernames = [];
+    querySnapshot.forEach((doc) => {
+      const userData = doc.data();
+      if (userData.generatedUsername) {
+        // Extract just the username part before @ symbol
+        const username = userData.generatedUsername.split('@')[0];
+        existingUsernames.push(username);
+      }
+    });
+    
+    // Check if base username exists, if so add number
+    let finalUsername = baseUsername; // EmmaK4
+    let counter = 2; // Start with 2 for first duplicate (EmmaK42)
+    
+    while (existingUsernames.includes(finalUsername)) {
+      finalUsername = `${baseUsername}${counter}`; // EmmaK42, EmmaK43, etc.
+      counter++;
+    }
+    
+    // Return full email format: EmmaK4@hfcs2025.luxlibris.app
+    return `${finalUsername}@${schoolCode.toLowerCase()}.luxlibris.app`;
   };
 
   const handleNext = () => {
@@ -155,39 +214,85 @@ export default function StudentOnboarding() {
   };
 
   const completeOnboarding = async () => {
-  setIsLoading(true);
-  try {
-    // Create student document
-    const studentData = {
-      firstName: formData.firstName,
-      lastInitial: formData.lastInitial,
-      grade: parseInt(formData.grade.split('th')[0] || formData.grade.split('st')[0] || formData.grade.split('nd')[0] || formData.grade.split('rd')[0]),
-      schoolId: formData.schoolId,
-      currentYearGoal: formData.currentYearGoal,
-      selectedTheme: formData.selectedTheme,
-      booksSubmittedThisYear: 0,
-      lifetimeBooksSubmitted: 0,
-      saintUnlocks: [],
-      readingStreaks: { current: 0, longest: 0 },
-      createdAt: new Date(),
-      onboardingCompleted: true
-    };
+    setIsLoading(true);
+    try {
+      // Get school data for join code
+      const schoolDoc = await getDoc(doc(db, 'schools', formData.schoolId));
+      const schoolData = schoolDoc.data();
+      
+      // Generate username with duplicate checking
+      const username = await generateUsername(
+        formData.firstName, 
+        formData.lastInitial, 
+        formData.grade, 
+        schoolData.currentJoinCode
+      );
+      
+      setGeneratedUsername(username);
 
-    const docRef = await addDoc(collection(db, 'students'), studentData);
-    console.log('✅ Student saved with ID:', docRef.id);
-    
-    // Store student ID in localStorage for PWA
-    localStorage.setItem('studentId', docRef.id);
-    localStorage.setItem('studentData', JSON.stringify(studentData));
-    
-   // Redirect to splash screen, then dashboard
-router.push('/splash?type=student');
-  } catch (error) {
-    console.error('Error completing onboarding:', error);
-    alert('Error saving your information. Please try again.');
-  }
-  setIsLoading(false);
-};
+      // Create student document in 'users' collection (matching your Firebase structure)
+      const studentData = {
+        // Authentication fields
+        uid: `student_${Date.now()}`, // Temporary UID until Firebase Auth integration
+        firstName: formData.firstName,
+        lastInitial: formData.lastInitial,
+        
+        // School linking
+        schoolId: formData.schoolId,
+        
+        // Academic info
+        grade: parseInt(formData.grade.charAt(0)), // Store as number: 4, 5, 6, 7, 8
+        personalGoal: formData.currentYearGoal,
+        
+        // Customization
+        selectedTheme: formData.selectedTheme,
+        
+        // Progress tracking
+        thisYearBooks: 0,
+        lifetimeBooks: 0,
+        saintUnlocks: [],
+        
+        // Reading habits
+        readingStreaks: { 
+          current: 0, 
+          longest: 0,
+          lastReadingDate: null 
+        },
+        
+        // Historical data for retroactive credit
+        historicalBooksSubmitted: {},
+        
+        // Metadata
+        accountCreated: new Date(),
+        onboardingCompleted: true,
+        
+        // Generated username for display
+        generatedUsername: username
+      };
+
+      const docRef = await addDoc(collection(db, 'users'), studentData);
+      console.log('✅ Student saved to users collection with ID:', docRef.id);
+      
+      // Store student ID in localStorage for PWA
+      localStorage.setItem('studentId', docRef.id);
+      localStorage.setItem('studentData', JSON.stringify(studentData));
+      
+      // Show success popup first
+      setShowSuccessPopup(true);
+      
+    } catch (error) {
+      console.error('Error completing onboarding:', error);
+      alert('Error saving your information. Please try again.');
+      setIsLoading(false);
+    }
+  };
+
+  const handleSuccessPopupClose = () => {
+    setShowSuccessPopup(false);
+    setIsLoading(false);
+    // Redirect to splash screen, then dashboard
+    router.push('/splash?type=student');
+  };
 
   const selectedTheme = themes.find(theme => theme.assetPrefix === formData.selectedTheme);
 
@@ -195,8 +300,94 @@ router.push('/splash?type=student');
     <div style={{ 
       backgroundColor: selectedTheme.background, 
       minHeight: '100vh',
-      fontFamily: 'system-ui, -apple-system, sans-serif'
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      position: 'relative'
     }}>
+      {/* Success Popup */}
+      {showSuccessPopup && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px'
+        }}>
+          <div style={{
+            backgroundColor: selectedTheme.surface,
+            borderRadius: '16px',
+            padding: '32px',
+            maxWidth: '400px',
+            width: '100%',
+            textAlign: 'center',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
+          }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>🎉</div>
+            <h2 style={{
+              fontSize: '24px',
+              fontWeight: 'bold',
+              color: selectedTheme.textPrimary,
+              marginBottom: '16px'
+            }}>
+              Welcome to Lux Libris!
+            </h2>
+            <p style={{
+              fontSize: '16px',
+              color: `${selectedTheme.textPrimary}CC`,
+              marginBottom: '24px'
+            }}>
+              Your account has been created successfully!
+            </p>
+            <div style={{
+              backgroundColor: `${selectedTheme.primary}20`,
+              border: `1px solid ${selectedTheme.primary}50`,
+              borderRadius: '12px',
+              padding: '16px',
+              marginBottom: '24px'
+            }}>
+              <p style={{
+                fontSize: '14px',
+                fontWeight: '600',
+                color: selectedTheme.textPrimary,
+                marginBottom: '8px'
+              }}>
+                Your Lux Libris Username:
+              </p>
+              <p style={{
+                fontSize: '16px',
+                fontWeight: 'bold',
+                color: selectedTheme.primary,
+                fontFamily: 'monospace',
+                wordBreak: 'break-all'
+              }}>
+                {generatedUsername}
+              </p>
+            </div>
+            <button
+              onClick={handleSuccessPopupClose}
+              style={{
+                backgroundColor: selectedTheme.primary,
+                color: selectedTheme.textPrimary,
+                border: 'none',
+                padding: '12px 32px',
+                borderRadius: '12px',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+              }}
+            >
+              Start My Reading Journey!
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div style={{
         backgroundColor: selectedTheme.secondary,
@@ -241,9 +432,31 @@ router.push('/splash?type=student');
       }}>
         <div style={{ flex: 1 }}>
           {currentStep === 0 && <WelcomePage selectedTheme={selectedTheme} />}
-          {currentStep === 1 && <InfoPage formData={formData} setFormData={setFormData} selectedTheme={selectedTheme} grades={grades} schools={schools} />}
-          {currentStep === 2 && <GoalPage formData={formData} setFormData={setFormData} selectedTheme={selectedTheme} bookGoals={bookGoals} />}
-          {currentStep === 3 && <ThemePage formData={formData} setFormData={setFormData} themes={themes} />}
+          {currentStep === 1 && (
+            <InfoPage 
+              formData={formData} 
+              setFormData={setFormData} 
+              selectedTheme={selectedTheme} 
+              grades={grades} 
+              schools={schools}
+              onSchoolSelect={handleSchoolSelection}
+            />
+          )}
+          {currentStep === 2 && (
+            <GoalPage 
+              formData={formData} 
+              setFormData={setFormData} 
+              selectedTheme={selectedTheme} 
+              bookGoals={bookGoals} 
+            />
+          )}
+          {currentStep === 3 && (
+            <ThemePage 
+              formData={formData} 
+              setFormData={setFormData} 
+              themes={themes} 
+            />
+          )}
         </div>
 
         {/* Navigation Buttons */}
@@ -282,10 +495,10 @@ router.push('/splash?type=student');
               fontWeight: '600',
               cursor: 'pointer',
               boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              opacity: isLoading ? 0.7 : 1
+              opacity: (isLoading || (currentStep === 1 && (!formData.firstName || !formData.lastInitial || !formData.schoolId))) ? 0.7 : 1
             }}
           >
-            {isLoading ? 'Saving...' : currentStep < 3 ? 'Next' : 'Start Reading!'}
+            {isLoading ? 'Creating Account...' : currentStep < 3 ? 'Next' : 'Create Account!'}
           </button>
         </div>
       </div>
@@ -341,8 +554,8 @@ function WelcomePage({ selectedTheme }) {
   );
 }
 
-// Info Page Component
-function InfoPage({ formData, setFormData, selectedTheme, grades, schools }) {
+// Info Page Component  
+function InfoPage({ formData, setFormData, selectedTheme, grades, schools, onSchoolSelect }) {
   return (
     <div style={{ maxWidth: '400px', margin: '0 auto' }}>
       <h2 style={{
@@ -368,14 +581,7 @@ function InfoPage({ formData, setFormData, selectedTheme, grades, schools }) {
         </label>
         <select
           value={formData.schoolId}
-          onChange={(e) => {
-            const school = schools.find(s => s.id === e.target.value);
-            setFormData({
-              ...formData, 
-              schoolId: e.target.value,
-              schoolName: school?.name || ''
-            });
-          }}
+          onChange={(e) => onSchoolSelect(e.target.value)}
           style={{
             width: '100%',
             padding: '12px',
@@ -394,6 +600,36 @@ function InfoPage({ formData, setFormData, selectedTheme, grades, schools }) {
           ))}
         </select>
       </div>
+
+      {/* Population Field - GREYED OUT */}
+      {formData.schoolId && (
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{
+            fontSize: '16px',
+            fontWeight: '600',
+            color: `${selectedTheme.textPrimary}80`,
+            display: 'block',
+            marginBottom: '8px'
+          }}>
+            School Location
+          </label>
+          <input
+            type="text"
+            value={formData.population}
+            disabled={true}
+            style={{
+              width: '100%',
+              padding: '12px',
+              borderRadius: '12px',
+              border: 'none',
+              backgroundColor: `${selectedTheme.surface}50`,
+              color: `${selectedTheme.textPrimary}60`,
+              fontSize: '16px',
+              cursor: 'not-allowed'
+            }}
+          />
+        </div>
+      )}
 
       {/* First Name */}
       <div style={{ marginBottom: '20px' }}>
@@ -438,7 +674,7 @@ function InfoPage({ formData, setFormData, selectedTheme, grades, schools }) {
           type="text"
           value={formData.lastInitial}
           onChange={(e) => setFormData({...formData, lastInitial: e.target.value.toUpperCase().slice(0,1)})}
-          placeholder='Just one letter (like &quot;S&quot;)'
+          placeholder="Just one letter (like &quot;S&quot;)"
           maxLength={1}
           style={{
             width: '100%',
