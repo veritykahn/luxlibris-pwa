@@ -377,8 +377,8 @@ export default function StudentNominees() {
         {/* Main Card with Pokemon styling */}
         <div style={{
           position: 'relative',
-          width: '320px',
-          maxWidth: '90vw',
+          width: '100%',
+          maxWidth: '360px',
           marginBottom: '20px'
         }}>
           <BookCard 
@@ -425,10 +425,11 @@ export default function StudentNominees() {
               <button
                 key={book.id}
                 onClick={() => goToCard(index)}
+                className="quick-browse-item"
                 style={{
                   flexShrink: 0,
-                  width: '60px',
-                  height: '90px',
+                  width: '64px',
+                  height: '96px',
                   borderRadius: '8px',
                   border: index === currentCardIndex 
                     ? `3px solid ${currentTheme.primary}` 
@@ -441,7 +442,8 @@ export default function StudentNominees() {
                   justifyContent: 'center',
                   fontSize: '24px',
                   transition: 'all 0.2s ease',
-                  transform: index === currentCardIndex ? 'scale(1.1)' : 'scale(1)'
+                  transform: index === currentCardIndex ? 'scale(1.1)' : 'scale(1)',
+                  touchAction: 'manipulation'
                 }}
               >
                 {book.coverImageUrl ? (
@@ -496,6 +498,35 @@ export default function StudentNominees() {
         ::-webkit-scrollbar {
           display: none;
         }
+        
+        /* Mobile optimizations */
+        @media (max-width: 480px) {
+          .cover-stats-container {
+            flex-direction: column !important;
+            align-items: center !important;
+          }
+          
+          .book-cover {
+            width: 120px !important;
+            height: 180px !important;
+            margin-bottom: 12px;
+          }
+          
+          .quick-browse-item {
+            width: 56px !important;
+            height: 84px !important;
+          }
+        }
+        
+        @media (max-width: 350px) {
+          .action-buttons {
+            flex-direction: column !important;
+          }
+          
+          .action-buttons button {
+            width: 100% !important;
+          }
+        }
       `}</style>
     </div>
   );
@@ -503,56 +534,88 @@ export default function StudentNominees() {
 
 // FIXED Book Card Component - Real Pokemon Trading Card Style
 function BookCard({ book, theme, onAddBook, isAddingBook }) {
-  const [showDetails, setShowDetails] = useState(false);
-
-  // FIXED: Better grade display
-  const getGradeDisplay = (gradeLevels) => {
-    if (!gradeLevels || !Array.isArray(gradeLevels) || gradeLevels.length === 0) {
-      return 'All Grades';
-    }
-    
-    // Handle "Grades 4-5" format
-    const gradeText = gradeLevels[0];
-    if (gradeText && gradeText.includes('Grades ')) {
-      return gradeText.replace('Grades ', ''); // "4-5" instead of "Grades 4-5"
-    }
-    return gradeText || 'All Grades';
+  // FIXED: Handle string data from Firebase instead of arrays
+  const parseStringToArray = (str, separator = ',') => {
+    if (!str) return [];
+    if (Array.isArray(str)) return str;
+    return str.split(separator).map(item => item.trim());
   };
 
-  const getGradeBadgeColor = (gradeLevels) => {
-    if (!gradeLevels || !Array.isArray(gradeLevels)) return theme.primary;
-    const gradeText = gradeLevels[0] || '';
+  // FIXED: Parse authors from string format "Author1; Author2 (role)"
+  const formatAuthors = (authorsString) => {
+    if (!authorsString) return 'Unknown Author';
     
-    if (gradeText.includes('4') || gradeText.includes('5')) return '#4CAF50'; // Green for younger
-    if (gradeText.includes('6') || gradeText.includes('7')) return '#FF9800'; // Orange for middle
-    if (gradeText.includes('8')) return '#9C27B0'; // Purple for older
-    return theme.primary;
-  };
-
-  // FIXED: Better genre formatting
-  const getGenreDisplay = (genres) => {
-    if (!genres || !Array.isArray(genres) || genres.length === 0) return '';
-    
-    // Take first genre only and shorten if needed
-    const primaryGenre = genres[0];
-    if (primaryGenre.length > 12) {
-      return primaryGenre.substring(0, 12) + '...';
-    }
-    return primaryGenre;
-  };
-
-  // FIXED: Better author formatting
-  const formatAuthors = (authors) => {
-    if (!authors || !Array.isArray(authors) || authors.length === 0) {
-      return 'Unknown Author';
+    // Handle array format (legacy)
+    if (Array.isArray(authorsString)) {
+      if (authorsString.length === 0) return 'Unknown Author';
+      if (authorsString.length === 1) return authorsString[0];
+      if (authorsString.length === 2) return `${authorsString[0]} & ${authorsString[1]}`;
+      return `${authorsString[0]} & ${authorsString.length - 1} more`;
     }
     
+    // Handle string format from Firebase
+    const authors = authorsString.split(';').map(author => {
+      // Remove illustrator/role info in parentheses for display
+      return author.replace(/\s*\([^)]*\)\s*$/, '').trim();
+    }).filter(author => author.length > 0);
+    
+    if (authors.length === 0) return 'Unknown Author';
     if (authors.length === 1) return authors[0];
     if (authors.length === 2) return `${authors[0]} & ${authors[1]}`;
     return `${authors[0]} & ${authors.length - 1} more`;
   };
 
-  // FIXED: Show both pages AND minutes for audiobooks
+  // FIXED: Parse grade levels from string format "Grades 4–7"
+  const getGradeDisplay = (gradeLevelsString) => {
+    if (!gradeLevelsString) return 'All Grades';
+    
+    // Handle array format (legacy)
+    if (Array.isArray(gradeLevelsString)) {
+      if (gradeLevelsString.length === 0) return 'All Grades';
+      const gradeText = gradeLevelsString[0];
+      return gradeText ? gradeText.replace('Grades ', '') : 'All Grades';
+    }
+    
+    // Handle string format from Firebase "Grades 4–7"
+    return gradeLevelsString.replace('Grades ', '');
+  };
+
+  // FIXED: Parse genres from string format "Genre1, Genre2"
+  const getGenreDisplay = (genresString) => {
+    if (!genresString) return '';
+    
+    // Handle array format (legacy)
+    if (Array.isArray(genresString)) {
+      if (genresString.length === 0) return '';
+      const primaryGenre = genresString[0];
+      return primaryGenre.length > 15 ? primaryGenre.substring(0, 15) + '...' : primaryGenre;
+    }
+    
+    // Handle string format from Firebase "Mythology, Adventure"
+    const genres = genresString.split(',').map(g => g.trim());
+    const primaryGenre = genres[0];
+    return primaryGenre.length > 15 ? primaryGenre.substring(0, 15) + '...' : primaryGenre;
+  };
+
+  const getAllGenres = (genresString) => {
+    if (!genresString) return 'Various';
+    
+    if (Array.isArray(genresString)) {
+      return genresString.join(', ');
+    }
+    
+    return genresString; // Already a string from Firebase
+  };
+
+  const getGradeBadgeColor = (gradeLevelsString) => {
+    const gradeText = gradeLevelsString || '';
+    
+    if (gradeText.includes('4') || gradeText.includes('5')) return '#4CAF50'; // Green for younger
+    if (gradeText.includes('6') || gradeText.includes('7')) return '#FF9800'; // Orange for middle
+    if (gradeText.includes('8') || gradeText.includes('9')) return '#9C27B0'; // Purple for older
+    return theme.primary;
+  };
+
   const getLengthDisplay = (book) => {
     const pages = book.pages || book.pageCount || 0;
     const minutes = book.totalMinutes || 0;
@@ -568,29 +631,65 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
     }
   };
 
+  const getRarityColor = (book) => {
+    // Determine "rarity" based on various factors for Pokemon-style feel
+    const pages = book.pages || 0;
+    const hasAudio = book.isAudiobook;
+    const hasReview = book.luxLibrisReview;
+    
+    if (hasAudio && hasReview && pages > 200) return '#FFD700'; // Gold - "Legendary"
+    if (hasAudio || (hasReview && pages > 150)) return '#C0C0C0'; // Silver - "Rare"
+    return '#CD7F32'; // Bronze - "Common"
+  };
+
+  const getRarityName = (book) => {
+    const color = getRarityColor(book);
+    if (color === '#FFD700') return 'LEGENDARY';
+    if (color === '#C0C0C0') return 'RARE';
+    return 'COMMON';
+  };
+
   return (
     <div style={{
       backgroundColor: theme.surface,
       borderRadius: '20px',
-      boxShadow: '0 12px 40px rgba(0,0,0,0.15)',
+      boxShadow: '0 15px 35px rgba(0,0,0,0.2)',
       overflow: 'hidden',
-      border: `3px solid ${theme.primary}`,
+      border: `4px solid ${getRarityColor(book)}`,
       position: 'relative',
       transform: 'translateZ(0)',
-      transition: 'all 0.3s ease'
+      transition: 'all 0.3s ease',
+      background: `linear-gradient(145deg, ${theme.surface}, ${theme.surface}F0)`
     }}>
-      {/* Pokemon Card Header - Simplified */}
+      {/* Pokemon Card Header */}
       <div style={{
         background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary})`,
-        padding: '16px',
+        padding: '16px 20px 12px',
         color: theme.textPrimary,
-        position: 'relative'
+        position: 'relative',
+        borderBottom: `2px solid ${getRarityColor(book)}`
       }}>
-        {/* Grade Badge - Top Right */}
+        {/* Rarity Badge - Top Right */}
         <div style={{
           position: 'absolute',
-          top: '12px',
+          top: '8px',
           right: '12px',
+          backgroundColor: getRarityColor(book),
+          color: 'white',
+          fontSize: '8px',
+          fontWeight: 'bold',
+          padding: '3px 6px',
+          borderRadius: '8px',
+          letterSpacing: '0.5px'
+        }}>
+          {getRarityName(book)}
+        </div>
+        
+        {/* Grade Level - Top Left */}
+        <div style={{
+          position: 'absolute',
+          top: '8px',
+          left: '16px',
           backgroundColor: getGradeBadgeColor(book.gradeLevels),
           color: 'white',
           fontSize: '10px',
@@ -601,279 +700,279 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
           {getGradeDisplay(book.gradeLevels)}
         </div>
         
-        <h2 style={{
-          fontSize: '20px',
-          fontWeight: 'bold',
-          margin: '0 0 6px 0',
-          lineHeight: '1.2',
-          fontFamily: 'Didot, serif',
-          paddingRight: '60px' // Space for grade badge
-        }}>
-          {book.title}
-        </h2>
-        
-        <p style={{
-          fontSize: '13px',
-          margin: '0 0 8px 0',
-          opacity: 0.9
-        }}>
-          by {formatAuthors(book.authors)}
-        </p>
-
-        {/* Genre - Small and subtle */}
-        {getGenreDisplay(book.genres) && (
-          <div style={{
-            display: 'inline-block',
-            backgroundColor: 'rgba(255,255,255,0.2)',
-            fontSize: '9px',
-            padding: '2px 6px',
-            borderRadius: '8px',
-            fontWeight: 'bold'
+        <div style={{ marginTop: '20px' }}>
+          <h2 style={{
+            fontSize: 'clamp(18px, 5vw, 22px)',
+            fontWeight: 'bold',
+            margin: '0 0 8px 0',
+            lineHeight: '1.2',
+            fontFamily: 'Didot, serif',
+            textShadow: '1px 1px 2px rgba(0,0,0,0.1)'
           }}>
-            {getGenreDisplay(book.genres)}
+            {book.title}
+          </h2>
+          
+          <p style={{
+            fontSize: 'clamp(12px, 3.5vw, 14px)',
+            margin: '0 0 10px 0',
+            opacity: 0.9,
+            fontWeight: '500'
+          }}>
+            by {formatAuthors(book.authors)}
+          </p>
+
+          {/* Stats Bar - Pokemon Style */}
+          <div style={{
+            display: 'flex',
+            gap: '12px',
+            alignItems: 'center'
+          }}>
+            <div style={{
+              backgroundColor: 'rgba(255,255,255,0.25)',
+              fontSize: '10px',
+              padding: '3px 8px',
+              borderRadius: '10px',
+              fontWeight: 'bold'
+            }}>
+              {getGenreDisplay(book.genres)}
+            </div>
+            <div style={{
+              backgroundColor: 'rgba(255,255,255,0.25)',
+              fontSize: '10px',
+              padding: '3px 8px',
+              borderRadius: '10px',
+              fontWeight: 'bold'
+            }}>
+              {book.displayCategory?.replace('📖 ', '') || book.internalCategory}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      <div style={{
+        padding: '20px',
+        background: `linear-gradient(180deg, ${theme.surface}, ${theme.surface}F5)`
+      }}>
+        {/* Cover and Stats Section */}
+        <div className="cover-stats-container" style={{
+          display: 'flex',
+          gap: 'clamp(12px, 4vw, 16px)',
+          marginBottom: '16px'
+        }}>
+          {/* Enhanced Cover Image */}
+          <div className="book-cover" style={{
+            width: '100px',
+            height: '150px',
+            flexShrink: 0,
+            borderRadius: '12px',
+            overflow: 'hidden',
+            backgroundColor: `${theme.primary}20`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 8px 25px rgba(0,0,0,0.2)',
+            border: `3px solid ${getRarityColor(book)}40`,
+            position: 'relative'
+          }}>
+            {book.coverImageUrl ? (
+              <>
+                <img 
+                  src={book.coverImageUrl} 
+                  alt={book.title}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover'
+                  }}
+                />
+                {/* Holographic effect overlay */}
+                <div style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  background: `linear-gradient(45deg, transparent 30%, ${getRarityColor(book)}20 50%, transparent 70%)`,
+                  pointerEvents: 'none'
+                }} />
+              </>
+            ) : (
+              <span style={{ fontSize: '40px' }}>📚</span>
+            )}
+          </div>
+
+          {/* Pokemon-Style Stats */}
+          <div style={{ flex: 1 }}>
+            <div style={{
+              backgroundColor: `${theme.primary}15`,
+              borderRadius: '12px',
+              padding: '12px',
+              border: `2px solid ${theme.primary}30`
+            }}>
+              <div style={{ marginBottom: '10px' }}>
+                <div style={{
+                  fontSize: '11px',
+                  color: theme.textSecondary,
+                  fontWeight: '700',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}>
+                  📊 Book Stats
+                </div>
+              </div>
+              
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '8px',
+                fontSize: '12px'
+              }}>
+                <div>
+                  <span style={{ color: theme.textSecondary, fontWeight: '600' }}>Length:</span><br/>
+                  <span style={{ color: theme.textPrimary, fontWeight: 'bold' }}>
+                    {getLengthDisplay(book)}
+                  </span>
+                </div>
+                <div>
+                  <span style={{ color: theme.textSecondary, fontWeight: '600' }}>Published:</span><br/>
+                  <span style={{ color: theme.textPrimary, fontWeight: 'bold' }}>
+                    {book.publicationDate ? new Date(book.publicationDate).getFullYear() : 'N/A'}
+                  </span>
+                </div>
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <span style={{ color: theme.textSecondary, fontWeight: '600' }}>Genres:</span><br/>
+                  <span style={{ color: theme.textPrimary, fontWeight: 'bold', fontSize: '11px' }}>
+                    {getAllGenres(book.genres)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Review Section - Always Visible */}
+        {book.luxLibrisReview && (
+          <div style={{
+            backgroundColor: `${theme.accent}25`,
+            padding: '14px',
+            borderRadius: '12px',
+            marginBottom: '16px',
+            border: `2px solid ${theme.accent}40`,
+            position: 'relative'
+          }}>
+            <div style={{
+              fontSize: '11px',
+              fontWeight: '700',
+              color: theme.textSecondary,
+              marginBottom: '6px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}>
+              ⭐ Lux Libris Review
+            </div>
+            <p style={{
+              fontSize: '13px',
+              lineHeight: '1.4',
+              color: theme.textPrimary,
+              margin: 0,
+              fontStyle: 'italic',
+              fontWeight: '500'
+            }}>
+              &quot;{book.luxLibrisReview}&quot;
+            </p>
+          </div>
+        )}
+
+        {/* Platform Info */}
+        {book.platforms && (
+          <div style={{
+            backgroundColor: `${theme.secondary}20`,
+            padding: '10px 12px',
+            borderRadius: '10px',
+            marginBottom: '16px',
+            fontSize: '11px'
+          }}>
+            <span style={{ color: theme.textSecondary, fontWeight: '600' }}>Available on: </span>
+            <span style={{ color: theme.textPrimary, fontWeight: 'bold' }}>
+              {Array.isArray(book.platforms) ? book.platforms.join(', ') : book.platforms}
+            </span>
           </div>
         )}
       </div>
 
-      {/* Book Cover and Info */}
-      <div style={{
-        padding: '20px',
-        display: 'flex',
-        gap: '16px'
-      }}>
-        {/* Cover Image */}
-        <div style={{
-          width: '90px',
-          height: '135px',
-          flexShrink: 0,
-          borderRadius: '10px',
-          overflow: 'hidden',
-          backgroundColor: `${theme.primary}20`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: '0 6px 20px rgba(0,0,0,0.15)',
-          border: `2px solid ${theme.primary}40`
-        }}>
-          {book.coverImageUrl ? (
-            <img 
-              src={book.coverImageUrl} 
-              alt={book.title}
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover'
-              }}
-            />
-          ) : (
-            <span style={{ fontSize: '36px' }}>📚</span>
-          )}
-        </div>
-
-        {/* Book Details */}
-        <div style={{ flex: 1 }}>
-          <div style={{ marginBottom: '14px' }}>
-            <div style={{
-              fontSize: '12px',
-              color: theme.textSecondary,
-              marginBottom: '4px',
-              fontWeight: '600'
-            }}>
-              Length
-            </div>
-            <div style={{
-              fontSize: '14px',
-              fontWeight: 'bold',
-              color: theme.textPrimary
-            }}>
-              {getLengthDisplay(book)}
-            </div>
-          </div>
-
-          <div style={{ marginBottom: '14px' }}>
-            <div style={{
-              fontSize: '12px',
-              color: theme.textSecondary,
-              marginBottom: '4px',
-              fontWeight: '600'
-            }}>
-              Category
-            </div>
-            <div style={{
-              fontSize: '14px',
-              fontWeight: 'bold',
-              color: theme.textPrimary
-            }}>
-              {book.displayCategory || book.internalCategory || 'Fiction'}
-            </div>
-          </div>
-
-          {/* Quick Review */}
-          {book.luxLibrisReview && (
-            <div style={{
-              backgroundColor: `${theme.accent}30`,
-              padding: '10px',
-              borderRadius: '10px',
-              fontSize: '12px',
-              lineHeight: '1.4',
-              color: theme.textPrimary,
-              fontStyle: 'italic'
-            }}>
-              &quot;{book.luxLibrisReview.length > 85 
-                ? book.luxLibrisReview.substring(0, 85) + '...'
-                : book.luxLibrisReview
-              }&quot;
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Action Buttons - FIXED visibility */}
+      {/* Action Buttons - Pokemon Card Style */}
       <div style={{
         padding: '16px 20px 20px',
-        display: 'flex',
-        gap: '10px'
+        background: `linear-gradient(180deg, ${theme.surface}F5, ${theme.surface})`
       }}>
-        <button
-          onClick={() => onAddBook(book, 'book')}
-          disabled={isAddingBook}
-          style={{
-            flex: 1,
-            backgroundColor: theme.primary,
-            color: theme.textPrimary,
-            border: 'none',
-            padding: '14px 16px',
-            borderRadius: '12px',
-            fontSize: '14px',
-            fontWeight: '700',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '6px',
-            opacity: isAddingBook ? 0.7 : 1,
-            transition: 'all 0.2s ease',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-          }}
-        >
-          📖 Add Book
-        </button>
-        
-        {book.isAudiobook && (
+        <div className="action-buttons" style={{
+          display: 'flex',
+          gap: '10px'
+        }}>
           <button
-            onClick={() => onAddBook(book, 'audiobook')}
+            onClick={() => onAddBook(book, 'book')}
             disabled={isAddingBook}
             style={{
               flex: 1,
-              backgroundColor: theme.textPrimary, // FIXED: Use textPrimary for better contrast
-              color: theme.surface, // FIXED: Use surface (white) for text
-              border: 'none',
-              padding: '14px 16px',
-              borderRadius: '12px',
-              fontSize: '14px',
+              background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary})`,
+              color: theme.textPrimary,
+              border: `2px solid ${getRarityColor(book)}`,
+              padding: '18px 20px',
+              borderRadius: '14px',
+              fontSize: '15px',
               fontWeight: '700',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '6px',
+              gap: '8px',
               opacity: isAddingBook ? 0.7 : 1,
               transition: 'all 0.2s ease',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+              boxShadow: '0 6px 15px rgba(0,0,0,0.2)',
+              textShadow: '1px 1px 2px rgba(0,0,0,0.1)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              minHeight: '56px',
+              touchAction: 'manipulation'
             }}
           >
-            🎧 Add Audio
+            📖 Add Book
           </button>
-        )}
-      </div>
-
-      {/* Details Toggle */}
-      <button
-        onClick={() => setShowDetails(!showDetails)}
-        style={{
-          width: '100%',
-          backgroundColor: `${theme.primary}20`,
-          border: 'none',
-          padding: '10px',
-          fontSize: '12px',
-          fontWeight: '600',
-          color: theme.textPrimary,
-          cursor: 'pointer',
-          borderTop: `1px solid ${theme.primary}30`
-        }}
-      >
-        {showDetails ? '▲ Hide Details' : '▼ Show More Details'}
-      </button>
-
-      {/* Expanded Details */}
-      {showDetails && (
-        <div style={{
-          padding: '16px 20px',
-          backgroundColor: `${theme.primary}10`,
-          borderTop: `1px solid ${theme.primary}30`
-        }}>
-          {book.luxLibrisReview && (
-            <div style={{ marginBottom: '12px' }}>
-              <div style={{
-                fontSize: '12px',
-                fontWeight: 'bold',
-                color: theme.textSecondary,
-                marginBottom: '4px'
-              }}>
-                Lux Libris Review:
-              </div>
-              <p style={{
-                fontSize: '12px',
-                lineHeight: '1.4',
-                color: theme.textPrimary,
-                margin: 0,
-                fontStyle: 'italic'
-              }}>
-                &quot;{book.luxLibrisReview}&quot;
-              </p>
-            </div>
-          )}
           
-          {book.platforms && (
-            <div style={{ marginBottom: '8px' }}>
-              <div style={{
-                fontSize: '12px',
-                fontWeight: 'bold',
-                color: theme.textSecondary,
-                marginBottom: '4px'
-              }}>
-                Available on:
-              </div>
-              <div style={{
-                fontSize: '11px',
-                color: theme.textPrimary
-              }}>
-                {Array.isArray(book.platforms) ? book.platforms.join(', ') : book.platforms}
-              </div>
-            </div>
+          {book.isAudiobook && (
+            <button
+              onClick={() => onAddBook(book, 'audiobook')}
+              disabled={isAddingBook}
+              style={{
+                flex: 1,
+                background: `linear-gradient(135deg, ${theme.textPrimary}, #444)`,
+                color: theme.surface,
+                border: `2px solid ${getRarityColor(book)}`,
+                padding: '18px 20px',
+                borderRadius: '14px',
+                fontSize: '15px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                opacity: isAddingBook ? 0.7 : 1,
+                transition: 'all 0.2s ease',
+                boxShadow: '0 6px 15px rgba(0,0,0,0.2)',
+                textShadow: '1px 1px 2px rgba(0,0,0,0.3)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                minHeight: '56px',
+                touchAction: 'manipulation'
+              }}
+            >
+              🎧 Add Audio
+            </button>
           )}
-
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '8px',
-            fontSize: '11px'
-          }}>
-            <div>
-              <span style={{ color: theme.textSecondary }}>Publication:</span><br/>
-              <span style={{ color: theme.textPrimary }}>
-                {book.publicationDate || 'Unknown'}
-              </span>
-            </div>
-            <div>
-              <span style={{ color: theme.textSecondary }}>All Genres:</span><br/>
-              <span style={{ color: theme.textPrimary }}>
-                {Array.isArray(book.genres) ? book.genres.join(', ') : book.genres}
-              </span>
-            </div>
-          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
