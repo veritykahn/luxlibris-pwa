@@ -1,8 +1,8 @@
 // pages/student-onboarding.js
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { db } from '../lib/firebase';
-import { collection, addDoc, getDocs, query, where, doc, getDoc } from 'firebase/firestore';
+import { db, authHelpers } from '../lib/firebase';
+import { collection, addDoc, getDocs, query, where, doc, getDoc, setDoc } from 'firebase/firestore';
 
 export default function StudentOnboarding() {
   const router = useRouter();
@@ -174,22 +174,16 @@ export default function StudentOnboarding() {
     // Create base username: EmmaK4
     const baseUsername = `${firstName}${lastInitial}${gradeNum}`;
     
-    // Check for existing usernames in this school to avoid duplicates
-    const usersCollection = collection(db, 'users');
-    const q = query(
-      usersCollection, 
-      where('schoolId', '==', formData.schoolId)
-    );
-    const querySnapshot = await getDocs(q);
+    // Check for existing usernames in this school's students subcollection
+    const studentsCollection = collection(db, 'schools', formData.schoolId, 'students');
+    const querySnapshot = await getDocs(studentsCollection);
     
     // Get all existing usernames for this school
     const existingUsernames = [];
     querySnapshot.forEach((doc) => {
-      const userData = doc.data();
-      if (userData.generatedUsername) {
-        // Extract just the username part before @ symbol
-        const username = userData.generatedUsername.split('@')[0];
-        existingUsernames.push(username);
+      const studentData = doc.data();
+      if (studentData.displayUsername) {
+        existingUsernames.push(studentData.displayUsername);
       }
     });
     
@@ -243,15 +237,23 @@ export default function StudentOnboarding() {
       const displayUsername = fullUsername.split('@')[0];
       setGeneratedUsername(displayUsername);
 
-      // Create student document in 'users' collection (matching your Firebase structure)
+      // 🔥 CREATE ACTUAL FIREBASE AUTH ACCOUNT
+      const authResult = await authHelpers.createStudentAccount(
+        formData.firstName,
+        formData.lastInitial,
+        schoolData.currentJoinCode
+      );
+
+      // Create student document in school's students subcollection (proper structure!)
       const studentData = {
         // Authentication fields
-        uid: `student_${Date.now()}`, // Temporary UID until Firebase Auth integration
+        uid: authResult.uid, // Real Firebase Auth UID
         firstName: formData.firstName,
         lastInitial: formData.lastInitial,
         
-        // School linking
+        // School linking - this student belongs to this school
         schoolId: formData.schoolId,
+        schoolName: formData.schoolName,
         
         // Academic info
         grade: parseInt(formData.grade.charAt(0)), // Store as number: 4, 5, 6, 7, 8
@@ -278,17 +280,37 @@ export default function StudentOnboarding() {
         // Metadata
         accountCreated: new Date(),
         onboardingCompleted: true, // Fix: was missing this being set to true
+        accountType: 'student',
         
         // Generated username for display and sign-in
         generatedUsername: fullUsername, // Store full email format
         displayUsername: displayUsername // Store just the part before @ for easy login
       };
 
-      const docRef = await addDoc(collection(db, 'users'), studentData);
-      console.log('✅ Student saved to users collection with ID:', docRef.id);
+      // 🎯 SAVE TO CORRECT LOCATION: schools/{schoolId}/students/{studentId}
+      const studentRef = doc(collection(db, 'schools', formData.schoolId, 'students'));
+      await setDoc(studentRef, studentData);
+      
+      console.log('✅ Student saved to school subcollection with ID:', studentRef.id);
+      
+      // 🔥 ALSO CREATE GLOBAL USER PROFILE (for AuthContext to find)
+      const globalUserProfile = {
+        uid: authResult.uid,
+        firstName: formData.firstName,
+        lastInitial: formData.lastInitial,
+        schoolId: formData.schoolId,
+        schoolName: formData.schoolName,
+        displayUsername: displayUsername,
+        accountType: 'student',
+        onboardingCompleted: true,
+        accountCreated: new Date()
+      };
+      
+      await addDoc(collection(db, 'users'), globalUserProfile);
+      console.log('✅ Global user profile created for AuthContext');
       
       // Store student ID in localStorage for PWA
-      localStorage.setItem('studentId', docRef.id);
+      localStorage.setItem('studentId', studentRef.id);
       localStorage.setItem('studentData', JSON.stringify(studentData));
       
       // Clean up temp data
@@ -300,7 +322,7 @@ export default function StudentOnboarding() {
       
     } catch (error) {
       console.error('Error completing onboarding:', error);
-      alert('Error saving your information. Please try again.');
+      alert(`Error creating your account: ${error.message}`);
       setIsLoading(false);
     }
   };
@@ -308,8 +330,8 @@ export default function StudentOnboarding() {
   const handleSuccessPopupClose = () => {
     setShowSuccessPopup(false);
     setIsLoading(false);
-    // Redirect to splash screen, then dashboard
-    router.push('/splash?type=student');
+    // User is already signed in from account creation - redirect to dashboard
+    router.push('/student-dashboard');
   };
 
   const selectedTheme = themes.find(theme => theme.assetPrefix === formData.selectedTheme);
