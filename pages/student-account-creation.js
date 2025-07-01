@@ -1,3 +1,4 @@
+// pages/student-account-creation.js - FIXED for Diocese Structure
 import { useState } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
@@ -19,46 +20,57 @@ export default function StudentAccountCreation() {
 
     try {
       if (step === 1) {
-        // Verify school join code
+        // Verify school code using new diocese structure
         if (!studentData.schoolJoinCode.trim()) {
           setError('Please enter your school join code')
           setLoading(false)
           return
         }
-        const verification = await dbHelpers.verifySchoolJoinCode(studentData.schoolJoinCode.toUpperCase())
-        if (!verification.valid) {
-          setError(verification.error)
+
+        console.log('🔍 Verifying school code:', studentData.schoolJoinCode.toUpperCase())
+        
+        // Use the new helper function that searches diocese structure
+        const school = await dbHelpers.findSchoolByStudentAccessCode(studentData.schoolJoinCode.toUpperCase())
+        
+        if (!school) {
+          setError('School not found with that code. Please check the code and try again.')
           setLoading(false)
           return
         }
-        setSchoolData(verification.school)
+
+        console.log('✅ Found school:', school.name)
+        setSchoolData(school)
         setStep(2)
       } else if (step === 2) {
-        // Just store school data for onboarding to use - NO ACCOUNT CREATION HERE
+        // Store school data for onboarding to use
         try {
-          console.log('💾 Saving school data for onboarding...');
-          console.log('🏫 School ID:', schoolData.id);
-          console.log('🏫 School Name:', schoolData.name);
-          console.log('🔑 Join Code:', studentData.schoolJoinCode);
+          console.log('💾 Saving school data for onboarding...')
+          console.log('🏫 School ID:', schoolData.id)
+          console.log('🏫 Diocese ID:', schoolData.dioceseId)
+          console.log('🏫 School Name:', schoolData.name)
+          console.log('🔑 Student Access Code:', studentData.schoolJoinCode)
           
-          // Store school data for onboarding to use
+          // Store school data for onboarding to use (UPDATED for diocese structure)
           if (typeof window !== 'undefined') {
             const tempData = {
-              schoolId: schoolData.id,  // This should be the Firebase document ID like "uyEwDKbGELvBROhjrMIn"
+              schoolId: schoolData.id,  // School document ID
+              dioceseId: schoolData.dioceseId,  // Diocese document ID  
               schoolName: schoolData.name,
               schoolCity: schoolData.city,
               schoolState: schoolData.state,
-              schoolJoinCode: studentData.schoolJoinCode.toUpperCase()
-            };
+              schoolJoinCode: studentData.schoolJoinCode.toUpperCase(),
+              studentAccessCode: schoolData.studentAccessCode,
+              parentQuizCode: schoolData.parentQuizCode
+            }
             
-            localStorage.setItem('tempSchoolData', JSON.stringify(tempData));
-            localStorage.setItem('luxlibris_account_flow', 'student');
+            localStorage.setItem('tempSchoolData', JSON.stringify(tempData))
+            localStorage.setItem('luxlibris_account_flow', 'student')
             
-            console.log('✅ Temp school data saved:', tempData);
+            console.log('✅ Temp school data saved:', tempData)
           }
 
           // Redirect to legal acceptance first, then onboarding will create the actual account
-          router.push('/legal?flow=student-onboarding');
+          router.push('/legal?flow=student-onboarding')
           
         } catch (error) {
           console.error('Data storage error:', error)
@@ -215,7 +227,7 @@ export default function StudentAccountCreation() {
                     color: '#374151',
                     marginBottom: '0.5rem'
                   }}>
-                    School Join Code *
+                    School Access Code *
                   </label>
                   <input
                     type="text"
@@ -224,7 +236,7 @@ export default function StudentAccountCreation() {
                       ...prev, 
                       schoolJoinCode: e.target.value.toUpperCase() 
                     }))}
-                    placeholder="HFCS2025"
+                    placeholder="DEMO-STUDENT-2025"
                     style={{
                       width: '100%',
                       padding: '0.875rem',
@@ -247,7 +259,7 @@ export default function StudentAccountCreation() {
                     margin: '0.5rem 0 0 0',
                     textAlign: 'center'
                   }}>
-                    Ask your teacher if you don&apos;t have this code
+                    This code was generated when your school was set up
                   </p>
                 </div>
 
@@ -305,8 +317,11 @@ export default function StudentAccountCreation() {
                     <p style={{ margin: '0 0 0.5rem 0' }}>
                       <strong>📍 Location:</strong> {schoolData.city}, {schoolData.state}
                     </p>
+                    <p style={{ margin: '0 0 0.5rem 0' }}>
+                      <strong>🔑 Access Code:</strong> {studentData.schoolJoinCode}
+                    </p>
                     <p style={{ margin: 0 }}>
-                      <strong>🔑 Join Code:</strong> {studentData.schoolJoinCode}
+                      <strong>⛪ Diocese:</strong> Connected to diocese system
                     </p>
                   </div>
                 </div>
@@ -341,7 +356,7 @@ export default function StudentAccountCreation() {
                     margin: 0,
                     lineHeight: '1.4'
                   }}>
-                    <strong>👨‍👩‍👧‍👦 For parents:</strong> After setup, your child will get a special link to share with you so you can track their reading progress!
+                    <strong>🔑 Remember:</strong> Your password will be this school code: <strong>{studentData.schoolJoinCode}</strong>
                   </p>
                 </div>
               </div>
@@ -443,7 +458,7 @@ export default function StudentAccountCreation() {
               margin: 0,
               lineHeight: '1.4'
             }}>
-              Need help? Ask your teacher or librarian for your school&apos;s join code.
+              Need help? Ask your teacher or librarian for your school&apos;s access code.
             </p>
           </div>
         </div>

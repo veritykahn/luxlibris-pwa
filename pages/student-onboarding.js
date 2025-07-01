@@ -1,32 +1,33 @@
-// pages/student-onboarding.js
+// pages/student-onboarding.js - FIXED for Diocese Structure
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { db, authHelpers } from '../lib/firebase';
+import { db, authHelpers, dbHelpers } from '../lib/firebase';
 import { collection, addDoc, getDocs, query, where, doc, getDoc, setDoc } from 'firebase/firestore';
 
 export default function StudentOnboarding() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [schools, setSchools] = useState([]);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [generatedUsername, setGeneratedUsername] = useState('');
+  const [error, setError] = useState('');
   
   // Student data
   const [formData, setFormData] = useState({
     firstName: '',
     lastInitial: '',
-    grade: '4th Grade',
+    grade: 4,
     schoolId: '',
+    dioceseId: '',
     schoolName: '',
     schoolCity: '',
     schoolState: '',
-    population: '', // This will be auto-filled and greyed out
+    studentAccessCode: '',
     currentYearGoal: 10,
     selectedTheme: 'classic_lux'
   });
 
-  // Theme definitions matching your Flutter code
+  // Theme definitions
   const themes = [
     {
       name: 'Lux Libris Classic',
@@ -100,104 +101,73 @@ export default function StudentOnboarding() {
     }
   ];
 
-  const grades = ['4th Grade', '5th Grade', '6th Grade', '7th Grade', '8th Grade'];
+  const grades = [4, 5, 6, 7, 8];
   const bookGoals = Array.from({length: 20}, (_, i) => i + 1);
 
   useEffect(() => {
-    loadSchools();
-    loadExistingData();
+    loadSchoolDataFromStorage();
   }, []);
 
-  const loadExistingData = () => {
-    // Pre-populate from account creation flow
+  const loadSchoolDataFromStorage = () => {
+    // Load school data from student account creation flow
     const tempSchoolData = localStorage.getItem('tempSchoolData');
     
     if (tempSchoolData) {
       const parsed = JSON.parse(tempSchoolData);
+      console.log('📚 Loading school data from account creation:', parsed);
+      
       setFormData(prev => ({
         ...prev,
         schoolId: parsed.schoolId || '',
+        dioceseId: parsed.dioceseId || '',
         schoolName: parsed.schoolName || '',
         schoolCity: parsed.schoolCity || '',
         schoolState: parsed.schoolState || '',
-        population: `${parsed.schoolCity}, ${parsed.schoolState}` // Auto-fill population field
+        studentAccessCode: parsed.schoolJoinCode || ''
       }));
-      
-      // Add this school to the schools list if it's not already there
-      setSchools(prev => {
-        const exists = prev.find(school => school.id === parsed.schoolId);
-        if (!exists && parsed.schoolId) {
-          return [...prev, {
-            id: parsed.schoolId,
-            name: parsed.schoolName,
-            city: parsed.schoolCity,
-            state: parsed.schoolState
-          }];
-        }
-        return prev;
-      });
+    } else {
+      console.warn('⚠️ No temp school data found - student may have accessed onboarding directly');
+      setError('Please start from the account creation page');
     }
   };
 
-  const loadSchools = async () => {
+  const generateUsername = async (firstName, lastInitial, grade, schoolData) => {
     try {
-      const schoolsCollection = collection(db, 'schools');
-      const schoolSnapshot = await getDocs(schoolsCollection);
-      const schoolList = schoolSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setSchools(schoolList);
-    } catch (error) {
-      console.error('Error loading schools:', error);
-    }
-  };
-
-  const handleSchoolSelection = async (schoolId) => {
-    const selectedSchool = schools.find(s => s.id === schoolId);
-    if (selectedSchool) {
-      setFormData(prev => ({
-        ...prev,
-        schoolId: schoolId,
-        schoolName: selectedSchool.name,
-        schoolCity: selectedSchool.city,
-        schoolState: selectedSchool.state,
-        population: `${selectedSchool.city}, ${selectedSchool.state}` // Auto-fill population field
-      }));
-    }
-  };
-
-  const generateUsername = async (firstName, lastInitial, grade, schoolCode) => {
-    // Extract grade number (4, 5, 6, 7, 8)
-    const gradeNum = grade.charAt(0);
-    
-    // Create base username: EmmaK4
-    const baseUsername = `${firstName}${lastInitial}${gradeNum}`;
-    
-    // Check for existing usernames in this school's students subcollection
-    const studentsCollection = collection(db, 'schools', formData.schoolId, 'students');
-    const querySnapshot = await getDocs(studentsCollection);
-    
-    // Get all existing usernames for this school
-    const existingUsernames = [];
-    querySnapshot.forEach((doc) => {
-      const studentData = doc.data();
-      if (studentData.displayUsername) {
-        existingUsernames.push(studentData.displayUsername);
+      console.log('🔄 Generating username for:', firstName, lastInitial, grade);
+      
+      // Create base username: EmmaK4
+      const baseUsername = `${firstName}${lastInitial}${grade}`;
+      
+      // Check for existing usernames in this school's students subcollection
+      const studentsCollection = collection(db, `dioceses/${schoolData.dioceseId}/schools/${schoolData.id}/students`);
+      const querySnapshot = await getDocs(studentsCollection);
+      
+      // Get all existing usernames for this school
+      const existingUsernames = [];
+      querySnapshot.forEach((doc) => {
+        const studentData = doc.data();
+        if (studentData.displayUsername) {
+          existingUsernames.push(studentData.displayUsername);
+        }
+      });
+      
+      console.log('📋 Existing usernames in school:', existingUsernames);
+      
+      // Check if base username exists, if so add number
+      let finalUsername = baseUsername; // EmmaK4
+      let counter = 2; // Start with 2 for first duplicate (EmmaK42)
+      
+      while (existingUsernames.includes(finalUsername)) {
+        finalUsername = `${baseUsername}${counter}`; // EmmaK42, EmmaK43, etc.
+        counter++;
       }
-    });
-    
-    // Check if base username exists, if so add number
-    let finalUsername = baseUsername; // EmmaK4
-    let counter = 2; // Start with 2 for first duplicate (EmmaK42)
-    
-    while (existingUsernames.includes(finalUsername)) {
-      finalUsername = `${baseUsername}${counter}`; // EmmaK42, EmmaK43, etc.
-      counter++;
+      
+      console.log('✅ Generated unique username:', finalUsername);
+      return finalUsername;
+    } catch (error) {
+      console.error('❌ Error generating username:', error);
+      throw error;
     }
-    
-    // Return full email format: EmmaK4@hfcs2025.luxlibris.app
-    return `${finalUsername}@${schoolCode.toLowerCase()}.luxlibris.app`;
   };
 
   const handleNext = () => {
@@ -216,47 +186,69 @@ export default function StudentOnboarding() {
 
   const completeOnboarding = async () => {
     setIsLoading(true);
+    setError('');
+    
     try {
-      // Get school data from Firebase to get the current join code
-      const schoolDoc = await getDoc(doc(db, 'schools', formData.schoolId));
-      const schoolData = schoolDoc.data();
+      console.log('🚀 Starting account creation process...');
       
-      if (!schoolData) {
-        throw new Error('School not found');
+      // Validate required data
+      if (!formData.firstName || !formData.lastInitial || !formData.schoolId || !formData.dioceseId) {
+        throw new Error('Missing required information');
+      }
+
+      // Get school data from Firebase to verify it exists
+      const schoolRef = doc(db, `dioceses/${formData.dioceseId}/schools`, formData.schoolId);
+      const schoolDoc = await getDoc(schoolRef);
+      
+      if (!schoolDoc.exists()) {
+        throw new Error('School not found in database');
       }
       
-      // Generate username with duplicate checking
-      const fullUsername = await generateUsername(
+      const schoolData = {
+        id: formData.schoolId,
+        dioceseId: formData.dioceseId,
+        ...schoolDoc.data()
+      };
+      
+      console.log('✅ School data verified:', schoolData.name);
+      
+      // Generate unique username
+      const displayUsername = await generateUsername(
         formData.firstName, 
         formData.lastInitial, 
         formData.grade, 
-        schoolData.currentJoinCode
+        schoolData
       );
       
-      // Extract just the part before @ for display
-      const displayUsername = fullUsername.split('@')[0];
       setGeneratedUsername(displayUsername);
 
-      // 🔥 CREATE ACTUAL FIREBASE AUTH ACCOUNT
+      // 🔥 CREATE FIREBASE AUTH ACCOUNT using new system
+      console.log('🔐 Creating Firebase Auth account...');
       const authResult = await authHelpers.createStudentAccount(
         formData.firstName,
         formData.lastInitial,
-        schoolData.currentJoinCode
+        formData.grade,
+        schoolData
       );
 
-      // Create student document in school's students subcollection (proper structure!)
+      console.log('✅ Firebase Auth account created with UID:', authResult.uid);
+
+      // Create student document in proper diocese structure
       const studentData = {
         // Authentication fields
-        uid: authResult.uid, // Real Firebase Auth UID
+        uid: authResult.uid,
+        authEmail: authResult.email,
         firstName: formData.firstName,
         lastInitial: formData.lastInitial,
+        displayUsername: displayUsername,
         
-        // School linking - this student belongs to this school
+        // School linking
         schoolId: formData.schoolId,
+        dioceseId: formData.dioceseId,
         schoolName: formData.schoolName,
         
         // Academic info
-        grade: parseInt(formData.grade.charAt(0)), // Store as number: 4, 5, 6, 7, 8
+        grade: parseInt(formData.grade),
         personalGoal: formData.currentYearGoal,
         
         // Customization
@@ -279,39 +271,40 @@ export default function StudentOnboarding() {
         
         // Metadata
         accountCreated: new Date(),
-        onboardingCompleted: true, // Fix: was missing this being set to true
-        accountType: 'student',
-        
-        // Generated username for display and sign-in
-        generatedUsername: fullUsername, // Store full email format
-        displayUsername: displayUsername // Store just the part before @ for easy login
+        onboardingCompleted: true,
+        accountType: 'student'
       };
 
-      // 🎯 SAVE TO CORRECT LOCATION: schools/{schoolId}/students/{studentId}
-      const studentDocRef = await addDoc(collection(db, 'schools', formData.schoolId, 'students'), studentData);
+      // 🎯 SAVE TO PROPER DIOCESE STRUCTURE
+      console.log('💾 Saving student to diocese structure...');
+      const studentDocRef = await addDoc(
+        collection(db, `dioceses/${formData.dioceseId}/schools/${formData.schoolId}/students`), 
+        studentData
+      );
       
-      console.log('✅ Student saved to school subcollection with ID:', studentDocRef.id);
+      console.log('✅ Student saved to diocese structure with ID:', studentDocRef.id);
       
-      // 🔥 ALSO CREATE GLOBAL USER PROFILE (for AuthContext to find)
+      // 🔥 ALSO CREATE GLOBAL USER PROFILE (for AuthContext compatibility)
       const globalUserProfile = {
         uid: authResult.uid,
         firstName: formData.firstName,
         lastInitial: formData.lastInitial,
-        schoolId: formData.schoolId,
-        schoolName: formData.schoolName,
         displayUsername: displayUsername,
+        schoolId: formData.schoolId,
+        dioceseId: formData.dioceseId,
+        schoolName: formData.schoolName,
         accountType: 'student',
         onboardingCompleted: true,
         accountCreated: new Date(),
         // Reference to the actual student record
         studentDocId: studentDocRef.id,
-        studentDocPath: `schools/${formData.schoolId}/students/${studentDocRef.id}`
+        studentDocPath: `dioceses/${formData.dioceseId}/schools/${formData.schoolId}/students/${studentDocRef.id}`
       };
       
       await addDoc(collection(db, 'users'), globalUserProfile);
-      console.log('✅ Global user profile created for AuthContext');
+      console.log('✅ Global user profile created');
       
-      // Store student ID in localStorage for PWA
+      // Store in localStorage for app usage
       localStorage.setItem('studentId', studentDocRef.id);
       localStorage.setItem('studentData', JSON.stringify(studentData));
       
@@ -319,12 +312,14 @@ export default function StudentOnboarding() {
       localStorage.removeItem('tempSchoolData');
       localStorage.removeItem('luxlibris_account_flow');
       
-      // Show success popup first
+      console.log('🎉 Account creation completed successfully!');
+      
+      // Show success popup
       setShowSuccessPopup(true);
       
     } catch (error) {
-      console.error('Error completing onboarding:', error);
-      alert(`Error creating your account: ${error.message}`);
+      console.error('❌ Error completing onboarding:', error);
+      setError(`Account creation failed: ${error.message}`);
       setIsLoading(false);
     }
   };
@@ -332,7 +327,7 @@ export default function StudentOnboarding() {
   const handleSuccessPopupClose = () => {
     setShowSuccessPopup(false);
     setIsLoading(false);
-    // User is already signed in from account creation - redirect to dashboard
+    // Redirect to student dashboard (user is already signed in)
     router.push('/student-dashboard');
   };
 
@@ -414,7 +409,31 @@ export default function StudentOnboarding() {
                 color: `${selectedTheme.textPrimary}CC`,
                 fontStyle: 'italic'
               }}>
-                Remember this! You&apos;ll use it to sign in next time.
+                Remember this! You&apos;ll use it with your school code to sign in.
+              </p>
+            </div>
+            <div style={{
+              backgroundColor: `${selectedTheme.accent}20`,
+              border: `1px solid ${selectedTheme.accent}50`,
+              borderRadius: '12px',
+              padding: '16px',
+              marginBottom: '24px'
+            }}>
+              <p style={{
+                fontSize: '14px',
+                fontWeight: '600',
+                color: selectedTheme.textPrimary,
+                marginBottom: '8px'
+              }}>
+                Your School Code (Password):
+              </p>
+              <p style={{
+                fontSize: '18px',
+                fontWeight: 'bold',
+                color: selectedTheme.primary,
+                fontFamily: 'monospace'
+              }}>
+                {formData.studentAccessCode}
               </p>
             </div>
             <button
@@ -479,6 +498,26 @@ export default function StudentOnboarding() {
         flexDirection: 'column',
         minHeight: 'calc(100vh - 160px)'
       }}>
+        
+        {/* Error Message */}
+        {error && (
+          <div style={{
+            background: '#fef2f2',
+            border: '1px solid #fca5a5',
+            borderRadius: '0.5rem',
+            padding: '0.75rem',
+            marginBottom: '1.5rem'
+          }}>
+            <p style={{
+              color: '#dc2626',
+              fontSize: '0.875rem',
+              margin: 0
+            }}>
+              {error}
+            </p>
+          </div>
+        )}
+        
         <div style={{ flex: 1 }}>
           {currentStep === 0 && <WelcomePage selectedTheme={selectedTheme} />}
           {currentStep === 1 && (
@@ -487,8 +526,6 @@ export default function StudentOnboarding() {
               setFormData={setFormData} 
               selectedTheme={selectedTheme} 
               grades={grades} 
-              schools={schools}
-              onSchoolSelect={handleSchoolSelection}
             />
           )}
           {currentStep === 2 && (
@@ -533,7 +570,7 @@ export default function StudentOnboarding() {
 
           <button
             onClick={handleNext}
-            disabled={isLoading || (currentStep === 1 && (!formData.firstName || !formData.lastInitial || !formData.schoolId))}
+            disabled={isLoading || (currentStep === 1 && (!formData.firstName || !formData.lastInitial))}
             style={{
               backgroundColor: selectedTheme.primary,
               color: selectedTheme.textPrimary,
@@ -544,7 +581,7 @@ export default function StudentOnboarding() {
               fontWeight: '600',
               cursor: 'pointer',
               boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              opacity: (isLoading || (currentStep === 1 && (!formData.firstName || !formData.lastInitial || !formData.schoolId))) ? 0.7 : 1
+              opacity: (isLoading || (currentStep === 1 && (!formData.firstName || !formData.lastInitial))) ? 0.7 : 1
             }}
           >
             {isLoading ? 'Creating Account...' : currentStep < 3 ? 'Next' : 'Create Account!'}
@@ -555,7 +592,7 @@ export default function StudentOnboarding() {
   );
 }
 
-// Welcome Page Component
+// Component pages (simplified for diocese structure)
 function WelcomePage({ selectedTheme }) {
   return (
     <div style={{
@@ -603,8 +640,7 @@ function WelcomePage({ selectedTheme }) {
   );
 }
 
-// Info Page Component  
-function InfoPage({ formData, setFormData, selectedTheme, grades, schools, onSchoolSelect }) {
+function InfoPage({ formData, setFormData, selectedTheme, grades }) {
   return (
     <div style={{ maxWidth: '400px', margin: '0 auto' }}>
       <h2 style={{
@@ -617,12 +653,12 @@ function InfoPage({ formData, setFormData, selectedTheme, grades, schools, onSch
         Tell us about yourself!
       </h2>
 
-      {/* School Selection - Pre-filled and read-only from account creation */}
+      {/* School Display - Pre-filled from account creation */}
       <div style={{ marginBottom: '20px' }}>
         <label style={{
           fontSize: '16px',
           fontWeight: '600',
-          color: formData.schoolId ? `${selectedTheme.textPrimary}80` : selectedTheme.textPrimary,
+          color: `${selectedTheme.textPrimary}80`,
           display: 'block',
           marginBottom: '8px'
         }}>
@@ -633,83 +669,21 @@ function InfoPage({ formData, setFormData, selectedTheme, grades, schools, onSch
           padding: '12px',
           borderRadius: '12px',
           border: 'none',
-          backgroundColor: formData.schoolId ? `${selectedTheme.surface}50` : selectedTheme.surface,
-          color: formData.schoolId ? `${selectedTheme.textPrimary}80` : selectedTheme.textPrimary,
+          backgroundColor: `${selectedTheme.surface}50`,
+          color: `${selectedTheme.textPrimary}80`,
           fontSize: '16px'
         }}>
-          {formData.schoolId ? (
-            `${formData.schoolName} - ${formData.schoolCity}, ${formData.schoolState}`
-          ) : (
-            <select
-              value={formData.schoolId}
-              onChange={(e) => onSchoolSelect(e.target.value)}
-              style={{
-                width: '100%',
-                border: 'none',
-                backgroundColor: 'transparent',
-                color: selectedTheme.textPrimary,
-                fontSize: '16px',
-                outline: 'none'
-              }}
-            >
-              <option value="">Select your school</option>
-              {schools.map(school => (
-                <option key={school.id} value={school.id}>
-                  {school.name} - {school.city}, {school.state}
-                </option>
-              ))}
-            </select>
-          )}
+          {formData.schoolName ? `${formData.schoolName} - ${formData.schoolCity}, ${formData.schoolState}` : 'Loading school...'}
         </div>
-        {formData.schoolId && (
-          <p style={{
-            fontSize: '12px',
-            color: `${selectedTheme.textPrimary}60`,
-            margin: '4px 0 0 0',
-            fontStyle: 'italic'
-          }}>
-            School selected from previous step
-          </p>
-        )}
+        <p style={{
+          fontSize: '12px',
+          color: `${selectedTheme.textPrimary}60`,
+          margin: '4px 0 0 0',
+          fontStyle: 'italic'
+        }}>
+          Confirmed from account creation
+        </p>
       </div>
-
-      {/* Population Field - GREYED OUT and auto-filled */}
-      {formData.population && (
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{
-            fontSize: '16px',
-            fontWeight: '600',
-            color: `${selectedTheme.textPrimary}80`,
-            display: 'block',
-            marginBottom: '8px'
-          }}>
-            School Location
-          </label>
-          <input
-            type="text"
-            value={formData.population}
-            disabled={true}
-            style={{
-              width: '100%',
-              padding: '12px',
-              borderRadius: '12px',
-              border: 'none',
-              backgroundColor: `${selectedTheme.surface}50`,
-              color: `${selectedTheme.textPrimary}60`,
-              fontSize: '16px',
-              cursor: 'not-allowed'
-            }}
-          />
-          <p style={{
-            fontSize: '12px',
-            color: `${selectedTheme.textPrimary}60`,
-            margin: '4px 0 0 0',
-            fontStyle: 'italic'
-          }}>
-            Automatically filled from your school
-          </p>
-        </div>
-      )}
 
       {/* First Name */}
       <div style={{ marginBottom: '20px' }}>
@@ -737,16 +711,6 @@ function InfoPage({ formData, setFormData, selectedTheme, grades, schools, onSch
             fontSize: '16px'
           }}
         />
-        {formData.firstName && (
-          <p style={{
-            fontSize: '12px',
-            color: `${selectedTheme.textPrimary}80`,
-            margin: '4px 0 0 0',
-            fontStyle: 'italic'
-          }}>
-            Your username will start with: {formData.firstName.toLowerCase().replace(/[^a-z0-9]/g, '')}
-          </p>
-        )}
       </div>
 
       {/* Last Initial */}
@@ -784,7 +748,7 @@ function InfoPage({ formData, setFormData, selectedTheme, grades, schools, onSch
             margin: '8px 0 0 0',
             fontWeight: '600'
           }}>
-            📧 Your username will be: {formData.firstName.toLowerCase().replace(/[^a-z0-9]/g, '')}{formData.lastInitial.toLowerCase()}4
+            📧 Your username will be: {formData.firstName.toLowerCase().replace(/[^a-z0-9]/g, '')}{formData.lastInitial.toLowerCase()}{formData.grade}
           </p>
         )}
       </div>
@@ -823,7 +787,7 @@ function InfoPage({ formData, setFormData, selectedTheme, grades, schools, onSch
                 transition: 'all 0.2s ease'
               }}
             >
-              {grade}
+              {grade}{grade === 4 ? 'th' : grade === 5 ? 'th' : grade === 6 ? 'th' : grade === 7 ? 'th' : 'th'} Grade
             </button>
           ))}
         </div>
@@ -832,7 +796,6 @@ function InfoPage({ formData, setFormData, selectedTheme, grades, schools, onSch
   );
 }
 
-// Goal Page Component
 function GoalPage({ formData, setFormData, selectedTheme, bookGoals }) {
   return (
     <div style={{ maxWidth: '400px', margin: '0 auto', textAlign: 'center' }}>
@@ -864,13 +827,6 @@ function GoalPage({ formData, setFormData, selectedTheme, bookGoals }) {
         }}>
           Your Reading Goal
         </h3>
-        <p style={{
-          color: `${selectedTheme.textPrimary}CC`,
-          fontSize: '14px',
-          marginBottom: '16px'
-        }}>
-          How many books from our list?
-        </p>
 
         {/* Goal Picker */}
         <div style={{
@@ -948,7 +904,6 @@ function GoalPage({ formData, setFormData, selectedTheme, bookGoals }) {
   );
 }
 
-// Theme Page Component
 function ThemePage({ formData, setFormData, themes }) {
   const selectedTheme = themes.find(theme => theme.assetPrefix === formData.selectedTheme);
   
@@ -995,32 +950,6 @@ function ThemePage({ formData, setFormData, themes }) {
                 position: 'relative'
               }}
             >
-              {/* Bookshelf Preview */}
-              <div style={{
-                width: '100%',
-                height: '80px',
-                borderRadius: '8px',
-                marginBottom: '8px',
-                backgroundImage: `url(/bookshelves/${theme.assetPrefix}.png)`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                backgroundRepeat: 'no-repeat',
-                backgroundColor: `${theme.primary}20`
-              }} />
-              
-              {/* Trophy Case Preview */}
-              <div style={{
-                width: '100%',
-                height: '60px',
-                borderRadius: '6px',
-                marginBottom: '12px',
-                backgroundImage: `url(/trophy_cases/${theme.assetPrefix}.png)`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                backgroundRepeat: 'no-repeat',
-                backgroundColor: `${theme.accent}20`
-              }} />
-              
               {/* Theme Name */}
               <div style={{
                 fontSize: '13px',

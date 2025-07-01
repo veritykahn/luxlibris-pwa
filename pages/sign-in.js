@@ -1,4 +1,4 @@
-// pages/sign-in.js
+// pages/sign-in.js - FIXED Sign-In System
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
@@ -22,7 +22,7 @@ export default function SignIn() {
       type: 'student',
       title: 'Student',
       icon: '📚',
-      description: 'Sign in with your reading username',
+      description: 'Sign in with your username and school code',
       buttonText: 'Student Sign In'
     },
     {
@@ -53,44 +53,51 @@ export default function SignIn() {
 
     try {
       if (formData.accountType === 'student') {
-        // Student sign in with username + school code (which IS the password)
+        // FIXED: Student sign in with username + school code
         if (!formData.username.trim() || !formData.schoolCode.trim()) {
           setError('Please enter both your username and school code');
           setLoading(false);
           return;
         }
 
-        // Find student by username + school code combination
-        const student = await dbHelpers.findStudentByUsernameAndSchool(
-          formData.username, 
-          formData.schoolCode
-        );
-        
-        if (!student) {
-          setError('Username or school code not found. Please check your information or ask your teacher.');
-          setLoading(false);
-          return;
-        }
+        console.log('🔐 Attempting student sign-in...');
+        console.log('👤 Username:', formData.username);
+        console.log('🏫 School Code:', formData.schoolCode);
 
-        // Sign in using the school code as password directly
-        await authHelpers.signInStudentWithSchoolCode(student, formData.schoolCode);
+        // Use the fixed authentication system
+        await authHelpers.signInStudent(formData.username, formData.schoolCode.toUpperCase());
         
-        // Redirect to student dashboard
+        console.log('✅ Student sign-in successful - redirecting to dashboard');
         router.push('/student-dashboard');
         
       } else if (formData.accountType === 'admin') {
-        // Admin sign in with email/password (traditional)
-        if (!formData.email || !formData.password) {
-          setError('Please enter both email and password');
+        // Admin sign in with email/password + school verification
+        if (!formData.email || !formData.password || !formData.schoolCode) {
+          setError('Please enter email, password, and school code');
           setLoading(false);
           return;
         }
 
+        console.log('🔐 Attempting admin sign-in...');
+        console.log('📧 Email:', formData.email);
+        console.log('🏫 School Code:', formData.schoolCode);
+
+        // Verify admin has access to this school
+        const adminAccess = await dbHelpers.verifyAdminAccess(formData.email, formData.schoolCode.toUpperCase());
+        if (!adminAccess.valid) {
+          setError(adminAccess.error);
+          setLoading(false);
+          return;
+        }
+
+        // Sign in with email/password
         await authHelpers.signIn(formData.email, formData.password);
+        
+        console.log('✅ Admin sign-in successful - redirecting to dashboard');
         router.push('/admin/school-dashboard');
         
       } else if (formData.accountType === 'parent') {
-        // Parent sign in with email/password
+        // Parent sign in - simplified for now
         if (!formData.email || !formData.password) {
           setError('Please enter both email and password');
           setLoading(false);
@@ -101,8 +108,8 @@ export default function SignIn() {
         router.push('/parent-dashboard');
       }
     } catch (error) {
-      console.error('Sign in error:', error);
-      setError('Sign in failed. Please check your information and try again.');
+      console.error('❌ Sign in error:', error);
+      setError(error.message || 'Sign in failed. Please check your information and try again.');
     }
 
     setLoading(false);
@@ -259,7 +266,7 @@ export default function SignIn() {
                 {accountTypes.find(a => a.type === formData.accountType)?.buttonText}
               </h2>
 
-              {/* Student Sign In */}
+              {/* Student Sign In - FIXED */}
               {formData.accountType === 'student' && (
                 <div>
                   <p style={{
@@ -289,7 +296,7 @@ export default function SignIn() {
                         ...prev, 
                         username: e.target.value 
                       }))}
-                      placeholder="VerityK4"
+                      placeholder="EmmaK4"
                       style={{
                         width: '100%',
                         padding: '0.875rem',
@@ -306,6 +313,14 @@ export default function SignIn() {
                       onFocus={(e) => e.target.style.borderColor = '#ADD4EA'}
                       onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
                     />
+                    <p style={{
+                      fontSize: '0.75rem',
+                      color: '#6b7280',
+                      margin: '0.5rem 0 0 0',
+                      textAlign: 'center'
+                    }}>
+                      This was shown when you created your account
+                    </p>
                   </div>
 
                   <div style={{ marginBottom: '1.5rem' }}>
@@ -325,7 +340,7 @@ export default function SignIn() {
                         ...prev, 
                         schoolCode: e.target.value.toUpperCase() 
                       }))}
-                      placeholder="HFCS2025"
+                      placeholder="DEMO-STUDENT-2025"
                       style={{
                         width: '100%',
                         padding: '0.875rem',
@@ -348,7 +363,7 @@ export default function SignIn() {
                       margin: '0.5rem 0 0 0',
                       textAlign: 'center'
                     }}>
-                      Your password is your school code
+                      This is the same code you used to join your school
                     </p>
                   </div>
 
@@ -365,14 +380,156 @@ export default function SignIn() {
                       margin: 0,
                       lineHeight: '1.4'
                     }}>
-                      💡 <strong>Simple Sign-In:</strong> Your username was shown when you first signed up, and your password is just your school code!
+                      💡 <strong>Simple Sign-In:</strong> Your username was shown when you created your account, and your password is your school code!
                     </p>
                   </div>
                 </div>
               )}
 
-              {/* Admin/Parent Sign In */}
-              {(formData.accountType === 'admin' || formData.accountType === 'parent') && (
+              {/* Admin Sign In - ENHANCED */}
+              {formData.accountType === 'admin' && (
+                <div>
+                  <p style={{
+                    color: '#6b7280',
+                    fontSize: '0.875rem',
+                    textAlign: 'center',
+                    marginBottom: '1.5rem',
+                    lineHeight: '1.4'
+                  }}>
+                    Sign in with your admin credentials
+                  </p>
+
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{
+                      display: 'block',
+                      fontSize: '0.875rem',
+                      fontWeight: '600',
+                      color: '#374151',
+                      marginBottom: '0.5rem'
+                    }}>
+                      Email Address
+                    </label>
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData(prev => ({ 
+                        ...prev, 
+                        email: e.target.value 
+                      }))}
+                      placeholder="admin@testschool.edu"
+                      style={{
+                        width: '100%',
+                        padding: '0.875rem',
+                        border: '2px solid #e5e7eb',
+                        borderRadius: '0.75rem',
+                        fontSize: '1rem',
+                        boxSizing: 'border-box',
+                        transition: 'border-color 0.2s',
+                        outline: 'none'
+                      }}
+                      onFocus={(e) => e.target.style.borderColor = '#ADD4EA'}
+                      onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{
+                      display: 'block',
+                      fontSize: '0.875rem',
+                      fontWeight: '600',
+                      color: '#374151',
+                      marginBottom: '0.5rem'
+                    }}>
+                      Password
+                    </label>
+                    <input
+                      type="password"
+                      value={formData.password}
+                      onChange={(e) => setFormData(prev => ({ 
+                        ...prev, 
+                        password: e.target.value 
+                      }))}
+                      placeholder="Your chosen password"
+                      style={{
+                        width: '100%',
+                        padding: '0.875rem',
+                        border: '2px solid #e5e7eb',
+                        borderRadius: '0.75rem',
+                        fontSize: '1rem',
+                        boxSizing: 'border-box',
+                        transition: 'border-color 0.2s',
+                        outline: 'none'
+                      }}
+                      onFocus={(e) => e.target.style.borderColor = '#ADD4EA'}
+                      onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <label style={{
+                      display: 'block',
+                      fontSize: '0.875rem',
+                      fontWeight: '600',
+                      color: '#374151',
+                      marginBottom: '0.5rem'
+                    }}>
+                      School Code
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.schoolCode}
+                      onChange={(e) => setFormData(prev => ({ 
+                        ...prev, 
+                        schoolCode: e.target.value.toUpperCase() 
+                      }))}
+                      placeholder="DEMO-STUDENT-2025"
+                      style={{
+                        width: '100%',
+                        padding: '0.875rem',
+                        border: '2px solid #e5e7eb',
+                        borderRadius: '0.75rem',
+                        fontSize: '1rem',
+                        boxSizing: 'border-box',
+                        transition: 'border-color 0.2s',
+                        outline: 'none',
+                        textAlign: 'center',
+                        fontWeight: 'bold',
+                        letterSpacing: '0.1em'
+                      }}
+                      onFocus={(e) => e.target.style.borderColor = '#ADD4EA'}
+                      onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+                    />
+                    <p style={{
+                      fontSize: '0.75rem',
+                      color: '#6b7280',
+                      margin: '0.5rem 0 0 0',
+                      textAlign: 'center'
+                    }}>
+                      The student access code for your school
+                    </p>
+                  </div>
+
+                  <div style={{
+                    background: 'rgba(168, 85, 247, 0.1)',
+                    border: '1px solid rgba(168, 85, 247, 0.3)',
+                    borderRadius: '0.5rem',
+                    padding: '1rem',
+                    marginBottom: '1.5rem'
+                  }}>
+                    <p style={{
+                      color: '#223848',
+                      fontSize: '0.875rem',
+                      margin: 0,
+                      lineHeight: '1.4'
+                    }}>
+                      👑 <strong>Admin Access:</strong> Your email and password were set when your school was created in God Mode.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Parent Sign In */}
+              {formData.accountType === 'parent' && (
                 <div>
                   <div style={{ marginBottom: '1rem' }}>
                     <label style={{
@@ -391,7 +548,7 @@ export default function SignIn() {
                         ...prev, 
                         email: e.target.value 
                       }))}
-                      placeholder="your-email@example.com"
+                      placeholder="parent@example.com"
                       style={{
                         width: '100%',
                         padding: '0.875rem',
@@ -424,7 +581,7 @@ export default function SignIn() {
                         ...prev, 
                         password: e.target.value 
                       }))}
-                      placeholder="Enter your password"
+                      placeholder="Your password"
                       style={{
                         width: '100%',
                         padding: '0.875rem',
@@ -438,6 +595,23 @@ export default function SignIn() {
                       onFocus={(e) => e.target.style.borderColor = '#ADD4EA'}
                       onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
                     />
+                  </div>
+
+                  <div style={{
+                    background: 'rgba(34, 197, 94, 0.1)',
+                    border: '1px solid rgba(34, 197, 94, 0.3)',
+                    borderRadius: '0.5rem',
+                    padding: '1rem',
+                    marginBottom: '1.5rem'
+                  }}>
+                    <p style={{
+                      color: '#223848',
+                      fontSize: '0.875rem',
+                      margin: 0,
+                      lineHeight: '1.4'
+                    }}>
+                      👨‍👩‍👧‍👦 <strong>Parent Access:</strong> Coming soon! For now, basic progress viewing is included with your school's subscription.
+                    </p>
                   </div>
                 </div>
               )}

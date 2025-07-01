@@ -1,19 +1,41 @@
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import { db } from '../../lib/firebase'
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore'
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, setDoc } from 'firebase/firestore'
 
 export default function GodModeAdmin() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [password, setPassword] = useState('')
   const [activeTab, setActiveTab] = useState('overview')
   const [loading, setLoading] = useState(false)
-  const [schools, setSchools] = useState([
-    { id: 1, name: 'Holy Family Catholic School', city: 'Austin', state: 'TX', students: 45, active: true },
-  ])
+  
+  // Diocese and School Management
+  const [dioceses, setDioceses] = useState([])
+  const [schools, setSchools] = useState([])
+  const [showCreateDiocese, setShowCreateDiocese] = useState(false)
+  const [showCreateSchool, setShowCreateSchool] = useState(false)
+  
+  const [newDiocese, setNewDiocese] = useState({
+    name: '',
+    location: '',
+    adminCode: ''
+  })
+  
+  const [newSchool, setNewSchool] = useState({
+    name: '',
+    city: '',
+    state: '',
+    email: '',
+    dioceseId: '',
+    adminEmail: '',
+    adminPassword: ''
+  })
   
   const [globalStats, setGlobalStats] = useState({
-    totalSchools: 1,
-    activeSchools: 1,
-    totalStudents: 45,
+    totalDioceses: 0,
+    totalSchools: 0,
+    activeSchools: 0,
+    totalStudents: 0,
     booksRead: 0,
     saintsEarned: 0,
     activeReadingSessions: 0
@@ -21,13 +43,74 @@ export default function GodModeAdmin() {
 
   const [nominees, setNominees] = useState([])
 
-  // Fetch nominees from Firebase
+  // God Mode Password Protection
+  const handleLogin = () => {
+    if (password === 'LUXLIBRIS-GOD-2025') {
+      setIsAuthenticated(true)
+    } else {
+      alert('Invalid God Mode password')
+    }
+  }
+
+  // Fetch data from Firebase
   useEffect(() => {
-    fetchNominees()
-  }, [])
+    if (isAuthenticated) {
+      fetchAllData()
+    }
+  }, [isAuthenticated])
+
+  const fetchAllData = async () => {
+    setLoading(true)
+    try {
+      await Promise.all([
+        fetchDioceses(),
+        fetchNominees()
+      ])
+    } catch (error) {
+      console.error('Error fetching data:', error)
+    }
+    setLoading(false)
+  }
+
+  const fetchDioceses = async () => {
+    try {
+      const diocesesRef = collection(db, 'dioceses')
+      const snapshot = await getDocs(diocesesRef)
+      const diocesesData = []
+      
+      for (const dioceseDoc of snapshot.docs) {
+        const dioceseData = {
+          id: dioceseDoc.id,
+          ...dioceseDoc.data()
+        }
+        
+        // Fetch schools for this diocese
+        const schoolsRef = collection(db, `dioceses/${dioceseDoc.id}/schools`)
+        const schoolsSnapshot = await getDocs(schoolsRef)
+        dioceseData.schools = schoolsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }))
+        
+        diocesesData.push(dioceseData)
+      }
+      
+      setDioceses(diocesesData)
+      
+      // Update global stats
+      const totalSchools = diocesesData.reduce((sum, diocese) => sum + diocese.schools.length, 0)
+      setGlobalStats(prev => ({
+        ...prev,
+        totalDioceses: diocesesData.length,
+        totalSchools: totalSchools,
+        activeSchools: totalSchools // For now, assume all are active
+      }))
+    } catch (error) {
+      console.error('Error fetching dioceses:', error)
+    }
+  }
 
   const fetchNominees = async () => {
-    setLoading(true)
     try {
       const nomineesRef = collection(db, 'masterNominees')
       const snapshot = await getDocs(nomineesRef)
@@ -41,16 +124,206 @@ export default function GodModeAdmin() {
       })
       
       setNominees(nomineesData)
-      setGlobalStats(prev => ({
-        ...prev,
-        totalNominees: nomineesData.length
-      }))
     } catch (error) {
       console.error('Error fetching nominees:', error)
+    }
+  }
+
+  // Generate unique admin code
+  const generateAdminCode = (dioceseName, location) => {
+    const diocesePrefix = dioceseName.substring(0, 3).toUpperCase()
+    const locationPrefix = location.substring(0, 3).toUpperCase()
+    const year = new Date().getFullYear()
+    return `${diocesePrefix}-${locationPrefix}-ADMIN-${year}`
+  }
+
+  // Create new diocese
+  const handleCreateDiocese = async () => {
+    if (!newDiocese.name || !newDiocese.location) {
+      alert('Please fill in all fields')
+      return
+    }
+
+    const adminCode = generateAdminCode(newDiocese.name, newDiocese.location)
+    
+    try {
+      setLoading(true)
+      const dioceseData = {
+        name: newDiocese.name,
+        location: newDiocese.location,
+        adminCode: adminCode,
+        createdAt: new Date(),
+        createdBy: 'Dr. Verity Kahn',
+        status: 'active'
+      }
+      
+      await addDoc(collection(db, 'dioceses'), dioceseData)
+      
+      alert(`Diocese created successfully!\nAdmin Code: ${adminCode}`)
+      setNewDiocese({ name: '', location: '', adminCode: '' })
+      setShowCreateDiocese(false)
+      fetchDioceses()
+    } catch (error) {
+      console.error('Error creating diocese:', error)
+      alert('Error creating diocese')
     }
     setLoading(false)
   }
 
+  // Generate school codes
+  const generateSchoolCodes = (schoolName) => {
+    const schoolPrefix = schoolName.replace(/[^A-Za-z]/g, '').substring(0, 4).toUpperCase()
+    const year = new Date().getFullYear()
+    
+    return {
+      studentAccessCode: `${schoolPrefix}-STUDENT-${year}`,
+      parentQuizCode: `${schoolPrefix}-PARENT-${year}`
+    }
+  }
+
+  // Create new school
+  const handleCreateSchool = async () => {
+    if (!newSchool.name || !newSchool.dioceseId || !newSchool.adminEmail || !newSchool.adminPassword) {
+      alert('Please fill in all required fields')
+      return
+    }
+
+    const codes = generateSchoolCodes(newSchool.name)
+    
+    try {
+      setLoading(true)
+      const schoolData = {
+        name: newSchool.name,
+        city: newSchool.city,
+        state: newSchool.state,
+        email: newSchool.email,
+        adminEmail: newSchool.adminEmail,
+        adminPassword: newSchool.adminPassword, // In production, this should be hashed
+        studentAccessCode: codes.studentAccessCode,
+        parentQuizCode: codes.parentQuizCode,
+        createdAt: new Date(),
+        status: 'active',
+        selectedNominees: [], // Will be filled during admin onboarding
+        achievementTiers: {}, // Will be configured during admin onboarding
+        submissionOptions: [] // Will be configured during admin onboarding
+      }
+      
+      // Add school to the specific diocese's schools subcollection
+      const schoolRef = collection(db, `dioceses/${newSchool.dioceseId}/schools`)
+      await addDoc(schoolRef, schoolData)
+      
+      alert(`School created successfully!\nStudent Access Code: ${codes.studentAccessCode}\nParent Quiz Code: ${codes.parentQuizCode}\nAdmin Email: ${newSchool.adminEmail}\nAdmin Password: ${newSchool.adminPassword}`)
+      
+      setNewSchool({ name: '', city: '', state: '', email: '', dioceseId: '', adminEmail: '', adminPassword: '' })
+      setShowCreateSchool(false)
+      fetchDioceses()
+    } catch (error) {
+      console.error('Error creating school:', error)
+      alert('Error creating school')
+    }
+    setLoading(false)
+  }
+
+  // Login Screen
+  if (!isAuthenticated) {
+    return (
+      <>
+        <Head>
+          <title>GOD MODE - Authentication Required</title>
+        </Head>
+        <div style={{
+          minHeight: '100vh',
+          background: 'linear-gradient(135deg, #0f172a 0%, #581c87 50%, #0f172a 100%)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontFamily: 'system-ui, -apple-system, sans-serif'
+        }}>
+          <div style={{
+            background: 'rgba(0, 0, 0, 0.5)',
+            backdropFilter: 'blur(8px)',
+            borderRadius: '1rem',
+            padding: '2rem',
+            border: '1px solid rgba(168, 85, 247, 0.3)',
+            textAlign: 'center',
+            minWidth: '400px'
+          }}>
+            <div style={{
+              width: '4rem',
+              height: '4rem',
+              background: 'linear-gradient(135deg, #a855f7, #ec4899)',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '2rem',
+              margin: '0 auto 1rem'
+            }}>
+              👑
+            </div>
+            <h1 style={{
+              fontSize: '2rem',
+              fontWeight: 'bold',
+              color: 'white',
+              margin: '0 0 0.5rem',
+              fontFamily: 'Georgia, serif'
+            }}>
+              GOD MODE
+            </h1>
+            <p style={{
+              color: '#c084fc',
+              marginBottom: '2rem'
+            }}>
+              Supreme Administrator Access Required
+            </p>
+            <div style={{ marginBottom: '1rem' }}>
+              <input
+                type="password"
+                placeholder="Enter God Mode Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  borderRadius: '0.5rem',
+                  border: '1px solid rgba(168, 85, 247, 0.3)',
+                  background: 'rgba(0, 0, 0, 0.3)',
+                  color: 'white',
+                  fontSize: '1rem'
+                }}
+              />
+            </div>
+            <button
+              onClick={handleLogin}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                background: 'linear-gradient(135deg, #a855f7, #ec4899)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '0.5rem',
+                fontSize: '1rem',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
+              🚀 ENTER GOD MODE
+            </button>
+            <p style={{
+              color: '#6b7280',
+              fontSize: '0.75rem',
+              marginTop: '1rem'
+            }}>
+              For Dr. Verity Kahn only
+            </p>
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  // Main God Mode Interface (same header as before)
   return (
     <>
       <Head>
@@ -154,6 +427,13 @@ export default function GodModeAdmin() {
             marginBottom: '2rem'
           }}>
             <StatCard 
+              title="Dioceses" 
+              value={globalStats.totalDioceses} 
+              subtitle="Active regions"
+              icon="⛪" 
+              color="linear-gradient(135deg, #8b5cf6, #a855f7)"
+            />
+            <StatCard 
               title="Schools" 
               value={globalStats.totalSchools} 
               subtitle={`${globalStats.activeSchools} active`}
@@ -174,27 +454,6 @@ export default function GodModeAdmin() {
               icon="📚" 
               color="linear-gradient(135deg, #a855f7, #8b5cf6)"
             />
-            <StatCard 
-              title="Books Read" 
-              value={globalStats.booksRead} 
-              subtitle="This year"
-              icon="📖" 
-              color="linear-gradient(135deg, #059669, #047857)"
-            />
-            <StatCard 
-              title="Saints Earned" 
-              value={globalStats.saintsEarned} 
-              subtitle="Total achievements"
-              icon="⭐" 
-              color="linear-gradient(135deg, #f59e0b, #d97706)"
-            />
-            <StatCard 
-              title="Active Sessions" 
-              value={globalStats.activeReadingSessions} 
-              subtitle="Reading now"
-              icon="🔥" 
-              color="linear-gradient(135deg, #ef4444, #dc2626)"
-            />
           </div>
 
           {/* Navigation Tabs */}
@@ -209,6 +468,7 @@ export default function GodModeAdmin() {
           }}>
             {[
               { id: 'overview', label: 'Overview', icon: '📊' },
+              { id: 'dioceses', label: 'Dioceses', icon: '⛪' },
               { id: 'schools', label: 'Schools', icon: '🏫' },
               { id: 'nominees', label: 'Nominees', icon: '📚' },
               { id: 'saints', label: 'Saints', icon: '👼' },
@@ -268,8 +528,9 @@ export default function GodModeAdmin() {
               </div>
             )}
             
-            {!loading && activeTab === 'overview' && <OverviewTab nominees={nominees} />}
-            {!loading && activeTab === 'schools' && <SchoolsTab schools={schools} setSchools={setSchools} />}
+            {!loading && activeTab === 'overview' && <OverviewTab nominees={nominees} dioceses={dioceses} />}
+            {!loading && activeTab === 'dioceses' && <DiocesesTab dioceses={dioceses} showCreateDiocese={showCreateDiocese} setShowCreateDiocese={setShowCreateDiocese} newDiocese={newDiocese} setNewDiocese={setNewDiocese} handleCreateDiocese={handleCreateDiocese} />}
+            {!loading && activeTab === 'schools' && <SchoolsTab dioceses={dioceses} showCreateSchool={showCreateSchool} setShowCreateSchool={setShowCreateSchool} newSchool={newSchool} setNewSchool={setNewSchool} handleCreateSchool={handleCreateSchool} />}
             {!loading && activeTab === 'nominees' && <NomineesTab nominees={nominees} setNominees={setNominees} />}
             {!loading && activeTab === 'saints' && <SaintsTab />}
             {!loading && activeTab === 'analytics' && <AnalyticsTab />}
@@ -281,59 +542,376 @@ export default function GodModeAdmin() {
   )
 }
 
-function StatCard({ title, value, subtitle, icon, color }) {
+// Enhanced component functions with new functionality
+function DiocesesTab({ dioceses, showCreateDiocese, setShowCreateDiocese, newDiocese, setNewDiocese, handleCreateDiocese }) {
   return (
-    <div style={{
-      background: 'rgba(0, 0, 0, 0.5)',
-      backdropFilter: 'blur(8px)',
-      borderRadius: '0.5rem',
-      padding: '1rem',
-      border: '1px solid rgba(168, 85, 247, 0.3)'
-    }}>
+    <div style={{ color: 'white' }}>
       <div style={{
         display: 'flex',
-        alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: '0.5rem'
+        alignItems: 'center',
+        marginBottom: '1.5rem'
       }}>
-        <div style={{
-          width: '2rem',
-          height: '2rem',
-          borderRadius: '50%',
-          background: color,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '0.875rem'
+        <h2 style={{
+          fontSize: '1.5rem',
+          fontWeight: 'bold',
+          fontFamily: 'Georgia, serif'
         }}>
-          {icon}
+          Diocese Management
+        </h2>
+        <ActionButton text="+ Create Diocese" onClick={() => setShowCreateDiocese(true)} />
+      </div>
+
+      {showCreateDiocese && (
+        <div style={{
+          background: 'rgba(168, 85, 247, 0.2)',
+          borderRadius: '0.5rem',
+          padding: '1.5rem',
+          marginBottom: '1.5rem',
+          border: '1px solid rgba(168, 85, 247, 0.3)'
+        }}>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem' }}>
+            Create New Diocese
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+            <input
+              type="text"
+              placeholder="Diocese Name (e.g., Diocese of Test)"
+              value={newDiocese.name}
+              onChange={(e) => setNewDiocese({...newDiocese, name: e.target.value})}
+              style={{
+                padding: '0.75rem',
+                borderRadius: '0.5rem',
+                border: '1px solid rgba(168, 85, 247, 0.3)',
+                background: 'rgba(0, 0, 0, 0.3)',
+                color: 'white'
+              }}
+            />
+            <input
+              type="text"
+              placeholder="Location (e.g., Demo City, TX)"
+              value={newDiocese.location}
+              onChange={(e) => setNewDiocese({...newDiocese, location: e.target.value})}
+              style={{
+                padding: '0.75rem',
+                borderRadius: '0.5rem',
+                border: '1px solid rgba(168, 85, 247, 0.3)',
+                background: 'rgba(0, 0, 0, 0.3)',
+                color: 'white'
+              }}
+            />
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <ActionButton text="✅ Create Diocese" onClick={handleCreateDiocese} />
+            <ActionButton text="❌ Cancel" onClick={() => setShowCreateDiocese(false)} />
+          </div>
         </div>
+      )}
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        {dioceses.map(diocese => (
+          <div key={diocese.id} style={{
+            background: 'rgba(139, 92, 246, 0.2)',
+            borderRadius: '0.5rem',
+            padding: '1rem',
+            border: '1px solid rgba(139, 92, 246, 0.3)'
+          }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              marginBottom: '0.5rem'
+            }}>
+              <div>
+                <h3 style={{
+                  fontSize: '1.125rem',
+                  fontWeight: 'bold',
+                  marginBottom: '0.25rem'
+                }}>
+                  ⛪ {diocese.name}
+                </h3>
+                <p style={{ color: '#c084fc', margin: '0.25rem 0' }}>
+                  📍 {diocese.location}
+                </p>
+                <p style={{
+                  fontSize: '0.875rem',
+                  color: '#a78bfa',
+                  margin: '0.25rem 0'
+                }}>
+                  🔑 Admin Code: <strong>{diocese.adminCode}</strong>
+                </p>
+                <p style={{
+                  fontSize: '0.875rem',
+                  color: '#a78bfa',
+                  margin: 0
+                }}>
+                  🏫 {diocese.schools?.length || 0} schools
+                </p>
+              </div>
+            </div>
+            
+            {diocese.schools && diocese.schools.length > 0 && (
+              <div style={{ marginTop: '1rem' }}>
+                <h4 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '0.5rem', color: '#e879f9' }}>
+                  Schools in this Diocese:
+                </h4>
+                <div style={{ display: 'grid', gap: '0.5rem' }}>
+                  {diocese.schools.map(school => (
+                    <div key={school.id} style={{
+                      background: 'rgba(59, 130, 246, 0.2)',
+                      borderRadius: '0.375rem',
+                      padding: '0.75rem',
+                      border: '1px solid rgba(59, 130, 246, 0.3)'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <p style={{ fontWeight: '600', margin: 0 }}>🏫 {school.name}</p>
+                          <p style={{ fontSize: '0.875rem', color: '#93c5fd', margin: '0.25rem 0' }}>
+                            📧 {school.adminEmail} | 🔑 {school.studentAccessCode}
+                          </p>
+                        </div>
+                        <span style={{
+                          padding: '0.25rem 0.5rem',
+                          borderRadius: '0.25rem',
+                          fontSize: '0.75rem',
+                          background: 'rgba(34, 197, 94, 0.3)',
+                          color: '#86efac'
+                        }}>
+                          {school.status || 'Active'}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
       </div>
-      <div style={{
-        fontSize: '1.5rem',
-        fontWeight: 'bold',
-        color: 'white',
-        marginBottom: '0.25rem'
-      }}>
-        {value}
-      </div>
-      <div style={{
-        fontSize: '0.75rem',
-        color: '#c084fc'
-      }}>
-        {title}
-      </div>
-      <div style={{
-        fontSize: '0.75rem',
-        color: '#a78bfa'
-      }}>
-        {subtitle}
-      </div>
+      
+      {dioceses.length === 0 && (
+        <div style={{ textAlign: 'center', color: '#c084fc', padding: '2rem' }}>
+          <p>No dioceses created yet. Create your first diocese above!</p>
+        </div>
+      )}
     </div>
   )
 }
 
-function OverviewTab({ nominees }) {
+function SchoolsTab({ dioceses, showCreateSchool, setShowCreateSchool, newSchool, setNewSchool, handleCreateSchool }) {
+  return (
+    <div style={{ color: 'white' }}>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '1.5rem'
+      }}>
+        <h2 style={{
+          fontSize: '1.5rem',
+          fontWeight: 'bold',
+          fontFamily: 'Georgia, serif'
+        }}>
+          School Management
+        </h2>
+        <ActionButton text="+ Create School" onClick={() => setShowCreateSchool(true)} />
+      </div>
+
+      {showCreateSchool && (
+        <div style={{
+          background: 'rgba(59, 130, 246, 0.2)',
+          borderRadius: '0.5rem',
+          padding: '1.5rem',
+          marginBottom: '1.5rem',
+          border: '1px solid rgba(59, 130, 246, 0.3)'
+        }}>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem' }}>
+            Create New School
+          </h3>
+          
+          <div style={{ display: 'grid', gap: '1rem', marginBottom: '1rem' }}>
+            <select
+              value={newSchool.dioceseId}
+              onChange={(e) => setNewSchool({...newSchool, dioceseId: e.target.value})}
+              style={{
+                padding: '0.75rem',
+                borderRadius: '0.5rem',
+                border: '1px solid rgba(59, 130, 246, 0.3)',
+                background: 'rgba(0, 0, 0, 0.3)',
+                color: 'white'
+              }}
+            >
+              <option value="">Select Diocese</option>
+              {dioceses.map(diocese => (
+                <option key={diocese.id} value={diocese.id}>{diocese.name}</option>
+              ))}
+            </select>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+              <input
+                type="text"
+                placeholder="School Name"
+                value={newSchool.name}
+                onChange={(e) => setNewSchool({...newSchool, name: e.target.value})}
+                style={{
+                  padding: '0.75rem',
+                  borderRadius: '0.5rem',
+                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  background: 'rgba(0, 0, 0, 0.3)',
+                  color: 'white'
+                }}
+              />
+              <input
+                type="text"
+                placeholder="City"
+                value={newSchool.city}
+                onChange={(e) => setNewSchool({...newSchool, city: e.target.value})}
+                style={{
+                  padding: '0.75rem',
+                  borderRadius: '0.5rem',
+                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  background: 'rgba(0, 0, 0, 0.3)',
+                  color: 'white'
+                }}
+              />
+              <input
+                type="text"
+                placeholder="State"
+                value={newSchool.state}
+                onChange={(e) => setNewSchool({...newSchool, state: e.target.value})}
+                style={{
+                  padding: '0.75rem',
+                  borderRadius: '0.5rem',
+                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  background: 'rgba(0, 0, 0, 0.3)',
+                  color: 'white'
+                }}
+              />
+            </div>
+            
+            <input
+              type="email"
+              placeholder="School Email"
+              value={newSchool.email}
+              onChange={(e) => setNewSchool({...newSchool, email: e.target.value})}
+              style={{
+                padding: '0.75rem',
+                borderRadius: '0.5rem',
+                border: '1px solid rgba(59, 130, 246, 0.3)',
+                background: 'rgba(0, 0, 0, 0.3)',
+                color: 'white'
+              }}
+            />
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <input
+                type="email"
+                placeholder="Admin Email"
+                value={newSchool.adminEmail}
+                onChange={(e) => setNewSchool({...newSchool, adminEmail: e.target.value})}
+                style={{
+                  padding: '0.75rem',
+                  borderRadius: '0.5rem',
+                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  background: 'rgba(0, 0, 0, 0.3)',
+                  color: 'white'
+                }}
+              />
+              <input
+                type="password"
+                placeholder="Admin Password"
+                value={newSchool.adminPassword}
+                onChange={(e) => setNewSchool({...newSchool, adminPassword: e.target.value})}
+                style={{
+                  padding: '0.75rem',
+                  borderRadius: '0.5rem',
+                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  background: 'rgba(0, 0, 0, 0.3)',
+                  color: 'white'
+                }}
+              />
+            </div>
+          </div>
+          
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <ActionButton text="✅ Create School" onClick={handleCreateSchool} />
+            <ActionButton text="❌ Cancel" onClick={() => setShowCreateSchool(false)} />
+          </div>
+        </div>
+      )}
+
+      {/* Display all schools from all dioceses */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        {dioceses.map(diocese => 
+          diocese.schools?.map(school => (
+            <div key={`${diocese.id}-${school.id}`} style={{
+              background: 'rgba(59, 130, 246, 0.2)',
+              borderRadius: '0.5rem',
+              padding: '1rem',
+              border: '1px solid rgba(59, 130, 246, 0.3)'
+            }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start'
+              }}>
+                <div>
+                  <h3 style={{
+                    fontSize: '1.125rem',
+                    fontWeight: 'bold',
+                    marginBottom: '0.25rem'
+                  }}>
+                    🏫 {school.name}
+                  </h3>
+                  <p style={{ color: '#93c5fd', margin: '0.25rem 0' }}>
+                    📍 {school.city}, {school.state} | ⛪ {diocese.name}
+                  </p>
+                  <p style={{
+                    fontSize: '0.875rem',
+                    color: '#a78bfa',
+                    margin: '0.25rem 0'
+                  }}>
+                    📧 Admin: {school.adminEmail}
+                  </p>
+                  <p style={{
+                    fontSize: '0.875rem',
+                    color: '#a78bfa',
+                    margin: 0
+                  }}>
+                    🔑 Student Code: <strong>{school.studentAccessCode}</strong> | 
+                    🧩 Parent Code: <strong>{school.parentQuizCode}</strong>
+                  </p>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{
+                    padding: '0.25rem 0.5rem',
+                    borderRadius: '0.25rem',
+                    fontSize: '0.75rem',
+                    background: 'rgba(34, 197, 94, 0.3)',
+                    color: '#86efac'
+                  }}>
+                    {school.status || 'Active'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+      
+      {dioceses.every(diocese => !diocese.schools || diocese.schools.length === 0) && (
+        <div style={{ textAlign: 'center', color: '#c084fc', padding: '2rem' }}>
+          <p>No schools created yet. Create your first school above!</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Keep existing components with small updates
+function OverviewTab({ nominees, dioceses }) {
+  const totalSchools = dioceses.reduce((sum, diocese) => sum + (diocese.schools?.length || 0), 0)
+  
   return (
     <div style={{ color: 'white' }}>
       <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
@@ -373,10 +951,11 @@ function OverviewTab({ nominees }) {
             🚀 Your Empire Status
           </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <StatusRow label="Dioceses" value={`${dioceses.length} active`} />
+            <StatusRow label="Schools" value={`${totalSchools} schools`} />
             <StatusRow label="Master Nominees" value={`${nominees.length} loaded`} />
             <StatusRow label="Firebase" value="✅ Connected" />
             <StatusRow label="Domain" value="✅ luxlibris.org LIVE!" />
-            <StatusRow label="Pilot School" value="Holy Family ready" />
           </div>
         </div>
 
@@ -398,7 +977,7 @@ function OverviewTab({ nominees }) {
             <StatusRow label="Server Status" value="✅ Online" />
             <StatusRow label="Database" value="✅ Connected" />
             <StatusRow label="Domain DNS" value="✅ Propagated" />
-            <StatusRow label="Ready for Launch" value="🚀 September 1st" />
+            <StatusRow label="Ready for Launch" value="🚀 Test Phase Active" />
           </div>
         </div>
       </div>
@@ -406,85 +985,7 @@ function OverviewTab({ nominees }) {
   )
 }
 
-function SchoolsTab({ schools, setSchools }) {
-  return (
-    <div style={{ color: 'white' }}>
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '1.5rem'
-      }}>
-        <h2 style={{
-          fontSize: '1.5rem',
-          fontWeight: 'bold',
-          fontFamily: 'Georgia, serif'
-        }}>
-          School Management
-        </h2>
-        <ActionButton text="+ Add School" />
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        {schools.map(school => (
-          <div key={school.id} style={{
-            background: 'rgba(168, 85, 247, 0.2)',
-            borderRadius: '0.5rem',
-            padding: '1rem',
-            border: '1px solid rgba(168, 85, 247, 0.3)'
-          }}>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'flex-start'
-            }}>
-              <div>
-                <h3 style={{
-                  fontSize: '1.125rem',
-                  fontWeight: 'bold',
-                  marginBottom: '0.25rem'
-                }}>
-                  {school.name}
-                </h3>
-                <p style={{ color: '#c084fc', margin: '0.25rem 0' }}>
-                  {school.city}, {school.state}
-                </p>
-                <p style={{
-                  fontSize: '0.875rem',
-                  color: '#a78bfa',
-                  margin: 0
-                }}>
-                  {school.students} students enrolled
-                </p>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{
-                  padding: '0.25rem 0.5rem',
-                  borderRadius: '0.25rem',
-                  fontSize: '0.75rem',
-                  background: school.active ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)',
-                  color: school.active ? '#86efac' : '#fca5a5'
-                }}>
-                  {school.active ? 'Active' : 'Inactive'}
-                </span>
-                <button style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: '#c084fc',
-                  cursor: 'pointer',
-                  fontSize: '1rem'
-                }}>
-                  ⚙️
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
+// Keep all other existing components (NomineesTab, SaintsTab, etc.) the same
 function NomineesTab({ nominees, setNominees }) {
   return (
     <div style={{ color: 'white' }}>
@@ -632,7 +1133,7 @@ function SaintsTab() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             <StatusRow label="Total Saints" value="137" />
             <StatusRow label="Ultimate Unlock" value="Jesus ✨" />
-            <StatusRow label="Trophy Shelves" value="23 shelves" />
+            <StatusRow label="Trophy Shelves" value="20 shelves" />
             <StatusRow label="Categories" value="Common, Rare, Liturgical" />
           </div>
         </div>
@@ -703,6 +1204,58 @@ function SettingsTab() {
         <p style={{ fontSize: '0.875rem' }}>
           Backup settings, notification preferences, and system maintenance
         </p>
+      </div>
+    </div>
+  )
+}
+
+function StatCard({ title, value, subtitle, icon, color }) {
+  return (
+    <div style={{
+      background: 'rgba(0, 0, 0, 0.5)',
+      backdropFilter: 'blur(8px)',
+      borderRadius: '0.5rem',
+      padding: '1rem',
+      border: '1px solid rgba(168, 85, 247, 0.3)'
+    }}>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: '0.5rem'
+      }}>
+        <div style={{
+          width: '2rem',
+          height: '2rem',
+          borderRadius: '50%',
+          background: color,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '0.875rem'
+        }}>
+          {icon}
+        </div>
+      </div>
+      <div style={{
+        fontSize: '1.5rem',
+        fontWeight: 'bold',
+        color: 'white',
+        marginBottom: '0.25rem'
+      }}>
+        {value}
+      </div>
+      <div style={{
+        fontSize: '0.75rem',
+        color: '#c084fc'
+      }}>
+        {title}
+      </div>
+      <div style={{
+        fontSize: '0.75rem',
+        color: '#a78bfa'
+      }}>
+        {subtitle}
       </div>
     </div>
   )
