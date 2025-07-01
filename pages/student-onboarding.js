@@ -288,10 +288,9 @@ export default function StudentOnboarding() {
       };
 
       // 🎯 SAVE TO CORRECT LOCATION: schools/{schoolId}/students/{studentId}
-      const studentRef = doc(collection(db, 'schools', formData.schoolId, 'students'));
-      await setDoc(studentRef, studentData);
+      const studentDocRef = await addDoc(collection(db, 'schools', formData.schoolId, 'students'), studentData);
       
-      console.log('✅ Student saved to school subcollection with ID:', studentRef.id);
+      console.log('✅ Student saved to school subcollection with ID:', studentDocRef.id);
       
       // 🔥 ALSO CREATE GLOBAL USER PROFILE (for AuthContext to find)
       const globalUserProfile = {
@@ -303,7 +302,10 @@ export default function StudentOnboarding() {
         displayUsername: displayUsername,
         accountType: 'student',
         onboardingCompleted: true,
-        accountCreated: new Date()
+        accountCreated: new Date(),
+        // Reference to the actual student record
+        studentDocId: studentDocRef.id,
+        studentDocPath: `schools/${formData.schoolId}/students/${studentDocRef.id}`
       };
       
       await addDoc(collection(db, 'users'), globalUserProfile);

@@ -53,18 +53,21 @@ export default function SignIn() {
 
     try {
       if (formData.accountType === 'student') {
-        // Student sign in with username
-        if (!formData.username.trim()) {
-          setError('Please enter your username');
+        // Student sign in with username + school code
+        if (!formData.username.trim() || !formData.schoolCode.trim()) {
+          setError('Please enter both your username and school code');
           setLoading(false);
           return;
         }
 
-        // Find student by display username across all schools
-        const student = await dbHelpers.findStudentByUsername(formData.username);
+        // Find student by username + school code combination
+        const student = await dbHelpers.findStudentByUsernameAndSchool(
+          formData.username, 
+          formData.schoolCode
+        );
         
         if (!student) {
-          setError('Username not found. Check your spelling or ask your teacher.');
+          setError('Username or school code not found. Please check your information or ask your teacher.');
           setLoading(false);
           return;
         }
@@ -266,10 +269,10 @@ export default function SignIn() {
                     marginBottom: '1.5rem',
                     lineHeight: '1.4'
                   }}>
-                    Enter the username you were given when you created your account
+                    Enter your username and school code to sign in
                   </p>
 
-                  <div style={{ marginBottom: '1.5rem' }}>
+                  <div style={{ marginBottom: '1rem' }}>
                     <label style={{
                       display: 'block',
                       fontSize: '0.875rem',
@@ -303,13 +306,49 @@ export default function SignIn() {
                       onFocus={(e) => e.target.style.borderColor = '#ADD4EA'}
                       onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
                     />
+                  </div>
+
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <label style={{
+                      display: 'block',
+                      fontSize: '0.875rem',
+                      fontWeight: '600',
+                      color: '#374151',
+                      marginBottom: '0.5rem'
+                    }}>
+                      School Code
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.schoolCode}
+                      onChange={(e) => setFormData(prev => ({ 
+                        ...prev, 
+                        schoolCode: e.target.value.toUpperCase() 
+                      }))}
+                      placeholder="HFCS2025"
+                      style={{
+                        width: '100%',
+                        padding: '0.875rem',
+                        border: '2px solid #e5e7eb',
+                        borderRadius: '0.75rem',
+                        fontSize: '1rem',
+                        boxSizing: 'border-box',
+                        transition: 'border-color 0.2s',
+                        outline: 'none',
+                        textAlign: 'center',
+                        fontWeight: 'bold',
+                        letterSpacing: '0.1em'
+                      }}
+                      onFocus={(e) => e.target.style.borderColor = '#ADD4EA'}
+                      onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+                    />
                     <p style={{
                       fontSize: '0.75rem',
                       color: '#6b7280',
                       margin: '0.5rem 0 0 0',
                       textAlign: 'center'
                     }}>
-                      Just the letters and numbers (like VerityK4)
+                      Same code you used when creating your account
                     </p>
                   </div>
 
@@ -326,7 +365,7 @@ export default function SignIn() {
                       margin: 0,
                       lineHeight: '1.4'
                     }}>
-                      💡 <strong>Forgot your username?</strong> Ask your teacher or check the paper you got when you first signed up!
+                      💡 <strong>Forgot your info?</strong> Your username was shown when you first signed up, and your school code is the same one your teacher gave you!
                     </p>
                   </div>
                 </div>

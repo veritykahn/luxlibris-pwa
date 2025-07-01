@@ -2,10 +2,52 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '../contexts/AuthContext'
 
 export default function Home() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const router = useRouter()
+  const { isAuthenticated, loading, getDashboardUrl, userProfile } = useAuth()
+
+  // Redirect authenticated users to their dashboard
+  useEffect(() => {
+    if (!loading && isAuthenticated && userProfile) {
+      console.log('🔄 User is already signed in, redirecting to dashboard...')
+      router.push(getDashboardUrl())
+    }
+  }, [loading, isAuthenticated, userProfile, router, getDashboardUrl])
+
+  // Show loading while checking authentication
+  if (loading) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #FFFCF5 0%, #C3E0DE 50%, #A1E5DB 100%)'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            width: '3rem',
+            height: '3rem',
+            border: '4px solid #C3E0DE',
+            borderTop: '4px solid #223848',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 1rem'
+          }}></div>
+          <p style={{ color: '#223848', fontSize: '1.1rem' }}>
+            Checking your account...
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  // Only show homepage if user is not authenticated
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-teal-50 to-blue-50" style={{fontFamily: 'Avenir, -apple-system, BlinkMacSystemFont, system-ui, sans-serif', letterSpacing: '0.12em'}}>
@@ -278,6 +320,32 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      {/* CSS for responsive behavior and loading animation */}
+      <style jsx>{`
+        @media (min-width: 768px) {
+          .desktop-menu {
+            display: flex !important;
+          }
+          .mobile-menu-toggle {
+            display: none !important;
+          }
+        }
+        
+        @media (max-width: 767px) {
+          .desktop-menu {
+            display: none !important;
+          }
+          .mobile-menu-toggle {
+            display: block !important;
+          }
+        }
+
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </main>
   )
 }
