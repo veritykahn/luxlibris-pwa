@@ -914,7 +914,6 @@ export default function SchoolAdminOnboarding() {
   )
 }
 
-// Component functions (keeping existing ones with minor updates)
 function BookCard({ book, isSelected, onToggle }) {
   return (
     <div
@@ -946,6 +945,22 @@ function BookCard({ book, isSelected, onToggle }) {
         }}>
           {isSelected ? '✓' : ''}
         </div>
+        
+        {/* Cover Image */}
+        {book.coverImageUrl && (
+          <img 
+            src={book.coverImageUrl}
+            alt={`Cover of ${book.title}`}
+            style={{
+              width: '40px',
+              height: '60px',
+              objectFit: 'cover',
+              borderRadius: '0.25rem',
+              flexShrink: 0
+            }}
+          />
+        )}
+        
         <div style={{ flex: 1, minWidth: 0 }}>
           <h4 style={{
             fontSize: 'clamp(0.75rem, 2.5vw, 0.875rem)',
@@ -961,13 +976,27 @@ function BookCard({ book, isSelected, onToggle }) {
           <p style={{
             fontSize: 'clamp(0.625rem, 2vw, 0.75rem)',
             color: '#6b7280',
-            margin: 0,
+            margin: '0 0 0.25rem 0',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap'
           }}>
             by {book.authors}
           </p>
+          {/* Genres */}
+          {book.genres && (
+            <p style={{
+              fontSize: 'clamp(0.625rem, 2vw, 0.75rem)',
+              color: '#A1E5DB',
+              margin: 0,
+              fontStyle: 'italic',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}>
+              {book.genres}
+            </p>
+          )}
         </div>
       </div>
     </div>
