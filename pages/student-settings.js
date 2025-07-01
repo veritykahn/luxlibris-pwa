@@ -1,17 +1,22 @@
-// pages/student-settings.js
+// pages/student-settings.js - COPY THIS CODE
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { db } from '../lib/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { useAuth } from '../contexts/AuthContext';
+import { getStudentData, updateStudentData } from '../lib/firebase';
+import { createParentInviteCode } from '../lib/parentLinking';
 
 export default function StudentSettings() {
   const router = useRouter();
+  const { user } = useAuth();
   const [studentData, setStudentData] = useState(null);
   const [currentTheme, setCurrentTheme] = useState(null);
   const [selectedThemePreview, setSelectedThemePreview] = useState('');
+  const [newGoal, setNewGoal] = useState(20);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
+  const [showSuccess, setShowSuccess] = useState('');
+  const [parentInviteCode, setParentInviteCode] = useState('');
+  const [showInviteCode, setShowInviteCode] = useState(false);
 
   // Theme definitions (same as everywhere else)
   const themes = {
@@ -94,59 +99,125 @@ export default function StudentSettings() {
 
   useEffect(() => {
     loadStudentData();
-  }, []);
+  }, [user]);
 
   const loadStudentData = async () => {
     try {
-      const savedStudentData = localStorage.getItem('studentData');
-      if (savedStudentData) {
-        const parsed = JSON.parse(savedStudentData);
-        setStudentData(parsed);
-        setCurrentTheme(themes[parsed.selectedTheme] || themes.classic_lux);
-        setSelectedThemePreview(parsed.selectedTheme || 'classic_lux');
-      } else {
-        router.push('/student-onboarding');
+      if (!user?.uid) {
+        router.push('/student-account-creation');
         return;
       }
+
+      console.log('🔍 Loading student data for UID:', user.uid);
+      
+      // Get real data from Firebase diocese structure
+      const realStudentData = await getStudentData(user.uid);
+      if (!realStudentData) {
+        console.error('❌ Student data not found');
+        router.push('/student-account-creation');
+        return;
+      }
+
+      console.log('✅ Loaded student data:', realStudentData);
+      
+      setStudentData(realStudentData);
+      setCurrentTheme(themes[realStudentData.selectedTheme] || themes.classic_lux);
+      setSelectedThemePreview(realStudentData.selectedTheme || 'classic_lux');
+      setNewGoal(realStudentData.personalGoal || 20);
+      setParentInviteCode(realStudentData.parentInviteCode || '');
+      
     } catch (error) {
-      console.error('Error loading student data:', error);
-      router.push('/student-onboarding');
+      console.error('❌ Error loading student data:', error);
+      router.push('/student-account-creation');
     }
     setIsLoading(false);
   };
 
   const saveThemeChange = async () => {
+    if (selectedThemePreview === studentData.selectedTheme) return;
+    
     setIsSaving(true);
     try {
-      const updatedStudentData = {
-        ...studentData,
+      // Update Firebase
+      await updateStudentData(studentData.id, studentData.dioceseId, studentData.schoolId, {
         selectedTheme: selectedThemePreview
-      };
-      
-      // Update localStorage
-      localStorage.setItem('studentData', JSON.stringify(updatedStudentData));
-      
-      // Update Firebase if we have studentId
-      const studentId = localStorage.getItem('studentId');
-      if (studentId) {
-        await updateDoc(doc(db, 'users/students', studentId), {
-          selectedTheme: selectedThemePreview
-        });
-      }
+      });
       
       // Update local state
-      setStudentData(updatedStudentData);
+      const updatedData = { ...studentData, selectedTheme: selectedThemePreview };
+      setStudentData(updatedData);
       setCurrentTheme(themes[selectedThemePreview]);
       
-      // Show success message
-      setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 2000);
+      setShowSuccess('✨ Theme saved! Your bookshelf looks amazing!');
+      setTimeout(() => setShowSuccess(''), 3000);
       
     } catch (error) {
-      console.error('Error saving theme:', error);
-      alert('Error saving your theme. Please try again.');
+      console.error('❌ Error saving theme:', error);
+      setShowSuccess('❌ Error saving theme. Please try again.');
+      setTimeout(() => setShowSuccess(''), 3000);
     }
     setIsSaving(false);
+  };
+
+  const saveGoalChange = async () => {
+    if (newGoal === studentData.personalGoal) return;
+    
+    setIsSaving(true);
+    try {
+      // Update Firebase
+      await updateStudentData(studentData.id, studentData.dioceseId, studentData.schoolId, {
+        personalGoal: newGoal
+      });
+      
+      // Update local state
+      const updatedData = { ...studentData, personalGoal: newGoal };
+      setStudentData(updatedData);
+      
+      setShowSuccess(`🎯 Reading goal updated to ${newGoal} books!`);
+      setTimeout(() => setShowSuccess(''), 3000);
+      
+    } catch (error) {
+      console.error('❌ Error saving goal:', error);
+      setShowSuccess('❌ Error saving goal. Please try again.');
+      setTimeout(() => setShowSuccess(''), 3000);
+    }
+    setIsSaving(false);
+  };
+
+  const generateParentInvite = async () => {
+    setIsSaving(true);
+    try {
+      const inviteCode = await createParentInviteCode(
+        studentData.id,
+        studentData.dioceseId, 
+        studentData.schoolId,
+        studentData.firstName,
+        studentData.lastInitial,
+        studentData.grade
+      );
+      
+      setParentInviteCode(inviteCode);
+      setShowInviteCode(true);
+      
+      // Update local state
+      const updatedData = { ...studentData, parentInviteCode: inviteCode };
+      setStudentData(updatedData);
+      
+      setShowSuccess('👨‍👩‍👧‍👦 Parent invite code generated!');
+      setTimeout(() => setShowSuccess(''), 3000);
+      
+    } catch (error) {
+      console.error('❌ Error generating parent invite:', error);
+      setShowSuccess('❌ Error generating invite code. Please try again.');
+      setTimeout(() => setShowSuccess(''), 3000);
+    }
+    setIsSaving(false);
+  };
+
+  const copyInviteCode = () => {
+    navigator.clipboard.writeText(parentInviteCode);
+    setShowSuccess('📋 Invite code copied!');
+    setTimeout(() => setShowSuccess(''), 2000);
   };
 
   const previewTheme = themes[selectedThemePreview] || themes.classic_lux;
@@ -160,7 +231,18 @@ export default function StudentSettings() {
         alignItems: 'center',
         justifyContent: 'center'
       }}>
-        <p>Loading settings...</p>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            width: '40px',
+            height: '40px',
+            border: '3px solid #ADD4EA30',
+            borderTop: '3px solid #ADD4EA',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 16px'
+          }} />
+          <p style={{ color: '#223848' }}>Loading settings...</p>
+        </div>
       </div>
     );
   }
@@ -225,7 +307,7 @@ export default function StudentSettings() {
           }}>
             👋 Your Profile
           </h2>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
             <div>
               <p style={{ fontSize: '14px', color: previewTheme.textSecondary, margin: '0 0 4px 0' }}>Name</p>
               <p style={{ fontSize: '16px', color: previewTheme.textPrimary, margin: 0, fontWeight: '600' }}>
@@ -239,12 +321,192 @@ export default function StudentSettings() {
               </p>
             </div>
             <div>
-              <p style={{ fontSize: '14px', color: previewTheme.textSecondary, margin: '0 0 4px 0' }}>Reading Goal</p>
+              <p style={{ fontSize: '14px', color: previewTheme.textSecondary, margin: '0 0 4px 0' }}>Username</p>
+              <p style={{ fontSize: '16px', color: previewTheme.textPrimary, margin: 0, fontWeight: '600', fontFamily: 'monospace' }}>
+                {studentData.displayUsername}
+              </p>
+            </div>
+            <div>
+              <p style={{ fontSize: '14px', color: previewTheme.textSecondary, margin: '0 0 4px 0' }}>School Code</p>
+              <p style={{ fontSize: '16px', color: previewTheme.textPrimary, margin: 0, fontWeight: '600', fontFamily: 'monospace' }}>
+                {studentData.schoolCode || 'TEST-STUDENT-2025'}
+              </p>
+            </div>
+            <div>
+              <p style={{ fontSize: '14px', color: previewTheme.textSecondary, margin: '0 0 4px 0' }}>School</p>
               <p style={{ fontSize: '16px', color: previewTheme.textPrimary, margin: 0, fontWeight: '600' }}>
-                {studentData.currentYearGoal} books
+                {studentData.schoolName || 'Test Catholic School'}
               </p>
             </div>
           </div>
+        </div>
+
+        {/* Reading Goal Section */}
+        <div style={{
+          backgroundColor: previewTheme.surface,
+          borderRadius: '16px',
+          padding: '20px',
+          marginBottom: '24px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+        }}>
+          <h2 style={{
+            fontSize: '18px',
+            fontWeight: 'bold',
+            color: previewTheme.textPrimary,
+            marginBottom: '8px'
+          }}>
+            🎯 Reading Goal
+          </h2>
+          <p style={{
+            fontSize: '14px',
+            color: previewTheme.textSecondary,
+            marginBottom: '16px'
+          }}>
+            How many books do you want to read this year?
+          </p>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
+            <input
+              type="number"
+              min="1"
+              max="100"
+              value={newGoal}
+              onChange={(e) => setNewGoal(parseInt(e.target.value) || 1)}
+              style={{
+                padding: '12px',
+                border: `2px solid ${previewTheme.primary}50`,
+                borderRadius: '8px',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                width: '80px',
+                textAlign: 'center',
+                backgroundColor: previewTheme.background,
+                color: previewTheme.textPrimary
+              }}
+            />
+            <span style={{ fontSize: '16px', color: previewTheme.textPrimary }}>books this year</span>
+          </div>
+
+          {newGoal !== studentData.personalGoal && (
+            <button
+              onClick={saveGoalChange}
+              disabled={isSaving}
+              style={{
+                backgroundColor: previewTheme.primary,
+                color: previewTheme.textPrimary,
+                border: 'none',
+                padding: '12px 24px',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                opacity: isSaving ? 0.7 : 1
+              }}
+            >
+              {isSaving ? 'Saving...' : `Save Goal (${newGoal} books)`}
+            </button>
+          )}
+        </div>
+
+        {/* Parent Invite Section */}
+        <div style={{
+          backgroundColor: previewTheme.surface,
+          borderRadius: '16px',
+          padding: '20px',
+          marginBottom: '24px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+        }}>
+          <h2 style={{
+            fontSize: '18px',
+            fontWeight: 'bold',
+            color: previewTheme.textPrimary,
+            marginBottom: '8px'
+          }}>
+            👨‍👩‍👧‍👦 Invite Your Parents
+          </h2>
+          <p style={{
+            fontSize: '14px',
+            color: previewTheme.textSecondary,
+            marginBottom: '16px'
+          }}>
+            Let your parents see your reading progress and celebrate your achievements!
+          </p>
+
+          {!parentInviteCode ? (
+            <button
+              onClick={generateParentInvite}
+              disabled={isSaving}
+              style={{
+                backgroundColor: previewTheme.primary,
+                color: previewTheme.textPrimary,
+                border: 'none',
+                padding: '12px 24px',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                opacity: isSaving ? 0.7 : 1
+              }}
+            >
+              {isSaving ? 'Generating...' : '✨ Generate Parent Invite Code'}
+            </button>
+          ) : (
+            <div style={{
+              backgroundColor: `${previewTheme.primary}20`,
+              border: `2px solid ${previewTheme.primary}50`,
+              borderRadius: '12px',
+              padding: '16px'
+            }}>
+              <p style={{
+                fontSize: '14px',
+                color: previewTheme.textPrimary,
+                marginBottom: '8px',
+                fontWeight: '600'
+              }}>
+                🎉 Your Parent Invite Code:
+              </p>
+              <div style={{
+                backgroundColor: previewTheme.surface,
+                border: `1px solid ${previewTheme.primary}`,
+                borderRadius: '8px',
+                padding: '12px',
+                marginBottom: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}>
+                <code style={{
+                  fontSize: '18px',
+                  fontWeight: 'bold',
+                  color: previewTheme.textPrimary,
+                  fontFamily: 'monospace'
+                }}>
+                  {parentInviteCode}
+                </code>
+                <button
+                  onClick={copyInviteCode}
+                  style={{
+                    backgroundColor: previewTheme.primary,
+                    color: previewTheme.textPrimary,
+                    border: 'none',
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  📋 Copy
+                </button>
+              </div>
+              <p style={{
+                fontSize: '12px',
+                color: previewTheme.textSecondary,
+                margin: 0
+              }}>
+                Share this code with your parents so they can create an account and see your progress!
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Theme Selection */}
@@ -401,7 +663,7 @@ export default function StudentSettings() {
             ⚙️ Other Settings
           </h2>
           
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <button
               onClick={() => router.push('/legal')}
               style={{
@@ -416,38 +678,6 @@ export default function StudentSettings() {
               }}
             >
               📋 Privacy &amp; Terms
-            </button>
-            
-            <button
-              onClick={() => alert('Reading goal changes coming soon!')}
-              style={{
-                backgroundColor: 'transparent',
-                border: `1px solid ${previewTheme.primary}50`,
-                color: previewTheme.textPrimary,
-                padding: '12px 16px',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                textAlign: 'left'
-              }}
-            >
-              🎯 Change Reading Goal
-            </button>
-            
-            <button
-              onClick={() => alert('Notifications settings coming soon!')}
-              style={{
-                backgroundColor: 'transparent',
-                border: `1px solid ${previewTheme.primary}50`,
-                color: previewTheme.textPrimary,
-                padding: '12px 16px',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                textAlign: 'left'
-              }}
-            >
-              🔔 Notifications
             </button>
           </div>
         </div>
@@ -466,9 +696,11 @@ export default function StudentSettings() {
             boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
             zIndex: 1000,
             fontSize: '14px',
-            fontWeight: '600'
+            fontWeight: '600',
+            maxWidth: '90vw',
+            textAlign: 'center'
           }}>
-            ✨ Theme saved! Your bookshelf looks amazing!
+            {showSuccess}
           </div>
         )}
       </div>
