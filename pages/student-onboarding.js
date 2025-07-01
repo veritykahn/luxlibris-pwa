@@ -232,14 +232,16 @@ export default function StudentOnboarding() {
       }
       
       // Generate username with duplicate checking
-      const username = await generateUsername(
+      const fullUsername = await generateUsername(
         formData.firstName, 
         formData.lastInitial, 
         formData.grade, 
         schoolData.currentJoinCode
       );
       
-      setGeneratedUsername(username);
+      // Extract just the part before @ for display
+      const displayUsername = fullUsername.split('@')[0];
+      setGeneratedUsername(displayUsername);
 
       // Create student document in 'users' collection (matching your Firebase structure)
       const studentData = {
@@ -275,10 +277,11 @@ export default function StudentOnboarding() {
         
         // Metadata
         accountCreated: new Date(),
-        onboardingCompleted: true,
+        onboardingCompleted: true, // Fix: was missing this being set to true
         
-        // Generated username for display
-        generatedUsername: username
+        // Generated username for display and sign-in
+        generatedUsername: fullUsername, // Store full email format
+        displayUsername: displayUsername // Store just the part before @ for easy login
       };
 
       const docRef = await addDoc(collection(db, 'users'), studentData);
@@ -374,13 +377,20 @@ export default function StudentOnboarding() {
                 Your Lux Libris Username:
               </p>
               <p style={{
-                fontSize: '16px',
+                fontSize: '24px',
                 fontWeight: 'bold',
                 color: selectedTheme.primary,
                 fontFamily: 'monospace',
-                wordBreak: 'break-all'
+                marginBottom: '8px'
               }}>
                 {generatedUsername}
+              </p>
+              <p style={{
+                fontSize: '12px',
+                color: `${selectedTheme.textPrimary}CC`,
+                fontStyle: 'italic'
+              }}>
+                Remember this! You&apos;ll use it to sign in next time.
               </p>
             </div>
             <button
