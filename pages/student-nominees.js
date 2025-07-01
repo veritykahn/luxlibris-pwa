@@ -534,6 +534,117 @@ export default function StudentNominees() {
 
 // FIXED Book Card Component - Real Pokemon Trading Card Style
 function BookCard({ book, theme, onAddBook, isAddingBook }) {
+  
+  const getCategoryColorPalette = (book) => {
+    const category = book.displayCategory || book.internalCategory || '';
+    
+    // Graphic novels - Burnt and bright oranges
+    if (category.includes('Graphic')) {
+      return {
+        primary: '#FF6B35',     // Bright orange
+        secondary: '#FF8C42',   // Medium orange  
+        accent: '#FFB563',      // Light orange
+        background: '#FFF4E6',  // Very light orange
+        surface: '#FFFFFF',     // White
+        cardBg: 'linear-gradient(145deg, #FFF4E6, #FFE5CC, #FFFFFF)',
+        headerBg: 'linear-gradient(135deg, #FF6B35, #FF8C42)',
+        textPrimary: '#8B2500',  // Dark orange-brown
+        textSecondary: '#B8491C'
+      };
+    }
+    
+    // Chapter Books - Buttery and pastel yellows
+    if (category.includes('Chapter Books') || category.includes('Stick With You')) {
+      return {
+        primary: '#F4D03F',     // Buttery yellow
+        secondary: '#F7DC6F',   // Light yellow
+        accent: '#FCF3CF',      // Pale yellow
+        background: '#FFFEF7',  // Cream
+        surface: '#FFFFFF',     // White
+        cardBg: 'linear-gradient(145deg, #FFFEF7, #FCF3CF, #FFFFFF)',
+        headerBg: 'linear-gradient(135deg, #F4D03F, #F7DC6F)',
+        textPrimary: '#7D6608',  // Dark yellow-brown
+        textSecondary: '#A57C00'
+      };
+    }
+    
+    // Picture Books - Teals and mints
+    if (category.includes('Picture')) {
+      return {
+        primary: '#48CAE4',     // Bright teal
+        secondary: '#00B4D8',   // Deep teal
+        accent: '#90E0EF',      // Light teal
+        background: '#F0FDFF',  // Very light mint
+        surface: '#FFFFFF',     // White
+        cardBg: 'linear-gradient(145deg, #F0FDFF, #CAF0F8, #FFFFFF)',
+        headerBg: 'linear-gradient(135deg, #48CAE4, #00B4D8)',
+        textPrimary: '#023047',  // Dark teal
+        textSecondary: '#0077B6'
+      };
+    }
+    
+    // Classic - Royal blues
+    if (category.includes('Classic')) {
+      return {
+        primary: '#3F51B5',     // Royal blue
+        secondary: '#5C6BC0',   // Medium blue
+        accent: '#9FA8DA',      // Light blue
+        background: '#F3F4FF',  // Very light blue
+        surface: '#FFFFFF',     // White
+        cardBg: 'linear-gradient(145deg, #F3F4FF, #E8EAF6, #FFFFFF)',
+        headerBg: 'linear-gradient(135deg, #3F51B5, #5C6BC0)',
+        textPrimary: '#1A237E',  // Dark blue
+        textSecondary: '#283593'
+      };
+    }
+    
+    // Catholic Books - Pastel blues
+    if (category.includes('Catholic')) {
+      return {
+        primary: '#64B5F6',     // Soft blue
+        secondary: '#90CAF9',   // Light blue
+        accent: '#BBDEFB',      // Pale blue
+        background: '#F8FCFF',  // Very light blue
+        surface: '#FFFFFF',     // White
+        cardBg: 'linear-gradient(145deg, #F8FCFF, #E3F2FD, #FFFFFF)',
+        headerBg: 'linear-gradient(135deg, #64B5F6, #90CAF9)',
+        textPrimary: '#0D47A1',  // Dark blue
+        textSecondary: '#1565C0'
+      };
+    }
+    
+    // Hidden Treasures - Reds and browns
+    if (category.includes('Hidden') || category.includes('Treasure')) {
+      return {
+        primary: '#D32F2F',     // Rich red
+        secondary: '#F44336',   // Bright red
+        accent: '#FFCDD2',      // Light red
+        background: '#FFF8F8',  // Very light red
+        surface: '#FFFFFF',     // White
+        cardBg: 'linear-gradient(145deg, #FFF8F8, #FFEBEE, #FFFFFF)',
+        headerBg: 'linear-gradient(135deg, #D32F2F, #8D4E3C)',
+        textPrimary: '#8B1538',  // Dark red-brown
+        textSecondary: '#B71C1C'
+      };
+    }
+    
+    // Default - Use theme colors
+    return {
+      primary: theme.primary,
+      secondary: theme.secondary,
+      accent: theme.accent,
+      background: theme.surface,
+      surface: theme.surface,
+      cardBg: `linear-gradient(145deg, ${theme.surface}, ${theme.background}, #FFFFFF)`,
+      headerBg: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary})`,
+      textPrimary: theme.textPrimary,
+      textSecondary: theme.textSecondary
+    };
+  };
+
+  // Get the color palette for this book's category
+  const colorPalette = getCategoryColorPalette(book);
+
   // FIXED: Handle string data from Firebase instead of arrays
   const parseStringToArray = (str, separator = ',') => {
     if (!str) return [];
@@ -607,15 +718,6 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
     return genresString; // Already a string from Firebase
   };
 
-  const getGradeBadgeColor = (gradeLevelsString) => {
-    const gradeText = gradeLevelsString || '';
-    
-    if (gradeText.includes('4') || gradeText.includes('5')) return '#4CAF50'; // Green for younger
-    if (gradeText.includes('6') || gradeText.includes('7')) return '#FF9800'; // Orange for middle
-    if (gradeText.includes('8') || gradeText.includes('9')) return '#9C27B0'; // Purple for older
-    return theme.primary;
-  };
-
   const getLengthDisplay = (book) => {
     const pages = book.pages || book.pageCount || 0;
     const minutes = book.totalMinutes || 0;
@@ -631,83 +733,64 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
     }
   };
 
-  const getRarityColor = (book) => {
-    // Determine "rarity" based on various factors for Pokemon-style feel
-    const pages = book.pages || 0;
-    const hasAudio = book.isAudiobook;
-    const hasReview = book.luxLibrisReview;
-    
-    if (hasAudio && hasReview && pages > 200) return '#FFD700'; // Gold - "Legendary"
-    if (hasAudio || (hasReview && pages > 150)) return '#C0C0C0'; // Silver - "Rare"
-    return '#CD7F32'; // Bronze - "Common"
-  };
-
-  const getRarityName = (book) => {
-    const color = getRarityColor(book);
-    if (color === '#FFD700') return 'LEGENDARY';
-    if (color === '#C0C0C0') return 'RARE';
-    return 'COMMON';
+  const getShortCategory = (book) => {
+    const category = book.displayCategory || book.internalCategory || 'Fiction';
+    // Remove emoji and shorten for display
+    return category.replace(/📖\s*/, '').replace(/🎨\s*/, '').replace(/📚\s*/, '');
   };
 
   return (
     <div style={{
-      backgroundColor: theme.surface,
+      background: colorPalette.cardBg,
       borderRadius: '20px',
-      boxShadow: '0 15px 35px rgba(0,0,0,0.2)',
+      boxShadow: `
+        0 20px 40px rgba(0,0,0,0.15),
+        0 8px 16px rgba(0,0,0,0.1),
+        inset 0 1px 0 rgba(255,255,255,0.8)
+      `,
       overflow: 'hidden',
-      border: `4px solid ${getRarityColor(book)}`,
+      border: '4px solid #FFFFFF',
       position: 'relative',
-      transform: 'translateZ(0)',
-      transition: 'all 0.3s ease',
-      background: `linear-gradient(145deg, ${theme.surface}, ${theme.surface}F0)`
+      transform: 'translateY(-4px)',
+      transition: 'all 0.3s ease'
     }}>
       {/* Pokemon Card Header */}
       <div style={{
-        background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary})`,
+        background: colorPalette.headerBg,
         padding: '16px 20px 12px',
-        color: theme.textPrimary,
+        color: '#FFFFFF',
         position: 'relative',
-        borderBottom: `2px solid ${getRarityColor(book)}`
+        borderBottom: '3px solid #FFFFFF',
+        textAlign: 'center',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3)'
       }}>
-        {/* Rarity Badge - Top Right */}
+        {/* Category Badge - Centered at Top */}
         <div style={{
-          position: 'absolute',
-          top: '8px',
-          right: '12px',
-          backgroundColor: getRarityColor(book),
-          color: 'white',
-          fontSize: '8px',
+          backgroundColor: 'rgba(255,255,255,0.9)',
+          color: colorPalette.textPrimary,
+          fontSize: '11px',
           fontWeight: 'bold',
-          padding: '3px 6px',
-          borderRadius: '8px',
-          letterSpacing: '0.5px'
+          padding: '6px 16px',
+          borderRadius: '16px',
+          letterSpacing: '0.5px',
+          display: 'inline-block',
+          marginBottom: '12px',
+          textTransform: 'uppercase',
+          border: '2px solid #FFFFFF',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
         }}>
-          {getRarityName(book)}
+          {getShortCategory(book)}
         </div>
         
-        {/* Grade Level - Top Left */}
-        <div style={{
-          position: 'absolute',
-          top: '8px',
-          left: '16px',
-          backgroundColor: getGradeBadgeColor(book.gradeLevels),
-          color: 'white',
-          fontSize: '10px',
-          fontWeight: 'bold',
-          padding: '4px 8px',
-          borderRadius: '12px'
-        }}>
-          {getGradeDisplay(book.gradeLevels)}
-        </div>
-        
-        <div style={{ marginTop: '20px' }}>
+        <div>
           <h2 style={{
             fontSize: 'clamp(18px, 5vw, 22px)',
             fontWeight: 'bold',
             margin: '0 0 8px 0',
             lineHeight: '1.2',
             fontFamily: 'Didot, serif',
-            textShadow: '1px 1px 2px rgba(0,0,0,0.1)'
+            textShadow: '2px 2px 4px rgba(0,0,0,0.3)',
+            color: '#FFFFFF'
           }}>
             {book.title}
           </h2>
@@ -715,35 +798,30 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
           <p style={{
             fontSize: 'clamp(12px, 3.5vw, 14px)',
             margin: '0 0 10px 0',
-            opacity: 0.9,
-            fontWeight: '500'
+            opacity: 0.95,
+            fontWeight: '500',
+            color: '#FFFFFF'
           }}>
             by {formatAuthors(book.authors)}
           </p>
 
-          {/* Stats Bar - Pokemon Style */}
+          {/* Genre - Small and subtle */}
           <div style={{
             display: 'flex',
-            gap: '12px',
-            alignItems: 'center'
+            gap: '8px',
+            alignItems: 'center',
+            justifyContent: 'center'
           }}>
             <div style={{
-              backgroundColor: 'rgba(255,255,255,0.25)',
+              backgroundColor: 'rgba(255,255,255,0.2)',
               fontSize: '10px',
               padding: '3px 8px',
               borderRadius: '10px',
-              fontWeight: 'bold'
+              fontWeight: 'bold',
+              color: '#FFFFFF',
+              border: '1px solid rgba(255,255,255,0.3)'
             }}>
               {getGenreDisplay(book.genres)}
-            </div>
-            <div style={{
-              backgroundColor: 'rgba(255,255,255,0.25)',
-              fontSize: '10px',
-              padding: '3px 8px',
-              borderRadius: '10px',
-              fontWeight: 'bold'
-            }}>
-              {book.displayCategory?.replace('📖 ', '') || book.internalCategory}
             </div>
           </div>
         </div>
@@ -752,7 +830,7 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
       {/* Main Content Area */}
       <div style={{
         padding: '20px',
-        background: `linear-gradient(180deg, ${theme.surface}, ${theme.surface}F5)`
+        background: `linear-gradient(180deg, ${colorPalette.surface}, ${colorPalette.background})`
       }}>
         {/* Cover and Stats Section */}
         <div className="cover-stats-container" style={{
@@ -772,7 +850,7 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
             alignItems: 'center',
             justifyContent: 'center',
             boxShadow: '0 8px 25px rgba(0,0,0,0.2)',
-            border: `3px solid ${getRarityColor(book)}40`,
+            border: '3px solid #FFFFFF',
             position: 'relative'
           }}>
             {book.coverImageUrl ? (
@@ -793,7 +871,7 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
                   left: 0,
                   right: 0,
                   bottom: 0,
-                  background: `linear-gradient(45deg, transparent 30%, ${getRarityColor(book)}20 50%, transparent 70%)`,
+                  background: `linear-gradient(45deg, transparent 30%, ${colorPalette.primary}20 50%, transparent 70%)`,
                   pointerEvents: 'none'
                 }} />
               </>
@@ -829,6 +907,12 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
                 fontSize: '12px'
               }}>
                 <div>
+                  <span style={{ color: theme.textSecondary, fontWeight: '600' }}>Grades:</span><br/>
+                  <span style={{ color: theme.textPrimary, fontWeight: 'bold' }}>
+                    {getGradeDisplay(book.gradeLevels)}
+                  </span>
+                </div>
+                <div>
                   <span style={{ color: theme.textSecondary, fontWeight: '600' }}>Length:</span><br/>
                   <span style={{ color: theme.textPrimary, fontWeight: 'bold' }}>
                     {getLengthDisplay(book)}
@@ -840,10 +924,10 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
                     {book.publicationDate ? new Date(book.publicationDate).getFullYear() : 'N/A'}
                   </span>
                 </div>
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <span style={{ color: theme.textSecondary, fontWeight: '600' }}>Genres:</span><br/>
-                  <span style={{ color: theme.textPrimary, fontWeight: 'bold', fontSize: '11px' }}>
-                    {getAllGenres(book.genres)}
+                <div>
+                  <span style={{ color: theme.textSecondary, fontWeight: '600' }}>Genre:</span><br/>
+                  <span style={{ color: theme.textPrimary, fontWeight: 'bold' }}>
+                    {getGenreDisplay(book.genres)}
                   </span>
                 </div>
               </div>
@@ -854,17 +938,18 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
         {/* Review Section - Always Visible */}
         {book.luxLibrisReview && (
           <div style={{
-            backgroundColor: `${theme.accent}25`,
+            backgroundColor: colorPalette.background,
             padding: '14px',
             borderRadius: '12px',
             marginBottom: '16px',
-            border: `2px solid ${theme.accent}40`,
-            position: 'relative'
+            border: '2px solid #FFFFFF',
+            position: 'relative',
+            boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.1)'
           }}>
             <div style={{
               fontSize: '11px',
               fontWeight: '700',
-              color: theme.textSecondary,
+              color: colorPalette.textSecondary,
               marginBottom: '6px',
               textTransform: 'uppercase',
               letterSpacing: '0.5px'
@@ -874,7 +959,7 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
             <p style={{
               fontSize: '13px',
               lineHeight: '1.4',
-              color: theme.textPrimary,
+              color: colorPalette.textPrimary,
               margin: 0,
               fontStyle: 'italic',
               fontWeight: '500'
@@ -884,27 +969,28 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
           </div>
         )}
 
-        {/* Platform Info */}
-        {book.platforms && (
+        {/* Platform Info - Only show if audiobook */}
+        {book.isAudiobook && book.platforms && (
           <div style={{
-            backgroundColor: `${theme.secondary}20`,
+            backgroundColor: colorPalette.background,
             padding: '10px 12px',
             borderRadius: '10px',
-            marginBottom: '16px',
-            fontSize: '11px'
+            marginBottom: '12px',
+            fontSize: '11px',
+            border: '2px solid #FFFFFF'
           }}>
-            <span style={{ color: theme.textSecondary, fontWeight: '600' }}>Available on: </span>
-            <span style={{ color: theme.textPrimary, fontWeight: 'bold' }}>
+            <span style={{ color: colorPalette.textSecondary, fontWeight: '600' }}>Available on: </span>
+            <span style={{ color: colorPalette.textPrimary, fontWeight: 'bold' }}>
               {Array.isArray(book.platforms) ? book.platforms.join(', ') : book.platforms}
             </span>
           </div>
         )}
       </div>
 
-      {/* Action Buttons - Pokemon Card Style */}
+      {/* Action Buttons - 3D Floating Card Style */}
       <div style={{
-        padding: '16px 20px 20px',
-        background: `linear-gradient(180deg, ${theme.surface}F5, ${theme.surface})`
+        padding: '12px 20px 20px',
+        background: `linear-gradient(180deg, ${colorPalette.background}, ${colorPalette.surface})`
       }}>
         <div className="action-buttons" style={{
           display: 'flex',
@@ -915,11 +1001,11 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
             disabled={isAddingBook}
             style={{
               flex: 1,
-              background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary})`,
-              color: theme.textPrimary,
-              border: `2px solid ${getRarityColor(book)}`,
+              background: `linear-gradient(145deg, ${colorPalette.surface}, ${colorPalette.background})`,
+              color: colorPalette.textPrimary,
+              border: '3px solid #FFFFFF',
               padding: '18px 20px',
-              borderRadius: '14px',
+              borderRadius: '16px',
               fontSize: '15px',
               fontWeight: '700',
               cursor: 'pointer',
@@ -928,13 +1014,34 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
               justifyContent: 'center',
               gap: '8px',
               opacity: isAddingBook ? 0.7 : 1,
-              transition: 'all 0.2s ease',
-              boxShadow: '0 6px 15px rgba(0,0,0,0.2)',
-              textShadow: '1px 1px 2px rgba(0,0,0,0.1)',
+              transition: 'all 0.3s ease',
+              boxShadow: `
+                0 8px 16px rgba(0,0,0,0.1),
+                0 4px 8px ${colorPalette.primary}40,
+                inset 0 1px 0 rgba(255,255,255,0.8)
+              `,
+              textShadow: '0 1px 2px rgba(0,0,0,0.1)',
               textTransform: 'uppercase',
               letterSpacing: '0.5px',
               minHeight: '56px',
-              touchAction: 'manipulation'
+              touchAction: 'manipulation',
+              transform: 'translateY(-2px)'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.transform = 'translateY(-4px)';
+              e.target.style.boxShadow = `
+                0 12px 24px rgba(0,0,0,0.15),
+                0 6px 12px ${colorPalette.primary}50,
+                inset 0 1px 0 rgba(255,255,255,0.9)
+              `;
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.transform = 'translateY(-2px)';
+              e.target.style.boxShadow = `
+                0 8px 16px rgba(0,0,0,0.1),
+                0 4px 8px ${colorPalette.primary}40,
+                inset 0 1px 0 rgba(255,255,255,0.8)
+              `;
             }}
           >
             📖 Add Book
@@ -946,11 +1053,11 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
               disabled={isAddingBook}
               style={{
                 flex: 1,
-                background: `linear-gradient(135deg, ${theme.textPrimary}, #444)`,
-                color: theme.surface,
-                border: `2px solid ${getRarityColor(book)}`,
+                background: `linear-gradient(145deg, ${colorPalette.textPrimary}, ${colorPalette.textSecondary})`,
+                color: '#FFFFFF',
+                border: '3px solid #FFFFFF',
                 padding: '18px 20px',
-                borderRadius: '14px',
+                borderRadius: '16px',
                 fontSize: '15px',
                 fontWeight: '700',
                 cursor: 'pointer',
@@ -959,13 +1066,34 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
                 justifyContent: 'center',
                 gap: '8px',
                 opacity: isAddingBook ? 0.7 : 1,
-                transition: 'all 0.2s ease',
-                boxShadow: '0 6px 15px rgba(0,0,0,0.2)',
-                textShadow: '1px 1px 2px rgba(0,0,0,0.3)',
+                transition: 'all 0.3s ease',
+                boxShadow: `
+                  0 8px 16px rgba(0,0,0,0.2),
+                  0 4px 8px ${colorPalette.primary}40,
+                  inset 0 1px 0 rgba(255,255,255,0.2)
+                `,
+                textShadow: '0 1px 2px rgba(0,0,0,0.3)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.5px',
                 minHeight: '56px',
-                touchAction: 'manipulation'
+                touchAction: 'manipulation',
+                transform: 'translateY(-2px)'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.transform = 'translateY(-4px)';
+                e.target.style.boxShadow = `
+                  0 12px 24px rgba(0,0,0,0.25),
+                  0 6px 12px ${colorPalette.primary}50,
+                  inset 0 1px 0 rgba(255,255,255,0.3)
+                `;
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.transform = 'translateY(-2px)';
+                e.target.style.boxShadow = `
+                  0 8px 16px rgba(0,0,0,0.2),
+                  0 4px 8px ${colorPalette.primary}40,
+                  inset 0 1px 0 rgba(255,255,255,0.2)
+                `;
               }}
             >
               🎧 Add Audio
