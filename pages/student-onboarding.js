@@ -737,6 +737,16 @@ function InfoPage({ formData, setFormData, selectedTheme, grades, schools, onSch
             fontSize: '16px'
           }}
         />
+        {formData.firstName && (
+          <p style={{
+            fontSize: '12px',
+            color: `${selectedTheme.textPrimary}80`,
+            margin: '4px 0 0 0',
+            fontStyle: 'italic'
+          }}>
+            Your username will start with: {formData.firstName.toLowerCase().replace(/[^a-z0-9]/g, '')}
+          </p>
+        )}
       </div>
 
       {/* Last Initial */}
@@ -767,6 +777,16 @@ function InfoPage({ formData, setFormData, selectedTheme, grades, schools, onSch
             textTransform: 'uppercase'
           }}
         />
+        {formData.firstName && formData.lastInitial && (
+          <p style={{
+            fontSize: '12px',
+            color: selectedTheme.primary,
+            margin: '8px 0 0 0',
+            fontWeight: '600'
+          }}>
+            📧 Your username will be: {formData.firstName.toLowerCase().replace(/[^a-z0-9]/g, '')}{formData.lastInitial.toLowerCase()}4
+          </p>
+        )}
       </div>
 
       {/* Grade Selection */}
