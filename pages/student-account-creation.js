@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
-import { authHelpers, dbHelpers } from '../lib/firebase'
+import { dbHelpers } from '../lib/firebase'
 
 export default function StudentAccountCreation() {
   const router = useRouter()
@@ -34,31 +34,26 @@ export default function StudentAccountCreation() {
         setSchoolData(verification.school)
         setStep(2)
       } else if (step === 2) {
-        // Create account (no name needed yet)
+        // Just store school data for onboarding to use - NO ACCOUNT CREATION HERE
         try {
-          // Create Firebase Auth account with just school code
-          const authResult = await authHelpers.createStudentAccount(
-  `temp_${studentData.schoolJoinCode.toLowerCase()}_${Date.now()}`, // Temporary identifier
-  '', // No lastInitial yet - will be collected in onboarding  
-  studentData.schoolJoinCode.toUpperCase()
-)
-
           // Store school data for onboarding to use
           if (typeof window !== 'undefined') {
             localStorage.setItem('tempSchoolData', JSON.stringify({
               schoolId: schoolData.id,
               schoolName: schoolData.name,
-              schoolJoinCode: studentData.schoolJoinCode
+              schoolCity: schoolData.city,
+              schoolState: schoolData.state,
+              schoolJoinCode: studentData.schoolJoinCode.toUpperCase()
             }))
-            localStorage.setItem('luxlibris_account_created', 'true')
+            localStorage.setItem('luxlibris_account_flow', 'student')
           }
 
-          // Redirect to legal acceptance first
+          // Redirect to legal acceptance first, then onboarding will create the actual account
           router.push('/legal?flow=student-onboarding')
           
         } catch (error) {
-          console.error('Account creation error:', error)
-          setError('Error creating account. Please try again.')
+          console.error('Data storage error:', error)
+          setError('Error saving school information. Please try again.')
         }
       }
     } catch (error) {
@@ -81,7 +76,7 @@ export default function StudentAccountCreation() {
   return (
     <>
       <Head>
-        <title>Create Student Account - Lux Libris</title>
+        <title>Join Your School - Lux Libris</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       </Head>
 
@@ -116,7 +111,7 @@ export default function StudentAccountCreation() {
               margin: '0 auto 1rem',
               fontSize: '1.75rem'
             }}>
-              🎓
+              🏫
             </div>
             <h1 style={{
               fontSize: 'clamp(1.5rem, 5vw, 1.875rem)',
@@ -125,7 +120,7 @@ export default function StudentAccountCreation() {
               margin: '0 0 0.5rem 0',
               fontFamily: 'Georgia, serif'
             }}>
-              Create Student Account
+              Join Your School
             </h1>
             <p style={{
               color: '#6b7280',
@@ -133,7 +128,7 @@ export default function StudentAccountCreation() {
               margin: 0,
               lineHeight: '1.4'
             }}>
-              Join your school&apos;s Lux Libris reading program
+              Connect to your school&apos;s Lux Libris reading program
             </p>
           </div>
 
@@ -191,7 +186,7 @@ export default function StudentAccountCreation() {
                   marginBottom: '1rem',
                   textAlign: 'center'
                 }}>
-                  Connect to your school
+                  Enter your school code
                 </h2>
                 <p style={{
                   color: '#6b7280',
@@ -200,7 +195,7 @@ export default function StudentAccountCreation() {
                   marginBottom: '1.5rem',
                   lineHeight: '1.4'
                 }}>
-                  Enter the school join code provided by your teacher or librarian
+                  Your teacher or librarian will have given you a special code to join your school
                 </p>
 
                 <div style={{ marginBottom: '1.5rem' }}>
@@ -240,7 +235,8 @@ export default function StudentAccountCreation() {
                   <p style={{
                     fontSize: '0.75rem',
                     color: '#6b7280',
-                    margin: '0.5rem 0 0 0'
+                    margin: '0.5rem 0 0 0',
+                    textAlign: 'center'
                   }}>
                     Ask your teacher if you don&apos;t have this code
                   </p>
@@ -259,7 +255,7 @@ export default function StudentAccountCreation() {
                     margin: 0,
                     lineHeight: '1.4'
                   }}>
-                    💡 <strong>Next step:</strong> After verifying your school, you&apos;ll add your name and preferences in the setup process.
+                    💡 <strong>What&apos;s next:</strong> After we verify your school, you&apos;ll set up your profile with your name, grade, and reading preferences!
                   </p>
                 </div>
               </div>
@@ -275,7 +271,7 @@ export default function StudentAccountCreation() {
                   marginBottom: '1rem',
                   textAlign: 'center'
                 }}>
-                  Ready to create your account?
+                  School found! 🎉
                 </h2>
 
                 <div style={{
@@ -291,17 +287,17 @@ export default function StudentAccountCreation() {
                     color: '#223848',
                     margin: '0 0 1rem 0'
                   }}>
-                    School Details:
+                    You&apos;re joining:
                   </h3>
                   <div style={{ fontSize: '0.875rem', color: '#374151', lineHeight: '1.6' }}>
                     <p style={{ margin: '0 0 0.5rem 0' }}>
-                      <strong>School:</strong> {schoolData.name}
+                      <strong>📚 School:</strong> {schoolData.name}
                     </p>
                     <p style={{ margin: '0 0 0.5rem 0' }}>
-                      <strong>Location:</strong> {schoolData.city}, {schoolData.state}
+                      <strong>📍 Location:</strong> {schoolData.city}, {schoolData.state}
                     </p>
                     <p style={{ margin: 0 }}>
-                      <strong>Join Code:</strong> {studentData.schoolJoinCode}
+                      <strong>🔑 Join Code:</strong> {studentData.schoolJoinCode}
                     </p>
                   </div>
                 </div>
@@ -319,7 +315,7 @@ export default function StudentAccountCreation() {
                     margin: 0,
                     lineHeight: '1.4'
                   }}>
-                    <strong>🎉 Almost there!</strong> Next you&apos;ll add your name, grade, and reading preferences to complete your Lux Libris profile.
+                    <strong>🚀 Ready to start!</strong> Click continue to set up your personal reading profile and start collecting saint achievements!
                   </p>
                 </div>
 
@@ -336,7 +332,7 @@ export default function StudentAccountCreation() {
                     margin: 0,
                     lineHeight: '1.4'
                   }}>
-                    <strong>📧 Parent/Guardian:</strong> After setup, you&apos;ll get a special link to share with your parent or guardian so they can track your reading progress!
+                    <strong>👨‍👩‍👧‍👦 For parents:</strong> After setup, your child will get a special link to share with you so you can track their reading progress!
                   </p>
                 </div>
               </div>
@@ -421,7 +417,7 @@ export default function StudentAccountCreation() {
                   animation: 'spin 1s linear infinite'
                 }}></div>
               )}
-              {step === 2 ? 'Create Account' : 'Next'}
+              {step === 2 ? 'Continue to Setup' : 'Verify School'}
             </button>
           </div>
 
@@ -438,7 +434,7 @@ export default function StudentAccountCreation() {
               margin: 0,
               lineHeight: '1.4'
             }}>
-              Need help? Ask your teacher or librarian for assistance with your school join code.
+              Need help? Ask your teacher or librarian for your school&apos;s join code.
             </p>
           </div>
         </div>

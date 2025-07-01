@@ -109,26 +109,33 @@ export default function StudentOnboarding() {
   }, []);
 
   const loadExistingData = () => {
-    // Pre-populate from account creation data
-    const tempStudentData = localStorage.getItem('tempStudentData');
-    const accountData = localStorage.getItem('luxlibris_student_profile');
+    // Pre-populate from account creation flow
+    const tempSchoolData = localStorage.getItem('tempSchoolData');
     
-    if (tempStudentData) {
-      const parsed = JSON.parse(tempStudentData);
-      setFormData(prev => ({
-        ...prev,
-        firstName: parsed.firstName || '',
-        lastInitial: parsed.lastInitial || ''
-      }));
-    }
-    
-    if (accountData) {
-      const parsed = JSON.parse(accountData);
+    if (tempSchoolData) {
+      const parsed = JSON.parse(tempSchoolData);
       setFormData(prev => ({
         ...prev,
         schoolId: parsed.schoolId || '',
-        schoolName: parsed.schoolName || ''
+        schoolName: parsed.schoolName || '',
+        schoolCity: parsed.schoolCity || '',
+        schoolState: parsed.schoolState || '',
+        population: `${parsed.schoolCity}, ${parsed.schoolState}` // Auto-fill population field
       }));
+      
+      // Add this school to the schools list if it's not already there
+      setSchools(prev => {
+        const exists = prev.find(school => school.id === parsed.schoolId);
+        if (!exists && parsed.schoolId) {
+          return [...prev, {
+            id: parsed.schoolId,
+            name: parsed.schoolName,
+            city: parsed.schoolCity,
+            state: parsed.schoolState
+          }];
+        }
+        return prev;
+      });
     }
   };
 
@@ -216,9 +223,13 @@ export default function StudentOnboarding() {
   const completeOnboarding = async () => {
     setIsLoading(true);
     try {
-      // Get school data for join code
+      // Get school data from Firebase to get the current join code
       const schoolDoc = await getDoc(doc(db, 'schools', formData.schoolId));
       const schoolData = schoolDoc.data();
+      
+      if (!schoolData) {
+        throw new Error('School not found');
+      }
       
       // Generate username with duplicate checking
       const username = await generateUsername(
@@ -276,6 +287,10 @@ export default function StudentOnboarding() {
       // Store student ID in localStorage for PWA
       localStorage.setItem('studentId', docRef.id);
       localStorage.setItem('studentData', JSON.stringify(studentData));
+      
+      // Clean up temp data
+      localStorage.removeItem('tempSchoolData');
+      localStorage.removeItem('luxlibris_account_flow');
       
       // Show success popup first
       setShowSuccessPopup(true);
@@ -568,41 +583,64 @@ function InfoPage({ formData, setFormData, selectedTheme, grades, schools, onSch
         Tell us about yourself!
       </h2>
 
-      {/* School Selection */}
+      {/* School Selection - Pre-filled and read-only from account creation */}
       <div style={{ marginBottom: '20px' }}>
         <label style={{
           fontSize: '16px',
           fontWeight: '600',
-          color: selectedTheme.textPrimary,
+          color: formData.schoolId ? `${selectedTheme.textPrimary}80` : selectedTheme.textPrimary,
           display: 'block',
           marginBottom: '8px'
         }}>
-          What school do you attend?
+          Your School
         </label>
-        <select
-          value={formData.schoolId}
-          onChange={(e) => onSchoolSelect(e.target.value)}
-          style={{
-            width: '100%',
-            padding: '12px',
-            borderRadius: '12px',
-            border: 'none',
-            backgroundColor: selectedTheme.surface,
-            color: selectedTheme.textPrimary,
-            fontSize: '16px'
-          }}
-        >
-          <option value="">Select your school</option>
-          {schools.map(school => (
-            <option key={school.id} value={school.id}>
-              {school.name} - {school.city}, {school.state}
-            </option>
-          ))}
-        </select>
+        <div style={{
+          width: '100%',
+          padding: '12px',
+          borderRadius: '12px',
+          border: 'none',
+          backgroundColor: formData.schoolId ? `${selectedTheme.surface}50` : selectedTheme.surface,
+          color: formData.schoolId ? `${selectedTheme.textPrimary}80` : selectedTheme.textPrimary,
+          fontSize: '16px'
+        }}>
+          {formData.schoolId ? (
+            `${formData.schoolName} - ${formData.schoolCity}, ${formData.schoolState}`
+          ) : (
+            <select
+              value={formData.schoolId}
+              onChange={(e) => onSchoolSelect(e.target.value)}
+              style={{
+                width: '100%',
+                border: 'none',
+                backgroundColor: 'transparent',
+                color: selectedTheme.textPrimary,
+                fontSize: '16px',
+                outline: 'none'
+              }}
+            >
+              <option value="">Select your school</option>
+              {schools.map(school => (
+                <option key={school.id} value={school.id}>
+                  {school.name} - {school.city}, {school.state}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+        {formData.schoolId && (
+          <p style={{
+            fontSize: '12px',
+            color: `${selectedTheme.textPrimary}60`,
+            margin: '4px 0 0 0',
+            fontStyle: 'italic'
+          }}>
+            School selected from previous step
+          </p>
+        )}
       </div>
 
-      {/* Population Field - GREYED OUT */}
-      {formData.schoolId && (
+      {/* Population Field - GREYED OUT and auto-filled */}
+      {formData.population && (
         <div style={{ marginBottom: '20px' }}>
           <label style={{
             fontSize: '16px',
@@ -628,6 +666,14 @@ function InfoPage({ formData, setFormData, selectedTheme, grades, schools, onSch
               cursor: 'not-allowed'
             }}
           />
+          <p style={{
+            fontSize: '12px',
+            color: `${selectedTheme.textPrimary}60`,
+            margin: '4px 0 0 0',
+            fontStyle: 'italic'
+          }}>
+            Automatically filled from your school
+          </p>
         </div>
       )}
 
