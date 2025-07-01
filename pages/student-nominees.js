@@ -1,5 +1,5 @@
-// pages/student-nominees.js - Pokemon-style trading cards for school nominees
-import { useState, useEffect } from 'react';
+// pages/student-nominees.js - FIXED Pokemon-style trading cards
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
 import { getStudentData, getSchoolNominees, addBookToBookshelf } from '../lib/firebase';
@@ -14,6 +14,8 @@ export default function StudentNominees() {
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [showAddMessage, setShowAddMessage] = useState('');
   const [isAddingBook, setIsAddingBook] = useState(false);
+  const touchStartX = useRef(0);
+  const touchEndX = useRef(0);
 
   // Theme definitions (same as dashboard)
   const themes = {
@@ -164,12 +166,28 @@ export default function StudentNominees() {
     setIsAddingBook(false);
   };
 
-  const nextCard = () => {
-    setCurrentCardIndex((prev) => (prev + 1) % nominees.length);
+  // Touch handlers for swipe navigation
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.targetTouches[0].clientX;
   };
 
-  const prevCard = () => {
-    setCurrentCardIndex((prev) => (prev - 1 + nominees.length) % nominees.length);
+  const handleTouchMove = (e) => {
+    touchEndX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStartX.current || !touchEndX.current) return;
+    
+    const distance = touchStartX.current - touchEndX.current;
+    const isLeftSwipe = distance > 50;
+    const isRightSwipe = distance < -50;
+
+    if (isLeftSwipe && currentCardIndex < nominees.length - 1) {
+      setCurrentCardIndex(currentCardIndex + 1);
+    }
+    if (isRightSwipe && currentCardIndex > 0) {
+      setCurrentCardIndex(currentCardIndex - 1);
+    }
   };
 
   const goToCard = (index) => {
@@ -343,15 +361,20 @@ export default function StudentNominees() {
         </div>
       </div>
 
-      {/* Card Stack Display */}
-      <div style={{
-        padding: '20px',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        minHeight: 'calc(100vh - 200px)'
-      }}>
-        {/* Main Card */}
+      {/* Swipeable Card Display */}
+      <div 
+        style={{
+          padding: '20px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          minHeight: 'calc(100vh - 200px)'
+        }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        {/* Main Card with Pokemon styling */}
         <div style={{
           position: 'relative',
           width: '320px',
@@ -366,81 +389,17 @@ export default function StudentNominees() {
           />
         </div>
 
-        {/* Navigation Controls */}
+        {/* Swipe Hint */}
         <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '20px',
+          fontSize: '12px',
+          color: currentTheme.textSecondary,
+          textAlign: 'center',
           marginBottom: '20px'
         }}>
-          <button
-            onClick={prevCard}
-            disabled={nominees.length <= 1}
-            style={{
-              backgroundColor: currentTheme.primary,
-              color: currentTheme.textPrimary,
-              border: 'none',
-              borderRadius: '50%',
-              width: '44px',
-              height: '44px',
-              cursor: 'pointer',
-              fontSize: '18px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              opacity: nominees.length <= 1 ? 0.5 : 1
-            }}
-          >
-            ←
-          </button>
-          
-          <div style={{
-            display: 'flex',
-            gap: '8px',
-            alignItems: 'center'
-          }}>
-            {nominees.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => goToCard(index)}
-                style={{
-                  width: '12px',
-                  height: '12px',
-                  borderRadius: '50%',
-                  border: 'none',
-                  backgroundColor: index === currentCardIndex 
-                    ? currentTheme.primary 
-                    : `${currentTheme.primary}40`,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-              />
-            ))}
-          </div>
-          
-          <button
-            onClick={nextCard}
-            disabled={nominees.length <= 1}
-            style={{
-              backgroundColor: currentTheme.primary,
-              color: currentTheme.textPrimary,
-              border: 'none',
-              borderRadius: '50%',
-              width: '44px',
-              height: '44px',
-              cursor: 'pointer',
-              fontSize: '18px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              opacity: nominees.length <= 1 ? 0.5 : 1
-            }}
-          >
-            →
-          </button>
+          👈 Swipe left/right to browse books 👉
         </div>
 
-        {/* Quick Browse */}
+        {/* Quick Browse - Horizontal Scrollable */}
         <div style={{
           width: '100%',
           maxWidth: '400px'
@@ -473,7 +432,7 @@ export default function StudentNominees() {
                   borderRadius: '8px',
                   border: index === currentCardIndex 
                     ? `3px solid ${currentTheme.primary}` 
-                    : '1px solid #ddd',
+                    : `2px solid ${currentTheme.primary}40`,
                   cursor: 'pointer',
                   overflow: 'hidden',
                   backgroundColor: currentTheme.surface,
@@ -481,7 +440,8 @@ export default function StudentNominees() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   fontSize: '24px',
-                  transition: 'all 0.2s ease'
+                  transition: 'all 0.2s ease',
+                  transform: index === currentCardIndex ? 'scale(1.1)' : 'scale(1)'
                 }}
               >
                 {book.coverImageUrl ? (
@@ -541,106 +501,138 @@ export default function StudentNominees() {
   );
 }
 
-// Book Card Component - Pokemon Trading Card Style
+// FIXED Book Card Component - Real Pokemon Trading Card Style
 function BookCard({ book, theme, onAddBook, isAddingBook }) {
   const [showDetails, setShowDetails] = useState(false);
 
+  // FIXED: Better grade display
+  const getGradeDisplay = (gradeLevels) => {
+    if (!gradeLevels || !Array.isArray(gradeLevels) || gradeLevels.length === 0) {
+      return 'All Grades';
+    }
+    
+    // Handle "Grades 4-5" format
+    const gradeText = gradeLevels[0];
+    if (gradeText && gradeText.includes('Grades ')) {
+      return gradeText.replace('Grades ', ''); // "4-5" instead of "Grades 4-5"
+    }
+    return gradeText || 'All Grades';
+  };
+
   const getGradeBadgeColor = (gradeLevels) => {
-    if (gradeLevels?.includes('Grades 4-5')) return '#4CAF50';
-    if (gradeLevels?.includes('Grades 6-7')) return '#FF9800';
-    if (gradeLevels?.includes('Grades 8+')) return '#9C27B0';
+    if (!gradeLevels || !Array.isArray(gradeLevels)) return theme.primary;
+    const gradeText = gradeLevels[0] || '';
+    
+    if (gradeText.includes('4') || gradeText.includes('5')) return '#4CAF50'; // Green for younger
+    if (gradeText.includes('6') || gradeText.includes('7')) return '#FF9800'; // Orange for middle
+    if (gradeText.includes('8')) return '#9C27B0'; // Purple for older
     return theme.primary;
   };
 
-  const formatGenres = (genres) => {
-    if (!genres || !Array.isArray(genres)) return 'Fiction';
-    return genres.slice(0, 2).join(', ');
+  // FIXED: Better genre formatting
+  const getGenreDisplay = (genres) => {
+    if (!genres || !Array.isArray(genres) || genres.length === 0) return '';
+    
+    // Take first genre only and shorten if needed
+    const primaryGenre = genres[0];
+    if (primaryGenre.length > 12) {
+      return primaryGenre.substring(0, 12) + '...';
+    }
+    return primaryGenre;
   };
 
+  // FIXED: Better author formatting
   const formatAuthors = (authors) => {
-    if (!authors || !Array.isArray(authors)) return 'Unknown Author';
+    if (!authors || !Array.isArray(authors) || authors.length === 0) {
+      return 'Unknown Author';
+    }
+    
     if (authors.length === 1) return authors[0];
-    if (authors.length === 2) return authors.join(' & ');
-    return `${authors[0]} & ${authors.length - 1} others`;
+    if (authors.length === 2) return `${authors[0]} & ${authors[1]}`;
+    return `${authors[0]} & ${authors.length - 1} more`;
+  };
+
+  // FIXED: Show both pages AND minutes for audiobooks
+  const getLengthDisplay = (book) => {
+    const pages = book.pages || book.pageCount || 0;
+    const minutes = book.totalMinutes || 0;
+    
+    if (book.isAudiobook && minutes > 0 && pages > 0) {
+      return `${pages} pages • ${minutes} min audio`;
+    } else if (book.isAudiobook && minutes > 0) {
+      return `${minutes} minutes`;
+    } else if (pages > 0) {
+      return `${pages} pages`;
+    } else {
+      return 'Length unknown';
+    }
   };
 
   return (
     <div style={{
       backgroundColor: theme.surface,
       borderRadius: '20px',
-      boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+      boxShadow: '0 12px 40px rgba(0,0,0,0.15)',
       overflow: 'hidden',
-      border: `2px solid ${theme.primary}30`,
+      border: `3px solid ${theme.primary}`,
       position: 'relative',
-      transform: 'translateZ(0)', // GPU acceleration
+      transform: 'translateZ(0)',
       transition: 'all 0.3s ease'
     }}>
-      {/* Card Header */}
+      {/* Pokemon Card Header - Simplified */}
       <div style={{
         background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary})`,
         padding: '16px',
-        color: theme.textPrimary
+        color: theme.textPrimary,
+        position: 'relative'
       }}>
+        {/* Grade Badge - Top Right */}
         <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          marginBottom: '8px'
+          position: 'absolute',
+          top: '12px',
+          right: '12px',
+          backgroundColor: getGradeBadgeColor(book.gradeLevels),
+          color: 'white',
+          fontSize: '10px',
+          fontWeight: 'bold',
+          padding: '4px 8px',
+          borderRadius: '12px'
         }}>
-          <div style={{
-            backgroundColor: getGradeBadgeColor(book.gradeLevels),
-            color: 'white',
-            fontSize: '10px',
-            fontWeight: 'bold',
-            padding: '4px 8px',
-            borderRadius: '12px'
-          }}>
-            {book.gradeLevels?.[0] || 'All Grades'}
-          </div>
-          <div style={{
-            display: 'flex',
-            gap: '4px'
-          }}>
-            {book.isAudiobook && (
-              <div style={{
-                backgroundColor: 'rgba(255,255,255,0.2)',
-                fontSize: '10px',
-                padding: '4px 6px',
-                borderRadius: '8px',
-                fontWeight: 'bold'
-              }}>
-                🎧 AUDIO
-              </div>
-            )}
-            <div style={{
-              backgroundColor: 'rgba(255,255,255,0.2)',
-              fontSize: '10px',
-              padding: '4px 6px',
-              borderRadius: '8px',
-              fontWeight: 'bold'
-            }}>
-              {formatGenres(book.genres)}
-            </div>
-          </div>
+          {getGradeDisplay(book.gradeLevels)}
         </div>
         
         <h2 style={{
-          fontSize: '18px',
+          fontSize: '20px',
           fontWeight: 'bold',
-          margin: '0 0 4px 0',
+          margin: '0 0 6px 0',
           lineHeight: '1.2',
-          fontFamily: 'Didot, serif'
+          fontFamily: 'Didot, serif',
+          paddingRight: '60px' // Space for grade badge
         }}>
           {book.title}
         </h2>
         
         <p style={{
-          fontSize: '12px',
-          margin: 0,
+          fontSize: '13px',
+          margin: '0 0 8px 0',
           opacity: 0.9
         }}>
           by {formatAuthors(book.authors)}
         </p>
+
+        {/* Genre - Small and subtle */}
+        {getGenreDisplay(book.genres) && (
+          <div style={{
+            display: 'inline-block',
+            backgroundColor: 'rgba(255,255,255,0.2)',
+            fontSize: '9px',
+            padding: '2px 6px',
+            borderRadius: '8px',
+            fontWeight: 'bold'
+          }}>
+            {getGenreDisplay(book.genres)}
+          </div>
+        )}
       </div>
 
       {/* Book Cover and Info */}
@@ -651,16 +643,17 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
       }}>
         {/* Cover Image */}
         <div style={{
-          width: '80px',
-          height: '120px',
+          width: '90px',
+          height: '135px',
           flexShrink: 0,
-          borderRadius: '8px',
+          borderRadius: '10px',
           overflow: 'hidden',
           backgroundColor: `${theme.primary}20`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+          boxShadow: '0 6px 20px rgba(0,0,0,0.15)',
+          border: `2px solid ${theme.primary}40`
         }}>
           {book.coverImageUrl ? (
             <img 
@@ -673,17 +666,18 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
               }}
             />
           ) : (
-            <span style={{ fontSize: '32px' }}>📚</span>
+            <span style={{ fontSize: '36px' }}>📚</span>
           )}
         </div>
 
         {/* Book Details */}
         <div style={{ flex: 1 }}>
-          <div style={{ marginBottom: '12px' }}>
+          <div style={{ marginBottom: '14px' }}>
             <div style={{
               fontSize: '12px',
               color: theme.textSecondary,
-              marginBottom: '4px'
+              marginBottom: '4px',
+              fontWeight: '600'
             }}>
               Length
             </div>
@@ -692,18 +686,16 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
               fontWeight: 'bold',
               color: theme.textPrimary
             }}>
-              {book.isAudiobook 
-                ? `${book.totalMinutes || 0} minutes`
-                : `${book.pages || book.pageCount || 0} pages`
-              }
+              {getLengthDisplay(book)}
             </div>
           </div>
 
-          <div style={{ marginBottom: '12px' }}>
+          <div style={{ marginBottom: '14px' }}>
             <div style={{
               fontSize: '12px',
               color: theme.textSecondary,
-              marginBottom: '4px'
+              marginBottom: '4px',
+              fontWeight: '600'
             }}>
               Category
             </div>
@@ -720,14 +712,15 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
           {book.luxLibrisReview && (
             <div style={{
               backgroundColor: `${theme.accent}30`,
-              padding: '8px',
-              borderRadius: '8px',
-              fontSize: '11px',
-              lineHeight: '1.3',
-              color: theme.textPrimary
+              padding: '10px',
+              borderRadius: '10px',
+              fontSize: '12px',
+              lineHeight: '1.4',
+              color: theme.textPrimary,
+              fontStyle: 'italic'
             }}>
-              &quot;{book.luxLibrisReview.length > 80 
-                ? book.luxLibrisReview.substring(0, 80) + '...'
+              &quot;{book.luxLibrisReview.length > 85 
+                ? book.luxLibrisReview.substring(0, 85) + '...'
                 : book.luxLibrisReview
               }&quot;
             </div>
@@ -735,11 +728,11 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
         </div>
       </div>
 
-      {/* Action Buttons */}
+      {/* Action Buttons - FIXED visibility */}
       <div style={{
         padding: '16px 20px 20px',
         display: 'flex',
-        gap: '8px'
+        gap: '10px'
       }}>
         <button
           onClick={() => onAddBook(book, 'book')}
@@ -749,25 +742,18 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
             backgroundColor: theme.primary,
             color: theme.textPrimary,
             border: 'none',
-            padding: '12px 16px',
+            padding: '14px 16px',
             borderRadius: '12px',
             fontSize: '14px',
-            fontWeight: '600',
+            fontWeight: '700',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             gap: '6px',
             opacity: isAddingBook ? 0.7 : 1,
-            transition: 'all 0.2s ease'
-          }}
-          onMouseOver={(e) => {
-            if (!isAddingBook) {
-              e.target.style.transform = 'scale(1.02)';
-            }
-          }}
-          onMouseOut={(e) => {
-            e.target.style.transform = 'scale(1)';
+            transition: 'all 0.2s ease',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
           }}
         >
           📖 Add Book
@@ -779,28 +765,21 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
             disabled={isAddingBook}
             style={{
               flex: 1,
-              backgroundColor: theme.accent,
-              color: theme.textPrimary,
+              backgroundColor: theme.textPrimary, // FIXED: Use textPrimary for better contrast
+              color: theme.surface, // FIXED: Use surface (white) for text
               border: 'none',
-              padding: '12px 16px',
+              padding: '14px 16px',
               borderRadius: '12px',
               fontSize: '14px',
-              fontWeight: '600',
+              fontWeight: '700',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: '6px',
               opacity: isAddingBook ? 0.7 : 1,
-              transition: 'all 0.2s ease'
-            }}
-            onMouseOver={(e) => {
-              if (!isAddingBook) {
-                e.target.style.transform = 'scale(1.02)';
-              }
-            }}
-            onMouseOut={(e) => {
-              e.target.style.transform = 'scale(1)';
+              transition: 'all 0.2s ease',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
             }}
           >
             🎧 Add Audio
@@ -815,7 +794,7 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
           width: '100%',
           backgroundColor: `${theme.primary}20`,
           border: 'none',
-          padding: '8px',
+          padding: '10px',
           fontSize: '12px',
           fontWeight: '600',
           color: theme.textPrimary,
@@ -887,9 +866,9 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
               </span>
             </div>
             <div>
-              <span style={{ color: theme.textSecondary }}>Grades:</span><br/>
+              <span style={{ color: theme.textSecondary }}>All Genres:</span><br/>
               <span style={{ color: theme.textPrimary }}>
-                {Array.isArray(book.gradeLevels) ? book.gradeLevels.join(', ') : book.gradeLevels}
+                {Array.isArray(book.genres) ? book.genres.join(', ') : book.genres}
               </span>
             </div>
           </div>
