@@ -36,20 +36,29 @@ export default function StudentAccountCreation() {
       } else if (step === 2) {
         // Just store school data for onboarding to use - NO ACCOUNT CREATION HERE
         try {
+          console.log('💾 Saving school data for onboarding...');
+          console.log('🏫 School ID:', schoolData.id);
+          console.log('🏫 School Name:', schoolData.name);
+          console.log('🔑 Join Code:', studentData.schoolJoinCode);
+          
           // Store school data for onboarding to use
           if (typeof window !== 'undefined') {
-            localStorage.setItem('tempSchoolData', JSON.stringify({
-              schoolId: schoolData.id,
+            const tempData = {
+              schoolId: schoolData.id,  // This should be the Firebase document ID like "uyEwDKbGELvBROhjrMIn"
               schoolName: schoolData.name,
               schoolCity: schoolData.city,
               schoolState: schoolData.state,
               schoolJoinCode: studentData.schoolJoinCode.toUpperCase()
-            }))
-            localStorage.setItem('luxlibris_account_flow', 'student')
+            };
+            
+            localStorage.setItem('tempSchoolData', JSON.stringify(tempData));
+            localStorage.setItem('luxlibris_account_flow', 'student');
+            
+            console.log('✅ Temp school data saved:', tempData);
           }
 
           // Redirect to legal acceptance first, then onboarding will create the actual account
-          router.push('/legal?flow=student-onboarding')
+          router.push('/legal?flow=student-onboarding');
           
         } catch (error) {
           console.error('Data storage error:', error)
