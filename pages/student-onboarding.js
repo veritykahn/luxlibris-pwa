@@ -956,17 +956,18 @@ function ThemePage({ formData, setFormData, themes }) {
               {/* Theme Preview Images */}
               <div style={{
                 display: 'flex',
-                gap: 'clamp(2px, 1vw, 4px)',
-                justifyContent: 'center',
+                flexDirection: 'column',
+                gap: 'clamp(3px, 1vw, 6px)',
+                alignItems: 'center',
                 marginBottom: 'clamp(2px, 1vw, 4px)'
               }}>
                 {/* Bookshelf Preview */}
                 <img 
-                  src={`/images/bookshelves/${theme.assetPrefix}.png`}
+                  src={`/bookshelves/${theme.assetPrefix}.png`}
                   alt={`${theme.name} bookshelf`}
                   style={{
-                    width: 'clamp(45px, 12vw, 60px)',
-                    height: 'clamp(34px, 9vw, 45px)',
+                    width: 'clamp(70px, 18vw, 90px)',
+                    height: 'clamp(35px, 9vw, 45px)',
                     objectFit: 'cover',
                     borderRadius: '4px',
                     border: `1px solid ${theme.primary}30`
@@ -974,11 +975,11 @@ function ThemePage({ formData, setFormData, themes }) {
                 />
                 {/* Trophy Case Preview */}
                 <img 
-                  src={`/images/trophy_cases/${theme.assetPrefix}.png`}
+                  src={`/trophy_cases/${theme.assetPrefix}.png`}
                   alt={`${theme.name} trophy case`}
                   style={{
-                    width: 'clamp(45px, 12vw, 60px)',
-                    height: 'clamp(34px, 9vw, 45px)',
+                    width: 'clamp(70px, 18vw, 90px)',
+                    height: 'clamp(35px, 9vw, 45px)',
                     objectFit: 'cover',
                     borderRadius: '4px',
                     border: `1px solid ${theme.primary}30`
