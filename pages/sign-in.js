@@ -53,7 +53,7 @@ export default function SignIn() {
 
     try {
       if (formData.accountType === 'student') {
-        // Student sign in with username + school code
+        // Student sign in with username + school code (which IS the password)
         if (!formData.username.trim() || !formData.schoolCode.trim()) {
           setError('Please enter both your username and school code');
           setLoading(false);
@@ -72,8 +72,8 @@ export default function SignIn() {
           return;
         }
 
-        // Sign in using the student's auth account
-        await authHelpers.signInStudent(student);
+        // Sign in using the school code as password directly
+        await authHelpers.signInStudentWithSchoolCode(student, formData.schoolCode);
         
         // Redirect to student dashboard
         router.push('/student-dashboard');
@@ -316,10 +316,10 @@ export default function SignIn() {
                       color: '#374151',
                       marginBottom: '0.5rem'
                     }}>
-                      School Code
+                      School Code (Your Password)
                     </label>
                     <input
-                      type="text"
+                      type="password"
                       value={formData.schoolCode}
                       onChange={(e) => setFormData(prev => ({ 
                         ...prev, 
@@ -348,7 +348,7 @@ export default function SignIn() {
                       margin: '0.5rem 0 0 0',
                       textAlign: 'center'
                     }}>
-                      Same code you used when creating your account
+                      Your password is your school code
                     </p>
                   </div>
 
@@ -365,7 +365,7 @@ export default function SignIn() {
                       margin: 0,
                       lineHeight: '1.4'
                     }}>
-                      💡 <strong>Forgot your info?</strong> Your username was shown when you first signed up, and your school code is the same one your teacher gave you!
+                      💡 <strong>Simple Sign-In:</strong> Your username was shown when you first signed up, and your password is just your school code!
                     </p>
                   </div>
                 </div>
