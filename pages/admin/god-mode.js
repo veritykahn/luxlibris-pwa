@@ -462,7 +462,7 @@ Click OK to confirm deletion.`)
     )
   }
 
-  // Main God Mode Interface (same header as before)
+  // Main God Mode Interface
   return (
     <>
       <Head>
@@ -681,7 +681,7 @@ Click OK to confirm deletion.`)
   )
 }
 
-// Enhanced component functions with delete functionality
+// Diocese Management Component
 function DiocesesTab({ dioceses, showCreateDiocese, setShowCreateDiocese, newDiocese, setNewDiocese, handleCreateDiocese, handleDeleteDiocese, handleDeleteSchool }) {
   return (
     <div style={{ color: 'white' }}>
@@ -871,160 +871,8 @@ function DiocesesTab({ dioceses, showCreateDiocese, setShowCreateDiocese, newDio
     </div>
   )
 }
-  return (
-    <div style={{ color: 'white' }}>
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '1.5rem'
-      }}>
-        <h2 style={{
-          fontSize: '1.5rem',
-          fontWeight: 'bold',
-          fontFamily: 'Georgia, serif'
-        }}>
-          Diocese Management
-        </h2>
-        <ActionButton text="+ Create Diocese" onClick={() => setShowCreateDiocese(true)} />
-      </div>
 
-      {showCreateDiocese && (
-        <div style={{
-          background: 'rgba(168, 85, 247, 0.2)',
-          borderRadius: '0.5rem',
-          padding: '1.5rem',
-          marginBottom: '1.5rem',
-          border: '1px solid rgba(168, 85, 247, 0.3)'
-        }}>
-          <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem' }}>
-            Create New Diocese
-          </h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-            <input
-              type="text"
-              placeholder="Diocese Name (e.g., Diocese of Test)"
-              value={newDiocese.name}
-              onChange={(e) => setNewDiocese({...newDiocese, name: e.target.value})}
-              style={{
-                padding: '0.75rem',
-                borderRadius: '0.5rem',
-                border: '1px solid rgba(168, 85, 247, 0.3)',
-                background: 'rgba(0, 0, 0, 0.3)',
-                color: 'white'
-              }}
-            />
-            <input
-              type="text"
-              placeholder="Location (e.g., Demo City, TX)"
-              value={newDiocese.location}
-              onChange={(e) => setNewDiocese({...newDiocese, location: e.target.value})}
-              style={{
-                padding: '0.75rem',
-                borderRadius: '0.5rem',
-                border: '1px solid rgba(168, 85, 247, 0.3)',
-                background: 'rgba(0, 0, 0, 0.3)',
-                color: 'white'
-              }}
-            />
-          </div>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <ActionButton text="✅ Create Diocese" onClick={handleCreateDiocese} />
-            <ActionButton text="❌ Cancel" onClick={() => setShowCreateDiocese(false)} />
-          </div>
-        </div>
-      )}
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        {dioceses.map(diocese => (
-          <div key={diocese.id} style={{
-            background: 'rgba(139, 92, 246, 0.2)',
-            borderRadius: '0.5rem',
-            padding: '1rem',
-            border: '1px solid rgba(139, 92, 246, 0.3)'
-          }}>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'flex-start',
-              marginBottom: '0.5rem'
-            }}>
-              <div>
-                <h3 style={{
-                  fontSize: '1.125rem',
-                  fontWeight: 'bold',
-                  marginBottom: '0.25rem'
-                }}>
-                  ⛪ {diocese.name}
-                </h3>
-                <p style={{ color: '#c084fc', margin: '0.25rem 0' }}>
-                  📍 {diocese.location}
-                </p>
-                <p style={{
-                  fontSize: '0.875rem',
-                  color: '#a78bfa',
-                  margin: '0.25rem 0'
-                }}>
-                  🔑 Admin Code: <strong>{diocese.adminCode}</strong>
-                </p>
-                <p style={{
-                  fontSize: '0.875rem',
-                  color: '#a78bfa',
-                  margin: 0
-                }}>
-                  🏫 {diocese.schools?.length || 0} schools
-                </p>
-              </div>
-            </div>
-            
-            {diocese.schools && diocese.schools.length > 0 && (
-              <div style={{ marginTop: '1rem' }}>
-                <h4 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '0.5rem', color: '#e879f9' }}>
-                  Schools in this Diocese:
-                </h4>
-                <div style={{ display: 'grid', gap: '0.5rem' }}>
-                  {diocese.schools.map(school => (
-                    <div key={school.id} style={{
-                      background: 'rgba(59, 130, 246, 0.2)',
-                      borderRadius: '0.375rem',
-                      padding: '0.75rem',
-                      border: '1px solid rgba(59, 130, 246, 0.3)'
-                    }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                          <p style={{ fontWeight: '600', margin: 0 }}>🏫 {school.name}</p>
-                          <p style={{ fontSize: '0.875rem', color: '#93c5fd', margin: '0.25rem 0' }}>
-                            📧 {school.adminEmail} | 🔑 {school.studentAccessCode}
-                          </p>
-                        </div>
-                        <span style={{
-                          padding: '0.25rem 0.5rem',
-                          borderRadius: '0.25rem',
-                          fontSize: '0.75rem',
-                          background: 'rgba(34, 197, 94, 0.3)',
-                          color: '#86efac'
-                        }}>
-                          {school.status || 'Active'}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-      
-      {dioceses.length === 0 && (
-        <div style={{ textAlign: 'center', color: '#c084fc', padding: '2rem' }}>
-          <p>No dioceses created yet. Create your first diocese above!</p>
-        </div>
-      )}
-    </div>
-  )
-}
-
+// School Management Component
 function SchoolsTab({ dioceses, showCreateSchool, setShowCreateSchool, newSchool, setNewSchool, handleCreateSchool, handleDeleteSchool }) {
   return (
     <div style={{ color: 'white' }}>
@@ -1250,216 +1098,8 @@ function SchoolsTab({ dioceses, showCreateSchool, setShowCreateSchool, newSchool
     </div>
   )
 }
-  return (
-    <div style={{ color: 'white' }}>
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '1.5rem'
-      }}>
-        <h2 style={{
-          fontSize: '1.5rem',
-          fontWeight: 'bold',
-          fontFamily: 'Georgia, serif'
-        }}>
-          School Management
-        </h2>
-        <ActionButton text="+ Create School" onClick={() => setShowCreateSchool(true)} />
-      </div>
 
-      {showCreateSchool && (
-        <div style={{
-          background: 'rgba(59, 130, 246, 0.2)',
-          borderRadius: '0.5rem',
-          padding: '1.5rem',
-          marginBottom: '1.5rem',
-          border: '1px solid rgba(59, 130, 246, 0.3)'
-        }}>
-          <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem' }}>
-            Create New School
-          </h3>
-          
-          <div style={{ display: 'grid', gap: '1rem', marginBottom: '1rem' }}>
-            <select
-              value={newSchool.dioceseId}
-              onChange={(e) => setNewSchool({...newSchool, dioceseId: e.target.value})}
-              style={{
-                padding: '0.75rem',
-                borderRadius: '0.5rem',
-                border: '1px solid rgba(59, 130, 246, 0.3)',
-                background: 'rgba(0, 0, 0, 0.3)',
-                color: 'white'
-              }}
-            >
-              <option value="">Select Diocese</option>
-              {dioceses.map(diocese => (
-                <option key={diocese.id} value={diocese.id}>{diocese.name}</option>
-              ))}
-            </select>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
-              <input
-                type="text"
-                placeholder="School Name"
-                value={newSchool.name}
-                onChange={(e) => setNewSchool({...newSchool, name: e.target.value})}
-                style={{
-                  padding: '0.75rem',
-                  borderRadius: '0.5rem',
-                  border: '1px solid rgba(59, 130, 246, 0.3)',
-                  background: 'rgba(0, 0, 0, 0.3)',
-                  color: 'white'
-                }}
-              />
-              <input
-                type="text"
-                placeholder="City"
-                value={newSchool.city}
-                onChange={(e) => setNewSchool({...newSchool, city: e.target.value})}
-                style={{
-                  padding: '0.75rem',
-                  borderRadius: '0.5rem',
-                  border: '1px solid rgba(59, 130, 246, 0.3)',
-                  background: 'rgba(0, 0, 0, 0.3)',
-                  color: 'white'
-                }}
-              />
-              <input
-                type="text"
-                placeholder="State"
-                value={newSchool.state}
-                onChange={(e) => setNewSchool({...newSchool, state: e.target.value})}
-                style={{
-                  padding: '0.75rem',
-                  borderRadius: '0.5rem',
-                  border: '1px solid rgba(59, 130, 246, 0.3)',
-                  background: 'rgba(0, 0, 0, 0.3)',
-                  color: 'white'
-                }}
-              />
-            </div>
-            
-            <input
-              type="email"
-              placeholder="School Email"
-              value={newSchool.email}
-              onChange={(e) => setNewSchool({...newSchool, email: e.target.value})}
-              style={{
-                padding: '0.75rem',
-                borderRadius: '0.5rem',
-                border: '1px solid rgba(59, 130, 246, 0.3)',
-                background: 'rgba(0, 0, 0, 0.3)',
-                color: 'white'
-              }}
-            />
-            
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-              <input
-                type="email"
-                placeholder="Admin Email"
-                value={newSchool.adminEmail}
-                onChange={(e) => setNewSchool({...newSchool, adminEmail: e.target.value})}
-                style={{
-                  padding: '0.75rem',
-                  borderRadius: '0.5rem',
-                  border: '1px solid rgba(59, 130, 246, 0.3)',
-                  background: 'rgba(0, 0, 0, 0.3)',
-                  color: 'white'
-                }}
-              />
-              <input
-                type="password"
-                placeholder="Admin Password"
-                value={newSchool.adminPassword}
-                onChange={(e) => setNewSchool({...newSchool, adminPassword: e.target.value})}
-                style={{
-                  padding: '0.75rem',
-                  borderRadius: '0.5rem',
-                  border: '1px solid rgba(59, 130, 246, 0.3)',
-                  background: 'rgba(0, 0, 0, 0.3)',
-                  color: 'white'
-                }}
-              />
-            </div>
-          </div>
-          
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <ActionButton text="✅ Create School" onClick={handleCreateSchool} />
-            <ActionButton text="❌ Cancel" onClick={() => setShowCreateSchool(false)} />
-          </div>
-        </div>
-      )}
-
-      {/* Display all schools from all dioceses */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        {dioceses.map(diocese => 
-          diocese.schools?.map(school => (
-            <div key={`${diocese.id}-${school.id}`} style={{
-              background: 'rgba(59, 130, 246, 0.2)',
-              borderRadius: '0.5rem',
-              padding: '1rem',
-              border: '1px solid rgba(59, 130, 246, 0.3)'
-            }}>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start'
-              }}>
-                <div>
-                  <h3 style={{
-                    fontSize: '1.125rem',
-                    fontWeight: 'bold',
-                    marginBottom: '0.25rem'
-                  }}>
-                    🏫 {school.name}
-                  </h3>
-                  <p style={{ color: '#93c5fd', margin: '0.25rem 0' }}>
-                    📍 {school.city}, {school.state} | ⛪ {diocese.name}
-                  </p>
-                  <p style={{
-                    fontSize: '0.875rem',
-                    color: '#a78bfa',
-                    margin: '0.25rem 0'
-                  }}>
-                    📧 Admin: {school.adminEmail}
-                  </p>
-                  <p style={{
-                    fontSize: '0.875rem',
-                    color: '#a78bfa',
-                    margin: 0
-                  }}>
-                    🔑 Student Code: <strong>{school.studentAccessCode}</strong> | 
-                    🧩 Parent Code: <strong>{school.parentQuizCode}</strong>
-                  </p>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span style={{
-                    padding: '0.25rem 0.5rem',
-                    borderRadius: '0.25rem',
-                    fontSize: '0.75rem',
-                    background: 'rgba(34, 197, 94, 0.3)',
-                    color: '#86efac'
-                  }}>
-                    {school.status || 'Active'}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-      
-      {dioceses.every(diocese => !diocese.schools || diocese.schools.length === 0) && (
-        <div style={{ textAlign: 'center', color: '#c084fc', padding: '2rem' }}>
-          <p>No schools created yet. Create your first school above!</p>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// Keep existing components with small updates
+// Overview Component
 function OverviewTab({ nominees, dioceses }) {
   const totalSchools = dioceses.reduce((sum, diocese) => sum + (diocese.schools?.length || 0), 0)
   
@@ -1536,7 +1176,7 @@ function OverviewTab({ nominees, dioceses }) {
   )
 }
 
-// Keep all other existing components (NomineesTab, SaintsTab, etc.) the same
+// Nominees Component
 function NomineesTab({ nominees, setNominees }) {
   return (
     <div style={{ color: 'white' }}>
@@ -1652,6 +1292,7 @@ function NomineesTab({ nominees, setNominees }) {
   )
 }
 
+// Saints Component
 function SaintsTab() {
   return (
     <div style={{ color: 'white' }}>
@@ -1714,6 +1355,7 @@ function SaintsTab() {
   )
 }
 
+// Analytics Component
 function AnalyticsTab() {
   return (
     <div style={{ color: 'white', textAlign: 'center' }}>
@@ -1737,6 +1379,7 @@ function AnalyticsTab() {
   )
 }
 
+// Settings Component
 function SettingsTab() {
   return (
     <div style={{ color: 'white', textAlign: 'center' }}>
@@ -1760,6 +1403,7 @@ function SettingsTab() {
   )
 }
 
+// Utility Components
 function StatCard({ title, value, subtitle, icon, color }) {
   return (
     <div style={{
