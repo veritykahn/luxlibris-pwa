@@ -320,16 +320,17 @@ export default function StudentBookshelf() {
         backgroundColor: currentTheme.background,
         minHeight: '100vh',
         fontFamily: 'system-ui, -apple-system, sans-serif',
-        paddingBottom: '100px' // Space for bottom navigation
+        paddingBottom: 'clamp(80px, 20vw, 120px)' // Space for responsive bottom navigation
       }}>
         {/* Bookshelf Display */}
         <div style={{
           position: 'relative',
           minHeight: '100vh',
-          backgroundImage: `url(/bookshelves/${studentData.selectedTheme || 'classic_lux'}.png)`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat'
+          backgroundImage: `url(/bookshelves/${studentData.selectedTheme || 'classic_lux'}.jpg)`,
+          backgroundSize: 'contain',
+          backgroundPosition: 'center top',
+          backgroundRepeat: 'no-repeat',
+          width: '100%'
         }}>
           {/* Books on Shelves */}
           <div style={{
@@ -388,7 +389,7 @@ export default function StudentBookshelf() {
                       gridTemplateColumns: 'repeat(4, 1fr)',
                       gap: '8px',
                       padding: '0 40px',
-                      height: '120px',
+                      height: '140px',
                       alignItems: 'end'
                     }}
                   >
@@ -416,15 +417,15 @@ export default function StudentBookshelf() {
                           {/* Book Cover */}
                           <div style={{
                             width: '100%',
-                            height: '90px',
-                            borderRadius: '4px',
+                            height: '110px',
+                            borderRadius: '6px',
                             overflow: 'hidden',
                             backgroundColor: `${currentTheme.primary}20`,
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             position: 'relative',
-                            boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+                            boxShadow: '0 3px 8px rgba(0,0,0,0.3)',
                             transition: 'transform 0.2s ease'
                           }}
                           onTouchStart={(e) => {
@@ -511,19 +512,6 @@ export default function StudentBookshelf() {
                               </div>
                             )}
                           </div>
-                          
-                          {/* Book Title */}
-                          <div style={{
-                            fontSize: '9px',
-                            color: currentTheme.textPrimary,
-                            marginTop: '4px',
-                            textAlign: 'center',
-                            lineHeight: '1.1',
-                            maxHeight: '20px',
-                            overflow: 'hidden'
-                          }}>
-                            {bookDetails.title}
-                          </div>
                         </button>
                       );
                     })}
@@ -534,7 +522,7 @@ export default function StudentBookshelf() {
                         key={`empty-${shelfIndex}-${emptyIndex}`}
                         style={{
                           width: '100%',
-                          height: '90px'
+                          height: '110px'
                         }}
                       />
                     ))}
@@ -677,18 +665,14 @@ export default function StudentBookshelf() {
                     max={selectedBook.format === 'audiobook' ? selectedBook.totalMinutes : selectedBook.totalPages}
                     value={tempProgress}
                     onChange={(e) => {
-                      e.preventDefault();
                       setTempProgress(parseInt(e.target.value));
                     }}
                     style={{
                       width: '100%',
-                      height: '8px',
-                      borderRadius: '4px',
-                      backgroundColor: '#E0E0E0',
-                      outline: 'none',
                       cursor: 'pointer',
                       WebkitAppearance: 'none',
-                      appearance: 'none'
+                      appearance: 'none',
+                      outline: 'none'
                     }}
                   />
                 </div>
@@ -729,10 +713,7 @@ export default function StudentBookshelf() {
                   {[1, 2, 3, 4, 5].map(star => (
                     <button
                       key={star}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setTempRating(star);
-                      }}
+                      onClick={() => setTempRating(star)}
                       style={{
                         background: 'none',
                         border: 'none',
@@ -846,7 +827,7 @@ export default function StudentBookshelf() {
           borderTop: `1px solid ${currentTheme.primary}20`,
           padding: '12px 0 8px 0',
           display: 'grid',
-          gridTemplateColumns: 'repeat(6, 1fr)',
+          gridTemplateColumns: 'repeat(6, minmax(0, 1fr))',
           gap: '4px',
           boxShadow: '0 -2px 10px rgba(0,0,0,0.1)',
           backdropFilter: 'blur(10px)'
@@ -934,7 +915,7 @@ export default function StudentBookshelf() {
         {(showSuccess || showComingSoon) && (
           <div style={{
             position: 'fixed',
-            bottom: '100px',
+            bottom: 'clamp(90px, 22vw, 130px)',
             left: '50%',
             transform: 'translateX(-50%)',
             backgroundColor: currentTheme.primary,
@@ -965,37 +946,45 @@ export default function StudentBookshelf() {
             appearance: none;
             cursor: pointer;
             background: transparent;
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: #E0E0E0;
+            outline: none;
           }
           
           input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
-            width: clamp(24px, 6vw, 28px);
-            height: clamp(24px, 6vw, 28px);
+            width: clamp(28px, 7vw, 32px);
+            height: clamp(28px, 7vw, 32px);
             border-radius: 50%;
             background: ${currentTheme.primary};
             cursor: pointer;
             border: 3px solid white;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.4);
             touch-action: manipulation;
+            position: relative;
           }
           
           input[type="range"]::-moz-range-thumb {
-            width: clamp(24px, 6vw, 28px);
-            height: clamp(24px, 6vw, 28px);
+            width: clamp(28px, 7vw, 32px);
+            height: clamp(28px, 7vw, 32px);
             border-radius: 50%;
             background: ${currentTheme.primary};
             cursor: pointer;
             border: 3px solid white;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.4);
             touch-action: manipulation;
             -moz-appearance: none;
+            position: relative;
           }
           
           input[type="range"]::-webkit-slider-track {
             background: #E0E0E0;
             height: 8px;
             border-radius: 4px;
+            -webkit-appearance: none;
           }
           
           input[type="range"]::-moz-range-track {
@@ -1003,6 +992,14 @@ export default function StudentBookshelf() {
             height: 8px;
             border-radius: 4px;
             border: none;
+            -moz-appearance: none;
+          }
+          
+          /* Fix for Firefox */
+          input[type="range"]::-moz-range-progress {
+            background: ${currentTheme.primary}50;
+            height: 8px;
+            border-radius: 4px;
           }
           
           /* Enhanced mobile touch optimizations */
@@ -1028,6 +1025,69 @@ export default function StudentBookshelf() {
             }
           }
           
+          /* Bottom navigation responsive breakpoints */
+          @media (max-width: 320px) {
+            .bottom-nav {
+              padding: 6px 2px 4px 2px !important;
+              gap: 1px !important;
+              min-height: 65px !important;
+            }
+            .bottom-nav button {
+              min-height: 55px !important;
+              min-width: 40px !important;
+              padding: 4px 1px 3px 1px !important;
+              border-radius: 6px !important;
+            }
+            .bottom-nav button span:first-child {
+              font-size: 14px !important;
+            }
+            .bottom-nav button span:last-child {
+              font-size: 7px !important;
+            }
+          }
+          
+          @media (min-width: 321px) and (max-width: 480px) {
+            .bottom-nav {
+              padding: 8px 4px 6px 4px !important;
+              gap: 2px !important;
+              min-height: 75px !important;
+            }
+            .bottom-nav button {
+              min-height: 65px !important;
+              min-width: 50px !important;
+            }
+          }
+          
+          @media (min-width: 481px) {
+            .bottom-nav {
+              padding: 12px 8px 10px 8px !important;
+              gap: 6px !important;
+              min-height: 85px !important;
+            }
+            .bottom-nav button {
+              min-height: 75px !important;
+              min-width: 60px !important;
+            }
+          }
+          
+          /* Landscape mobile adjustments */
+          @media (max-height: 500px) and (orientation: landscape) {
+            .bottom-nav {
+              min-height: 55px !important;
+              padding: 4px 2px 2px 2px !important;
+            }
+            .bottom-nav button {
+              min-height: 45px !important;
+              padding: 3px 1px 2px 1px !important;
+            }
+            .bottom-nav button span:first-child {
+              font-size: 16px !important;
+            }
+            .bottom-nav button span:last-child {
+              font-size: 7px !important;
+            }
+          }
+          
           /* Smooth scrolling and momentum */
           * {
             -webkit-overflow-scrolling: touch;
@@ -1036,6 +1096,12 @@ export default function StudentBookshelf() {
           /* Better touch feedback */
           button:active {
             transform: scale(0.98);
+          }
+          
+          /* Navigation text protection */
+          .bottom-nav button span {
+            pointer-events: none;
+            user-select: none;
           }
           
           /* Modal optimizations */
