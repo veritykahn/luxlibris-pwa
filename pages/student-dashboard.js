@@ -26,94 +26,94 @@ export default function StudentDashboard() {
 
   // Theme definitions (same as onboarding)
   const themes = {
-    classic_lux: {
-      name: 'Lux Libris Classic',
-      assetPrefix: 'classic_lux',
-      primary: '#ADD4EA',
-      secondary: '#C3E0DE',
-      accent: '#A1E5DB',
-      background: '#FFFCF5',
-      surface: '#FFFFFF',
-      textPrimary: '#223848',
-      textSecondary: '#556B7A'
-    },
-    darkwood_sports: {
-      name: 'Athletic Champion',
-      assetPrefix: 'darkwood_sports',
-      primary: '#8B4513',
-      secondary: '#D2691E',
-      accent: '#FF8C00',
-      background: '#F5F5DC',
-      surface: '#FFE4B5',
-      textPrimary: '#2F1B14',
-      textSecondary: '#5D4037'
-    },
-    lavender_space: {
-      name: 'Cosmic Explorer',
-      assetPrefix: 'lavender_space',
-      primary: '#9C88C4',
-      secondary: '#B19CD9',
-      accent: '#E1D5F7',
-      background: '#2A1B3D',
-      surface: '#3D2B54',
-      textPrimary: '#E1D5F7',
-      textSecondary: '#B19CD9'
-    },
-    mint_music: {
-      name: 'Musical Harmony',
-      assetPrefix: 'mint_music',
-      primary: '#66CDAA',
-      secondary: '#98FB98',
-      accent: '#AFEEEE',
-      background: '#F0FFF0',
-      surface: '#E0FFE0',
-      textPrimary: '#2E4739',
-      textSecondary: '#4A6B57'
-    },
-    pink_plushies: {
-      name: 'Kawaii Dreams',
-      assetPrefix: 'pink_plushies',
-      primary: '#FFB6C1',
-      secondary: '#FFC0CB',
-      accent: '#FFE4E1',
-      background: '#FFF0F5',
-      surface: '#FFE4E6',
-      textPrimary: '#4A2C2A',
-      textSecondary: '#8B4B5C'
-    },
-    teal_anime: {
-      name: 'Otaku Paradise',
-      assetPrefix: 'teal_anime',
-      primary: '#20B2AA',
-      secondary: '#48D1CC',
-      accent: '#7FFFD4',
-      background: '#E0FFFF',
-      surface: '#AFEEEE',
-      textPrimary: '#2F4F4F',
-      textSecondary: '#5F9EA0'
-    },
-    white_nature: {
-      name: 'Pure Serenity',
-      assetPrefix: 'white_nature',
-      primary: '#90EE90',
-      secondary: '#F0FFF0',
-      accent: '#98FB98',
-      background: '#FFFFF0',
-      surface: '#FFFFFF',
-      textPrimary: '#2F4F2F',
-      textSecondary: '#556B2F'
-    },
-    little_luminaries: {
-      name: 'Little Luminaries',
-      assetPrefix: 'little_luminaries',
-      primary: '#FFFFFF',
-      secondary: '#E0E0E0',
-      accent: '#F8F8FF',
-      background: '#1A1A1A',
-      surface: '#2D2D2D',
-      textPrimary: '#FFD700',
-      textSecondary: '#E0E0E0'
-    }
+  classic_lux: {
+    name: 'Lux Libris Classic',
+    assetPrefix: 'classic_lux',
+    primary: '#ADD4EA',
+    secondary: '#C3E0DE',
+    accent: '#A1E5DB',
+    background: '#FFFCF5',
+    surface: '#FFFFFF',
+    textPrimary: '#223848',
+    textSecondary: '#556B7A'
+  },
+  darkwood_sports: {
+    name: 'Athletic Champion',
+    assetPrefix: 'darkwood_sports',
+    primary: '#2F5F5F',        // Deep teal (your preferred)
+    secondary: '#8B2635',      // Burnt subdued red (your preferred)
+    accent: '#F5DEB3',         // Warm wheat/cream (your preferred)
+    background: '#F5F5DC',
+    surface: '#FFF8DC',        // Cream surface (your preferred)
+    textPrimary: '#2F1B14',
+    textSecondary: '#5D4037'
+  },
+  lavender_space: {
+    name: 'Cosmic Explorer',
+    assetPrefix: 'lavender_space',
+    primary: '#9C88C4',
+    secondary: '#B19CD9',
+    accent: '#E1D5F7',
+    background: '#2A1B3D',
+    surface: '#3D2B54',
+    textPrimary: '#E1D5F7',
+    textSecondary: '#B19CD9'
+  },
+  mint_music: {
+    name: 'Musical Harmony',
+    assetPrefix: 'mint_music',
+    primary: '#B8E6B8',        // Soft pastel green (new)
+    secondary: '#FFB3BA',      // Soft coral (new)
+    accent: '#FFCCCB',         // Pastel coral (new)
+    background: '#FEFEFE',     // Pure white
+    surface: '#F8FDF8',        // Very subtle green tint
+    textPrimary: '#2E4739',
+    textSecondary: '#4A6B57'
+  },
+  pink_plushies: {
+    name: 'Kawaii Dreams',
+    assetPrefix: 'pink_plushies',
+    primary: '#FFB6C1',
+    secondary: '#FFC0CB',
+    accent: '#FFE4E1',
+    background: '#FFF0F5',
+    surface: '#FFE4E6',
+    textPrimary: '#4A2C2A',
+    textSecondary: '#8B4B5C'
+  },
+  teal_anime: {
+    name: 'Otaku Paradise',
+    assetPrefix: 'teal_anime',
+    primary: '#20B2AA',
+    secondary: '#48D1CC',
+    accent: '#7FFFD4',
+    background: '#E0FFFF',
+    surface: '#AFEEEE',
+    textPrimary: '#2F4F4F',
+    textSecondary: '#5F9EA0'
+  },
+  white_nature: {
+    name: 'Pure Serenity',
+    assetPrefix: 'white_nature',
+    primary: '#6B8E6B',        // Forest green (your preferred)
+    secondary: '#D2B48C',      // Warm tan/khaki (your preferred)
+    accent: '#F5F5DC',         // Beige accent (your preferred)
+    background: '#FFFEF8',     // Warm white (your preferred)
+    surface: '#FFFFFF',
+    textPrimary: '#2F4F2F',
+    textSecondary: '#556B2F'
+  },
+  little_luminaries: {
+    name: 'Little Luminaries',
+    assetPrefix: 'little_luminaries',
+    primary: '#000000',        // Strong black accent (new)
+    secondary: '#666666',      // Medium grey (new)
+    accent: '#E8E8E8',         // Light grey accent (new)
+    background: '#F5F5F5',     // Light grey background (new)
+    surface: '#FFFFFF',        // Pure white surface (new)
+    textPrimary: '#000000',    // Strong black text (new)
+    textSecondary: '#4A4A4A'   // Charcoal for secondary text (new)
+  }
 };
   useEffect(() => {
     if (!loading && isAuthenticated && user) {
