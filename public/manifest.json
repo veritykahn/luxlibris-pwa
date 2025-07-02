@@ -1,28 +1,28 @@
 {
-  "name": "Lux Libris",
-  "short_name": "Lux Libris",
-  "description": "Transform your reading journey with saint achievements and interactive book tracking",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#FFFCF5",
-  "theme_color": "#223848",
-  "orientation": "portrait-primary",
-  "categories": ["education", "books", "lifestyle"],
-  "icons": [
-    {
-      "src": "/images/lux_libris_logo.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "/images/lux_libris_logo.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable any"
-    }
-  ],
-  "prefer_related_applications": false,
-  "scope": "/",
-  "lang": "en-US"
+ "name": "Lux Libris",
+ "short_name": "Lux Libris",
+ "description": "Transform your reading journey with saint achievements and interactive book tracking",
+ "start_url": "/auth-check",
+ "display": "standalone",
+ "background_color": "#FFFCF5",
+ "theme_color": "#223848",
+ "orientation": "portrait-primary",
+ "categories": ["education", "books", "lifestyle"],
+ "icons": [
+  {
+   "src": "/images/lux_libris_logo.png",
+   "sizes": "192x192",
+   "type": "image/png",
+   "purpose": "maskable any"
+  },
+  {
+   "src": "/images/lux_libris_logo.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "maskable any"
+  }
+ ],
+ "prefer_related_applications": false,
+ "scope": "/",
+ "lang": "en-US"
 }

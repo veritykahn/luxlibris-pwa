@@ -1,86 +1,14 @@
 'use client'
-
 import Image from 'next/image'
 import Link from 'next/link'
 import Head from 'next/head'
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { useAuth } from '../contexts/AuthContext'
+import { useState } from 'react'
+import { useRouter } from 'next/router'
 
 export default function Home() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [showSignOutMessage, setShowSignOutMessage] = useState(false)
-  const router = useRouter()
-  const { isAuthenticated, loading, userProfile, signOut } = useAuth()
-
-  // Handle authenticated users
-  useEffect(() => {
-    const handleAuthenticatedUser = async () => {
-      if (!loading && isAuthenticated && userProfile) {
-        console.log('🔄 User is already signed in, checking account type...')
-        
-        if (userProfile.accountType === 'admin') {
-          // Sign out admin users and show message
-          console.log('👑 Admin detected, signing out...')
-          try {
-            await signOut()
-            setShowSignOutMessage(true)
-            // Hide message after 10 seconds
-            setTimeout(() => setShowSignOutMessage(false), 10000)
-          } catch (error) {
-            console.error('Error signing out admin:', error)
-          }
-        } else if (userProfile.accountType === 'student') {
-          // Redirect students to splash page, then to their account
-          console.log('🧑‍🎓 Student detected, redirecting to splash...')
-          router.push('/splash?type=student')
-        } else if (userProfile.accountType === 'parent') {
-          // Redirect parents to their dashboard
-          console.log('👨‍👩‍👧‍👦 Parent detected, redirecting to dashboard...')
-          router.push('/parent-dashboard')
-        }
-      }
-    }
-
-    handleAuthenticatedUser()
-  }, [loading, isAuthenticated, userProfile, router, signOut])
-
-  // Show loading while checking authentication
-  if (loading) {
-    return (
-      <>
-        <Head>
-          <title>Lux Libris - Illuminating the World Through Stories</title>
-          <link rel="icon" href="/images/lux_libris_logo.png" />
-        </Head>
-        <div style={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: 'linear-gradient(135deg, #FFFCF5 0%, #C3E0DE 50%, #A1E5DB 100%)'
-        }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{
-              width: '3rem',
-              height: '3rem',
-              border: '4px solid #C3E0DE',
-              borderTop: '4px solid #223848',
-              borderRadius: '50%',
-              animation: 'spin 1s linear infinite',
-              margin: '0 auto 1rem'
-            }}></div>
-            <p style={{ color: '#223848', fontSize: '1.1rem' }}>
-              Checking your account...
-            </p>
-          </div>
-        </div>
-      </>
-    )
-  }
-
-  // Only show homepage if user is not authenticated or after admin sign out
-
+  // Remove router if you're not using it for navigation
+  
   return (
     <>
       <Head>
@@ -91,30 +19,6 @@ export default function Home() {
       
       <main className="min-h-screen bg-gradient-to-br from-teal-50 to-blue-50" style={{fontFamily: 'Avenir, -apple-system, BlinkMacSystemFont, system-ui, sans-serif', letterSpacing: '0.12em'}}>
         
-        {/* Admin Sign Out Message */}
-        {showSignOutMessage && (
-          <div style={{
-            position: 'fixed',
-            top: '20px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            background: 'linear-gradient(135deg, #10b981, #34d399)',
-            color: 'white',
-            padding: '1rem 2rem',
-            borderRadius: '0.5rem',
-            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.15)',
-            zIndex: 1000,
-            textAlign: 'center',
-            maxWidth: '90%'
-          }}>
-            <p style={{ margin: '0 0 0.5rem 0', fontWeight: '600' }}>
-              ✅ You&apos;ve been signed out of your admin account
-            </p>
-            <p style={{ margin: 0, fontSize: '0.9rem', opacity: 0.9 }}>
-              Please sign in below to access your school dashboard
-            </p>
-          </div>
-        )}
 
         {/* Header */}
         <header className="bg-white/90 backdrop-blur-sm shadow-sm">

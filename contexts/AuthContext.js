@@ -1,4 +1,5 @@
-// contexts/AuthContext.js
+// 1. COMPLETE FRESH AUTH CONTEXT: contexts/AuthContext.js
+
 import { createContext, useContext, useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import { authHelpers, dbHelpers, db } from '../lib/firebase'
@@ -19,6 +20,39 @@ export const AuthProvider = ({ children }) => {
   const [userProfile, setUserProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [initialized, setInitialized] = useState(false)
+  const [lastActivity, setLastActivity] = useState(Date.now())
+
+  // Session timeout settings
+  const ADMIN_TIMEOUT = 60 * 60 * 1000 // 60 minutes (1 hour) for admins
+  const STUDENT_TIMEOUT = 7 * 24 * 60 * 60 * 1000 // 7 days for students (effectively no timeout)
+
+  // Update last activity on user interactions
+  useEffect(() => {
+    const updateActivity = () => setLastActivity(Date.now())
+    
+    if (typeof window !== 'undefined') {
+      const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click']
+      events.forEach(event => 
+        document.addEventListener(event, updateActivity, true)
+      )
+
+      return () => {
+        events.forEach(event => 
+          document.removeEventListener(event, updateActivity, true)
+        )
+      }
+    }
+  }, [])
+
+  // Check if session is expired
+  const isSessionExpired = () => {
+    if (!userProfile) return false
+    
+    // Only check timeout for admins
+    if (userProfile.accountType !== 'admin') return false
+    
+    return Date.now() - lastActivity > ADMIN_TIMEOUT
+  }
 
   useEffect(() => {
     // Listen for authentication state changes
@@ -31,6 +65,8 @@ export const AuthProvider = ({ children }) => {
         try {
           const profile = await dbHelpers.getUserProfile(firebaseUser.uid)
           setUserProfile(profile)
+          // Reset activity timer when user profile loads
+          setLastActivity(Date.now())
         } catch (error) {
           console.error('Error fetching user profile:', error)
           setUserProfile(null)
@@ -51,8 +87,8 @@ export const AuthProvider = ({ children }) => {
     return () => unsubscribe()
   }, [initialized])
 
-  // Helper functions
-  const signOut = async () => {
+  // Enhanced sign out with redirect options
+  const signOut = async (options = {}) => {
     try {
       await authHelpers.signOut()
       setUser(null)
@@ -63,6 +99,11 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('luxlibris_student_profile')
         localStorage.removeItem('luxlibris_account_created')
         localStorage.removeItem('luxlibris_onboarding_complete')
+      }
+      
+      // Handle redirects
+      if (options.redirectTo) {
+        window.location.href = options.redirectTo
       }
     } catch (error) {
       console.error('Error signing out:', error)
@@ -146,6 +187,7 @@ export const AuthProvider = ({ children }) => {
     userProfile,
     loading,
     initialized,
+    lastActivity,
     
     // Helper functions
     signOut,
@@ -154,6 +196,7 @@ export const AuthProvider = ({ children }) => {
     getDashboardUrl,
     belongsToSchool,
     getUserSchool,
+    isSessionExpired,
     
     // Computed values
     isAuthenticated: !!user,
@@ -174,32 +217,52 @@ export const AuthProvider = ({ children }) => {
   )
 }
 
-// Higher-order component for protected routes
+// Updated Higher-order component for protected routes with session checking
 export const withAuth = (WrappedComponent, allowedAccountTypes = ['student', 'parent', 'admin']) => {
   const AuthenticatedComponent = (props) => {
-    const { user, userProfile, loading, isAuthenticated, getDashboardUrl, hasCompletedOnboarding } = useAuth()
+    const { 
+      user, 
+      userProfile, 
+      loading, 
+      isAuthenticated, 
+      getDashboardUrl, 
+      hasCompletedOnboarding,
+      isSessionExpired,
+      signOut
+    } = useAuth()
     const router = useRouter()
 
     useEffect(() => {
-      if (!loading) {
-        if (!isAuthenticated) {
-          // User not authenticated, redirect to role selector
-          router.push('/role-selector')
-          return
-        }
+      const checkAuth = async () => {
+        if (!loading) {
+          if (!isAuthenticated) {
+            // User not authenticated, redirect to role selector
+            router.push('/role-selector')
+            return
+          }
 
-        if (userProfile && !allowedAccountTypes.includes(userProfile.accountType)) {
-          // User doesn't have permission for this page
-          router.push(getDashboardUrl())
-          return
-        }
+          // Check session expiry for admins
+          if (userProfile?.accountType === 'admin' && isSessionExpired()) {
+            console.log('⏰ Admin session expired in protected route')
+            await signOut({ redirectTo: '/sign-in?reason=session-expired' })
+            return
+          }
 
-        if (userProfile && !hasCompletedOnboarding()) {
-          // User needs to complete onboarding
-          router.push(getDashboardUrl())
-          return
+          if (userProfile && !allowedAccountTypes.includes(userProfile.accountType)) {
+            // User doesn't have permission for this page
+            router.push(getDashboardUrl())
+            return
+          }
+
+          if (userProfile && !hasCompletedOnboarding()) {
+            // User needs to complete onboarding
+            router.push(getDashboardUrl())
+            return
+          }
         }
       }
+
+      checkAuth()
     }, [loading, isAuthenticated, userProfile, router])
 
     // Show loading while checking authentication
