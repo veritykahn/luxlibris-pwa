@@ -19,6 +19,9 @@ export default function StudentBookshelf() {
   const [tempNotes, setTempNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState('');
+  
+  // Mobile detection hook
+  const [isMobile, setIsMobile] = useState(false);
 
   // Theme definitions
   const themes = {
@@ -93,6 +96,22 @@ export default function StudentBookshelf() {
       textSecondary: '#556B2F'
     }
   };
+
+  // Mobile detection effect
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    // Check on mount
+    checkMobile();
+    
+    // Add resize listener
+    window.addEventListener('resize', checkMobile);
+    
+    // Cleanup
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     if (!loading && isAuthenticated && user) {
@@ -369,6 +388,11 @@ export default function StudentBookshelf() {
     shelves.push([]);
   }
 
+  // Get the correct background image based on device
+  const backgroundImage = isMobile 
+    ? `url(/bookshelves/mobile-${studentData.selectedTheme || 'classic_lux'}.jpg)`
+    : `url(/bookshelves/${studentData.selectedTheme || 'classic_lux'}.jpg)`;
+
   return (
     <>
       <Head>
@@ -410,27 +434,18 @@ export default function StudentBookshelf() {
           ←
         </button>
 
-        {/* RESPONSIVE BACKGROUND - Option 3 Implementation */}
+        {/* RESPONSIVE BACKGROUND - Clean React Hook Approach */}
         <div 
-          className="bookshelf-background" 
           style={{
             position: 'relative',
             minHeight: '100vh',
-            backgroundImage: `url(/bookshelves/${studentData.selectedTheme || 'classic_lux'}.jpg)`,
+            backgroundImage: backgroundImage,
             backgroundSize: 'cover',
             backgroundPosition: 'center center',
             backgroundRepeat: 'no-repeat',
             backgroundAttachment: 'scroll'
           }}
         >
-          {/* Mobile background override */}
-          <style jsx>{`
-            @media (max-width: 768px) {
-              .bookshelf-background {
-                background-image: url(/bookshelves/mobile-${studentData.selectedTheme || 'classic_lux'}.jpg) !important;
-              }
-            }
-          `}</style>
           {/* Books on Shelves */}
           <div style={{
             position: 'relative',
@@ -983,7 +998,7 @@ export default function StudentBookshelf() {
             width: 24px;
             height: 24px;
             border-radius: 50%;
-            background: ${currentTheme.primary};
+            background: ${currentTheme?.primary || '#ADD4EA'};
             border: 3px solid white;
             box-shadow: 0 3px 8px rgba(0,0,0,0.3);
             cursor: pointer;
@@ -993,7 +1008,7 @@ export default function StudentBookshelf() {
             width: 24px;
             height: 24px;
             border-radius: 50%;
-            background: ${currentTheme.primary};
+            background: ${currentTheme?.primary || '#ADD4EA'};
             border: 3px solid white;
             box-shadow: 0 3px 8px rgba(0,0,0,0.3);
             cursor: pointer;
