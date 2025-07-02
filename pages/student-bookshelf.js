@@ -391,21 +391,21 @@ export default function StudentBookshelf() {
       
       <div style={{
         minHeight: '100vh',
-        fontFamily: 'system-ui, -apple-system, sans-serif',
+        fontFamily: 'Avenir, system-ui, -apple-system, sans-serif',
         position: 'relative',
-        // PROPER FULL SCREEN BACKGROUND
+        // TILED BACKGROUND - no stretching!
         backgroundImage: `url(${decorativeOverlay})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed',
+        backgroundSize: 'auto',
+        backgroundRepeat: 'repeat',
+        backgroundPosition: 'top left',
         backgroundColor: currentTheme.background
       }}>
         
-        {/* SIMPLE CLEAN HEADER */}
+        {/* SIMPLE CLEAN HEADER - CENTERED TITLE */}
         <div style={{
           background: `linear-gradient(135deg, ${currentTheme.primary}F0, ${currentTheme.secondary}F0)`,
           backdropFilter: 'blur(20px)',
-          padding: '50px 20px 20px',
+          padding: '50px 60px 20px', // More side padding for centering
           position: 'relative',
           borderRadius: '0 0 25px 25px',
           boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
@@ -434,25 +434,39 @@ export default function StudentBookshelf() {
             ←
           </button>
 
-          {/* Simple Header Content */}
+          {/* Book Count - Right Side */}
+          <div style={{
+            position: 'absolute',
+            top: '15px',
+            right: '15px',
+            backgroundColor: 'rgba(255,255,255,0.3)',
+            padding: '8px 12px',
+            borderRadius: '20px',
+            backdropFilter: 'blur(10px)'
+          }}>
+            <span style={{
+              fontSize: '14px',
+              fontWeight: '500',
+              color: currentTheme.textPrimary,
+              fontFamily: 'Avenir, system-ui, sans-serif',
+              letterSpacing: '0.5px'
+            }}>
+              {totalBooks} {totalBooks === 1 ? 'book' : 'books'}
+            </span>
+          </div>
+
+          {/* CENTERED TITLE with Didot */}
           <div style={{ textAlign: 'center' }}>
             <h1 style={{
-              fontSize: '24px',
-              fontWeight: '600',
+              fontSize: '28px',
+              fontWeight: '400', // Didot looks better with normal weight
               color: currentTheme.textPrimary,
               margin: '0',
-              letterSpacing: '0.5px'
+              letterSpacing: '1px',
+              fontFamily: 'Didot, "Times New Roman", serif' // Didot for headings
             }}>
               My Bookshelf
             </h1>
-            <p style={{
-              fontSize: '14px',
-              color: currentTheme.textSecondary,
-              margin: '5px 0 0 0',
-              opacity: 0.9
-            }}>
-              {totalBooks} {totalBooks === 1 ? 'book' : 'books'}
-            </p>
           </div>
         </div>
 
@@ -476,12 +490,20 @@ export default function StudentBookshelf() {
               <div style={{ fontSize: '48px', marginBottom: '16px' }}>📚</div>
               <h2 style={{
                 fontSize: '18px',
+                fontWeight: '400',
+                color: currentTheme.textPrimary,
                 marginBottom: '8px',
-                color: currentTheme.textPrimary
+                fontFamily: 'Didot, "Times New Roman", serif' // Didot for headings
               }}>
                 Your bookshelf is empty
               </h2>
-              <p style={{ fontSize: '14px', marginBottom: '20px' }}>
+              <p style={{ 
+                fontSize: '14px', 
+                marginBottom: '20px',
+                fontFamily: 'Avenir, system-ui, sans-serif',
+                letterSpacing: '0.5px',
+                lineHeight: '1.4'
+              }}>
                 Add books from the nominees page!
               </p>
               <button
@@ -493,9 +515,11 @@ export default function StudentBookshelf() {
                   padding: '12px 24px',
                   borderRadius: '12px',
                   fontSize: '14px',
-                  fontWeight: '600',
+                  fontWeight: '500',
                   cursor: 'pointer',
-                  minHeight: '44px'
+                  minHeight: '44px',
+                  fontFamily: 'system-ui, -apple-system, sans-serif', // System fonts for UI
+                  letterSpacing: '0.3px'
                 }}
               >
                 Browse Books
@@ -777,11 +801,12 @@ export default function StudentBookshelf() {
                 }}>
                   <div style={{ textAlign: 'center', marginBottom: '15px' }}>
                     <h2 style={{
-                      fontSize: '16px',
-                      fontWeight: 'bold',
+                      fontSize: '18px',
+                      fontWeight: '400',
                       color: colorPalette.textPrimary,
                       margin: '0 0 4px 0',
-                      lineHeight: '1.2'
+                      lineHeight: '1.2',
+                      fontFamily: 'Didot, "Times New Roman", serif' // Didot for book titles
                     }}>
                       {selectedBook.details.title}
                     </h2>
@@ -789,7 +814,9 @@ export default function StudentBookshelf() {
                       fontSize: '12px',
                       color: colorPalette.textSecondary,
                       margin: '0 0 12px 0',
-                      fontStyle: 'italic'
+                      fontStyle: 'italic',
+                      fontFamily: 'Avenir, system-ui, sans-serif',
+                      letterSpacing: '0.3px'
                     }}>
                       by {selectedBook.details.authors}
                     </p>
@@ -806,10 +833,11 @@ export default function StudentBookshelf() {
                         padding: '8px 16px',
                         borderRadius: '16px',
                         fontSize: '12px',
-                        fontWeight: '600',
+                        fontWeight: '500',
                         cursor: 'pointer',
                         width: '100%',
-                        minHeight: '36px'
+                        minHeight: '36px',
+                        fontFamily: 'system-ui, -apple-system, sans-serif' // System fonts for buttons
                       }}
                     >
                       📖 Start Reading
@@ -820,10 +848,12 @@ export default function StudentBookshelf() {
                   <div style={{ marginBottom: '15px' }}>
                     <label style={{
                       fontSize: '12px',
-                      fontWeight: '600',
+                      fontWeight: '500',
                       color: colorPalette.textPrimary,
                       display: 'block',
-                      marginBottom: '6px'
+                      marginBottom: '6px',
+                      fontFamily: 'Avenir, system-ui, sans-serif',
+                      letterSpacing: '0.3px'
                     }}>
                       {selectedBook.format === 'audiobook' ? 'Minutes' : 'Pages'}: {tempProgress}/{total}
                     </label>
@@ -850,10 +880,12 @@ export default function StudentBookshelf() {
                   <div style={{ marginBottom: '15px' }}>
                     <label style={{
                       fontSize: '12px',
-                      fontWeight: '600',
+                      fontWeight: '500',
                       color: colorPalette.textPrimary,
                       display: 'block',
-                      marginBottom: '6px'
+                      marginBottom: '6px',
+                      fontFamily: 'Avenir, system-ui, sans-serif',
+                      letterSpacing: '0.3px'
                     }}>
                       Rating
                     </label>
@@ -915,10 +947,11 @@ export default function StudentBookshelf() {
                         padding: '10px 16px',
                         borderRadius: '16px',
                         fontSize: '12px',
-                        fontWeight: '600',
+                        fontWeight: '500',
                         cursor: 'pointer',
                         opacity: isSaving ? 0.7 : 1,
-                        minHeight: '36px'
+                        minHeight: '36px',
+                        fontFamily: 'system-ui, -apple-system, sans-serif'
                       }}
                     >
                       {isSaving ? 'Saving...' : '💾 Save'}
@@ -936,7 +969,8 @@ export default function StudentBookshelf() {
                         cursor: 'pointer',
                         opacity: isSaving ? 0.7 : 1,
                         minHeight: '36px',
-                        fontWeight: '600'
+                        fontWeight: '500',
+                        fontFamily: 'system-ui, -apple-system, sans-serif'
                       }}
                     >
                       🗑️ Remove
@@ -961,9 +995,11 @@ export default function StudentBookshelf() {
             boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
             zIndex: 1001,
             fontSize: '14px',
-            fontWeight: '600',
+            fontWeight: '500',
             maxWidth: '85vw',
-            textAlign: 'center'
+            textAlign: 'center',
+            fontFamily: 'Avenir, system-ui, sans-serif',
+            letterSpacing: '0.3px'
           }}>
             {showSuccess}
           </div>
