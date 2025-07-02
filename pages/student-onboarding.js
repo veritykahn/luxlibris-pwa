@@ -103,7 +103,7 @@ export default function StudentOnboarding() {
     {
       name: 'Little Luminaries',
       assetPrefix: 'little_luminaries',
-      primary: '#FFD700',
+      primary: '#FFFFFF',
       secondary: '#C0C0C0',
       accent: '#F8F8FF',
       background: '#1A1A1A',
