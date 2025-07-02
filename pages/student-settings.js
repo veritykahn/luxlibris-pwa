@@ -90,6 +90,16 @@ export default function StudentSettings() {
       surface: '#FFFFFF',
       textPrimary: '#2F4F2F',
       textSecondary: '#556B2F'
+    },
+        little_luminaries: {
+      name: 'Little Luminaries',
+      primary: '#FFD700',
+      secondary: '#C0C0C0',
+      accent: '#F8F8FF',
+      background: '#1A1A1A',
+      surface: '#2D2D2D',
+      textPrimary: '#FFD700',
+      textSecondary: '#C0C0C0'
     }
   };
 
@@ -607,7 +617,7 @@ export default function StudentSettings() {
                     height: '60px',
                     borderRadius: '8px',
                     marginBottom: '6px',
-                    backgroundImage: `url(/bookshelves/${theme.assetPrefix}.png)`,
+                    backgroundImage: `url(/bookshelves/${theme.assetPrefix}.jpg)`,
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
                     backgroundRepeat: 'no-repeat',
@@ -620,7 +630,7 @@ export default function StudentSettings() {
                     height: '45px',
                     borderRadius: '6px',
                     marginBottom: '8px',
-                    backgroundImage: `url(/trophy_cases/${theme.assetPrefix}.png)`,
+                    backgroundImage: `url(/trophy_cases/${theme.assetPrefix}.jpg)`,
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
                     backgroundRepeat: 'no-repeat',

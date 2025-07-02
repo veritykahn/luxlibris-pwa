@@ -95,6 +95,16 @@ export default function StudentDashboard() {
       surface: '#FFFFFF',
       textPrimary: '#2F4F2F',
       textSecondary: '#556B2F'
+    },
+        little_luminaries: {
+      name: 'Little Luminaries',
+      primary: '#FFD700',
+      secondary: '#C0C0C0',
+      accent: '#F8F8FF',
+      background: '#1A1A1A',
+      surface: '#2D2D2D',
+      textPrimary: '#FFD700',
+      textSecondary: '#C0C0C0'
     }
   };
 

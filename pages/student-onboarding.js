@@ -99,6 +99,16 @@ export default function StudentOnboarding() {
       background: '#FFFFF0',
       surface: '#FFFFFF',
       textPrimary: '#2F4F2F'
+    },
+    {
+      name: 'Little Luminaries',
+      assetPrefix: 'little_luminaries',
+      primary: '#FFD700',
+      secondary: '#C0C0C0',
+      accent: '#F8F8FF',
+      background: '#1A1A1A',
+      surface: '#2D2D2D',
+      textPrimary: '#FFD700'
     }
   ];
 
@@ -972,7 +982,7 @@ function ThemePage({ formData, setFormData, themes }) {
               }}>
                 {/* Bookshelf Preview */}
                 <img 
-                  src={`/bookshelves/${theme.assetPrefix}.png`}
+                  src={`/bookshelves/${theme.assetPrefix}.jpg`}
                   alt={`${theme.name} bookshelf`}
                   style={{
                     width: 'clamp(70px, 18vw, 90px)',
@@ -984,7 +994,7 @@ function ThemePage({ formData, setFormData, themes }) {
                 />
                 {/* Trophy Case Preview */}
                 <img 
-                  src={`/trophy_cases/${theme.assetPrefix}.png`}
+                  src={`/trophy_cases/${theme.assetPrefix}.jpg`}
                   alt={`${theme.name} trophy case`}
                   style={{
                     width: 'clamp(70px, 18vw, 90px)',
