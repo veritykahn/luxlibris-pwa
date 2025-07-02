@@ -19,6 +19,7 @@ export default function StudentBookshelf() {
   const [tempNotes, setTempNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState('');
+  const [showComingSoon, setShowComingSoon] = useState('');
 
   // Theme definitions (same as other pages)
   const themes = {
@@ -164,8 +165,8 @@ export default function StudentBookshelf() {
     
     setSelectedBook({ ...bookshelfBook, details: bookDetails });
     setTempProgress(bookshelfBook.currentProgress);
-    setTempRating(bookshelfBook.rating);
-    setTempNotes(bookshelfBook.notes);
+    setTempRating(bookshelfBook.rating || 0);
+    setTempNotes(bookshelfBook.notes || '');
     setShowBookModal(true);
   };
 
@@ -210,7 +211,6 @@ export default function StudentBookshelf() {
       
       if (isCompleted && !selectedBook.completed) {
         setShowSuccess(`🎉 ${selectedBook.details.title} completed! Ready to submit!`);
-        // TODO: Show submission options modal
       } else {
         setShowSuccess('📚 Progress saved!');
       }
@@ -252,6 +252,22 @@ export default function StudentBookshelf() {
     setIsSaving(false);
   };
 
+  // Updated handleTabClick function
+  const handleTabClick = (tabName) => {
+    if (tabName === 'Dashboard') {
+      router.push('/student-dashboard');
+    } else if (tabName === 'Nominees') {
+      router.push('/student-nominees');
+    } else if (tabName === 'Bookshelf') {
+      // Already on bookshelf, maybe add a subtle feedback
+      setShowComingSoon('You\'re already here! 📍');
+      setTimeout(() => setShowComingSoon(''), 1500);
+    } else {
+      setShowComingSoon(`${tabName} coming soon! 🚀`);
+      setTimeout(() => setShowComingSoon(''), 3000);
+    }
+  };
+
   // Show loading
   if (loading || isLoading || !studentData || !currentTheme) {
     return (
@@ -262,7 +278,7 @@ export default function StudentBookshelf() {
         alignItems: 'center',
         justifyContent: 'center'
       }}>
-        <div style={{ textAlign: 'center' }}>
+        <div className="bottom-nav" style={{ textAlign: 'center' }}>
           <div style={{
             width: '40px',
             height: '40px',
@@ -279,8 +295,6 @@ export default function StudentBookshelf() {
   }
 
   const bookshelf = studentData.bookshelf || [];
-  const totalBooks = bookshelf.length;
-  const completedBooks = bookshelf.filter(book => book.completed).length;
 
   // Organize books into shelves (4 books per shelf)
   const shelves = [];
@@ -298,6 +312,7 @@ export default function StudentBookshelf() {
       <Head>
         <title>My Bookshelf - Lux Libris</title>
         <meta name="description" content="Track your reading progress and manage your personal book collection" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
         <link rel="icon" href="/images/lux_libris_logo.png" />
       </Head>
       
@@ -305,155 +320,28 @@ export default function StudentBookshelf() {
         backgroundColor: currentTheme.background,
         minHeight: '100vh',
         fontFamily: 'system-ui, -apple-system, sans-serif',
-        paddingBottom: '20px'
+        paddingBottom: '100px' // Space for bottom navigation
       }}>
-        {/* Header */}
-        <div style={{
-          background: `linear-gradient(135deg, ${currentTheme.secondary}, ${currentTheme.secondary}CC)`,
-          padding: '20px 24px',
-          borderRadius: '0 0 20px 20px',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
-        }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '16px'
-            }}>
-              <button
-                onClick={() => router.back()}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: currentTheme.textPrimary,
-                  fontSize: '20px',
-                  cursor: 'pointer',
-                  padding: '4px'
-                }}
-              >
-                ←
-              </button>
-              <h1 style={{
-                fontFamily: 'Didot, serif',
-                fontSize: '20px',
-                color: currentTheme.textPrimary,
-                margin: 0
-              }}>
-                My Bookshelf
-              </h1>
-            </div>
-            <div style={{
-              fontSize: '14px',
-              color: currentTheme.textPrimary,
-              backgroundColor: `${currentTheme.primary}30`,
-              padding: '4px 12px',
-              borderRadius: '12px'
-            }}>
-              {totalBooks} books
-            </div>
-          </div>
-        </div>
-
-        {/* Bookshelf Stats */}
-        <div style={{ padding: '20px 20px 0' }}>
-          <div style={{
-            backgroundColor: currentTheme.surface,
-            borderRadius: '16px',
-            padding: '16px',
-            marginBottom: '20px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-          }}>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
-              gap: '16px',
-              textAlign: 'center'
-            }}>
-              <div>
-                <div style={{
-                  fontSize: '24px',
-                  fontWeight: 'bold',
-                  color: currentTheme.primary
-                }}>
-                  {totalBooks}
-                </div>
-                <div style={{
-                  fontSize: '12px',
-                  color: currentTheme.textSecondary
-                }}>
-                  Total Books
-                </div>
-              </div>
-              <div>
-                <div style={{
-                  fontSize: '24px',
-                  fontWeight: 'bold',
-                  color: '#4CAF50'
-                }}>
-                  {completedBooks}
-                </div>
-                <div style={{
-                  fontSize: '12px',
-                  color: currentTheme.textSecondary
-                }}>
-                  Completed
-                </div>
-              </div>
-              <div>
-                <div style={{
-                  fontSize: '24px',
-                  fontWeight: 'bold',
-                  color: '#FF9800'
-                }}>
-                  {totalBooks - completedBooks}
-                </div>
-                <div style={{
-                  fontSize: '12px',
-                  color: currentTheme.textSecondary
-                }}>
-                  In Progress
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Bookshelf Display */}
         <div style={{
           position: 'relative',
-          minHeight: '400px',
-          margin: '0 20px'
+          minHeight: '100vh',
+          backgroundImage: `url(/bookshelves/${studentData.selectedTheme || 'classic_lux'}.png)`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat'
         }}>
-          {/* Themed Background */}
-          <div style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundImage: `url(/bookshelves/${studentData.selectedTheme || 'classic_lux'}.png)`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat',
-            borderRadius: '20px',
-            opacity: 0.9
-          }} />
-
           {/* Books on Shelves */}
           <div style={{
             position: 'relative',
             zIndex: 10,
-            padding: '20px'
+            padding: '40px 20px'
           }}>
-            {totalBooks === 0 ? (
+            {bookshelf.length === 0 ? (
               // Empty Bookshelf
-              <div style={{
+              <div className="modal-content" style={{
                 textAlign: 'center',
-                padding: '60px 20px',
+                padding: '120px 20px',
                 color: currentTheme.textSecondary
               }}>
                 <div style={{ fontSize: '64px', marginBottom: '16px' }}>📚</div>
@@ -484,11 +372,13 @@ export default function StudentBookshelf() {
                 </button>
               </div>
             ) : (
-              // Books Display (5 shelves, 4 books each)
+              // Books Display with proper shelf positioning
               <div style={{
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '40px'
+                height: '100vh',
+                justifyContent: 'space-evenly',
+                paddingTop: '60px'
               }}>
                 {shelves.map((shelf, shelfIndex) => (
                   <div
@@ -496,8 +386,9 @@ export default function StudentBookshelf() {
                     style={{
                       display: 'grid',
                       gridTemplateColumns: 'repeat(4, 1fr)',
-                      gap: '12px',
-                      minHeight: '120px',
+                      gap: '8px',
+                      padding: '0 40px',
+                      height: '120px',
                       alignItems: 'end'
                     }}
                   >
@@ -513,6 +404,7 @@ export default function StudentBookshelf() {
                         <button
                           key={book.bookId}
                           onClick={() => openBookModal(book)}
+                          className="book-cover interactive"
                           style={{
                             background: 'none',
                             border: 'none',
@@ -524,16 +416,22 @@ export default function StudentBookshelf() {
                           {/* Book Cover */}
                           <div style={{
                             width: '100%',
-                            height: '100px',
-                            borderRadius: '8px',
+                            height: '90px',
+                            borderRadius: '4px',
                             overflow: 'hidden',
                             backgroundColor: `${currentTheme.primary}20`,
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             position: 'relative',
-                            boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
                             transition: 'transform 0.2s ease'
+                          }}
+                          onTouchStart={(e) => {
+                            e.currentTarget.style.transform = 'scale(1.05)';
+                          }}
+                          onTouchEnd={(e) => {
+                            e.currentTarget.style.transform = 'scale(1)';
                           }}
                           onMouseEnter={(e) => {
                             e.currentTarget.style.transform = 'scale(1.05)';
@@ -553,7 +451,7 @@ export default function StudentBookshelf() {
                                 }}
                               />
                             ) : (
-                              <span style={{ fontSize: '24px' }}>📚</span>
+                              <span style={{ fontSize: '20px' }}>📚</span>
                             )}
                             
                             {/* Progress Overlay */}
@@ -562,7 +460,7 @@ export default function StudentBookshelf() {
                               bottom: 0,
                               left: 0,
                               right: 0,
-                              height: '6px',
+                              height: '4px',
                               backgroundColor: 'rgba(0,0,0,0.3)'
                             }}>
                               <div style={{
@@ -577,17 +475,17 @@ export default function StudentBookshelf() {
                             {book.format === 'audiobook' && (
                               <div style={{
                                 position: 'absolute',
-                                top: '4px',
-                                right: '4px',
+                                top: '2px',
+                                right: '2px',
                                 backgroundColor: 'rgba(0,0,0,0.7)',
                                 color: 'white',
                                 borderRadius: '50%',
-                                width: '20px',
-                                height: '20px',
+                                width: '16px',
+                                height: '16px',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                fontSize: '10px'
+                                fontSize: '8px'
                               }}>
                                 🎧
                               </div>
@@ -597,17 +495,17 @@ export default function StudentBookshelf() {
                             {book.completed && (
                               <div style={{
                                 position: 'absolute',
-                                top: '4px',
-                                left: '4px',
+                                top: '2px',
+                                left: '2px',
                                 backgroundColor: '#4CAF50',
                                 color: 'white',
                                 borderRadius: '50%',
-                                width: '20px',
-                                height: '20px',
+                                width: '16px',
+                                height: '16px',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                fontSize: '10px'
+                                fontSize: '8px'
                               }}>
                                 ✓
                               </div>
@@ -616,12 +514,12 @@ export default function StudentBookshelf() {
                           
                           {/* Book Title */}
                           <div style={{
-                            fontSize: '10px',
+                            fontSize: '9px',
                             color: currentTheme.textPrimary,
                             marginTop: '4px',
                             textAlign: 'center',
-                            lineHeight: '1.2',
-                            maxHeight: '24px',
+                            lineHeight: '1.1',
+                            maxHeight: '20px',
                             overflow: 'hidden'
                           }}>
                             {bookDetails.title}
@@ -636,7 +534,7 @@ export default function StudentBookshelf() {
                         key={`empty-${shelfIndex}-${emptyIndex}`}
                         style={{
                           width: '100%',
-                          height: '100px'
+                          height: '90px'
                         }}
                       />
                     ))}
@@ -655,7 +553,7 @@ export default function StudentBookshelf() {
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.7)',
+            backgroundColor: 'rgba(0,0,0,0.8)',
             zIndex: 1000,
             display: 'flex',
             alignItems: 'center',
@@ -665,8 +563,8 @@ export default function StudentBookshelf() {
             <div style={{
               backgroundColor: currentTheme.surface,
               borderRadius: '20px',
-              padding: 'clamp(16px, 4vw, 24px)',
-              maxWidth: '400px',
+              padding: 'clamp(20px, 5vw, 28px)',
+              maxWidth: '450px',
               width: '100%',
               maxHeight: '90vh',
               overflowY: 'auto'
@@ -676,10 +574,10 @@ export default function StudentBookshelf() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                marginBottom: '20px'
+                marginBottom: '24px'
               }}>
                 <h2 style={{
-                  fontSize: 'clamp(16px, 4vw, 18px)',
+                  fontSize: 'clamp(18px, 4vw, 20px)',
                   fontWeight: 'bold',
                   color: currentTheme.textPrimary,
                   margin: 0,
@@ -710,11 +608,11 @@ export default function StudentBookshelf() {
                 </button>
               </div>
 
-              {/* Book Cover */}
+              {/* Book Cover - Larger */}
               <div style={{
-                width: 'clamp(100px, 25vw, 120px)',
-                height: 'clamp(150px, 37.5vw, 180px)',
-                margin: '0 auto 20px',
+                width: 'clamp(140px, 35vw, 160px)',
+                height: 'clamp(210px, 52.5vw, 240px)',
+                margin: '0 auto 24px',
                 borderRadius: '12px',
                 overflow: 'hidden',
                 backgroundColor: `${currentTheme.primary}20`,
@@ -733,42 +631,73 @@ export default function StudentBookshelf() {
                     }}
                   />
                 ) : (
-                  <span style={{ fontSize: 'clamp(32px, 8vw, 48px)' }}>📚</span>
+                  <span style={{ fontSize: 'clamp(48px, 12vw, 64px)' }}>📚</span>
                 )}
               </div>
 
+              {/* Start Reading Session Button */}
+              <button
+                onClick={() => {
+                  closeBookModal();
+                  router.push('/healthy-habits');
+                }}
+                style={{
+                  backgroundColor: '#4CAF50',
+                  color: 'white',
+                  border: 'none',
+                  padding: '14px 24px',
+                  borderRadius: '12px',
+                  fontSize: 'clamp(14px, 3.5vw, 16px)',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  width: '100%',
+                  marginBottom: '24px',
+                  minHeight: '44px',
+                  touchAction: 'manipulation'
+                }}
+              >
+                📖 Start Reading Session
+              </button>
+
               {/* Progress Slider */}
-              <div style={{ marginBottom: '20px' }}>
+              <div style={{ marginBottom: '24px' }}>
                 <label style={{
                   fontSize: 'clamp(14px, 3.5vw, 16px)',
                   fontWeight: '600',
                   color: currentTheme.textPrimary,
                   display: 'block',
-                  marginBottom: '8px'
+                  marginBottom: '12px'
                 }}>
                   {selectedBook.format === 'audiobook' ? 'Minutes Listened' : 'Pages Read'}
                 </label>
-                <input
-                  type="range"
-                  min="0"
-                  max={selectedBook.format === 'audiobook' ? selectedBook.totalMinutes : selectedBook.totalPages}
-                  value={tempProgress}
-                  onChange={(e) => setTempProgress(parseInt(e.target.value))}
-                  style={{
-                    width: '100%',
-                    height: '12px',
-                    borderRadius: '6px',
-                    backgroundColor: '#E0E0E0',
-                    outline: 'none',
-                    marginBottom: '8px',
-                    touchAction: 'manipulation'
-                  }}
-                />
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type="range"
+                    min="0"
+                    max={selectedBook.format === 'audiobook' ? selectedBook.totalMinutes : selectedBook.totalPages}
+                    value={tempProgress}
+                    onChange={(e) => {
+                      e.preventDefault();
+                      setTempProgress(parseInt(e.target.value));
+                    }}
+                    style={{
+                      width: '100%',
+                      height: '8px',
+                      borderRadius: '4px',
+                      backgroundColor: '#E0E0E0',
+                      outline: 'none',
+                      cursor: 'pointer',
+                      WebkitAppearance: 'none',
+                      appearance: 'none'
+                    }}
+                  />
+                </div>
                 <div style={{
                   display: 'flex',
                   justifyContent: 'space-between',
                   fontSize: 'clamp(12px, 3vw, 14px)',
-                  color: currentTheme.textSecondary
+                  color: currentTheme.textSecondary,
+                  marginTop: '8px'
                 }}>
                   <span>{tempProgress}</span>
                   <span>
@@ -781,49 +710,53 @@ export default function StudentBookshelf() {
               </div>
 
               {/* Star Rating */}
-              <div style={{ marginBottom: '20px' }}>
+              <div style={{ marginBottom: '24px' }}>
                 <label style={{
                   fontSize: 'clamp(14px, 3.5vw, 16px)',
                   fontWeight: '600',
                   color: currentTheme.textPrimary,
                   display: 'block',
-                  marginBottom: '8px'
+                  marginBottom: '12px'
                 }}>
                   Your Rating
                 </label>
                 <div style={{ 
                   display: 'flex', 
-                  gap: '4px', 
-                  marginBottom: '8px',
-                  justifyContent: 'center'
+                  gap: '8px', 
+                  justifyContent: 'center',
+                  marginBottom: '8px'
                 }}>
                   {[1, 2, 3, 4, 5].map(star => (
                     <button
                       key={star}
-                      onClick={() => setTempRating(star)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setTempRating(star);
+                      }}
                       style={{
                         background: 'none',
                         border: 'none',
-                        fontSize: 'clamp(24px, 6vw, 32px)',
+                        fontSize: 'clamp(28px, 7vw, 36px)',
                         cursor: 'pointer',
                         color: star <= tempRating ? '#FFD700' : '#E0E0E0',
                         padding: '4px',
-                        minHeight: '44px',
-                        minWidth: '44px',
+                        minHeight: '48px',
+                        minWidth: '48px',
                         touchAction: 'manipulation',
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center'
+                        justifyContent: 'center',
+                        transition: 'color 0.2s ease'
                       }}
                     >
-                      ⭐
+                      ★
                     </button>
                   ))}
                 </div>
               </div>
 
               {/* Notes */}
-              <div style={{ marginBottom: '24px' }}>
+              <div style={{ marginBottom: '28px' }}>
                 <label style={{
                   fontSize: 'clamp(14px, 3.5vw, 16px)',
                   fontWeight: '600',
@@ -848,17 +781,17 @@ export default function StudentBookshelf() {
                     color: currentTheme.textPrimary,
                     resize: 'vertical',
                     fontFamily: 'inherit',
-                    touchAction: 'manipulation'
+                    touchAction: 'manipulation',
+                    boxSizing: 'border-box'
                   }}
                 />
               </div>
 
               {/* Action Buttons */}
-              <div className="action-buttons" style={{
+              <div style={{
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '12px',
-                justifyContent: 'space-between'
+                gap: '12px'
               }}>
                 <button
                   onClick={saveBookProgress}
@@ -867,15 +800,14 @@ export default function StudentBookshelf() {
                     backgroundColor: currentTheme.primary,
                     color: currentTheme.textPrimary,
                     border: 'none',
-                    padding: '14px 24px',
-                    borderRadius: '8px',
+                    padding: '16px 24px',
+                    borderRadius: '12px',
                     fontSize: 'clamp(14px, 3.5vw, 16px)',
                     fontWeight: '600',
                     cursor: 'pointer',
                     opacity: isSaving ? 0.7 : 1,
-                    minHeight: '44px',
-                    touchAction: 'manipulation',
-                    flex: '1'
+                    minHeight: '48px',
+                    touchAction: 'manipulation'
                   }}
                 >
                   {isSaving ? 'Saving...' : 'Save Progress'}
@@ -887,12 +819,12 @@ export default function StudentBookshelf() {
                     backgroundColor: '#FF6B6B',
                     color: 'white',
                     border: 'none',
-                    padding: '14px 16px',
-                    borderRadius: '8px',
+                    padding: '16px 24px',
+                    borderRadius: '12px',
                     fontSize: 'clamp(14px, 3.5vw, 16px)',
                     cursor: 'pointer',
                     opacity: isSaving ? 0.7 : 1,
-                    minHeight: '44px',
+                    minHeight: '48px',
                     touchAction: 'manipulation',
                     fontWeight: '600'
                   }}
@@ -904,11 +836,105 @@ export default function StudentBookshelf() {
           </div>
         )}
 
-        {/* Success Message */}
-        {showSuccess && (
+        {/* Bottom Navigation */}
+        <div style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          backgroundColor: currentTheme.surface,
+          borderTop: `1px solid ${currentTheme.primary}20`,
+          padding: '12px 0 8px 0',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(6, 1fr)',
+          gap: '4px',
+          boxShadow: '0 -2px 10px rgba(0,0,0,0.1)',
+          backdropFilter: 'blur(10px)'
+        }}>
+          {[
+            { icon: '▦', label: 'Dashboard', active: false, route: 'Dashboard' },
+            { icon: '▢', label: 'Nominees', active: false, route: 'Nominees' },
+            { icon: '▥', label: 'Bookshelf', active: true, route: 'Bookshelf' },
+            { icon: '◉', label: 'Habits', active: false, route: 'Habits' },
+            { icon: '♔', label: 'Saints', active: false, route: 'Saints' },
+            { icon: '▲', label: 'Stats', active: false, route: 'Stats' }
+          ].map((tab, index) => (
+            <button
+              key={tab.label}
+              onClick={() => handleTabClick(tab.route)}
+              style={{
+                background: tab.active
+                  ? `linear-gradient(135deg, ${currentTheme.primary}15, ${currentTheme.primary}25)`
+                  : 'none',
+                border: 'none',
+                borderRadius: '12px',
+                padding: '10px 4px 8px 4px',
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '4px',
+                color: tab.active ? currentTheme.primary : currentTheme.textSecondary,
+                transition: 'all 0.2s ease',
+                margin: '0 2px'
+              }}
+              onTouchStart={(e) => {
+                if (!tab.active) {
+                  e.target.style.backgroundColor = `${currentTheme.primary}10`;
+                  e.target.style.transform = 'translateY(-1px)';
+                }
+              }}
+              onTouchEnd={(e) => {
+                if (!tab.active) {
+                  e.target.style.backgroundColor = 'transparent';
+                  e.target.style.transform = 'translateY(0)';
+                }
+              }}
+              onMouseOver={(e) => {
+                if (!tab.active) {
+                  e.target.style.backgroundColor = `${currentTheme.primary}10`;
+                  e.target.style.transform = 'translateY(-1px)';
+                }
+              }}
+              onMouseOut={(e) => {
+                if (!tab.active) {
+                  e.target.style.backgroundColor = 'transparent';
+                  e.target.style.transform = 'translateY(0)';
+                }
+              }}
+            >
+              <span style={{
+                fontSize: '20px',
+                fontWeight: tab.active ? '600' : '400',
+                filter: tab.active ? 'none' : 'opacity(0.7)'
+              }}>
+                {tab.icon}
+              </span>
+              <span style={{
+                fontSize: '9px',
+                fontWeight: tab.active ? '600' : '500',
+                letterSpacing: '0.1px'
+              }}>
+                {tab.label}
+              </span>
+              {tab.active && (
+                <div style={{
+                  width: '4px',
+                  height: '4px',
+                  backgroundColor: currentTheme.primary,
+                  borderRadius: '50%',
+                  marginTop: '1px'
+                }} />
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Success/Coming Soon Messages */}
+        {(showSuccess || showComingSoon) && (
           <div style={{
             position: 'fixed',
-            bottom: '20px',
+            bottom: '100px',
             left: '50%',
             transform: 'translateX(-50%)',
             backgroundColor: currentTheme.primary,
@@ -922,7 +948,7 @@ export default function StudentBookshelf() {
             maxWidth: '90vw',
             textAlign: 'center'
           }}>
-            {showSuccess}
+            {showSuccess || showComingSoon}
           </div>
         )}
 
@@ -938,73 +964,100 @@ export default function StudentBookshelf() {
             -webkit-appearance: none;
             appearance: none;
             cursor: pointer;
+            background: transparent;
           }
           
           input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
-            width: clamp(20px, 5vw, 24px);
-            height: clamp(20px, 5vw, 24px);
+            width: clamp(24px, 6vw, 28px);
+            height: clamp(24px, 6vw, 28px);
             border-radius: 50%;
             background: ${currentTheme.primary};
             cursor: pointer;
-            border: 2px solid white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            border: 3px solid white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
             touch-action: manipulation;
           }
           
           input[type="range"]::-moz-range-thumb {
-            width: clamp(20px, 5vw, 24px);
-            height: clamp(20px, 5vw, 24px);
+            width: clamp(24px, 6vw, 28px);
+            height: clamp(24px, 6vw, 28px);
             border-radius: 50%;
             background: ${currentTheme.primary};
             cursor: pointer;
-            border: 2px solid white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            border: 3px solid white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
             touch-action: manipulation;
+            -moz-appearance: none;
           }
           
-          /* Mobile touch optimizations */
-          @media (max-width: 480px) {
-            button {
-              min-height: 44px !important;
-              min-width: 44px !important;
-            }
-            
-            /* Stack action buttons vertically on small screens */
-            .action-buttons {
-              flex-direction: column !important;
-            }
-            
-            /* Increase touch targets on mobile */
-            input[type="range"]::-webkit-slider-thumb {
-              width: 28px;
-              height: 28px;
-            }
-            
-            input[type="range"]::-moz-range-thumb {
-              width: 28px;
-              height: 28px;
-            }
+          input[type="range"]::-webkit-slider-track {
+            background: #E0E0E0;
+            height: 8px;
+            border-radius: 4px;
           }
           
-          @media (min-width: 481px) {
-            /* Horizontal layout on larger screens */
-            .action-buttons {
-              flex-direction: row !important;
-            }
+          input[type="range"]::-moz-range-track {
+            background: #E0E0E0;
+            height: 8px;
+            border-radius: 4px;
+            border: none;
           }
           
-          /* Prevent zoom on inputs */
+          /* Enhanced mobile touch optimizations */
+          button {
+            min-height: 44px !important;
+            min-width: 44px !important;
+            -webkit-tap-highlight-color: transparent;
+          }
+          
+          /* Prevent zoom on inputs - iOS Safari fix */
           @media screen and (max-width: 480px) {
             input, textarea, select {
               font-size: 16px !important;
+              -webkit-appearance: none;
+              border-radius: 0;
             }
           }
           
-          /* Smooth scrolling for better mobile experience */
+          /* Safe area handling for devices with notches */
+          @supports (padding: max(0px)) {
+            .bottom-nav {
+              padding-bottom: max(8px, env(safe-area-inset-bottom));
+            }
+          }
+          
+          /* Smooth scrolling and momentum */
           * {
             -webkit-overflow-scrolling: touch;
+          }
+          
+          /* Better touch feedback */
+          button:active {
+            transform: scale(0.98);
+          }
+          
+          /* Modal optimizations */
+          @media (max-height: 600px) {
+            .modal-content {
+              padding: 16px !important;
+            }
+          }
+          
+          /* Disable text selection on interactive elements */
+          button, .interactive {
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+          }
+          
+          /* Performance optimizations */
+          .book-cover {
+            transform: translateZ(0);
+            -webkit-transform: translateZ(0);
+            will-change: transform;
           }
         `}</style>
       </div>
