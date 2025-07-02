@@ -1,4 +1,4 @@
-// pages/student-bookshelf.js - BEAUTIFUL HEADER + PROPER SPACING
+// pages/student-bookshelf.js - SIMPLE CLEAN BOOKSHELF
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
@@ -19,11 +19,8 @@ export default function StudentBookshelf() {
   const [tempNotes, setTempNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState('');
-  
-  // Mobile detection hook
-  const [isMobile, setIsMobile] = useState(false);
 
-  // Theme definitions
+  // Theme definitions - FIXED Little Luminaries contrast
   const themes = {
     classic_lux: {
       name: 'Lux Libris Classic',
@@ -102,21 +99,10 @@ export default function StudentBookshelf() {
       accent: '#F8F8FF',
       background: '#1A1A1A',
       surface: '#2D2D2D',
-      textPrimary: '#FFFFFF', // Fixed for contrast
-      textSecondary: '#C0C0C0'
+      textPrimary: '#FFFFFF',    // White text for contrast
+      textSecondary: '#E0E0E0'   // Light grey instead of medium grey
     }
   };
-
-  // Mobile detection effect
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth <= 768);
-    };
-    
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
 
   useEffect(() => {
     if (!loading && isAuthenticated && user) {
@@ -128,8 +114,6 @@ export default function StudentBookshelf() {
 
   const loadBookshelfData = async () => {
     try {
-      console.log('📚 Loading bookshelf data...');
-      
       const firebaseStudentData = await getStudentData(user.uid);
       if (!firebaseStudentData) {
         router.push('/student-onboarding');
@@ -138,7 +122,6 @@ export default function StudentBookshelf() {
       
       setStudentData(firebaseStudentData);
       
-      // Use the actual selected theme from student data
       const selectedThemeKey = firebaseStudentData.selectedTheme || 'classic_lux';
       const selectedTheme = themes[selectedThemeKey];
       setCurrentTheme(selectedTheme);
@@ -149,7 +132,6 @@ export default function StudentBookshelf() {
           firebaseStudentData.schoolId
         );
         setNominees(schoolNominees);
-        console.log('✅ Loaded nominees for bookshelf display');
       }
       
     } catch (error) {
@@ -160,12 +142,10 @@ export default function StudentBookshelf() {
     setIsLoading(false);
   };
 
-  // Get book details from nominees
   const getBookDetails = (bookId) => {
     return nominees.find(book => book.id === bookId);
   };
 
-  // Get proper total pages/minutes from nominee data
   const getBookTotal = (bookshelfBook) => {
     const bookDetails = getBookDetails(bookshelfBook.bookId);
     if (!bookDetails) return 0;
@@ -177,7 +157,6 @@ export default function StudentBookshelf() {
     }
   };
 
-  // Category colors for containers
   const getCategoryColorPalette = (book) => {
     const category = book.displayCategory || book.internalCategory || '';
     
@@ -241,7 +220,6 @@ export default function StudentBookshelf() {
       };
     }
     
-    // Default to theme colors
     return {
       primary: currentTheme.primary,
       background: currentTheme.surface,
@@ -386,8 +364,6 @@ export default function StudentBookshelf() {
 
   const bookshelf = studentData.bookshelf || [];
   const totalBooks = bookshelf.length;
-  const completedBooks = bookshelf.filter(book => book.completed).length;
-  const inProgressBooks = bookshelf.filter(book => !book.completed && book.currentProgress > 0).length;
   
   // Always 4 books per shelf
   const booksPerShelf = 4;
@@ -395,14 +371,13 @@ export default function StudentBookshelf() {
   for (let i = 0; i < bookshelf.length; i += booksPerShelf) {
     shelves.push(bookshelf.slice(i, i + booksPerShelf));
   }
-  // Only add empty shelves if we have books (to show some structure)
+  // Add empty shelves only if we have books
   if (bookshelf.length > 0) {
     while (shelves.length < 5) {
       shelves.push([]);
     }
   }
 
-  // Use JPG extension for decorative overlay
   const decorativeOverlay = `/bookshelves/${studentData.selectedTheme || 'classic_lux'}.jpg`;
 
   return (
@@ -418,38 +393,39 @@ export default function StudentBookshelf() {
         minHeight: '100vh',
         fontFamily: 'system-ui, -apple-system, sans-serif',
         position: 'relative',
-        // FULL SCREEN BACKGROUND that tiles properly
+        // PROPER FULL SCREEN BACKGROUND
         backgroundImage: `url(${decorativeOverlay})`,
-        backgroundSize: isMobile ? 'cover' : 'repeat',
+        backgroundSize: 'cover',
         backgroundPosition: 'center',
-        backgroundAttachment: 'fixed'
+        backgroundAttachment: 'fixed',
+        backgroundColor: currentTheme.background
       }}>
         
-        {/* BEAUTIFUL FULL-WIDTH HEADER like image 1 */}
+        {/* SIMPLE CLEAN HEADER */}
         <div style={{
-          background: `linear-gradient(135deg, ${currentTheme.primary}E6, ${currentTheme.secondary}E6)`,
+          background: `linear-gradient(135deg, ${currentTheme.primary}F0, ${currentTheme.secondary}F0)`,
           backdropFilter: 'blur(20px)',
-          padding: '60px 20px 30px',
+          padding: '50px 20px 20px',
           position: 'relative',
-          borderRadius: '0 0 30px 30px',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.1)'
+          borderRadius: '0 0 25px 25px',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
         }}>
           {/* Back Arrow */}
           <button
             onClick={() => router.push('/student-dashboard')}
             style={{
               position: 'absolute',
-              top: '20px',
-              left: '20px',
-              backgroundColor: 'rgba(255,255,255,0.2)',
+              top: '15px',
+              left: '15px',
+              backgroundColor: 'rgba(255,255,255,0.3)',
               border: 'none',
               borderRadius: '50%',
-              width: '40px',
-              height: '40px',
+              width: '36px',
+              height: '36px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '18px',
+              fontSize: '16px',
               cursor: 'pointer',
               color: currentTheme.textPrimary,
               backdropFilter: 'blur(10px)'
@@ -458,94 +434,32 @@ export default function StudentBookshelf() {
             ←
           </button>
 
-          {/* Header Content */}
+          {/* Simple Header Content */}
           <div style={{ textAlign: 'center' }}>
             <h1 style={{
-              fontSize: '28px',
-              fontWeight: '700',
+              fontSize: '24px',
+              fontWeight: '600',
               color: currentTheme.textPrimary,
-              margin: '0 0 8px 0',
+              margin: '0',
               letterSpacing: '0.5px'
             }}>
               My Bookshelf
             </h1>
             <p style={{
-              fontSize: '16px',
+              fontSize: '14px',
               color: currentTheme.textSecondary,
-              margin: '0 0 25px 0',
-              opacity: 0.8
+              margin: '5px 0 0 0',
+              opacity: 0.9
             }}>
               {totalBooks} {totalBooks === 1 ? 'book' : 'books'}
             </p>
-
-            {/* Stats Row like image 1 */}
-            {totalBooks > 0 && (
-              <div style={{
-                display: 'flex',
-                justifyContent: 'center',
-                gap: isMobile ? '15px' : '30px',
-                backgroundColor: 'rgba(255,255,255,0.15)',
-                padding: '15px',
-                borderRadius: '20px',
-                backdropFilter: 'blur(10px)'
-              }}>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{
-                    fontSize: '24px',
-                    fontWeight: 'bold',
-                    color: currentTheme.textPrimary
-                  }}>
-                    {totalBooks}
-                  </div>
-                  <div style={{
-                    fontSize: '12px',
-                    color: currentTheme.textSecondary,
-                    opacity: 0.8
-                  }}>
-                    Total Books
-                  </div>
-                </div>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{
-                    fontSize: '24px',
-                    fontWeight: 'bold',
-                    color: '#4CAF50'
-                  }}>
-                    {completedBooks}
-                  </div>
-                  <div style={{
-                    fontSize: '12px',
-                    color: currentTheme.textSecondary,
-                    opacity: 0.8
-                  }}>
-                    Completed
-                  </div>
-                </div>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{
-                    fontSize: '24px',
-                    fontWeight: 'bold',
-                    color: '#FF9800'
-                  }}>
-                    {inProgressBooks}
-                  </div>
-                  <div style={{
-                    fontSize: '12px',
-                    color: currentTheme.textSecondary,
-                    opacity: 0.8
-                  }}>
-                    In Progress
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
-        {/* MAIN CONTENT */}
+        {/* MAIN CONTENT - PHONE SCREEN OPTIMIZED */}
         <div style={{
-          padding: '20px',
-          minHeight: 'calc(100vh - 200px)'
+          padding: '15px',
+          minHeight: 'calc(100vh - 120px)'
         }}>
           {bookshelf.length === 0 ? (
             // Empty Bookshelf
@@ -555,19 +469,20 @@ export default function StudentBookshelf() {
               color: currentTheme.textSecondary,
               backgroundColor: 'rgba(255,255,255,0.9)',
               borderRadius: '20px',
-              margin: '20px',
+              margin: '20px auto',
+              maxWidth: '300px',
               backdropFilter: 'blur(10px)'
             }}>
-              <div style={{ fontSize: '64px', marginBottom: '16px' }}>📚</div>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>📚</div>
               <h2 style={{
-                fontSize: '20px',
+                fontSize: '18px',
                 marginBottom: '8px',
                 color: currentTheme.textPrimary
               }}>
                 Your bookshelf is empty
               </h2>
               <p style={{ fontSize: '14px', marginBottom: '20px' }}>
-                Add books from the nominees page to start reading!
+                Add books from the nominees page!
               </p>
               <button
                 onClick={() => router.push('/student-nominees')}
@@ -587,24 +502,24 @@ export default function StudentBookshelf() {
               </button>
             </div>
           ) : (
-            // COMPACT SHELVES WITH SMALL BOOKS
+            // CLOSE SHELVES - FIT ON PHONE SCREEN
             <div style={{
-              maxWidth: '600px',
+              maxWidth: '350px',
               margin: '0 auto'
             }}>
               {shelves.map((shelf, shelfIndex) => (
                 <div key={shelfIndex} style={{ 
                   position: 'relative',
-                  marginBottom: '20px' // MUCH closer spacing
+                  marginBottom: '12px' // SUPER close spacing
                 }}>
-                  {/* SHELF SPACE FOR SMALL BOOKS */}
+                  {/* SMALL BOOKS */}
                   <div style={{
-                    height: '120px', // Smaller height
-                    padding: '0 20px',
-                    marginBottom: '8px',
+                    height: '90px', // Even smaller
+                    padding: '0 15px',
+                    marginBottom: '6px',
                     display: 'grid',
                     gridTemplateColumns: `repeat(${booksPerShelf}, 1fr)`,
-                    gap: '8px',
+                    gap: '6px',
                     alignItems: 'end'
                   }}>
                     {shelf.map((book, bookIndex) => {
@@ -627,31 +542,31 @@ export default function StudentBookshelf() {
                             padding: 0
                           }}
                         >
-                          {/* SMALL PROPERLY PROPORTIONED BOOK COVER */}
+                          {/* TINY BUT TAPPABLE BOOK COVER */}
                           <div style={{
                             width: '100%',
-                            maxWidth: '80px', // Much smaller books
-                            height: '110px',
-                            borderRadius: '4px',
+                            maxWidth: '60px', // Tiny books
+                            height: '80px',
+                            borderRadius: '3px',
                             overflow: 'hidden',
                             backgroundColor: '#F5F5F5',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             position: 'relative',
-                            boxShadow: '0 3px 6px rgba(0,0,0,0.2)',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
                             transition: 'transform 0.2s ease',
                             transform: 'translateZ(0)',
                             margin: '0 auto'
                           }}
                           onTouchStart={(e) => {
-                            e.currentTarget.style.transform = 'scale(1.05) translateZ(0)';
+                            e.currentTarget.style.transform = 'scale(1.1) translateZ(0)';
                           }}
                           onTouchEnd={(e) => {
                             e.currentTarget.style.transform = 'scale(1) translateZ(0)';
                           }}
                           onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = 'scale(1.05) translateZ(0)';
+                            e.currentTarget.style.transform = 'scale(1.1) translateZ(0)';
                           }}
                           onMouseLeave={(e) => {
                             e.currentTarget.style.transform = 'scale(1) translateZ(0)';
@@ -668,7 +583,7 @@ export default function StudentBookshelf() {
                                 }}
                               />
                             ) : (
-                              <span style={{ fontSize: '24px' }}>📚</span>
+                              <span style={{ fontSize: '20px' }}>📚</span>
                             )}
                             
                             {/* Progress bar */}
@@ -677,7 +592,7 @@ export default function StudentBookshelf() {
                               bottom: 0,
                               left: 0,
                               right: 0,
-                              height: '4px',
+                              height: '3px',
                               backgroundColor: 'rgba(0,0,0,0.5)'
                             }}>
                               <div style={{
@@ -692,17 +607,17 @@ export default function StudentBookshelf() {
                             {book.format === 'audiobook' && (
                               <div style={{
                                 position: 'absolute',
-                                top: '3px',
-                                right: '3px',
+                                top: '2px',
+                                right: '2px',
                                 backgroundColor: 'rgba(0,0,0,0.7)',
                                 color: 'white',
                                 borderRadius: '50%',
-                                width: '16px',
-                                height: '16px',
+                                width: '14px',
+                                height: '14px',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                fontSize: '8px'
+                                fontSize: '7px'
                               }}>
                                 🎧
                               </div>
@@ -712,17 +627,17 @@ export default function StudentBookshelf() {
                             {book.completed && (
                               <div style={{
                                 position: 'absolute',
-                                top: '3px',
-                                left: '3px',
+                                top: '2px',
+                                left: '2px',
                                 backgroundColor: '#4CAF50',
                                 color: 'white',
                                 borderRadius: '50%',
-                                width: '16px',
-                                height: '16px',
+                                width: '14px',
+                                height: '14px',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                fontSize: '8px',
+                                fontSize: '7px',
                                 fontWeight: 'bold'
                               }}>
                                 ✓
@@ -739,21 +654,21 @@ export default function StudentBookshelf() {
                         key={`empty-${shelfIndex}-${emptyIndex}`}
                         style={{
                           width: '100%',
-                          maxWidth: '80px',
-                          height: '110px',
+                          maxWidth: '60px',
+                          height: '80px',
                           margin: '0 auto'
                         }}
                       />
                     ))}
                   </div>
 
-                  {/* SIMPLE CSS SHELF */}
+                  {/* THIN CSS SHELF */}
                   <div style={{
-                    height: '6px',
-                    margin: '0 15px',
+                    height: '4px',
+                    margin: '0 10px',
                     backgroundColor: currentTheme.primary,
-                    borderRadius: '3px',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                    borderRadius: '2px',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
                     position: 'relative',
                     zIndex: 5
                   }} />
@@ -763,7 +678,7 @@ export default function StudentBookshelf() {
           )}
         </div>
 
-        {/* BOOK DETAIL MODAL - Same as before but compact */}
+        {/* Modal and other components stay the same... */}
         {showBookModal && selectedBook && (() => {
           const colorPalette = getCategoryColorPalette(selectedBook.details);
           const total = getBookTotal(selectedBook);
@@ -785,60 +700,57 @@ export default function StudentBookshelf() {
               <div style={{
                 backgroundColor: '#FFFFFF',
                 borderRadius: '20px',
-                maxWidth: '360px',
+                maxWidth: '340px',
                 width: '100%',
-                maxHeight: '85vh',
+                maxHeight: '80vh',
                 overflowY: 'auto',
                 position: 'relative',
                 boxShadow: '0 20px 40px rgba(0,0,0,0.3)'
               }}>
-                {/* COMPACT BOOK COVER */}
+                {/* Book modal content stays the same */}
                 <div style={{
                   position: 'relative',
-                  padding: '20px 20px 15px',
+                  padding: '15px 15px 10px',
                   backgroundColor: '#FFFFFF',
                   borderRadius: '20px 20px 0 0',
                   textAlign: 'center'
                 }}>
-                  {/* Close X */}
                   <button
                     onClick={closeBookModal}
                     style={{
                       position: 'absolute',
-                      top: '10px',
-                      right: '10px',
+                      top: '8px',
+                      right: '8px',
                       backgroundColor: '#FF4444',
                       color: 'white',
                       border: '2px solid white',
                       borderRadius: '50%',
-                      width: '32px',
-                      height: '32px',
-                      fontSize: '16px',
+                      width: '28px',
+                      height: '28px',
+                      fontSize: '14px',
                       fontWeight: 'bold',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      boxShadow: '0 3px 8px rgba(0,0,0,0.3)',
                       zIndex: 10
                     }}
                   >
                     ✕
                   </button>
 
-                  {/* SMALLER BOOK COVER */}
                   <div style={{
-                    width: '140px',
-                    height: '200px',
+                    width: '120px',
+                    height: '160px',
                     margin: '0 auto',
-                    borderRadius: '8px',
+                    borderRadius: '6px',
                     overflow: 'hidden',
                     backgroundColor: '#F5F5F5',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    boxShadow: '0 8px 20px rgba(0,0,0,0.2)',
-                    border: '3px solid white'
+                    boxShadow: '0 6px 15px rgba(0,0,0,0.2)',
+                    border: '2px solid white'
                   }}>
                     {selectedBook.details.coverImageUrl ? (
                       <img 
@@ -851,40 +763,37 @@ export default function StudentBookshelf() {
                         }}
                       />
                     ) : (
-                      <span style={{ fontSize: '60px' }}>📚</span>
+                      <span style={{ fontSize: '40px' }}>📚</span>
                     )}
                   </div>
                 </div>
 
-                {/* COMPACT INFO CONTAINER */}
                 <div style={{
                   backgroundColor: colorPalette.background,
-                  padding: '20px',
+                  padding: '15px',
                   borderRadius: '0 0 20px 20px',
-                  border: `3px solid ${colorPalette.primary}20`,
+                  border: `2px solid ${colorPalette.primary}20`,
                   borderTop: 'none'
                 }}>
-                  {/* Title and Author */}
-                  <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                  <div style={{ textAlign: 'center', marginBottom: '15px' }}>
                     <h2 style={{
-                      fontSize: '18px',
+                      fontSize: '16px',
                       fontWeight: 'bold',
                       color: colorPalette.textPrimary,
-                      margin: '0 0 6px 0',
+                      margin: '0 0 4px 0',
                       lineHeight: '1.2'
                     }}>
                       {selectedBook.details.title}
                     </h2>
                     <p style={{
-                      fontSize: '14px',
+                      fontSize: '12px',
                       color: colorPalette.textSecondary,
-                      margin: '0 0 15px 0',
+                      margin: '0 0 12px 0',
                       fontStyle: 'italic'
                     }}>
                       by {selectedBook.details.authors}
                     </p>
 
-                    {/* Start Reading Button */}
                     <button
                       onClick={() => {
                         closeBookModal();
@@ -894,30 +803,29 @@ export default function StudentBookshelf() {
                         backgroundColor: '#4CAF50',
                         color: 'white',
                         border: 'none',
-                        padding: '10px 20px',
-                        borderRadius: '20px',
-                        fontSize: '14px',
+                        padding: '8px 16px',
+                        borderRadius: '16px',
+                        fontSize: '12px',
                         fontWeight: '600',
                         cursor: 'pointer',
                         width: '100%',
-                        minHeight: '40px',
-                        boxShadow: '0 3px 8px rgba(76, 175, 80, 0.3)'
+                        minHeight: '36px'
                       }}
                     >
-                      📖 Start Reading Session
+                      📖 Start Reading
                     </button>
                   </div>
 
-                  {/* Progress Slider */}
-                  <div style={{ marginBottom: '20px' }}>
+                  {/* Simplified progress, rating, notes sections... */}
+                  <div style={{ marginBottom: '15px' }}>
                     <label style={{
-                      fontSize: '14px',
+                      fontSize: '12px',
                       fontWeight: '600',
                       color: colorPalette.textPrimary,
                       display: 'block',
-                      marginBottom: '8px'
+                      marginBottom: '6px'
                     }}>
-                      {selectedBook.format === 'audiobook' ? 'Minutes Listened' : 'Pages Read'}
+                      {selectedBook.format === 'audiobook' ? 'Minutes' : 'Pages'}: {tempProgress}/{total}
                     </label>
                     
                     <input
@@ -928,42 +836,30 @@ export default function StudentBookshelf() {
                       onChange={(e) => setTempProgress(parseInt(e.target.value))}
                       style={{
                         width: '100%',
-                        height: '8px',
-                        borderRadius: '4px',
+                        height: '6px',
+                        borderRadius: '3px',
                         background: `linear-gradient(to right, ${colorPalette.primary} 0%, ${colorPalette.primary} ${(tempProgress/total)*100}%, #E0E0E0 ${(tempProgress/total)*100}%, #E0E0E0 100%)`,
                         outline: 'none',
                         appearance: 'none',
                         WebkitAppearance: 'none',
-                        cursor: 'pointer',
-                        marginBottom: '6px'
+                        cursor: 'pointer'
                       }}
                     />
-                    
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      fontSize: '12px',
-                      color: colorPalette.textSecondary
-                    }}>
-                      <span><strong>{tempProgress}</strong> current</span>
-                      <span><strong>{total}</strong> total {selectedBook.format === 'audiobook' ? 'min' : 'pages'}</span>
-                    </div>
                   </div>
 
-                  {/* Star Rating */}
-                  <div style={{ marginBottom: '20px' }}>
+                  <div style={{ marginBottom: '15px' }}>
                     <label style={{
-                      fontSize: '14px',
+                      fontSize: '12px',
                       fontWeight: '600',
                       color: colorPalette.textPrimary,
                       display: 'block',
-                      marginBottom: '8px'
+                      marginBottom: '6px'
                     }}>
-                      Your Rating
+                      Rating
                     </label>
                     <div style={{ 
                       display: 'flex', 
-                      gap: '4px', 
+                      gap: '3px', 
                       justifyContent: 'center'
                     }}>
                       {[1, 2, 3, 4, 5].map(star => (
@@ -973,16 +869,12 @@ export default function StudentBookshelf() {
                           style={{
                             background: 'none',
                             border: 'none',
-                            fontSize: '24px',
+                            fontSize: '18px',
                             cursor: 'pointer',
                             color: star <= tempRating ? '#FFD700' : '#E0E0E0',
-                            padding: '2px',
-                            minHeight: '36px',
-                            minWidth: '36px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            transition: 'color 0.2s ease'
+                            padding: '1px',
+                            minHeight: '28px',
+                            minWidth: '28px'
                           }}
                         >
                           ★
@@ -991,31 +883,20 @@ export default function StudentBookshelf() {
                     </div>
                   </div>
 
-                  {/* Notes */}
-                  <div style={{ marginBottom: '20px' }}>
-                    <label style={{
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      color: colorPalette.textPrimary,
-                      display: 'block',
-                      marginBottom: '8px'
-                    }}>
-                      Notes &amp; Thoughts
-                    </label>
+                  <div style={{ marginBottom: '15px' }}>
                     <textarea
                       value={tempNotes}
                       onChange={(e) => setTempNotes(e.target.value)}
-                      placeholder="What did you think about this book?"
+                      placeholder="Notes..."
                       style={{
                         width: '100%',
-                        height: '60px',
-                        padding: '10px',
-                        border: `2px solid ${colorPalette.primary}40`,
-                        borderRadius: '8px',
-                        fontSize: '14px',
+                        height: '50px',
+                        padding: '8px',
+                        border: `1px solid ${colorPalette.primary}40`,
+                        borderRadius: '6px',
+                        fontSize: '12px',
                         backgroundColor: '#FFFFFF',
                         color: colorPalette.textPrimary,
-                        resize: 'vertical',
                         fontFamily: 'inherit',
                         boxSizing: 'border-box',
                         outline: 'none'
@@ -1023,12 +904,7 @@ export default function StudentBookshelf() {
                     />
                   </div>
 
-                  {/* Action Buttons */}
-                  <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '10px'
-                  }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <button
                       onClick={saveBookProgress}
                       disabled={isSaving}
@@ -1036,17 +912,16 @@ export default function StudentBookshelf() {
                         backgroundColor: colorPalette.primary,
                         color: colorPalette.textPrimary,
                         border: 'none',
-                        padding: '12px 20px',
-                        borderRadius: '20px',
-                        fontSize: '14px',
+                        padding: '10px 16px',
+                        borderRadius: '16px',
+                        fontSize: '12px',
                         fontWeight: '600',
                         cursor: 'pointer',
                         opacity: isSaving ? 0.7 : 1,
-                        minHeight: '44px',
-                        boxShadow: `0 3px 8px ${colorPalette.primary}40`
+                        minHeight: '36px'
                       }}
                     >
-                      {isSaving ? 'Saving...' : '💾 Save Progress'}
+                      {isSaving ? 'Saving...' : '💾 Save'}
                     </button>
                     <button
                       onClick={() => deleteBook(selectedBook.bookId)}
@@ -1055,17 +930,16 @@ export default function StudentBookshelf() {
                         backgroundColor: '#FF6B6B',
                         color: 'white',
                         border: 'none',
-                        padding: '12px 20px',
-                        borderRadius: '20px',
-                        fontSize: '14px',
+                        padding: '10px 16px',
+                        borderRadius: '16px',
+                        fontSize: '12px',
                         cursor: 'pointer',
                         opacity: isSaving ? 0.7 : 1,
-                        minHeight: '44px',
-                        fontWeight: '600',
-                        boxShadow: '0 3px 8px rgba(255, 107, 107, 0.4)'
+                        minHeight: '36px',
+                        fontWeight: '600'
                       }}
                     >
-                      🗑️ Remove from Bookshelf
+                      🗑️ Remove
                     </button>
                   </div>
                 </div>
@@ -1074,54 +948,51 @@ export default function StudentBookshelf() {
           );
         })()}
 
-        {/* Success Messages */}
         {showSuccess && (
           <div style={{
             position: 'fixed',
-            bottom: '40px',
+            bottom: '30px',
             left: '50%',
             transform: 'translateX(-50%)',
             backgroundColor: currentTheme.primary,
             color: currentTheme.textPrimary,
-            padding: '15px 30px',
-            borderRadius: '25px',
-            boxShadow: '0 6px 20px rgba(0,0,0,0.3)',
+            padding: '12px 24px',
+            borderRadius: '20px',
+            boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
             zIndex: 1001,
-            fontSize: '16px',
+            fontSize: '14px',
             fontWeight: '600',
-            maxWidth: '90vw',
+            maxWidth: '85vw',
             textAlign: 'center'
           }}>
             {showSuccess}
           </div>
         )}
 
-        {/* Custom Styles */}
         <style jsx>{`
           @keyframes spin {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
           }
           
-          /* Perfect slider styling */
           input[type="range"]::-webkit-slider-thumb {
             appearance: none;
-            width: 20px;
-            height: 20px;
+            width: 16px;
+            height: 16px;
             border-radius: 50%;
             background: ${currentTheme?.primary || '#ADD4EA'};
-            border: 2px solid white;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            border: 1px solid white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
             cursor: pointer;
           }
           
           input[type="range"]::-moz-range-thumb {
-            width: 20px;
-            height: 20px;
+            width: 16px;
+            height: 16px;
             border-radius: 50%;
             background: ${currentTheme?.primary || '#ADD4EA'};
-            border: 2px solid white;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            border: 1px solid white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
             cursor: pointer;
           }
           
