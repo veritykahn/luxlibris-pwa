@@ -185,15 +185,19 @@ export default function StudentDashboard() {
   };
 
   const handleTabClick = (tabName) => {
-    if (tabName === 'Nominees') {
-      router.push('/student-nominees');
-    } else if (tabName === 'Bookshelf') {
-      router.push('/student-bookshelf');
-    } else {
-      setShowComingSoon(`${tabName} coming soon! 🚀`);
-      setTimeout(() => setShowComingSoon(''), 3000);
-    }
-  };
+  if (tabName === 'Dashboard') {
+    // Already on dashboard, maybe add a subtle feedback
+    setShowComingSoon('You\'re already here! 📍');
+    setTimeout(() => setShowComingSoon(''), 1500);
+  } else if (tabName === 'Nominees') {
+    router.push('/student-nominees');
+  } else if (tabName === 'Bookshelf') {
+    router.push('/student-bookshelf');
+  } else {
+    setShowComingSoon(`${tabName} coming soon! 🚀`);
+    setTimeout(() => setShowComingSoon(''), 3000);
+  }
+};
 
   const handleSettingsClick = () => {
     router.push('/student-settings');
@@ -450,46 +454,87 @@ export default function StudentDashboard() {
       </button>
 
       {/* Bottom Navigation */}
-      <div style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        backgroundColor: currentTheme.surface,
-        borderTop: `1px solid ${currentTheme.primary}20`,
-        padding: '8px 0',
-        display: 'grid',
-        gridTemplateColumns: 'repeat(6, 1fr)',
-        gap: '4px'
+      // Updated Bottom Navigation JSX (replace the existing bottom navigation div)
+<div style={{
+  position: 'fixed',
+  bottom: 0,
+  left: 0,
+  right: 0,
+  backgroundColor: currentTheme.surface,
+  borderTop: `1px solid ${currentTheme.primary}20`,
+  padding: '12px 0 8px 0',
+  display: 'grid',
+  gridTemplateColumns: 'repeat(6, 1fr)',
+  gap: '4px',
+  boxShadow: '0 -2px 10px rgba(0,0,0,0.1)',
+  backdropFilter: 'blur(10px)'
+}}>
+  {[
+    { icon: '▦', label: 'Dashboard', active: true, route: 'Dashboard' },
+    { icon: '▢', label: 'Nominees', active: false, route: 'Nominees' },
+    { icon: '▥', label: 'Bookshelf', active: false, route: 'Bookshelf' },
+    { icon: '◉', label: 'Habits', active: false, route: 'Habits' },
+    { icon: '♔', label: 'Saints', active: false, route: 'Saints' },
+    { icon: '▲', label: 'Stats', active: false, route: 'Stats' }
+  ].map((tab, index) => (
+    <button
+      key={tab.label}
+      onClick={() => handleTabClick(tab.route)}
+      style={{
+        background: tab.active 
+          ? `linear-gradient(135deg, ${currentTheme.primary}15, ${currentTheme.primary}25)`
+          : 'none',
+        border: 'none',
+        borderRadius: '12px',
+        padding: '10px 4px 8px 4px',
+        cursor: 'pointer',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '4px',
+        color: tab.active ? currentTheme.primary : currentTheme.textSecondary,
+        transition: 'all 0.2s ease',
+        margin: '0 2px'
+      }}
+      onMouseOver={(e) => {
+        if (!tab.active) {
+          e.target.style.backgroundColor = `${currentTheme.primary}10`;
+          e.target.style.transform = 'translateY(-1px)';
+        }
+      }}
+      onMouseOut={(e) => {
+        if (!tab.active) {
+          e.target.style.backgroundColor = 'transparent';
+          e.target.style.transform = 'translateY(0)';
+        }
+      }}
+    >
+      <span style={{ 
+        fontSize: '20px',
+        fontWeight: tab.active ? '600' : '400',
+        filter: tab.active ? 'none' : 'opacity(0.7)'
       }}>
-        {[
-          { icon: '📊', label: 'Dashboard', active: true },
-          { icon: '🎴', label: 'Nominees' },
-          { icon: '📚', label: 'Bookshelf' },
-          { icon: '💪', label: 'Habits' },
-          { icon: '👑', label: 'Saints' },
-          { icon: '📈', label: 'Stats' }
-        ].map((tab, index) => (
-          <button
-            key={tab.label}
-            onClick={() => handleTabClick(tab.label)}
-            style={{
-              background: 'none',
-              border: 'none',
-              padding: '8px 4px',
-              cursor: 'pointer',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '2px',
-              color: tab.active ? currentTheme.primary : currentTheme.textSecondary
-            }}
-          >
-            <span style={{ fontSize: '18px' }}>{tab.icon}</span>
-            <span style={{ fontSize: '10px', fontWeight: '500' }}>{tab.label}</span>
-          </button>
-        ))}
-      </div>
+        {tab.icon}
+      </span>
+      <span style={{ 
+        fontSize: '9px', 
+        fontWeight: tab.active ? '600' : '500',
+        letterSpacing: '0.1px'
+      }}>
+        {tab.label}
+      </span>
+      {tab.active && (
+        <div style={{
+          width: '4px',
+          height: '4px',
+          backgroundColor: currentTheme.primary,
+          borderRadius: '50%',
+          marginTop: '1px'
+        }} />
+      )}
+    </button>
+  ))}
+</div>
 
       {/* Success/Coming Soon Message */}
       {showComingSoon && (
