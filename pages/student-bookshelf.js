@@ -401,6 +401,19 @@ export default function StudentBookshelf() {
         backgroundColor: currentTheme.background
       }}>
         
+        {/* SUBTLE OVERLAY to reduce wallpaper intensity */}
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: currentTheme.background,
+          opacity: 0.3,
+          pointerEvents: 'none',
+          zIndex: 1
+        }} />
+        
         {/* SIMPLE CLEAN HEADER - CENTERED TITLE */}
         <div style={{
           background: `linear-gradient(135deg, ${currentTheme.primary}F0, ${currentTheme.secondary}F0)`,
@@ -408,7 +421,8 @@ export default function StudentBookshelf() {
           padding: '50px 60px 20px', // More side padding for centering
           position: 'relative',
           borderRadius: '0 0 25px 25px',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
+          boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+          zIndex: 10 // Above overlay
         }}>
           {/* Back Arrow */}
           <button
@@ -473,7 +487,9 @@ export default function StudentBookshelf() {
         {/* MAIN CONTENT - PHONE SCREEN OPTIMIZED */}
         <div style={{
           padding: '15px',
-          minHeight: 'calc(100vh - 120px)'
+          minHeight: 'calc(100vh - 120px)',
+          position: 'relative',
+          zIndex: 10 // Above overlay
         }}>
           {bookshelf.length === 0 ? (
             // Empty Bookshelf
@@ -993,7 +1009,7 @@ export default function StudentBookshelf() {
             padding: '12px 24px',
             borderRadius: '20px',
             boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
-            zIndex: 1001,
+            zIndex: 1001, // Above everything
             fontSize: '14px',
             fontWeight: '500',
             maxWidth: '85vw',
