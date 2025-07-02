@@ -393,9 +393,9 @@ export default function StudentBookshelf() {
         minHeight: '100vh',
         fontFamily: 'Avenir, system-ui, -apple-system, sans-serif',
         position: 'relative',
-        // TILED BACKGROUND - no stretching!
+        // SMALL TILED BACKGROUND like image 2
         backgroundImage: `url(${decorativeOverlay})`,
-        backgroundSize: 'auto',
+        backgroundSize: '200px', // Small size that tiles
         backgroundRepeat: 'repeat',
         backgroundPosition: 'top left',
         backgroundColor: currentTheme.background
@@ -414,23 +414,23 @@ export default function StudentBookshelf() {
           zIndex: 1
         }} />
         
-        {/* SIMPLE CLEAN HEADER - CENTERED TITLE */}
+        {/* SIMPLE ONE-LINE HEADER */}
         <div style={{
           background: `linear-gradient(135deg, ${currentTheme.primary}F0, ${currentTheme.secondary}F0)`,
           backdropFilter: 'blur(20px)',
-          padding: '50px 60px 20px', // More side padding for centering
+          padding: '50px 20px 20px',
           position: 'relative',
           borderRadius: '0 0 25px 25px',
           boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-          zIndex: 10 // Above overlay
+          zIndex: 10,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
         }}>
           {/* Back Arrow */}
           <button
             onClick={() => router.push('/student-dashboard')}
             style={{
-              position: 'absolute',
-              top: '15px',
-              left: '15px',
               backgroundColor: 'rgba(255,255,255,0.3)',
               border: 'none',
               borderRadius: '50%',
@@ -442,46 +442,39 @@ export default function StudentBookshelf() {
               fontSize: '16px',
               cursor: 'pointer',
               color: currentTheme.textPrimary,
-              backdropFilter: 'blur(10px)'
+              backdropFilter: 'blur(10px)',
+              flexShrink: 0
             }}
           >
             ←
           </button>
 
-          {/* Book Count - Right Side */}
-          <div style={{
-            position: 'absolute',
-            top: '15px',
-            right: '15px',
-            backgroundColor: 'rgba(255,255,255,0.3)',
-            padding: '8px 12px',
-            borderRadius: '20px',
-            backdropFilter: 'blur(10px)'
+          {/* CENTERED TITLE */}
+          <h1 style={{
+            fontSize: '28px',
+            fontWeight: '400',
+            color: currentTheme.textPrimary,
+            margin: '0',
+            letterSpacing: '1px',
+            fontFamily: 'Didot, "Times New Roman", serif',
+            textAlign: 'center',
+            flex: 1
           }}>
-            <span style={{
-              fontSize: '14px',
-              fontWeight: '500',
-              color: currentTheme.textPrimary,
-              fontFamily: 'Avenir, system-ui, sans-serif',
-              letterSpacing: '0.5px'
-            }}>
-              {totalBooks} {totalBooks === 1 ? 'book' : 'books'}
-            </span>
-          </div>
+            My Bookshelf
+          </h1>
 
-          {/* CENTERED TITLE with Didot */}
-          <div style={{ textAlign: 'center' }}>
-            <h1 style={{
-              fontSize: '28px',
-              fontWeight: '400', // Didot looks better with normal weight
-              color: currentTheme.textPrimary,
-              margin: '0',
-              letterSpacing: '1px',
-              fontFamily: 'Didot, "Times New Roman", serif' // Didot for headings
-            }}>
-              My Bookshelf
-            </h1>
-          </div>
+          {/* Book Count - Plain Text */}
+          <span style={{
+            fontSize: '16px',
+            fontWeight: '400',
+            color: currentTheme.textSecondary,
+            fontFamily: 'Avenir, system-ui, sans-serif',
+            letterSpacing: '0.5px',
+            flexShrink: 0,
+            opacity: 0.8
+          }}>
+            {totalBooks} {totalBooks === 1 ? 'book' : 'books'}
+          </span>
         </div>
 
         {/* MAIN CONTENT - PHONE SCREEN OPTIMIZED */}
