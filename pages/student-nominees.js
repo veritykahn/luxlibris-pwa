@@ -328,290 +328,282 @@ export default function StudentNominees() {
 
   const currentBook = nominees[currentCardIndex];
 
-return (
-  <>
-    <Head>
-      <title>Book Nominees - Lux Libris</title>
-      <meta name="description" content="Browse and select books from your school's curated reading collection" />
-      <link rel="icon" href="/images/lux_libris_logo.png" />
-    </Head>
-    
-    <div style={{
-      backgroundColor: currentTheme.background,
-      minHeight: '100vh',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
-      paddingBottom: '80px' // Space for bottom nav
-    }}>
-      {/* Full-screen content - no header */}
-      <div 
-        style={{
-          padding: '20px 20px 0 20px',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          minHeight: 'calc(100vh - 80px)', // Account for bottom nav
-          paddingTop: '40px' // Some top spacing to replace header
-        }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-      >
-        {/* Floating counter badge */}
-        <div style={{
-          position: 'absolute',
-          top: '20px',
-          right: '20px',
-          fontSize: '12px',
-          color: currentTheme.textPrimary,
-          backgroundColor: currentTheme.surface,
-          padding: '8px 16px',
-          borderRadius: '20px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-          border: `1px solid ${currentTheme.primary}30`,
-          zIndex: 10
-        }}>
-          {currentCardIndex + 1} of {nominees.length}
-        </div>
-
-        {/* Main Card */}
-        <div style={{
-          position: 'relative',
-          width: '100%',
-          maxWidth: '360px',
-          marginBottom: '20px'
-        }}>
-          <BookCard 
-            book={currentBook} 
-            theme={currentTheme}
-            onAddBook={handleAddToBookshelf}
-            isAddingBook={isAddingBook}
-          />
-        </div>
-
-        {/* Swipe Hint */}
-        <div style={{
-          fontSize: '12px',
-          color: currentTheme.textSecondary,
-          textAlign: 'center',
-          marginBottom: '20px'
-        }}>
-          👈 Swipe left/right to browse books 👉
-        </div>
-
-        {/* Quick Browse - Horizontal Scrollable */}
-        <div style={{
-          width: '100%',
-          maxWidth: '400px'
-        }}>
-          <h3 style={{
-            fontSize: '16px',
-            fontWeight: 'bold',
-            color: currentTheme.textPrimary,
-            margin: '0 0 12px 0',
-            textAlign: 'center'
-          }}>
-            Quick Browse
-          </h3>
-          <div style={{
+  return (
+    <>
+      <Head>
+        <title>Book Nominees - Lux Libris</title>
+        <meta name="description" content="Browse and select books from your school's curated reading collection" />
+        <link rel="icon" href="/images/lux_libris_logo.png" />
+      </Head>
+      
+      <div style={{
+        backgroundColor: currentTheme.background,
+        minHeight: '100vh',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        paddingBottom: '100px' // Extra space for bottom nav
+      }}>
+        {/* Full-screen content - no header, no counter */}
+        <div 
+          style={{
+            padding: '20px 20px 0 20px',
             display: 'flex',
-            gap: '8px',
-            overflowX: 'auto',
-            padding: '8px 0',
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none'
+            flexDirection: 'column',
+            alignItems: 'center',
+            minHeight: 'calc(100vh - 100px)', // Account for bottom nav
+            paddingTop: '20px' // Reduced top spacing
+          }}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          {/* Main Card */}
+          <div style={{
+            position: 'relative',
+            width: '100%',
+            maxWidth: '360px',
+            marginBottom: '20px'
           }}>
-            {nominees.map((book, index) => (
-              <button
-                key={book.id}
-                onClick={() => goToCard(index)}
-                className="quick-browse-item"
-                style={{
-                  flexShrink: 0,
-                  width: '64px',
-                  height: '96px',
-                  borderRadius: '8px',
-                  border: index === currentCardIndex 
-                    ? `3px solid ${currentTheme.primary}` 
-                    : `2px solid ${currentTheme.primary}40`,
-                  cursor: 'pointer',
-                  overflow: 'hidden',
-                  backgroundColor: currentTheme.surface,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '24px',
-                  transition: 'all 0.2s ease',
-                  transform: index === currentCardIndex ? 'scale(1.1)' : 'scale(1)',
-                  touchAction: 'manipulation'
-                }}
-              >
-                {book.coverImageUrl ? (
-                  <img 
-                    src={book.coverImageUrl} 
-                    alt={book.title}
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover'
-                    }}
-                  />
-                ) : (
-                  '📚'
-                )}
-              </button>
-            ))}
+            <BookCard 
+              book={currentBook} 
+              theme={currentTheme}
+              onAddBook={handleAddToBookshelf}
+              isAddingBook={isAddingBook}
+            />
+          </div>
+
+          {/* Swipe Hint */}
+          <div style={{
+            fontSize: '12px',
+            color: currentTheme.textSecondary,
+            textAlign: 'center',
+            marginBottom: '20px'
+          }}>
+            👈 Swipe left/right to browse books 👉
+          </div>
+
+          {/* Quick Browse - Horizontal Scrollable with proper spacing */}
+          <div style={{
+            width: '100%',
+            maxWidth: '400px',
+            marginBottom: '40px' // Extra space above bottom nav
+          }}>
+            <h3 style={{
+              fontSize: '16px',
+              fontWeight: 'bold',
+              color: currentTheme.textPrimary,
+              margin: '0 0 12px 0',
+              textAlign: 'center'
+            }}>
+              Quick Browse
+            </h3>
+            <div style={{
+              display: 'flex',
+              gap: '8px',
+              overflowX: 'auto',
+              padding: '8px 0 40px 0', // Extra bottom padding to clear nav
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none'
+            }}>
+              {nominees.map((book, index) => (
+                <button
+                  key={book.id}
+                  onClick={() => goToCard(index)}
+                  className="quick-browse-item"
+                  style={{
+                    flexShrink: 0,
+                    width: '64px',
+                    height: '96px',
+                    borderRadius: '8px',
+                    border: index === currentCardIndex 
+                      ? `3px solid ${currentTheme.primary}` 
+                      : `2px solid ${currentTheme.primary}40`,
+                    cursor: 'pointer',
+                    overflow: 'hidden',
+                    backgroundColor: currentTheme.surface,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '24px',
+                    transition: 'all 0.2s ease',
+                    transform: index === currentCardIndex ? 'scale(1.1)' : 'scale(1)',
+                    touchAction: 'manipulation'
+                  }}
+                >
+                  {book.coverImageUrl ? (
+                    <img 
+                      src={book.coverImageUrl} 
+                      alt={book.title}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover'
+                      }}
+                    />
+                  ) : (
+                    '📚'
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Bottom Navigation - Same as Dashboard */}
-      <div style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        backgroundColor: currentTheme.surface,
-        borderTop: `1px solid ${currentTheme.primary}20`,
-        padding: '12px 0 8px 0',
-        display: 'grid',
-        gridTemplateColumns: 'repeat(6, 1fr)',
-        gap: '4px',
-        boxShadow: '0 -2px 10px rgba(0,0,0,0.1)',
-        backdropFilter: 'blur(10px)'
-      }}>
-        {[
-          { icon: '▦', label: 'Dashboard', active: false, route: 'Dashboard' },
-          { icon: '▢', label: 'Nominees', active: true, route: 'Nominees' },
-          { icon: '▥', label: 'Bookshelf', active: false, route: 'Bookshelf' },
-          { icon: '◉', label: 'Habits', active: false, route: 'Habits' },
-          { icon: '♔', label: 'Saints', active: false, route: 'Saints' },
-          { icon: '▲', label: 'Stats', active: false, route: 'Stats' }
-        ].map((tab, index) => (
-          <button
-            key={tab.label}
-            onClick={() => handleTabClick(tab.route)}
-            style={{
-              background: tab.active 
-                ? `linear-gradient(135deg, ${currentTheme.primary}15, ${currentTheme.primary}25)`
-                : 'none',
-              border: 'none',
-              borderRadius: '12px',
-              padding: '10px 4px 8px 4px',
-              cursor: 'pointer',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '4px',
-              color: tab.active ? currentTheme.primary : currentTheme.textSecondary,
-              transition: 'all 0.2s ease',
-              margin: '0 2px'
-            }}
-            onMouseOver={(e) => {
-              if (!tab.active) {
-                e.target.style.backgroundColor = `${currentTheme.primary}10`;
-                e.target.style.transform = 'translateY(-1px)';
-              }
-            }}
-            onMouseOut={(e) => {
-              if (!tab.active) {
-                e.target.style.backgroundColor = 'transparent';
-                e.target.style.transform = 'translateY(0)';
-              }
-            }}
-          >
-            <span style={{ 
-              fontSize: '20px',
-              fontWeight: tab.active ? '600' : '400',
-              filter: tab.active ? 'none' : 'opacity(0.7)'
-            }}>
-              {tab.icon}
-            </span>
-            <span style={{ 
-              fontSize: '9px', 
-              fontWeight: tab.active ? '600' : '500',
-              letterSpacing: '0.1px'
-            }}>
-              {tab.label}
-            </span>
-            {tab.active && (
-              <div style={{
-                width: '4px',
-                height: '4px',
-                backgroundColor: currentTheme.primary,
-                borderRadius: '50%',
-                marginTop: '1px'
-              }} />
-            )}
-          </button>
-        ))}
-      </div>
-
-      {/* Success/Add Message */}
-      {showAddMessage && (
+        {/* Bottom Navigation - Fixed positioning with higher z-index */}
         <div style={{
           position: 'fixed',
-          bottom: '100px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          backgroundColor: currentTheme.primary,
-          color: currentTheme.textPrimary,
-          padding: '12px 24px',
-          borderRadius: '24px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-          zIndex: 1000,
-          fontSize: '14px',
-          fontWeight: '600',
-          maxWidth: '90vw',
-          textAlign: 'center'
+          bottom: 0,
+          left: 0,
+          right: 0,
+          backgroundColor: currentTheme.surface,
+          borderTop: `1px solid ${currentTheme.primary}20`,
+          padding: '12px 0 8px 0',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(6, 1fr)',
+          gap: '4px',
+          boxShadow: '0 -2px 10px rgba(0,0,0,0.1)',
+          backdropFilter: 'blur(10px)',
+          zIndex: 1000 // Higher z-index to ensure clickability
         }}>
-          {showAddMessage}
+          {[
+            { icon: '▦', label: 'Dashboard', active: false, route: 'Dashboard' },
+            { icon: '▢', label: 'Nominees', active: true, route: 'Nominees' },
+            { icon: '▥', label: 'Bookshelf', active: false, route: 'Bookshelf' },
+            { icon: '◉', label: 'Habits', active: false, route: 'Habits' },
+            { icon: '♔', label: 'Saints', active: false, route: 'Saints' },
+            { icon: '▲', label: 'Stats', active: false, route: 'Stats' }
+          ].map((tab, index) => (
+            <button
+              key={tab.label}
+              onClick={() => handleTabClick(tab.route)}
+              style={{
+                background: tab.active 
+                  ? `linear-gradient(135deg, ${currentTheme.primary}15, ${currentTheme.primary}25)`
+                  : 'none',
+                border: 'none',
+                borderRadius: '12px',
+                padding: '10px 4px 8px 4px',
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '4px',
+                color: tab.active ? currentTheme.primary : currentTheme.textSecondary,
+                transition: 'all 0.2s ease',
+                margin: '0 2px',
+                touchAction: 'manipulation', // Better touch handling
+                userSelect: 'none' // Prevent text selection
+              }}
+              onTouchStart={(e) => {
+                e.preventDefault(); // Prevent default touch behavior
+                if (!tab.active) {
+                  e.target.style.backgroundColor = `${currentTheme.primary}10`;
+                  e.target.style.transform = 'translateY(-1px)';
+                }
+              }}
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                if (!tab.active) {
+                  e.target.style.backgroundColor = 'transparent';
+                  e.target.style.transform = 'translateY(0)';
+                }
+                // Trigger the click after a short delay
+                setTimeout(() => handleTabClick(tab.route), 50);
+              }}
+            >
+              <span style={{ 
+                fontSize: '20px',
+                fontWeight: tab.active ? '600' : '400',
+                filter: tab.active ? 'none' : 'opacity(0.7)'
+              }}>
+                {tab.icon}
+              </span>
+              <span style={{ 
+                fontSize: '9px', 
+                fontWeight: tab.active ? '600' : '500',
+                letterSpacing: '0.1px'
+              }}>
+                {tab.label}
+              </span>
+              {tab.active && (
+                <div style={{
+                  width: '4px',
+                  height: '4px',
+                  backgroundColor: currentTheme.primary,
+                  borderRadius: '50%',
+                  marginTop: '1px'
+                }} />
+              )}
+            </button>
+          ))}
         </div>
-      )}
 
-      {/* Loading Animation CSS */}
-      <style jsx>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        
-        /* Hide scrollbar for webkit browsers */
-        ::-webkit-scrollbar {
-          display: none;
-        }
-        
-        /* Mobile optimizations */
-        @media (max-width: 480px) {
-          .cover-stats-container {
-            flex-direction: column !important;
-            align-items: center !important;
+        {/* Success/Add Message - Positioned above bottom nav */}
+        {showAddMessage && (
+          <div style={{
+            position: 'fixed',
+            bottom: '100px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: currentTheme.primary,
+            color: currentTheme.textPrimary,
+            padding: '12px 24px',
+            borderRadius: '24px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+            zIndex: 1001, // Higher than nav bar
+            fontSize: '14px',
+            fontWeight: '600',
+            maxWidth: '90vw',
+            textAlign: 'center'
+          }}>
+            {showAddMessage}
+          </div>
+        )}
+
+        {/* Loading Animation CSS */}
+        <style jsx>{`
+          @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
           }
           
-          .book-cover {
-            width: 120px !important;
-            height: 180px !important;
-            margin-bottom: 12px;
+          /* Hide scrollbar for webkit browsers */
+          ::-webkit-scrollbar {
+            display: none;
           }
           
-          .quick-browse-item {
-            width: 56px !important;
-            height: 84px !important;
-          }
-        }
-        
-        @media (max-width: 350px) {
-          .action-buttons {
-            flex-direction: column !important;
+          /* Mobile optimizations */
+          @media (max-width: 480px) {
+            .cover-stats-container {
+              flex-direction: column !important;
+              align-items: center !important;
+            }
+            
+            .book-cover {
+              width: 120px !important;
+              height: 180px !important;
+              margin-bottom: 12px;
+            }
+            
+            .quick-browse-item {
+              width: 56px !important;
+              height: 84px !important;
+            }
           }
           
-          .action-buttons button {
-            width: 100% !important;
+          @media (max-width: 350px) {
+            .action-buttons {
+              flex-direction: column !important;
+            }
+            
+            .action-buttons button {
+              width: 100% !important;
+            }
           }
-        }
-      `}</style>
-    </div>
-  </>
-);
+        `}</style>
+      </div>
+    </>
+  );
+}
 
 // FIXED Book Card Component - Real Pokemon Trading Card Style
 function BookCard({ book, theme, onAddBook, isAddingBook }) {
@@ -1189,5 +1181,4 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
       </div>
     </div>
   );
-}
 }
