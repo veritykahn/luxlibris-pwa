@@ -103,12 +103,12 @@ export default function StudentOnboarding() {
   {
     name: 'Little Luminaries',
     assetPrefix: 'little_luminaries',
-    primary: '#000000',
-    secondary: '#666666',
-    accent: '#E8E8E8',
-    background: '#F5F5F5',
-    surface: '#FFFFFF',
-    textPrimary: '#000000'
+    primary: '#666666',        // Medium grey (swapped - for buttons/elements)
+  secondary: '#000000',      // Black (swapped - for striking accents)
+  accent: '#E8E8E8',         // Light grey accent
+  background: '#FFFFFF',     // Pure white background (changed)
+  surface: '#F5F5F5',        // Light grey surface (safer than black)
+  textPrimary: '#000000',    // Black text (for white/light backgrounds)
   }
   ];
 

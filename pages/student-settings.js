@@ -101,13 +101,13 @@ export default function StudentSettings() {
   little_luminaries: {
     name: 'Little Luminaries',
     assetPrefix: 'little_luminaries',
-    primary: '#000000',        // Strong black accent (new)
-    secondary: '#666666',      // Medium grey (new)
-    accent: '#E8E8E8',         // Light grey accent (new)
-    background: '#F5F5F5',     // Light grey background (new)
-    surface: '#FFFFFF',        // Pure white surface (new)
-    textPrimary: '#000000',    // Strong black text (new)
-    textSecondary: '#4A4A4A'   // Charcoal for secondary text (new)
+    primary: '#666666',        // Medium grey (swapped - for buttons/elements)
+  secondary: '#000000',      // Black (swapped - for striking accents)
+  accent: '#E8E8E8',         // Light grey accent
+  background: '#FFFFFF',     // Pure white background (changed)
+  surface: '#F5F5F5',        // Light grey surface (safer than black)
+  textPrimary: '#000000',    // Black text (for white/light backgrounds)
+  textSecondary: '#666666'   // Grey text (for secondary text on light backgrounds)
   }
 };
 
