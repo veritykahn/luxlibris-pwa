@@ -30,86 +30,86 @@ export default function StudentOnboarding() {
 
   // Theme definitions
   const themes = [
-    {
-      name: 'Lux Libris Classic',
-      assetPrefix: 'classic_lux',
-      primary: '#ADD4EA',
-      secondary: '#C3E0DE',
-      accent: '#A1E5DB',
-      background: '#FFFCF5',
-      surface: '#FFFFFF',
-      textPrimary: '#223848'
-    },
-    {
-      name: 'Athletic Champion',
-      assetPrefix: 'darkwood_sports',
-      primary: '#8B4513',
-      secondary: '#D2691E',
-      accent: '#FF8C00',
-      background: '#F5F5DC',
-      surface: '#FFE4B5',
-      textPrimary: '#2F1B14'
-    },
-    {
-      name: 'Cosmic Explorer',
-      assetPrefix: 'lavender_space',
-      primary: '#9C88C4',
-      secondary: '#B19CD9',
-      accent: '#E1D5F7',
-      background: '#2A1B3D',
-      surface: '#3D2B54',
-      textPrimary: '#E1D5F7'
-    },
-    {
-      name: 'Musical Harmony',
-      assetPrefix: 'mint_music',
-      primary: '#66CDAA',
-      secondary: '#98FB98',
-      accent: '#AFEEEE',
-      background: '#F0FFF0',
-      surface: '#E0FFE0',
-      textPrimary: '#2E4739'
-    },
-    {
-      name: 'Kawaii Dreams',
-      assetPrefix: 'pink_plushies',
-      primary: '#FFB6C1',
-      secondary: '#FFC0CB',
-      accent: '#FFE4E1',
-      background: '#FFF0F5',
-      surface: '#FFE4E6',
-      textPrimary: '#4A2C2A'
-    },
-    {
-      name: 'Otaku Paradise',
-      assetPrefix: 'teal_anime',
-      primary: '#20B2AA',
-      secondary: '#48D1CC',
-      accent: '#7FFFD4',
-      background: '#E0FFFF',
-      surface: '#AFEEEE',
-      textPrimary: '#2F4F4F'
-    },
-    {
-      name: 'Pure Serenity',
-      assetPrefix: 'white_nature',
-      primary: '#90EE90',
-      secondary: '#F0FFF0',
-      accent: '#98FB98',
-      background: '#FFFFF0',
-      surface: '#FFFFFF',
-      textPrimary: '#2F4F2F'
-    },
-    {
-      name: 'Little Luminaries',
-      assetPrefix: 'little_luminaries',
-      primary: '#FFFFFF',
-      secondary: '#E0E0E0',
-      accent: '#F8F8FF',
-      background: '#1A1A1A',
-      surface: '#2D2D2D',
-      textPrimary: '#FFD700'
-    }
+  {
+    name: 'Lux Libris Classic',
+    assetPrefix: 'classic_lux',
+    primary: '#ADD4EA',
+    secondary: '#C3E0DE',
+    accent: '#A1E5DB',
+    background: '#FFFCF5',
+    surface: '#FFFFFF',
+    textPrimary: '#223848'
+  },
+  {
+    name: 'Athletic Champion',
+    assetPrefix: 'darkwood_sports',
+    primary: '#2F5F5F',
+    secondary: '#8B2635',
+    accent: '#F5DEB3',
+    background: '#F5F5DC',
+    surface: '#FFF8DC',
+    textPrimary: '#2F1B14'
+  },
+  {
+    name: 'Cosmic Explorer',
+    assetPrefix: 'lavender_space',
+    primary: '#9C88C4',
+    secondary: '#B19CD9',
+    accent: '#E1D5F7',
+    background: '#2A1B3D',
+    surface: '#3D2B54',
+    textPrimary: '#E1D5F7'
+  },
+  {
+    name: 'Musical Harmony',
+    assetPrefix: 'mint_music',
+    primary: '#87A96B',
+    secondary: '#C8B6DB',
+    accent: '#F0F4F0',
+    background: '#FEFEFE',
+    surface: '#F8FAF8',
+    textPrimary: '#2E4739'
+  },
+  {
+    name: 'Kawaii Dreams',
+    assetPrefix: 'pink_plushies',
+    primary: '#FFB6C1',
+    secondary: '#FFC0CB',
+    accent: '#FFE4E1',
+    background: '#FFF0F5',
+    surface: '#FFE4E6',
+    textPrimary: '#4A2C2A'
+  },
+  {
+    name: 'Otaku Paradise',
+    assetPrefix: 'teal_anime',
+    primary: '#20B2AA',
+    secondary: '#48D1CC',
+    accent: '#7FFFD4',
+    background: '#E0FFFF',
+    surface: '#AFEEEE',
+    textPrimary: '#2F4F4F'
+  },
+  {
+    name: 'Pure Serenity',
+    assetPrefix: 'white_nature',
+    primary: '#6B8E6B',
+    secondary: '#D2B48C',
+    accent: '#F5F5DC',
+    background: '#FFFEF8',
+    surface: '#FFFFFF',
+    textPrimary: '#2F4F2F'
+  },
+  {
+    name: 'Little Luminaries',
+    assetPrefix: 'little_luminaries',
+    primary: '#4A4A4A',
+    secondary: '#808080',
+    accent: '#F8F8F8',
+    background: '#E8E8E8',
+    surface: '#FFFFFF',
+    textPrimary: '#1A1A1A'
+  }
   ];
 
   const grades = [4, 5, 6, 7, 8];

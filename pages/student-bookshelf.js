@@ -20,7 +20,7 @@ export default function StudentBookshelf() {
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState('');
 
-  // Theme definitions - FIXED Little Luminaries contrast
+  // Theme definitions - REDESIGNED AESTHETICS
   const themes = {
     classic_lux: {
       name: 'Lux Libris Classic',
@@ -34,11 +34,11 @@ export default function StudentBookshelf() {
     },
     darkwood_sports: {
       name: 'Athletic Champion',
-      primary: '#8B4513',
-      secondary: '#D2691E',
-      accent: '#FF8C00',
-      background: '#F5F5DC',
-      surface: '#FFE4B5',
+      primary: '#2F5F5F',        // Deep teal instead of brown
+      secondary: '#8B2635',      // Burnt subdued red instead of orange
+      accent: '#F5DEB3',         // Warm wheat/cream
+      background: '#F5F5DC',     // Keep beige
+      surface: '#FFF8DC',        // Cream surface
       textPrimary: '#2F1B14',
       textSecondary: '#5D4037'
     },
@@ -54,11 +54,11 @@ export default function StudentBookshelf() {
     },
     mint_music: {
       name: 'Musical Harmony',
-      primary: '#66CDAA',
-      secondary: '#98FB98',
-      accent: '#AFEEEE',
-      background: '#F0FFF0',
-      surface: '#E0FFE0',
+      primary: '#87A96B',        // Sage green instead of bright mint
+      secondary: '#C8B6DB',      // Soft lavender
+      accent: '#F0F4F0',         // Very soft green-tinted white
+      background: '#FEFEFE',     // Pure white background
+      surface: '#F8FAF8',        // Very subtle green tint
       textPrimary: '#2E4739',
       textSecondary: '#4A6B57'
     },
@@ -84,23 +84,23 @@ export default function StudentBookshelf() {
     },
     white_nature: {
       name: 'Pure Serenity',
-      primary: '#90EE90',
-      secondary: '#F0FFF0',
-      accent: '#98FB98',
-      background: '#FFFFF0',
+      primary: '#6B8E6B',        // Forest green instead of bright lime
+      secondary: '#D2B48C',      // Warm tan/khaki
+      accent: '#F5F5DC',         // Beige accent
+      background: '#FFFEF8',     // Warm white
       surface: '#FFFFFF',
       textPrimary: '#2F4F2F',
       textSecondary: '#556B2F'
     },
     little_luminaries: {
       name: 'Little Luminaries',
-      primary: '#FFD700',
-      secondary: '#C0C0C0',
-      accent: '#F8F8FF',
-      background: '#1A1A1A',
-      surface: '#2D2D2D',
-      textPrimary: '#FFFFFF',    // White text for contrast
-      textSecondary: '#E0E0E0'   // Light grey instead of medium grey
+      primary: '#4A4A4A',        // Charcoal grey as primary
+      secondary: '#808080',      // Medium grey
+      accent: '#F8F8F8',         // Very light grey
+      background: '#E8E8E8',     // Light grey background
+      surface: '#FFFFFF',        // Pure white surface
+      textPrimary: '#1A1A1A',    // Near black for light backgrounds
+      textSecondary: '#4A4A4A'   // Charcoal for secondary text
     }
   };
 
@@ -393,9 +393,9 @@ export default function StudentBookshelf() {
         minHeight: '100vh',
         fontFamily: 'Avenir, system-ui, -apple-system, sans-serif',
         position: 'relative',
-        // SMALL TILED BACKGROUND like image 2
+        // MEDIUM TILED BACKGROUND - better for mobile
         backgroundImage: `url(${decorativeOverlay})`,
-        backgroundSize: '200px', // Small size that tiles
+        backgroundSize: '500px', // Larger tiles for mobile
         backgroundRepeat: 'repeat',
         backgroundPosition: 'top left',
         backgroundColor: currentTheme.background
@@ -414,11 +414,11 @@ export default function StudentBookshelf() {
           zIndex: 1
         }} />
         
-        {/* SIMPLE ONE-LINE HEADER */}
+        {/* SLIM HEADER */}
         <div style={{
           background: `linear-gradient(135deg, ${currentTheme.primary}F0, ${currentTheme.secondary}F0)`,
           backdropFilter: 'blur(20px)',
-          padding: '50px 20px 20px',
+          padding: '35px 20px 15px', // Much slimmer padding
           position: 'relative',
           borderRadius: '0 0 25px 25px',
           boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
