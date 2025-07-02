@@ -453,8 +453,8 @@ export default function StudentDashboard() {
         📚 Start Reading
       </button>
 
-      {/* Bottom Navigation */}
-      // Updated Bottom Navigation JSX (replace the existing bottom navigation div)
+{/* Bottom Navigation */}
+{/* Updated Bottom Navigation JSX (replace the existing bottom navigation div) */}
 <div style={{
   position: 'fixed',
   bottom: 0,
