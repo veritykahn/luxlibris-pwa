@@ -1190,3 +1190,4 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
     </div>
   );
 }
+}
