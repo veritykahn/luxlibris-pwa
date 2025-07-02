@@ -1,4 +1,4 @@
-// pages/student-bookshelf.js - Fixed bookshelf with working slider and better display
+// pages/student-bookshelf.js - FIXED: Beautiful CSS bookshelf with working slider and navigation
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
@@ -245,23 +245,122 @@ export default function StudentBookshelf() {
     setIsSaving(false);
   };
 
-  // Fixed navigation handler
-  const handleTabClick = (tabName) => {
-    console.log('Tab clicked:', tabName); // Debug log
+  // FIXED: Simplified navigation handler
+  const handleNavigation = (route) => {
+    console.log('Navigating to:', route);
     
-    if (tabName === 'Dashboard') {
-      router.push('/student-dashboard');
-    } else if (tabName === 'Nominees') {
-      router.push('/student-nominees');
-    } else if (tabName === 'Bookshelf') {
-      setShowComingSoon('You\'re already here! 📍');
-      setTimeout(() => setShowComingSoon(''), 1500);
-    } else if (tabName === 'Habits') {
-      router.push('/healthy-habits');
-    } else {
-      setShowComingSoon(`${tabName} coming soon! 🚀`);
-      setTimeout(() => setShowComingSoon(''), 3000);
+    switch(route) {
+      case 'Dashboard':
+        router.push('/student-dashboard');
+        break;
+      case 'Nominees':
+        router.push('/student-nominees');
+        break;
+      case 'Bookshelf':
+        setShowComingSoon('You\'re already here! 📍');
+        setTimeout(() => setShowComingSoon(''), 1500);
+        break;
+      case 'Habits':
+        router.push('/healthy-habits');
+        break;
+      default:
+        setShowComingSoon(`${route} coming soon! 🚀`);
+        setTimeout(() => setShowComingSoon(''), 3000);
     }
+  };
+
+  // FIXED: Custom Slider Component
+  const CustomSlider = ({ value, onChange, min, max, label }) => {
+    const percentage = max > 0 ? (value / max) * 100 : 0;
+    
+    const handleSliderClick = (e) => {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const newValue = Math.round((clickX / rect.width) * max);
+      onChange(Math.max(min, Math.min(max, newValue)));
+    };
+
+    const handleSliderTouch = (e) => {
+      e.preventDefault();
+      const touch = e.touches[0];
+      const rect = e.currentTarget.getBoundingClientRect();
+      const touchX = touch.clientX - rect.left;
+      const newValue = Math.round((touchX / rect.width) * max);
+      onChange(Math.max(min, Math.min(max, newValue)));
+    };
+
+    return (
+      <div style={{ marginBottom: '24px' }}>
+        <label style={{
+          fontSize: '16px',
+          fontWeight: '600',
+          color: currentTheme.textPrimary,
+          display: 'block',
+          marginBottom: '12px'
+        }}>
+          {label}
+        </label>
+        
+        <div 
+          style={{
+            position: 'relative',
+            height: '40px',
+            cursor: 'pointer',
+            padding: '16px 0'
+          }}
+          onClick={handleSliderClick}
+          onTouchStart={handleSliderTouch}
+          onTouchMove={handleSliderTouch}
+        >
+          {/* Slider Track */}
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: 0,
+            right: 0,
+            height: '8px',
+            backgroundColor: '#E0E0E0',
+            borderRadius: '4px',
+            transform: 'translateY(-50%)'
+          }}>
+            {/* Progress Fill */}
+            <div style={{
+              height: '100%',
+              width: `${percentage}%`,
+              backgroundColor: currentTheme.primary,
+              borderRadius: '4px',
+              transition: 'width 0.2s ease'
+            }} />
+          </div>
+          
+          {/* Slider Thumb */}
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: `${percentage}%`,
+            width: '28px',
+            height: '28px',
+            backgroundColor: currentTheme.primary,
+            border: '3px solid white',
+            borderRadius: '50%',
+            transform: 'translate(-50%, -50%)',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+            cursor: 'pointer'
+          }} />
+        </div>
+        
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          fontSize: '14px',
+          color: currentTheme.textSecondary,
+          marginTop: '8px'
+        }}>
+          <span>{value}</span>
+          <span>{max} {label.includes('Minutes') ? 'minutes' : 'pages'}</span>
+        </div>
+      </div>
+    );
   };
 
   // Show loading
@@ -318,85 +417,71 @@ export default function StudentBookshelf() {
         fontFamily: 'system-ui, -apple-system, sans-serif',
         paddingBottom: '100px'
       }}>
-        {/* FIXED: Full background image display */}
-        <div style={{
-          position: 'relative',
-          minHeight: '100vh',
-          // Try multiple file extensions and fallback
-          backgroundImage: `url(/bookshelves/${studentData.selectedTheme || 'classic_lux'}.jpg), 
-                           url(/bookshelves/${studentData.selectedTheme || 'classic_lux'}.png), 
-                           url(/images/bookshelves/${studentData.selectedTheme || 'classic_lux'}.jpg)`,
-          backgroundSize: 'contain', // FIXED: Shows full image instead of cropping
-          backgroundPosition: 'center top', // FIXED: Position from top
-          backgroundRepeat: 'no-repeat'
-          // Removed backgroundAttachment: 'fixed' - causes mobile issues
-        }}>
-          {/* Books on Shelves */}
+        
+        {bookshelf.length === 0 ? (
+          // Empty Bookshelf
           <div style={{
-            position: 'relative',
-            zIndex: 10,
-            padding: '20px'
+            textAlign: 'center',
+            padding: '120px 20px',
+            color: currentTheme.textSecondary,
+            backgroundColor: 'rgba(255,255,255,0.9)',
+            borderRadius: '20px',
+            margin: '20px',
+            backdropFilter: 'blur(10px)'
           }}>
-            {bookshelf.length === 0 ? (
-              // Empty Bookshelf
-              <div style={{
-                textAlign: 'center',
-                padding: '120px 20px',
-                color: currentTheme.textSecondary,
-                backgroundColor: 'rgba(255,255,255,0.9)',
-                borderRadius: '20px',
-                margin: '20px',
-                backdropFilter: 'blur(10px)'
-              }}>
-                <div style={{ fontSize: '64px', marginBottom: '16px' }}>📚</div>
-                <h2 style={{
-                  fontSize: '20px',
-                  marginBottom: '8px',
-                  color: currentTheme.textPrimary
-                }}>
-                  Your bookshelf is empty
-                </h2>
-                <p style={{ fontSize: '14px', marginBottom: '20px' }}>
-                  Add books from the nominees page to start reading!
-                </p>
-                <button
-                  onClick={() => router.push('/student-nominees')}
-                  style={{
-                    backgroundColor: currentTheme.primary,
-                    color: currentTheme.textPrimary,
-                    border: 'none',
-                    padding: '12px 24px',
-                    borderRadius: '12px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    minHeight: '44px'
-                  }}
-                >
-                  Browse Books
-                </button>
-              </div>
-            ) : (
-              // FIXED: Better shelf layout and larger book covers
-              <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                minHeight: '100vh',
-                justifyContent: 'space-evenly',
-                paddingTop: '40px'
-              }}>
-                {shelves.map((shelf, shelfIndex) => (
-                  <div
-                    key={shelfIndex}
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(4, 1fr)',
-                      gap: '12px',
-                      padding: '0 30px',
-                      height: '160px', // FIXED: Increased height for larger books
-                      alignItems: 'end'
-                    }}
-                  >
+            <div style={{ fontSize: '64px', marginBottom: '16px' }}>📚</div>
+            <h2 style={{
+              fontSize: '20px',
+              marginBottom: '8px',
+              color: currentTheme.textPrimary
+            }}>
+              Your bookshelf is empty
+            </h2>
+            <p style={{ fontSize: '14px', marginBottom: '20px' }}>
+              Add books from the nominees page to start reading!
+            </p>
+            <button
+              onClick={() => router.push('/student-nominees')}
+              style={{
+                backgroundColor: currentTheme.primary,
+                color: currentTheme.textPrimary,
+                border: 'none',
+                padding: '12px 24px',
+                borderRadius: '12px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                minHeight: '44px'
+              }}
+            >
+              Browse Books
+            </button>
+          </div>
+        ) : (
+          // FIXED: Beautiful CSS Bookshelf
+          <div style={{
+            padding: '40px 20px',
+            minHeight: '100vh'
+          }}>
+            <h1 style={{
+              fontSize: '28px',
+              fontWeight: 'bold',
+              color: currentTheme.textPrimary,
+              textAlign: 'center',
+              marginBottom: '40px'
+            }}>
+              📚 My Bookshelf
+            </h1>
+            
+            {/* CSS Bookshelf */}
+            <div className="bookshelf-container">
+              {shelves.map((shelf, shelfIndex) => (
+                <div key={shelfIndex} className="bookshelf-shelf">
+                  {/* Shelf Wood */}
+                  <div className="shelf-wood"></div>
+                  
+                  {/* Books on Shelf */}
+                  <div className="shelf-books">
                     {shelf.map((book, bookIndex) => {
                       const bookDetails = getBookDetails(book.bookId);
                       if (!bookDetails) return null;
@@ -406,142 +491,47 @@ export default function StudentBookshelf() {
                         book.format === 'audiobook' ? book.totalMinutes : book.totalPages);
                       
                       return (
-                        <button
+                        <div
                           key={book.bookId}
+                          className="book-spine"
                           onClick={() => openBookModal(book)}
                           style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            position: 'relative',
-                            padding: 0
+                            backgroundImage: bookDetails.coverImageUrl ? `url(${bookDetails.coverImageUrl})` : 'none',
+                            backgroundColor: bookDetails.coverImageUrl ? 'transparent' : currentTheme.primary
                           }}
                         >
-                          {/* FIXED: Larger book cover without title */}
-                          <div style={{
-                            width: '100%',
-                            height: '140px', // FIXED: Increased from 90px
-                            borderRadius: '6px',
-                            overflow: 'hidden',
-                            backgroundColor: `${currentTheme.primary}20`,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            position: 'relative',
-                            boxShadow: '0 4px 8px rgba(0,0,0,0.3)',
-                            transition: 'transform 0.2s ease',
-                            transform: 'translateZ(0)' // Performance optimization
-                          }}
-                          onTouchStart={(e) => {
-                            e.currentTarget.style.transform = 'scale(1.05) translateZ(0)';
-                          }}
-                          onTouchEnd={(e) => {
-                            e.currentTarget.style.transform = 'scale(1) translateZ(0)';
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = 'scale(1.05) translateZ(0)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = 'scale(1) translateZ(0)';
-                          }}
-                          >
-                            {bookDetails.coverImageUrl ? (
-                              <img 
-                                src={bookDetails.coverImageUrl} 
-                                alt={bookDetails.title}
-                                style={{
-                                  width: '100%',
-                                  height: '100%',
-                                  objectFit: 'cover'
-                                }}
-                              />
-                            ) : (
-                              <span style={{ fontSize: '32px' }}>📚</span>
-                            )}
-                            
-                            {/* FIXED: More prominent progress bar */}
-                            <div style={{
-                              position: 'absolute',
-                              bottom: 0,
-                              left: 0,
-                              right: 0,
-                              height: '6px', // FIXED: Increased from 4px
-                              backgroundColor: 'rgba(0,0,0,0.5)'
-                            }}>
-                              <div style={{
-                                height: '100%',
-                                width: `${progressPercent}%`,
-                                backgroundColor: progressColor,
-                                transition: 'width 0.3s ease',
-                                boxShadow: progressPercent > 0 ? '0 0 4px rgba(255,255,255,0.5)' : 'none'
-                              }} />
-                            </div>
-                            
-                            {/* Format Badge */}
-                            {book.format === 'audiobook' && (
-                              <div style={{
-                                position: 'absolute',
-                                top: '4px',
-                                right: '4px',
-                                backgroundColor: 'rgba(0,0,0,0.7)',
-                                color: 'white',
-                                borderRadius: '50%',
-                                width: '20px',
-                                height: '20px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: '10px'
-                              }}>
-                                🎧
-                              </div>
-                            )}
-                            
-                            {/* Completion Badge */}
-                            {book.completed && (
-                              <div style={{
-                                position: 'absolute',
-                                top: '4px',
-                                left: '4px',
-                                backgroundColor: '#4CAF50',
-                                color: 'white',
-                                borderRadius: '50%',
-                                width: '20px',
-                                height: '20px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: '10px',
-                                fontWeight: 'bold'
-                              }}>
-                                ✓
-                              </div>
-                            )}
-                          </div>
+                          {!bookDetails.coverImageUrl && (
+                            <span style={{ fontSize: '24px' }}>📚</span>
+                          )}
                           
-                          {/* REMOVED: Book title (as requested) */}
-                        </button>
+                          {/* Progress indicator */}
+                          <div className="book-progress" style={{ backgroundColor: progressColor, width: `${progressPercent}%` }}></div>
+                          
+                          {/* Format badge */}
+                          {book.format === 'audiobook' && (
+                            <div className="format-badge">🎧</div>
+                          )}
+                          
+                          {/* Completion badge */}
+                          {book.completed && (
+                            <div className="completion-badge">✓</div>
+                          )}
+                        </div>
                       );
                     })}
                     
-                    {/* Empty slots */}
+                    {/* Empty book slots */}
                     {Array(4 - shelf.length).fill(null).map((_, emptyIndex) => (
-                      <div
-                        key={`empty-${shelfIndex}-${emptyIndex}`}
-                        style={{
-                          width: '100%',
-                          height: '140px'
-                        }}
-                      />
+                      <div key={`empty-${shelfIndex}-${emptyIndex}`} className="book-slot-empty"></div>
                     ))}
                   </div>
-                ))}
-              </div>
-            )}
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* FIXED: Book Detail Modal with working slider */}
+        {/* FIXED: Book Detail Modal with working custom slider */}
         {showBookModal && selectedBook && (
           <div style={{
             position: 'fixed',
@@ -653,55 +643,14 @@ export default function StudentBookshelf() {
                 📖 Start Reading Session
               </button>
 
-              {/* FIXED: Progress Slider */}
-              <div style={{ marginBottom: '24px' }}>
-                <label style={{
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  color: currentTheme.textPrimary,
-                  display: 'block',
-                  marginBottom: '12px'
-                }}>
-                  {selectedBook.format === 'audiobook' ? 'Minutes Listened' : 'Pages Read'}
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <input
-                    type="range"
-                    min="0"
-                    max={selectedBook.format === 'audiobook' ? selectedBook.totalMinutes : selectedBook.totalPages}
-                    value={tempProgress}
-                    onChange={(e) => {
-                      // FIXED: Removed e.preventDefault() and simplified
-                      setTempProgress(Number(e.target.value));
-                    }}
-                    style={{
-                      width: '100%',
-                      height: '8px',
-                      borderRadius: '4px',
-                      backgroundColor: '#E0E0E0',
-                      outline: 'none',
-                      cursor: 'pointer',
-                      WebkitAppearance: 'none',
-                      appearance: 'none'
-                    }}
-                  />
-                </div>
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  fontSize: '14px',
-                  color: currentTheme.textSecondary,
-                  marginTop: '8px'
-                }}>
-                  <span>{tempProgress}</span>
-                  <span>
-                    {selectedBook.format === 'audiobook' ? 
-                      `${selectedBook.totalMinutes} minutes` : 
-                      `${selectedBook.totalPages} pages`
-                    }
-                  </span>
-                </div>
-              </div>
+              {/* FIXED: Custom Progress Slider */}
+              <CustomSlider
+                value={tempProgress}
+                onChange={setTempProgress}
+                min={0}
+                max={selectedBook.format === 'audiobook' ? selectedBook.totalMinutes : selectedBook.totalPages}
+                label={selectedBook.format === 'audiobook' ? 'Minutes Listened' : 'Pages Read'}
+              />
 
               {/* Star Rating */}
               <div style={{ marginBottom: '24px' }}>
@@ -823,7 +772,7 @@ export default function StudentBookshelf() {
           </div>
         )}
 
-        {/* FIXED: Bottom Navigation with better touch handling */}
+        {/* FIXED: Bottom Navigation */}
         <div style={{
           position: 'fixed',
           bottom: 0,
@@ -848,18 +797,7 @@ export default function StudentBookshelf() {
           ].map((tab, index) => (
             <button
               key={tab.label}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('Navigation clicked:', tab.route); // Debug
-                handleTabClick(tab.route);
-              }}
-              onTouchEnd={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('Navigation touched:', tab.route); // Debug
-                handleTabClick(tab.route);
-              }}
+              onClick={() => handleNavigation(tab.route)}
               style={{
                 background: tab.active
                   ? `linear-gradient(135deg, ${currentTheme.primary}15, ${currentTheme.primary}25)`
@@ -928,83 +866,162 @@ export default function StudentBookshelf() {
           </div>
         )}
 
-        {/* FIXED: Enhanced styles */}
+        {/* FIXED: Enhanced CSS */}
         <style jsx>{`
           @keyframes spin {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
           }
           
-          /* FIXED: Better slider styling */
-          input[type="range"] {
-            -webkit-appearance: none;
-            appearance: none;
-            cursor: pointer;
-            background: transparent;
+          .bookshelf-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
           }
           
-          input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 28px;
-            height: 28px;
+          .bookshelf-shelf {
+            position: relative;
+            margin-bottom: 60px;
+            height: 200px;
+          }
+          
+          .shelf-wood {
+            position: absolute;
+            bottom: 0;
+            left: -20px;
+            right: -20px;
+            height: 20px;
+            background: linear-gradient(to bottom, 
+              ${currentTheme.secondary || '#D2691E'} 0%,
+              ${currentTheme.primary || '#8B4513'} 50%,
+              ${(currentTheme.textSecondary || '#5D4037') + '80'} 100%);
+            border-radius: 0 0 10px 10px;
+            box-shadow: 
+              0 4px 8px rgba(0,0,0,0.3),
+              inset 0 2px 4px rgba(255,255,255,0.2);
+            z-index: 1;
+          }
+          
+          .shelf-books {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            height: 180px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            padding: 0 20px;
+            z-index: 2;
+          }
+          
+          .book-spine {
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            border-radius: 8px;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.3s ease;
+            box-shadow: 
+              0 4px 8px rgba(0,0,0,0.2),
+              0 0 0 2px rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            transform: perspective(200px) rotateY(-5deg);
+          }
+          
+          .book-spine:hover {
+            transform: perspective(200px) rotateY(0deg) scale(1.05);
+            box-shadow: 
+              0 8px 16px rgba(0,0,0,0.3),
+              0 0 0 3px rgba(255,255,255,0.2);
+            z-index: 10;
+          }
+          
+          .book-progress {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 6px;
+            background-color: #4CAF50;
+            transition: width 0.3s ease;
+            border-radius: 0 0 8px 8px;
+          }
+          
+          .format-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            width: 24px;
+            height: 24px;
             border-radius: 50%;
-            background: ${currentTheme.primary};
-            cursor: pointer;
-            border: 3px solid white;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
           }
           
-          input[type="range"]::-moz-range-thumb {
-            width: 28px;
-            height: 28px;
+          .completion-badge {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: #4CAF50;
+            color: white;
+            width: 24px;
+            height: 24px;
             border-radius: 50%;
-            background: ${currentTheme.primary};
-            cursor: pointer;
-            border: 3px solid white;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-            -moz-appearance: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
           }
           
-          input[type="range"]::-webkit-slider-track {
-            background: #E0E0E0;
-            height: 8px;
-            border-radius: 4px;
-          }
-          
-          input[type="range"]::-moz-range-track {
-            background: #E0E0E0;
-            height: 8px;
-            border-radius: 4px;
-            border: none;
+          .book-slot-empty {
+            width: 100%;
+            height: 100%;
           }
           
           /* Enhanced mobile optimizations */
           button {
             -webkit-tap-highlight-color: transparent;
+            -webkit-user-select: none;
+            user-select: none;
           }
           
           @media screen and (max-width: 480px) {
             input, textarea, select {
               font-size: 16px !important;
             }
+            
+            .bookshelf-container {
+              padding: 10px;
+            }
+            
+            .shelf-books {
+              gap: 10px;
+              padding: 0 10px;
+            }
+            
+            .bookshelf-shelf {
+              margin-bottom: 40px;
+              height: 160px;
+            }
+            
+            .shelf-books {
+              height: 140px;
+            }
           }
           
-          /* Better touch feedback */
           button:active {
             transform: scale(0.98);
-          }
-          
-          /* Disable text selection on interactive elements */
-          button {
-            -webkit-user-select: none;
-            user-select: none;
-          }
-          
-          /* Performance optimizations */
-          .book-cover {
-            transform: translateZ(0);
-            will-change: transform;
           }
         `}</style>
       </div>
