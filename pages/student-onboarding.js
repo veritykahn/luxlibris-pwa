@@ -63,11 +63,11 @@ export default function StudentOnboarding() {
   {
     name: 'Musical Harmony',
     assetPrefix: 'mint_music',
-    primary: '#87A96B',
-    secondary: '#C8B6DB',
-    accent: '#F0F4F0',
+    primary: '#B8E6B8',
+    secondary: '#FFB3BA',
+    accent: '#FFCCCB',
     background: '#FEFEFE',
-    surface: '#F8FAF8',
+    surface: '#F8FDF8',
     textPrimary: '#2E4739'
   },
   {
@@ -103,12 +103,12 @@ export default function StudentOnboarding() {
   {
     name: 'Little Luminaries',
     assetPrefix: 'little_luminaries',
-    primary: '#4A4A4A',
-    secondary: '#808080',
-    accent: '#F8F8F8',
-    background: '#E8E8E8',
+    primary: '#000000',
+    secondary: '#666666',
+    accent: '#E8E8E8',
+    background: '#F5F5F5',
     surface: '#FFFFFF',
-    textPrimary: '#1A1A1A'
+    textPrimary: '#000000'
   }
   ];
 

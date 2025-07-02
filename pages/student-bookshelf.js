@@ -20,12 +20,13 @@ export default function StudentBookshelf() {
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState('');
 
-  // Theme definitions - REDESIGNED AESTHETICS
+  // Theme definitions
   const themes = {
     classic_lux: {
       name: 'Lux Libris Classic',
+      assetPrefix: 'classic_lux',
       primary: '#ADD4EA',
-      secondary: '#C3E0DE', 
+      secondary: '#C3E0DE',
       accent: '#A1E5DB',
       background: '#FFFCF5',
       surface: '#FFFFFF',
@@ -34,16 +35,18 @@ export default function StudentBookshelf() {
     },
     darkwood_sports: {
       name: 'Athletic Champion',
-      primary: '#2F5F5F',        // Deep teal instead of brown
-      secondary: '#8B2635',      // Burnt subdued red instead of orange
-      accent: '#F5DEB3',         // Warm wheat/cream
-      background: '#F5F5DC',     // Keep beige
-      surface: '#FFF8DC',        // Cream surface
+      assetPrefix: 'darkwood_sports',
+      primary: '#8B4513',
+      secondary: '#D2691E',
+      accent: '#FF8C00',
+      background: '#F5F5DC',
+      surface: '#FFE4B5',
       textPrimary: '#2F1B14',
       textSecondary: '#5D4037'
     },
     lavender_space: {
       name: 'Cosmic Explorer',
+      assetPrefix: 'lavender_space',
       primary: '#9C88C4',
       secondary: '#B19CD9',
       accent: '#E1D5F7',
@@ -54,16 +57,18 @@ export default function StudentBookshelf() {
     },
     mint_music: {
       name: 'Musical Harmony',
-      primary: '#87A96B',        // Sage green instead of bright mint
-      secondary: '#C8B6DB',      // Soft lavender
-      accent: '#F0F4F0',         // Very soft green-tinted white
-      background: '#FEFEFE',     // Pure white background
-      surface: '#F8FAF8',        // Very subtle green tint
+      assetPrefix: 'mint_music',
+      primary: '#66CDAA',
+      secondary: '#98FB98',
+      accent: '#AFEEEE',
+      background: '#F0FFF0',
+      surface: '#E0FFE0',
       textPrimary: '#2E4739',
       textSecondary: '#4A6B57'
     },
     pink_plushies: {
       name: 'Kawaii Dreams',
+      assetPrefix: 'pink_plushies',
       primary: '#FFB6C1',
       secondary: '#FFC0CB',
       accent: '#FFE4E1',
@@ -74,6 +79,7 @@ export default function StudentBookshelf() {
     },
     teal_anime: {
       name: 'Otaku Paradise',
+      assetPrefix: 'teal_anime',
       primary: '#20B2AA',
       secondary: '#48D1CC',
       accent: '#7FFFD4',
@@ -84,23 +90,25 @@ export default function StudentBookshelf() {
     },
     white_nature: {
       name: 'Pure Serenity',
-      primary: '#6B8E6B',        // Forest green instead of bright lime
-      secondary: '#D2B48C',      // Warm tan/khaki
-      accent: '#F5F5DC',         // Beige accent
-      background: '#FFFEF8',     // Warm white
+      assetPrefix: 'white_nature',
+      primary: '#90EE90',
+      secondary: '#F0FFF0',
+      accent: '#98FB98',
+      background: '#FFFFF0',
       surface: '#FFFFFF',
       textPrimary: '#2F4F2F',
       textSecondary: '#556B2F'
     },
     little_luminaries: {
       name: 'Little Luminaries',
-      primary: '#4A4A4A',        // Charcoal grey as primary
-      secondary: '#808080',      // Medium grey
-      accent: '#F8F8F8',         // Very light grey
-      background: '#E8E8E8',     // Light grey background
-      surface: '#FFFFFF',        // Pure white surface
-      textPrimary: '#1A1A1A',    // Near black for light backgrounds
-      textSecondary: '#4A4A4A'   // Charcoal for secondary text
+      assetPrefix: 'little_luminaries',
+      primary: '#FFFFFF',
+      secondary: '#E0E0E0',
+      accent: '#F8F8FF',
+      background: '#1A1A1A',
+      surface: '#2D2D2D',
+      textPrimary: '#FFD700',
+      textSecondary: '#E0E0E0'
     }
   };
 
@@ -356,7 +364,7 @@ export default function StudentBookshelf() {
             animation: 'spin 1s linear infinite',
             margin: '0 auto 16px'
           }} />
-          <p style={{ color: '#223848' }}>Loading your bookshelf...</p>
+          <p style={{ color: '#223848', fontSize: '14px' }}>Loading your bookshelf...</p>
         </div>
       </div>
     );
@@ -393,9 +401,9 @@ export default function StudentBookshelf() {
         minHeight: '100vh',
         fontFamily: 'Avenir, system-ui, -apple-system, sans-serif',
         position: 'relative',
-        // MEDIUM TILED BACKGROUND - better for mobile
+        // REFINED TILING - sweet spot for mobile
         backgroundImage: `url(${decorativeOverlay})`,
-        backgroundSize: '500px', // Larger tiles for mobile
+        backgroundSize: '400px', // Perfect balance for mobile
         backgroundRepeat: 'repeat',
         backgroundPosition: 'top left',
         backgroundColor: currentTheme.background
@@ -414,11 +422,11 @@ export default function StudentBookshelf() {
           zIndex: 1
         }} />
         
-        {/* SLIM HEADER */}
+        {/* EXTRA SLIM HEADER */}
         <div style={{
           background: `linear-gradient(135deg, ${currentTheme.primary}F0, ${currentTheme.secondary}F0)`,
           backdropFilter: 'blur(20px)',
-          padding: '35px 20px 15px', // Much slimmer padding
+          padding: '30px 20px 12px', // Even slimmer
           position: 'relative',
           borderRadius: '0 0 25px 25px',
           boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
@@ -449,9 +457,9 @@ export default function StudentBookshelf() {
             ←
           </button>
 
-          {/* CENTERED TITLE */}
+          {/* CENTERED TITLE - SMALLER FONT */}
           <h1 style={{
-            fontSize: '28px',
+            fontSize: '24px',     // Smaller title font
             fontWeight: '400',
             color: currentTheme.textPrimary,
             margin: '0',
@@ -463,18 +471,27 @@ export default function StudentBookshelf() {
             My Bookshelf
           </h1>
 
-          {/* Book Count - Plain Text */}
-          <span style={{
-            fontSize: '16px',
-            fontWeight: '400',
-            color: currentTheme.textSecondary,
-            fontFamily: 'Avenir, system-ui, sans-serif',
-            letterSpacing: '0.5px',
-            flexShrink: 0,
-            opacity: 0.8
-          }}>
-            {totalBooks} {totalBooks === 1 ? 'book' : 'books'}
-          </span>
+          {/* Settings Icon */}
+          <button
+            onClick={() => router.push('/student-settings')}
+            style={{
+              backgroundColor: 'rgba(255,255,255,0.3)',
+              border: 'none',
+              borderRadius: '50%',
+              width: '36px',
+              height: '36px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '16px',
+              cursor: 'pointer',
+              color: currentTheme.textPrimary,
+              backdropFilter: 'blur(10px)',
+              flexShrink: 0
+            }}
+          >
+            ⚙️
+          </button>
         </div>
 
         {/* MAIN CONTENT - PHONE SCREEN OPTIMIZED */}
@@ -498,7 +515,7 @@ export default function StudentBookshelf() {
             }}>
               <div style={{ fontSize: '48px', marginBottom: '16px' }}>📚</div>
               <h2 style={{
-                fontSize: '18px',
+                fontSize: '16px',   // Smaller heading
                 fontWeight: '400',
                 color: currentTheme.textPrimary,
                 marginBottom: '8px',
@@ -507,7 +524,7 @@ export default function StudentBookshelf() {
                 Your bookshelf is empty
               </h2>
               <p style={{ 
-                fontSize: '14px', 
+                fontSize: '13px',   // Smaller body text
                 marginBottom: '20px',
                 fontFamily: 'Avenir, system-ui, sans-serif',
                 letterSpacing: '0.5px',
@@ -521,12 +538,12 @@ export default function StudentBookshelf() {
                   backgroundColor: currentTheme.primary,
                   color: currentTheme.textPrimary,
                   border: 'none',
-                  padding: '12px 24px',
+                  padding: '10px 20px',  // Slightly smaller button
                   borderRadius: '12px',
-                  fontSize: '14px',
+                  fontSize: '13px',      // Smaller button text
                   fontWeight: '500',
                   cursor: 'pointer',
-                  minHeight: '44px',
+                  minHeight: '40px',     // Smaller button height
                   fontFamily: 'system-ui, -apple-system, sans-serif', // System fonts for UI
                   letterSpacing: '0.3px'
                 }}
@@ -547,7 +564,7 @@ export default function StudentBookshelf() {
                 }}>
                   {/* SMALL BOOKS */}
                   <div style={{
-                    height: '90px', // Even smaller
+                    height: '98px', // Accommodate slightly larger books
                     padding: '0 15px',
                     marginBottom: '6px',
                     display: 'grid',
@@ -575,11 +592,11 @@ export default function StudentBookshelf() {
                             padding: 0
                           }}
                         >
-                          {/* TINY BUT TAPPABLE BOOK COVER */}
+                          {/* SLIGHTLY LARGER BOOK COVER */}
                           <div style={{
                             width: '100%',
-                            maxWidth: '60px', // Tiny books
-                            height: '80px',
+                            maxWidth: '68px', // Slightly larger books
+                            height: '88px',   // Proportionally taller
                             borderRadius: '3px',
                             overflow: 'hidden',
                             backgroundColor: '#F5F5F5',
@@ -687,8 +704,8 @@ export default function StudentBookshelf() {
                         key={`empty-${shelfIndex}-${emptyIndex}`}
                         style={{
                           width: '100%',
-                          maxWidth: '60px',
-                          height: '80px',
+                          maxWidth: '68px',  // Match new book size
+                          height: '88px',    // Match new book height
                           margin: '0 auto'
                         }}
                       />
