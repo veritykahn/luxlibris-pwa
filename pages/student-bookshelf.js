@@ -1,4 +1,4 @@
-// pages/student-bookshelf.js - FIXED THEME + ELEGANT DESIGN
+// pages/student-bookshelf.js - BEAUTIFUL HEADER + PROPER SPACING
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
@@ -102,7 +102,7 @@ export default function StudentBookshelf() {
       accent: '#F8F8FF',
       background: '#1A1A1A',
       surface: '#2D2D2D',
-      textPrimary: '#FFFFFF', // Changed from '#FFD700' to white for contrast
+      textPrimary: '#FFFFFF', // Fixed for contrast
       textSecondary: '#C0C0C0'
     }
   };
@@ -138,7 +138,7 @@ export default function StudentBookshelf() {
       
       setStudentData(firebaseStudentData);
       
-      // FIX: Use the actual selected theme from student data
+      // Use the actual selected theme from student data
       const selectedThemeKey = firebaseStudentData.selectedTheme || 'classic_lux';
       const selectedTheme = themes[selectedThemeKey];
       setCurrentTheme(selectedTheme);
@@ -385,17 +385,24 @@ export default function StudentBookshelf() {
   }
 
   const bookshelf = studentData.bookshelf || [];
-  // FIX: Always 4 books per shelf for all devices
+  const totalBooks = bookshelf.length;
+  const completedBooks = bookshelf.filter(book => book.completed).length;
+  const inProgressBooks = bookshelf.filter(book => !book.completed && book.currentProgress > 0).length;
+  
+  // Always 4 books per shelf
   const booksPerShelf = 4;
   const shelves = [];
   for (let i = 0; i < bookshelf.length; i += booksPerShelf) {
     shelves.push(bookshelf.slice(i, i + booksPerShelf));
   }
-  while (shelves.length < 5) {
-    shelves.push([]);
+  // Only add empty shelves if we have books (to show some structure)
+  if (bookshelf.length > 0) {
+    while (shelves.length < 5) {
+      shelves.push([]);
+    }
   }
 
-  // FIX: Use JPG extension instead of PNG
+  // Use JPG extension for decorative overlay
   const decorativeOverlay = `/bookshelves/${studentData.selectedTheme || 'classic_lux'}.jpg`;
 
   return (
@@ -408,76 +415,143 @@ export default function StudentBookshelf() {
       </Head>
       
       <div style={{
-        backgroundColor: currentTheme.background,
         minHeight: '100vh',
         fontFamily: 'system-ui, -apple-system, sans-serif',
-        position: 'relative'
+        position: 'relative',
+        // FULL SCREEN BACKGROUND that tiles properly
+        backgroundImage: `url(${decorativeOverlay})`,
+        backgroundSize: isMobile ? 'cover' : 'repeat',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed'
       }}>
-        {/* BACK ARROW */}
-        <button
-          onClick={() => router.push('/student-dashboard')}
-          style={{
-            position: 'absolute',
-            top: '20px',
-            left: '20px',
-            zIndex: 20,
-            backgroundColor: 'rgba(255,255,255,0.9)',
-            border: 'none',
-            borderRadius: '50%',
-            width: '44px',
-            height: '44px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '20px',
-            cursor: 'pointer',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            backdropFilter: 'blur(10px)',
-            color: currentTheme.textPrimary
-          }}
-        >
-          ←
-        </button>
-
-        {/* ELEGANT BOOKSHELF HEADER - NO EMOJI */}
+        
+        {/* BEAUTIFUL FULL-WIDTH HEADER like image 1 */}
         <div style={{
-          position: 'absolute',
-          top: '20px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          zIndex: 20,
-          backgroundColor: 'rgba(255,255,255,0.9)',
-          padding: '8px 20px',
-          borderRadius: '20px',
-          backdropFilter: 'blur(10px)',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+          background: `linear-gradient(135deg, ${currentTheme.primary}E6, ${currentTheme.secondary}E6)`,
+          backdropFilter: 'blur(20px)',
+          padding: '60px 20px 30px',
+          position: 'relative',
+          borderRadius: '0 0 30px 30px',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.1)'
         }}>
-          <h1 style={{ 
-            color: currentTheme.textPrimary, 
-            fontSize: '18px',
-            margin: 0,
-            fontWeight: '600',
-            letterSpacing: '0.5px'
-          }}>
-            My Bookshelf
-          </h1>
+          {/* Back Arrow */}
+          <button
+            onClick={() => router.push('/student-dashboard')}
+            style={{
+              position: 'absolute',
+              top: '20px',
+              left: '20px',
+              backgroundColor: 'rgba(255,255,255,0.2)',
+              border: 'none',
+              borderRadius: '50%',
+              width: '40px',
+              height: '40px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '18px',
+              cursor: 'pointer',
+              color: currentTheme.textPrimary,
+              backdropFilter: 'blur(10px)'
+            }}
+          >
+            ←
+          </button>
+
+          {/* Header Content */}
+          <div style={{ textAlign: 'center' }}>
+            <h1 style={{
+              fontSize: '28px',
+              fontWeight: '700',
+              color: currentTheme.textPrimary,
+              margin: '0 0 8px 0',
+              letterSpacing: '0.5px'
+            }}>
+              My Bookshelf
+            </h1>
+            <p style={{
+              fontSize: '16px',
+              color: currentTheme.textSecondary,
+              margin: '0 0 25px 0',
+              opacity: 0.8
+            }}>
+              {totalBooks} {totalBooks === 1 ? 'book' : 'books'}
+            </p>
+
+            {/* Stats Row like image 1 */}
+            {totalBooks > 0 && (
+              <div style={{
+                display: 'flex',
+                justifyContent: 'center',
+                gap: isMobile ? '15px' : '30px',
+                backgroundColor: 'rgba(255,255,255,0.15)',
+                padding: '15px',
+                borderRadius: '20px',
+                backdropFilter: 'blur(10px)'
+              }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{
+                    fontSize: '24px',
+                    fontWeight: 'bold',
+                    color: currentTheme.textPrimary
+                  }}>
+                    {totalBooks}
+                  </div>
+                  <div style={{
+                    fontSize: '12px',
+                    color: currentTheme.textSecondary,
+                    opacity: 0.8
+                  }}>
+                    Total Books
+                  </div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{
+                    fontSize: '24px',
+                    fontWeight: 'bold',
+                    color: '#4CAF50'
+                  }}>
+                    {completedBooks}
+                  </div>
+                  <div style={{
+                    fontSize: '12px',
+                    color: currentTheme.textSecondary,
+                    opacity: 0.8
+                  }}>
+                    Completed
+                  </div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{
+                    fontSize: '24px',
+                    fontWeight: 'bold',
+                    color: '#FF9800'
+                  }}>
+                    {inProgressBooks}
+                  </div>
+                  <div style={{
+                    fontSize: '12px',
+                    color: currentTheme.textSecondary,
+                    opacity: 0.8
+                  }}>
+                    In Progress
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* BOOKSHELF CONTAINER WITH WALLPAPER BACKGROUND */}
+        {/* MAIN CONTENT */}
         <div style={{
-          position: 'relative',
-          minHeight: '100vh',
-          padding: '80px 20px 20px',
-          backgroundImage: `url(${decorativeOverlay})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'repeat'
+          padding: '20px',
+          minHeight: 'calc(100vh - 200px)'
         }}>
           {bookshelf.length === 0 ? (
             // Empty Bookshelf
             <div style={{
               textAlign: 'center',
-              padding: '120px 20px',
+              padding: '60px 20px',
               color: currentTheme.textSecondary,
               backgroundColor: 'rgba(255,255,255,0.9)',
               borderRadius: '20px',
@@ -513,188 +587,183 @@ export default function StudentBookshelf() {
               </button>
             </div>
           ) : (
-            // CSS SHELVES WITH BOOKS
+            // COMPACT SHELVES WITH SMALL BOOKS
             <div style={{
-              position: 'relative',
-              maxWidth: '800px',
+              maxWidth: '600px',
               margin: '0 auto'
             }}>
-              {/* CSS SHELVES CONTAINER */}
-              <div style={{
-                position: 'relative',
-                zIndex: 10,
-                display: 'flex',
-                flexDirection: 'column',
-                minHeight: 'calc(100vh - 100px)',
-                justifyContent: 'space-evenly'
-              }}>
-                {shelves.map((shelf, shelfIndex) => (
-                  <div key={shelfIndex} style={{ position: 'relative' }}>
-                    {/* SHELF SPACE FOR BOOKS */}
-                    <div style={{
-                      height: '180px',
-                      padding: '0 30px',
-                      marginBottom: '8px',
-                      display: 'grid',
-                      gridTemplateColumns: `repeat(${booksPerShelf}, 1fr)`,
-                      gap: isMobile ? '8px' : '12px',
-                      alignItems: 'end'
-                    }}>
-                      {shelf.map((book, bookIndex) => {
-                        const bookDetails = getBookDetails(book.bookId);
-                        if (!bookDetails) return null;
-                        
-                        const progressPercent = getProgressPercentage(book);
-                        const total = getBookTotal(book);
-                        const progressColor = getProgressColor(book.currentProgress, total);
-                        
-                        return (
-                          <button
-                            key={book.bookId}
-                            onClick={() => openBookModal(book)}
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              cursor: 'pointer',
-                              position: 'relative',
-                              padding: 0
-                            }}
+              {shelves.map((shelf, shelfIndex) => (
+                <div key={shelfIndex} style={{ 
+                  position: 'relative',
+                  marginBottom: '20px' // MUCH closer spacing
+                }}>
+                  {/* SHELF SPACE FOR SMALL BOOKS */}
+                  <div style={{
+                    height: '120px', // Smaller height
+                    padding: '0 20px',
+                    marginBottom: '8px',
+                    display: 'grid',
+                    gridTemplateColumns: `repeat(${booksPerShelf}, 1fr)`,
+                    gap: '8px',
+                    alignItems: 'end'
+                  }}>
+                    {shelf.map((book, bookIndex) => {
+                      const bookDetails = getBookDetails(book.bookId);
+                      if (!bookDetails) return null;
+                      
+                      const progressPercent = getProgressPercentage(book);
+                      const total = getBookTotal(book);
+                      const progressColor = getProgressColor(book.currentProgress, total);
+                      
+                      return (
+                        <button
+                          key={book.bookId}
+                          onClick={() => openBookModal(book)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            position: 'relative',
+                            padding: 0
+                          }}
+                        >
+                          {/* SMALL PROPERLY PROPORTIONED BOOK COVER */}
+                          <div style={{
+                            width: '100%',
+                            maxWidth: '80px', // Much smaller books
+                            height: '110px',
+                            borderRadius: '4px',
+                            overflow: 'hidden',
+                            backgroundColor: '#F5F5F5',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            position: 'relative',
+                            boxShadow: '0 3px 6px rgba(0,0,0,0.2)',
+                            transition: 'transform 0.2s ease',
+                            transform: 'translateZ(0)',
+                            margin: '0 auto'
+                          }}
+                          onTouchStart={(e) => {
+                            e.currentTarget.style.transform = 'scale(1.05) translateZ(0)';
+                          }}
+                          onTouchEnd={(e) => {
+                            e.currentTarget.style.transform = 'scale(1) translateZ(0)';
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'scale(1.05) translateZ(0)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'scale(1) translateZ(0)';
+                          }}
                           >
-                            {/* FIX: PURE BOOK COVER - NO WHITE SURROUNDING */}
+                            {bookDetails.coverImageUrl ? (
+                              <img 
+                                src={bookDetails.coverImageUrl} 
+                                alt={bookDetails.title}
+                                style={{
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: 'cover'
+                                }}
+                              />
+                            ) : (
+                              <span style={{ fontSize: '24px' }}>📚</span>
+                            )}
+                            
+                            {/* Progress bar */}
                             <div style={{
-                              width: '100%',
-                              height: '160px',
-                              borderRadius: '6px',
-                              overflow: 'hidden',
-                              backgroundColor: '#F5F5F5',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              position: 'relative',
-                              boxShadow: '0 4px 8px rgba(0,0,0,0.3)',
-                              transition: 'transform 0.2s ease',
-                              transform: 'translateZ(0)'
-                            }}
-                            onTouchStart={(e) => {
-                              e.currentTarget.style.transform = 'scale(1.05) translateZ(0)';
-                            }}
-                            onTouchEnd={(e) => {
-                              e.currentTarget.style.transform = 'scale(1) translateZ(0)';
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.transform = 'scale(1.05) translateZ(0)';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.transform = 'scale(1) translateZ(0)';
-                            }}
-                            >
-                              {bookDetails.coverImageUrl ? (
-                                <img 
-                                  src={bookDetails.coverImageUrl} 
-                                  alt={bookDetails.title}
-                                  style={{
-                                    width: '100%',
-                                    height: '100%',
-                                    objectFit: 'cover' // FIX: Use 'cover' to fill completely
-                                  }}
-                                />
-                              ) : (
-                                <span style={{ fontSize: '32px' }}>📚</span>
-                              )}
-                              
-                              {/* Progress bar */}
+                              position: 'absolute',
+                              bottom: 0,
+                              left: 0,
+                              right: 0,
+                              height: '4px',
+                              backgroundColor: 'rgba(0,0,0,0.5)'
+                            }}>
+                              <div style={{
+                                height: '100%',
+                                width: `${progressPercent}%`,
+                                backgroundColor: progressColor,
+                                transition: 'width 0.3s ease'
+                              }} />
+                            </div>
+                            
+                            {/* KEEP Audio Badge */}
+                            {book.format === 'audiobook' && (
                               <div style={{
                                 position: 'absolute',
-                                bottom: 0,
-                                left: 0,
-                                right: 0,
-                                height: '6px',
-                                backgroundColor: 'rgba(0,0,0,0.5)'
+                                top: '3px',
+                                right: '3px',
+                                backgroundColor: 'rgba(0,0,0,0.7)',
+                                color: 'white',
+                                borderRadius: '50%',
+                                width: '16px',
+                                height: '16px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '8px'
                               }}>
-                                <div style={{
-                                  height: '100%',
-                                  width: `${progressPercent}%`,
-                                  backgroundColor: progressColor,
-                                  transition: 'width 0.3s ease',
-                                  boxShadow: progressPercent > 0 ? '0 0 4px rgba(255,255,255,0.5)' : 'none'
-                                }} />
+                                🎧
                               </div>
-                              
-                              {/* Format Badge */}
-                              {book.format === 'audiobook' && (
-                                <div style={{
-                                  position: 'absolute',
-                                  top: '4px',
-                                  right: '4px',
-                                  backgroundColor: 'rgba(0,0,0,0.7)',
-                                  color: 'white',
-                                  borderRadius: '50%',
-                                  width: '20px',
-                                  height: '20px',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  fontSize: '10px'
-                                }}>
-                                  🎧
-                                </div>
-                              )}
-                              
-                              {/* Completion Badge */}
-                              {book.completed && (
-                                <div style={{
-                                  position: 'absolute',
-                                  top: '4px',
-                                  left: '4px',
-                                  backgroundColor: '#4CAF50',
-                                  color: 'white',
-                                  borderRadius: '50%',
-                                  width: '20px',
-                                  height: '20px',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  fontSize: '10px',
-                                  fontWeight: 'bold'
-                                }}>
-                                  ✓
-                                </div>
-                              )}
-                            </div>
-                          </button>
-                        );
-                      })}
-                      
-                      {/* Empty slots */}
-                      {Array(booksPerShelf - shelf.length).fill(null).map((_, emptyIndex) => (
-                        <div
-                          key={`empty-${shelfIndex}-${emptyIndex}`}
-                          style={{
-                            width: '100%',
-                            height: '160px'
-                          }}
-                        />
-                      ))}
-                    </div>
-
-                    {/* SIMPLE CSS SHELF */}
-                    <div style={{
-                      height: '8px',
-                      margin: '0 20px',
-                      backgroundColor: currentTheme.primary,
-                      borderRadius: '4px',
-                      boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
-                      position: 'relative',
-                      zIndex: 5
-                    }} />
+                            )}
+                            
+                            {/* Completion Badge */}
+                            {book.completed && (
+                              <div style={{
+                                position: 'absolute',
+                                top: '3px',
+                                left: '3px',
+                                backgroundColor: '#4CAF50',
+                                color: 'white',
+                                borderRadius: '50%',
+                                width: '16px',
+                                height: '16px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '8px',
+                                fontWeight: 'bold'
+                              }}>
+                                ✓
+                              </div>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                    
+                    {/* Empty slots */}
+                    {Array(booksPerShelf - shelf.length).fill(null).map((_, emptyIndex) => (
+                      <div
+                        key={`empty-${shelfIndex}-${emptyIndex}`}
+                        style={{
+                          width: '100%',
+                          maxWidth: '80px',
+                          height: '110px',
+                          margin: '0 auto'
+                        }}
+                      />
+                    ))}
                   </div>
-                ))}
-              </div>
+
+                  {/* SIMPLE CSS SHELF */}
+                  <div style={{
+                    height: '6px',
+                    margin: '0 15px',
+                    backgroundColor: currentTheme.primary,
+                    borderRadius: '3px',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                    position: 'relative',
+                    zIndex: 5
+                  }} />
+                </div>
+              ))}
             </div>
           )}
         </div>
 
-        {/* COMPACT BOOK DETAIL MODAL */}
+        {/* BOOK DETAIL MODAL - Same as before but compact */}
         {showBookModal && selectedBook && (() => {
           const colorPalette = getCategoryColorPalette(selectedBook.details);
           const total = getBookTotal(selectedBook);
@@ -778,7 +847,7 @@ export default function StudentBookshelf() {
                         style={{
                           width: '100%',
                           height: '100%',
-                          objectFit: 'cover' // FIX: Use 'cover' here too
+                          objectFit: 'cover'
                         }}
                       />
                     ) : (
