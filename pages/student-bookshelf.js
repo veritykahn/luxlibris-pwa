@@ -100,15 +100,15 @@ export default function StudentBookshelf() {
     textSecondary: '#556B2F'
   },
   little_luminaries: {
-    name: 'Little Luminaries',
+    name: 'Little Luminaries™',
     assetPrefix: 'little_luminaries',
-    primary: '#666666',        // Medium grey (swapped - for buttons/elements)
-  secondary: '#000000',      // Black (swapped - for striking accents)
+  primary: '#000000',        // Black (striking black accents/buttons)
+  secondary: '#666666',      // Medium grey 
   accent: '#E8E8E8',         // Light grey accent
-  background: '#FFFFFF',     // Pure white background (changed)
-  surface: '#F5F5F5',        // Light grey surface (safer than black)
-  textPrimary: '#000000',    // Black text (for white/light backgrounds)
-  textSecondary: '#666666'   // Grey text (for secondary text on light backgrounds)
+  background: '#FFFFFF',     // White background (main content)
+  surface: '#000000',        // Black surface (navigation)
+  textPrimary: '#CCCCCC',    // Light grey text (for dark surfaces like black nav)
+  textSecondary: '#4A4A4A'   // Charcoal text (for light backgrounds)
 }
 };
 
