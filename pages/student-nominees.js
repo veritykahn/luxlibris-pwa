@@ -776,8 +776,7 @@ export default function StudentNominees() {
                 marginBottom: '20px',
                 lineHeight: '1.4'
               }}>
-                You already have <strong>{showFormatSwitchDialog.book.title}</strong> as a{' '}
-                {showFormatSwitchDialog.existingFormat === 'audiobook' ? 'n audiobook' : ' book'}. 
+                You already have <strong>{showFormatSwitchDialog.book.title}</strong> as {showFormatSwitchDialog.existingFormat === 'audiobook' ? 'an audiobook' : 'a book'}. 
                 Switch to {showFormatSwitchDialog.newFormat === 'audiobook' ? 'audiobook' : 'book'} instead?
               </p>
               <div style={{
