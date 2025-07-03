@@ -300,7 +300,7 @@ export default function RoleSelector() {
                       fontSize: 'clamp(0.9rem, 2.5vw, 1rem)',
                       opacity: 0.9
                     }}>
-                      You're all set for the best Lux Libris experience
+                      You&apos;re all set for the best Lux Libris experience
                     </p>
                   </div>
                 </div>
@@ -322,7 +322,7 @@ export default function RoleSelector() {
             <RoleCard
               icon="🧑‍🎓"
               title="Student"
-              description="Connect to your school's reading program and start your journey!"
+              description="Connect to your school&apos;s reading program and start your journey!"
               features={[
                 "🏫 Connect to your school",
                 "📚 Interactive bookshelf",
@@ -339,9 +339,9 @@ export default function RoleSelector() {
             <RoleCard
               icon="👨‍👩‍👧‍👦"
               title="Parent"
-              description="Support your child's school reading program"
+              description="Support your child&apos;s school reading program"
               features={[
-                "🏫 Connect to your child's school",
+                "🏫 Connect to your child&apos;s school",
                 "👀 Basic progress viewing (FREE)",
                 "🔐 Quiz code access",
                 "⭐ Premium analytics ($10/yr)",
@@ -376,7 +376,7 @@ export default function RoleSelector() {
             <RoleCard
               icon="👑"
               title="School Admin"
-              description="Set up and manage your school's reading program"
+              description="Set up and manage your school&apos;s reading program"
               features={[
                 "🏫 School configuration",
                 "📚 Book selection from 20 nominees",
@@ -424,7 +424,7 @@ export default function RoleSelector() {
               justifyContent: 'center',
               flexWrap: 'wrap'
             }}>
-              <a href="mailto:admin@luxlibris.org?subject=School Interest&body=Hi! I'd like my school to participate in Lux Libris." style={{
+              <a href="mailto:admin@luxlibris.org?subject=School Interest&body=Hi! I&apos;d like my school to participate in Lux Libris." style={{
                 background: 'linear-gradient(135deg, #6b7280, #4b5563)',
                 color: 'white',
                 padding: '0.75rem 1.5rem',
@@ -492,7 +492,7 @@ export default function RoleSelector() {
               textAlign: 'center',
               fontSize: 'clamp(0.875rem, 2.5vw, 1rem)'
             }}>
-              We're currently piloting with select Catholic schools. Interested in bringing Lux Libris to your school?
+              We&apos;re currently piloting with select Catholic schools. Interested in bringing Lux Libris to your school?
             </p>
             <div style={{
               display: 'flex',
@@ -618,8 +618,8 @@ export default function RoleSelector() {
                 <br />
                 <span style={{ fontSize: '0.875rem', color: '#6b7280', lineHeight: '1.4' }}>
                   1. Tap the Share button (square with arrow up)<br />
-                  2. Scroll down and tap "Add to Home Screen"<br />
-                  3. Tap "Add" to install
+                  2. Scroll down and tap &quot;Add to Home Screen&quot;<br />
+                  3. Tap &quot;Add&quot; to install
                 </span>
               </div>
               <div style={{
@@ -632,7 +632,7 @@ export default function RoleSelector() {
                 <br />
                 <span style={{ fontSize: '0.875rem', color: '#6b7280', lineHeight: '1.4' }}>
                   1. Tap the browser menu (3 dots)<br />
-                  2. Look for "Install app" or "Add to Home Screen"<br />
+                  2. Look for &quot;Install app&quot; or &quot;Add to Home Screen&quot;<br />
                   3. Confirm installation
                 </span>
               </div>
@@ -646,7 +646,7 @@ export default function RoleSelector() {
                 <br />
                 <span style={{ fontSize: '0.875rem', color: '#6b7280', lineHeight: '1.4' }}>
                   1. Look for install icon in address bar<br />
-                  2. Or use browser menu "Install Lux Libris"<br />
+                  2. Or use browser menu &quot;Install Lux Libris&quot;<br />
                   3. Follow the prompts to install
                 </span>
               </div>
