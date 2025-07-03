@@ -2,7 +2,7 @@
  "name": "Lux Libris",
  "short_name": "Lux Libris",
  "description": "Transform your reading journey with saint achievements and interactive book tracking",
- "start_url": "/auth-check",
+ "start_url": "/",
  "display": "standalone",
  "background_color": "#FFFCF5",
  "theme_color": "#223848",
