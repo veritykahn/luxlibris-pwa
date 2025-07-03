@@ -579,79 +579,78 @@ export default function StudentNominees() {
           flexDirection: 'column',
           alignItems: 'center',
           minHeight: 'calc(100vh - 120px)',
-          paddingTop: '20px',
-          position: 'relative'
+          paddingTop: '20px'
         }}>
-          {/* PROMINENT CIRCULAR NAVIGATION ARROWS */}
-          {currentCardIndex > 0 && (
-            <button
-              onClick={goToPrevCard}
-              style={{
-                position: 'absolute',
-                left: '20px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                backgroundColor: currentTheme.primary,
-                border: `3px solid ${currentTheme.secondary}`,
-                borderRadius: '50%',
-                width: '48px',
-                height: '48px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '18px',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-                color: currentTheme.textPrimary,
-                zIndex: 100,
-                transition: 'all 0.3s ease',
-                userSelect: 'none',
-                boxShadow: `0 4px 12px ${currentTheme.primary}40, 0 2px 8px rgba(0,0,0,0.2)`,
-                backdropFilter: 'blur(10px)'
-              }}
-            >
-              ←
-            </button>
-          )}
-
-          {currentCardIndex < nominees.length - 1 && (
-            <button
-              onClick={goToNextCard}
-              style={{
-                position: 'absolute',
-                right: '20px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                backgroundColor: currentTheme.primary,
-                border: `3px solid ${currentTheme.secondary}`,
-                borderRadius: '50%',
-                width: '48px',
-                height: '48px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '18px',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-                color: currentTheme.textPrimary,
-                zIndex: 100,
-                transition: 'all 0.3s ease',
-                userSelect: 'none',
-                boxShadow: `0 4px 12px ${currentTheme.primary}40, 0 2px 8px rgba(0,0,0,0.2)`,
-                backdropFilter: 'blur(10px)'
-              }}
-            >
-              →
-            </button>
-          )}
-
-          {/* Main Card */}
+          {/* Main Card with Navigation Arrows */}
           <div style={{
             position: 'relative',
             width: '100%',
             maxWidth: '360px',
             marginBottom: '20px'
           }}>
+            {/* PROMINENT CIRCULAR NAVIGATION ARROWS - Now positioned relative to card only */}
+            {currentCardIndex > 0 && (
+              <button
+                onClick={goToPrevCard}
+                style={{
+                  position: 'absolute',
+                  left: '-24px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  backgroundColor: currentTheme.primary,
+                  border: `3px solid ${currentTheme.secondary}`,
+                  borderRadius: '50%',
+                  width: '48px',
+                  height: '48px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '18px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  color: currentTheme.textPrimary,
+                  zIndex: 100,
+                  transition: 'all 0.3s ease',
+                  userSelect: 'none',
+                  boxShadow: `0 4px 12px ${currentTheme.primary}40, 0 2px 8px rgba(0,0,0,0.2)`,
+                  backdropFilter: 'blur(10px)'
+                }}
+              >
+                ←
+              </button>
+            )}
+
+            {currentCardIndex < nominees.length - 1 && (
+              <button
+                onClick={goToNextCard}
+                style={{
+                  position: 'absolute',
+                  right: '-24px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  backgroundColor: currentTheme.primary,
+                  border: `3px solid ${currentTheme.secondary}`,
+                  borderRadius: '50%',
+                  width: '48px',
+                  height: '48px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '18px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  color: currentTheme.textPrimary,
+                  zIndex: 100,
+                  transition: 'all 0.3s ease',
+                  userSelect: 'none',
+                  boxShadow: `0 4px 12px ${currentTheme.primary}40, 0 2px 8px rgba(0,0,0,0.2)`,
+                  backdropFilter: 'blur(10px)'
+                }}
+              >
+                →
+              </button>
+            )}
+
             <BookCard 
               book={currentBook} 
               theme={currentTheme}
