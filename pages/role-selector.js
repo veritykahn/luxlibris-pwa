@@ -240,7 +240,7 @@ export default function RoleSelector() {
               features={[
                 "🏫 Connect to your school",
                 "📚 Interactive bookshelf",
-                "🏆 Little Luminaries™ saint achievements", 
+                "🏆 Luxlings™ saint achievements", 
                 "🔥 Reading streaks",
                 "🎯 Personal goals"
               ]}

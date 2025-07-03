@@ -119,7 +119,7 @@ export default function Legal() {
             {isReturningUser ? (
               <>You have already accepted our Terms of Service and Privacy Policy. This page is for reference only.</>
             ) : (
-              <>Welcome to your reading journey! As you read amazing books, you&apos;ll unlock beautiful <strong>Little Luminaries™</strong> saint achievements created exclusively for Lux Libris. By continuing, you agree to our Terms of Service and Privacy Policy.</>
+              <>Welcome to your reading journey! As you read amazing books, you&apos;ll unlock beautiful <strong>Luxlings™</strong> saint achievements created exclusively for Lux Libris. By continuing, you agree to our Terms of Service and Privacy Policy.</>
             )}
           </p>
         </div>
@@ -179,11 +179,11 @@ This data is used exclusively for tracking reading progress, generating achievem
           />
 
           <Section
-            title="🎨 Little Luminaries™ & Intellectual Property"
-            content="Lux Libris features original Little Luminaries™ saint artwork:
+            title="🎨 Luxlings™ & Intellectual Property"
+            content="Lux Libris features original Luxlings™ saint artwork:
 - 137 original chibi-style saint characters created exclusively for Lux Libris
 - Proprietary saint achievement system and reward structure
-- Little Luminaries™ is a trademark of Lux Libris
+- Luxlings™ is a trademark of Lux Libris
 - Original artwork by Dr. Verity Kahn, all rights reserved
 - Students enjoy these achievements as part of the educational program
 - Unauthorized reproduction, distribution, or commercial use is prohibited

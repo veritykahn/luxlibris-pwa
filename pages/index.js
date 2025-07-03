@@ -241,7 +241,7 @@ export default function Home() {
                     <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                       <span className="text-blue-600 text-lg">🏆</span>
                     </div>
-                    <span className="text-slate-700">Little Luminaries™ Saints</span>
+                    <span className="text-slate-700">Luxlings™ Saints</span>
                   </div>
                   <div className="flex items-center space-x-3">
                     <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center">
@@ -289,7 +289,7 @@ export default function Home() {
                 </div>
                 <h3 className="text-xl font-bold text-slate-800 mb-3">Easy Management</h3>
                 <p className="text-slate-600">
-                  Students collect beautiful Little Luminaries™ saints, unlock achievements, and build reading streaks that keep them engaged
+                  Students collect beautiful Luxlings™ saints, unlock achievements, and build reading streaks that keep them engaged
                 </p>
               </div>
               <div className="text-center p-6">

@@ -97,7 +97,7 @@ export default function StudentNominees() {
       textSecondary: '#556B2F'
     },
     little_luminaries: {
-      name: 'Little Luminaries™',
+      name: 'Luxlings™',
       assetPrefix: 'little_luminaries',
       primary: '#666666',
       secondary: '#000000',

@@ -104,7 +104,7 @@ export default function StudentDashboard() {
     textSecondary: '#556B2F'
   },
   little_luminaries: {
-    name: 'Little Luminaries™',
+    name: 'Luxlings™',
   assetPrefix: 'little_luminaries',
   primary: '#666666', // Medium grey (for buttons/elements)
  secondary: '#000000', // Black (for striking accents)

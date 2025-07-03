@@ -101,7 +101,7 @@ export default function StudentOnboarding() {
     textPrimary: '#2F4F2F'
   },
   {
-    name: 'Little Luminaries™',
+    name: 'Luxlings™',
     assetPrefix: 'little_luminaries',
    primary: '#666666', // Medium grey (for buttons/elements)
  secondary: '#000000', // Black (for striking accents)
