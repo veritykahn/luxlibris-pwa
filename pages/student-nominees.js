@@ -1,4 +1,4 @@
-// pages/student-nominees.js - FIXED Pokemon-style trading cards
+// pages/student-nominees.js - UPDATED with bookshelf-style header and desktop navigation
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
@@ -17,8 +17,11 @@ export default function StudentNominees() {
   const [isAddingBook, setIsAddingBook] = useState(false);
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
+  const mouseStartX = useRef(0);
+  const mouseEndX = useRef(0);
+  const isDragging = useRef(false);
 
-  // Theme definitions (same as dashboard)
+  // Theme definitions (same as before)
   const themes = {
   classic_lux: {
     name: 'Lux Libris Classic',
@@ -34,11 +37,11 @@ export default function StudentNominees() {
   darkwood_sports: {
     name: 'Athletic Champion',
     assetPrefix: 'darkwood_sports',
-    primary: '#2F5F5F',        // Deep teal (your preferred)
-    secondary: '#8B2635',      // Burnt subdued red (your preferred)
-    accent: '#F5DEB3',         // Warm wheat/cream (your preferred)
+    primary: '#2F5F5F',
+    secondary: '#8B2635',
+    accent: '#F5DEB3',
     background: '#F5F5DC',
-    surface: '#FFF8DC',        // Cream surface (your preferred)
+    surface: '#FFF8DC',
     textPrimary: '#2F1B14',
     textSecondary: '#5D4037'
   },
@@ -56,11 +59,11 @@ export default function StudentNominees() {
   mint_music: {
     name: 'Musical Harmony',
     assetPrefix: 'mint_music',
-    primary: '#B8E6B8',        // Soft pastel green (new)
-    secondary: '#FFB3BA',      // Soft coral (new)
-    accent: '#FFCCCB',         // Pastel coral (new)
-    background: '#FEFEFE',     // Pure white
-    surface: '#F8FDF8',        // Very subtle green tint
+    primary: '#B8E6B8',
+    secondary: '#FFB3BA',
+    accent: '#FFCCCB',
+    background: '#FEFEFE',
+    surface: '#F8FDF8',
     textPrimary: '#2E4739',
     textSecondary: '#4A6B57'
   },
@@ -89,25 +92,25 @@ export default function StudentNominees() {
   white_nature: {
     name: 'Pure Serenity',
     assetPrefix: 'white_nature',
-    primary: '#6B8E6B',        // Forest green (your preferred)
-    secondary: '#D2B48C',      // Warm tan/khaki (your preferred)
-    accent: '#F5F5DC',         // Beige accent (your preferred)
-    background: '#FFFEF8',     // Warm white (your preferred)
+    primary: '#6B8E6B',
+    secondary: '#D2B48C',
+    accent: '#F5F5DC',
+    background: '#FFFEF8',
     surface: '#FFFFFF',
     textPrimary: '#2F4F2F',
     textSecondary: '#556B2F'
   },
   little_luminaries: {
     name: 'Little Luminaries™',
-  assetPrefix: 'little_luminaries',
- primary: '#666666', // Medium grey (for buttons/elements)
- secondary: '#000000', // Black (for striking accents)
- accent: '#E8E8E8', // Light grey accent
- background: '#FFFFFF', // Pure white background
- surface: '#FAFAFA', // Very light grey surface
- textPrimary: '#B8860B', // Deep rich gold (readable on light backgrounds)
- textSecondary: '#AAAAAA' // grey text (for dark backgrounds)
-}
+    assetPrefix: 'little_luminaries',
+    primary: '#666666',
+    secondary: '#000000',
+    accent: '#E8E8E8',
+    background: '#FFFFFF',
+    surface: '#FAFAFA',
+    textPrimary: '#B8860B',
+    textSecondary: '#AAAAAA'
+  }
 };
 
   useEffect(() => {
@@ -118,11 +121,24 @@ export default function StudentNominees() {
     }
   }, [loading, isAuthenticated, user]);
 
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'ArrowLeft' && currentCardIndex > 0) {
+        setCurrentCardIndex(currentCardIndex - 1);
+      } else if (e.key === 'ArrowRight' && currentCardIndex < nominees.length - 1) {
+        setCurrentCardIndex(currentCardIndex + 1);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentCardIndex, nominees.length]);
+
   const loadNomineesData = async () => {
     try {
       console.log('📚 Loading nominees data...');
       
-      // Get student data first
       const firebaseStudentData = await getStudentData(user.uid);
       if (!firebaseStudentData) {
         router.push('/student-onboarding');
@@ -131,11 +147,9 @@ export default function StudentNominees() {
       
       setStudentData(firebaseStudentData);
       
-      // Set theme
       const selectedTheme = firebaseStudentData.selectedTheme || 'classic_lux';
       setCurrentTheme(themes[selectedTheme]);
       
-      // Load school nominees
       if (firebaseStudentData.dioceseId && firebaseStudentData.schoolId) {
         const schoolNominees = await getSchoolNominees(
           firebaseStudentData.dioceseId, 
@@ -154,7 +168,7 @@ export default function StudentNominees() {
   };
 
   const handleAddToBookshelf = async (book, format) => {
-    if (isAddingBook) return; // Prevent double-clicks
+    if (isAddingBook) return;
     
     setIsAddingBook(true);
     
@@ -185,7 +199,7 @@ export default function StudentNominees() {
     setIsAddingBook(false);
   };
 
-  // Touch handlers for swipe navigation
+  // Touch handlers for mobile
   const handleTouchStart = (e) => {
     touchStartX.current = e.targetTouches[0].clientX;
   };
@@ -209,23 +223,48 @@ export default function StudentNominees() {
     }
   };
 
+  // Mouse handlers for desktop
+  const handleMouseDown = (e) => {
+    mouseStartX.current = e.clientX;
+    isDragging.current = true;
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDragging.current) return;
+    mouseEndX.current = e.clientX;
+  };
+
+  const handleMouseUp = () => {
+    if (!isDragging.current) return;
+    isDragging.current = false;
+
+    if (!mouseStartX.current || !mouseEndX.current) return;
+    
+    const distance = mouseStartX.current - mouseEndX.current;
+    const isLeftSwipe = distance > 50;
+    const isRightSwipe = distance < -50;
+
+    if (isLeftSwipe && currentCardIndex < nominees.length - 1) {
+      setCurrentCardIndex(currentCardIndex + 1);
+    }
+    if (isRightSwipe && currentCardIndex > 0) {
+      setCurrentCardIndex(currentCardIndex - 1);
+    }
+  };
+
   const goToCard = (index) => {
     setCurrentCardIndex(index);
   };
 
-  // Updated handleTabClick function for nominees page
-  const handleTabClick = (tabName) => {
-    if (tabName === 'Dashboard') {
-      router.push('/student-dashboard');
-    } else if (tabName === 'Nominees') {
-      // Already on nominees, maybe add subtle feedback
-      setShowAddMessage('You\'re browsing books! 📚');
-      setTimeout(() => setShowAddMessage(''), 1500);
-    } else if (tabName === 'Bookshelf') {
-      router.push('/student-bookshelf');
-    } else {
-      setShowAddMessage(`${tabName} coming soon! 🚀`);
-      setTimeout(() => setShowAddMessage(''), 3000);
+  const goToPrevCard = () => {
+    if (currentCardIndex > 0) {
+      setCurrentCardIndex(currentCardIndex - 1);
+    }
+  };
+
+  const goToNextCard = () => {
+    if (currentCardIndex < nominees.length - 1) {
+      setCurrentCardIndex(currentCardIndex + 1);
     }
   };
 
@@ -269,39 +308,76 @@ export default function StudentNominees() {
           minHeight: '100vh',
           fontFamily: 'system-ui, -apple-system, sans-serif'
         }}>
-          {/* Header */}
+          {/* BOOKSHELF-STYLE HEADER */}
           <div style={{
-            background: `linear-gradient(135deg, ${currentTheme.secondary}, ${currentTheme.secondary}CC)`,
-            padding: '20px 24px',
-            borderRadius: '0 0 20px 20px'
+            background: `linear-gradient(135deg, ${currentTheme.primary}F0, ${currentTheme.secondary}F0)`,
+            backdropFilter: 'blur(20px)',
+            padding: '30px 20px 12px',
+            position: 'relative',
+            borderRadius: '0 0 25px 25px',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+            zIndex: 10,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
           }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '16px'
-            }}>
-              <button
-                onClick={() => router.back()}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: currentTheme.textPrimary,
-                  fontSize: '20px',
-                  cursor: 'pointer',
-                  padding: '4px'
-                }}
-              >
-                ←
-              </button>
-              <h1 style={{
-                fontFamily: 'Didot, serif',
-                fontSize: '20px',
+            {/* Back Arrow */}
+            <button
+              onClick={() => router.push('/student-dashboard')}
+              style={{
+                backgroundColor: 'rgba(255,255,255,0.3)',
+                border: 'none',
+                borderRadius: '50%',
+                width: '36px',
+                height: '36px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '16px',
+                cursor: 'pointer',
                 color: currentTheme.textPrimary,
-                margin: 0
-              }}>
-                Book Nominees
-              </h1>
-            </div>
+                backdropFilter: 'blur(10px)',
+                flexShrink: 0
+              }}
+            >
+              ←
+            </button>
+
+            {/* Title */}
+            <h1 style={{
+              fontSize: '24px',
+              fontWeight: '400',
+              color: currentTheme.textPrimary,
+              margin: '0',
+              letterSpacing: '1px',
+              fontFamily: 'Didot, "Times New Roman", serif',
+              textAlign: 'center',
+              flex: 1
+            }}>
+              Nominees
+            </h1>
+
+            {/* Bookshelf Arrow */}
+            <button
+              onClick={() => router.push('/student-bookshelf')}
+              style={{
+                backgroundColor: 'rgba(255,255,255,0.3)',
+                border: 'none',
+                borderRadius: '50%',
+                width: '36px',
+                height: '36px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '16px',
+                cursor: 'pointer',
+                color: currentTheme.textPrimary,
+                backdropFilter: 'blur(10px)',
+                flexShrink: 0
+              }}
+            >
+              ▥
+            </button>
           </div>
           
           <div style={{
@@ -357,23 +433,172 @@ export default function StudentNominees() {
       <div style={{
         backgroundColor: currentTheme.background,
         minHeight: '100vh',
-        fontFamily: 'system-ui, -apple-system, sans-serif',
-        paddingBottom: '100px' // Extra space for bottom nav
+        fontFamily: 'system-ui, -apple-system, sans-serif'
       }}>
-        {/* Full-screen content - no header, no counter */}
+        {/* BOOKSHELF-STYLE HEADER */}
+        <div style={{
+          background: `linear-gradient(135deg, ${currentTheme.primary}F0, ${currentTheme.secondary}F0)`,
+          backdropFilter: 'blur(20px)',
+          padding: '30px 20px 12px',
+          position: 'relative',
+          borderRadius: '0 0 25px 25px',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+          zIndex: 10,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          {/* Back Arrow */}
+          <button
+            onClick={() => router.push('/student-dashboard')}
+            style={{
+              backgroundColor: 'rgba(255,255,255,0.3)',
+              border: 'none',
+              borderRadius: '50%',
+              width: '36px',
+              height: '36px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '16px',
+              cursor: 'pointer',
+              color: currentTheme.textPrimary,
+              backdropFilter: 'blur(10px)',
+              flexShrink: 0
+            }}
+          >
+            ←
+          </button>
+
+          {/* Title */}
+          <h1 style={{
+            fontSize: '24px',
+            fontWeight: '400',
+            color: currentTheme.textPrimary,
+            margin: '0',
+            letterSpacing: '1px',
+            fontFamily: 'Didot, "Times New Roman", serif',
+            textAlign: 'center',
+            flex: 1
+          }}>
+            Nominees
+          </h1>
+
+          {/* Bookshelf Arrow */}
+          <button
+            onClick={() => router.push('/student-bookshelf')}
+            style={{
+              backgroundColor: 'rgba(255,255,255,0.3)',
+              border: 'none',
+              borderRadius: '50%',
+              width: '36px',
+              height: '36px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '16px',
+              cursor: 'pointer',
+              color: currentTheme.textPrimary,
+              backdropFilter: 'blur(10px)',
+              flexShrink: 0
+            }}
+          >
+            📚
+          </button>
+        </div>
+
+        {/* MAIN CONTENT */}
         <div 
           style={{
             padding: '20px 20px 0 20px',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            minHeight: 'calc(100vh - 100px)', // Account for bottom nav
-            paddingTop: '20px' // Reduced top spacing
+            minHeight: 'calc(100vh - 120px)',
+            paddingTop: '20px',
+            position: 'relative'
           }}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={() => { isDragging.current = false; }}
         >
+          {/* Side Navigation Arrows */}
+          {currentCardIndex > 0 && (
+            <button
+              onClick={goToPrevCard}
+              style={{
+                position: 'absolute',
+                left: '10px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                backgroundColor: 'rgba(255,255,255,0.9)',
+                border: `2px solid ${currentTheme.primary}`,
+                borderRadius: '50%',
+                width: '44px',
+                height: '44px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '18px',
+                cursor: 'pointer',
+                color: currentTheme.textPrimary,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                zIndex: 100,
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = currentTheme.primary;
+                e.target.style.color = '#FFFFFF';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = 'rgba(255,255,255,0.9)';
+                e.target.style.color = currentTheme.textPrimary;
+              }}
+            >
+              ←
+            </button>
+          )}
+
+          {currentCardIndex < nominees.length - 1 && (
+            <button
+              onClick={goToNextCard}
+              style={{
+                position: 'absolute',
+                right: '10px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                backgroundColor: 'rgba(255,255,255,0.9)',
+                border: `2px solid ${currentTheme.primary}`,
+                borderRadius: '50%',
+                width: '44px',
+                height: '44px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '18px',
+                cursor: 'pointer',
+                color: currentTheme.textPrimary,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                zIndex: 100,
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = currentTheme.primary;
+                e.target.style.color = '#FFFFFF';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = 'rgba(255,255,255,0.9)';
+                e.target.style.color = currentTheme.textPrimary;
+              }}
+            >
+              →
+            </button>
+          )}
+
           {/* Main Card */}
           <div style={{
             position: 'relative',
@@ -396,14 +621,14 @@ export default function StudentNominees() {
             textAlign: 'center',
             marginBottom: '20px'
           }}>
-            👈 Swipe left/right to browse books 👉
+            👈 Swipe or use arrows to browse books 👉
           </div>
 
-          {/* Quick Browse - Horizontal Scrollable with proper spacing */}
+          {/* Quick Browse */}
           <div style={{
             width: '100%',
             maxWidth: '400px',
-            marginBottom: '40px' // Extra space above bottom nav
+            marginBottom: '40px'
           }}>
             <h3 style={{
               fontSize: '16px',
@@ -418,7 +643,7 @@ export default function StudentNominees() {
               display: 'flex',
               gap: '8px',
               overflowX: 'auto',
-              padding: '8px 0 40px 0', // Extra bottom padding to clear nav
+              padding: '8px 0 40px 0',
               scrollbarWidth: 'none',
               msOverflowStyle: 'none'
             }}>
@@ -466,100 +691,11 @@ export default function StudentNominees() {
           </div>
         </div>
 
-        {/* Bottom Navigation - Fixed positioning with higher z-index */}
-        <div style={{
-          position: 'fixed',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          backgroundColor: currentTheme.surface,
-          borderTop: `1px solid ${currentTheme.primary}20`,
-          padding: '12px 0 8px 0',
-          display: 'grid',
-          gridTemplateColumns: 'repeat(6, 1fr)',
-          gap: '4px',
-          boxShadow: '0 -2px 10px rgba(0,0,0,0.1)',
-          backdropFilter: 'blur(10px)',
-          zIndex: 1000 // Higher z-index to ensure clickability
-        }}>
-          {[
-            { icon: '▦', label: 'Dashboard', active: false, route: 'Dashboard' },
-            { icon: '▢', label: 'Nominees', active: true, route: 'Nominees' },
-            { icon: '▥', label: 'Bookshelf', active: false, route: 'Bookshelf' },
-            { icon: '◉', label: 'Habits', active: false, route: 'Habits' },
-            { icon: '♔', label: 'Saints', active: false, route: 'Saints' },
-            { icon: '▲', label: 'Stats', active: false, route: 'Stats' }
-          ].map((tab, index) => (
-            <button
-              key={tab.label}
-              onClick={() => handleTabClick(tab.route)}
-              style={{
-                background: tab.active 
-                  ? `linear-gradient(135deg, ${currentTheme.primary}15, ${currentTheme.primary}25)`
-                  : 'none',
-                border: 'none',
-                borderRadius: '12px',
-                padding: '10px 4px 8px 4px',
-                cursor: 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '4px',
-                color: tab.active ? currentTheme.primary : currentTheme.textSecondary,
-                transition: 'all 0.2s ease',
-                margin: '0 2px',
-                touchAction: 'manipulation', // Better touch handling
-                userSelect: 'none' // Prevent text selection
-              }}
-              onTouchStart={(e) => {
-                e.preventDefault(); // Prevent default touch behavior
-                if (!tab.active) {
-                  e.target.style.backgroundColor = `${currentTheme.primary}10`;
-                  e.target.style.transform = 'translateY(-1px)';
-                }
-              }}
-              onTouchEnd={(e) => {
-                e.preventDefault();
-                if (!tab.active) {
-                  e.target.style.backgroundColor = 'transparent';
-                  e.target.style.transform = 'translateY(0)';
-                }
-                // Trigger the click after a short delay
-                setTimeout(() => handleTabClick(tab.route), 50);
-              }}
-            >
-              <span style={{ 
-                fontSize: '20px',
-                fontWeight: tab.active ? '600' : '400',
-                filter: tab.active ? 'none' : 'opacity(0.7)'
-              }}>
-                {tab.icon}
-              </span>
-              <span style={{ 
-                fontSize: '9px', 
-                fontWeight: tab.active ? '600' : '500',
-                letterSpacing: '0.1px'
-              }}>
-                {tab.label}
-              </span>
-              {tab.active && (
-                <div style={{
-                  width: '4px',
-                  height: '4px',
-                  backgroundColor: currentTheme.primary,
-                  borderRadius: '50%',
-                  marginTop: '1px'
-                }} />
-              )}
-            </button>
-          ))}
-        </div>
-
-        {/* Success/Add Message - Positioned above bottom nav */}
+        {/* Success Message */}
         {showAddMessage && (
           <div style={{
             position: 'fixed',
-            bottom: '100px',
+            bottom: '30px',
             left: '50%',
             transform: 'translateX(-50%)',
             backgroundColor: currentTheme.primary,
@@ -567,7 +703,7 @@ export default function StudentNominees() {
             padding: '12px 24px',
             borderRadius: '24px',
             boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-            zIndex: 1001, // Higher than nav bar
+            zIndex: 1001,
             fontSize: '14px',
             fontWeight: '600',
             maxWidth: '90vw',
@@ -577,19 +713,17 @@ export default function StudentNominees() {
           </div>
         )}
 
-        {/* Loading Animation CSS */}
+        {/* CSS */}
         <style jsx>{`
           @keyframes spin {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
           }
           
-          /* Hide scrollbar for webkit browsers */
           ::-webkit-scrollbar {
             display: none;
           }
           
-          /* Mobile optimizations */
           @media (max-width: 480px) {
             .cover-stats-container {
               flex-direction: column !important;
@@ -623,103 +757,96 @@ export default function StudentNominees() {
   );
 }
 
-// FIXED Book Card Component - Real Pokemon Trading Card Style
+// BookCard component stays exactly the same
 function BookCard({ book, theme, onAddBook, isAddingBook }) {
   
   const getCategoryColorPalette = (book) => {
     const category = book.displayCategory || book.internalCategory || '';
     
-    // Graphic novels - Burnt and bright oranges
     if (category.includes('Graphic')) {
       return {
-        primary: '#FF6B35',     // Bright orange
-        secondary: '#FF8C42',   // Medium orange  
-        accent: '#FFB563',      // Light orange
-        background: '#FFF4E6',  // Very light orange
-        surface: '#FFFFFF',     // White
+        primary: '#FF6B35',
+        secondary: '#FF8C42',   
+        accent: '#FFB563',
+        background: '#FFF4E6',
+        surface: '#FFFFFF',
         cardBg: 'linear-gradient(145deg, #FFF4E6, #FFE5CC, #FFFFFF)',
         headerBg: 'linear-gradient(135deg, #FF6B35, #FF8C42)',
-        textPrimary: '#8B2500',  // Dark orange-brown
+        textPrimary: '#8B2500',
         textSecondary: '#B8491C'
       };
     }
     
-    // Chapter Books - Buttery and pastel yellows
     if (category.includes('Chapter Books') || category.includes('Stick With You')) {
       return {
-        primary: '#F4D03F',     // Buttery yellow
-        secondary: '#F7DC6F',   // Light yellow
-        accent: '#FCF3CF',      // Pale yellow
-        background: '#FFFEF7',  // Cream
-        surface: '#FFFFFF',     // White
+        primary: '#F4D03F',
+        secondary: '#F7DC6F',
+        accent: '#FCF3CF',
+        background: '#FFFEF7',
+        surface: '#FFFFFF',
         cardBg: 'linear-gradient(145deg, #FFFEF7, #FCF3CF, #FFFFFF)',
         headerBg: 'linear-gradient(135deg, #F4D03F, #F7DC6F)',
-        textPrimary: '#7D6608',  // Dark yellow-brown
+        textPrimary: '#7D6608',
         textSecondary: '#A57C00'
       };
     }
     
-    // Picture Books - Teals and mints
     if (category.includes('Picture')) {
       return {
-        primary: '#48CAE4',     // Bright teal
-        secondary: '#00B4D8',   // Deep teal
-        accent: '#90E0EF',      // Light teal
-        background: '#F0FDFF',  // Very light mint
-        surface: '#FFFFFF',     // White
+        primary: '#48CAE4',
+        secondary: '#00B4D8',
+        accent: '#90E0EF',
+        background: '#F0FDFF',
+        surface: '#FFFFFF',
         cardBg: 'linear-gradient(145deg, #F0FDFF, #CAF0F8, #FFFFFF)',
         headerBg: 'linear-gradient(135deg, #48CAE4, #00B4D8)',
-        textPrimary: '#023047',  // Dark teal
+        textPrimary: '#023047',
         textSecondary: '#0077B6'
       };
     }
     
-    // Classic - Royal blues
     if (category.includes('Classic')) {
       return {
-        primary: '#3F51B5',     // Royal blue
-        secondary: '#5C6BC0',   // Medium blue
-        accent: '#9FA8DA',      // Light blue
-        background: '#F3F4FF',  // Very light blue
-        surface: '#FFFFFF',     // White
+        primary: '#3F51B5',
+        secondary: '#5C6BC0',
+        accent: '#9FA8DA',
+        background: '#F3F4FF',
+        surface: '#FFFFFF',
         cardBg: 'linear-gradient(145deg, #F3F4FF, #E8EAF6, #FFFFFF)',
         headerBg: 'linear-gradient(135deg, #3F51B5, #5C6BC0)',
-        textPrimary: '#1A237E',  // Dark blue
+        textPrimary: '#1A237E',
         textSecondary: '#283593'
       };
     }
     
-    // Catholic Books - Pastel blues
     if (category.includes('Catholic')) {
       return {
-        primary: '#64B5F6',     // Soft blue
-        secondary: '#90CAF9',   // Light blue
-        accent: '#BBDEFB',      // Pale blue
-        background: '#F8FCFF',  // Very light blue
-        surface: '#FFFFFF',     // White
+        primary: '#64B5F6',
+        secondary: '#90CAF9',
+        accent: '#BBDEFB',
+        background: '#F8FCFF',
+        surface: '#FFFFFF',
         cardBg: 'linear-gradient(145deg, #F8FCFF, #E3F2FD, #FFFFFF)',
         headerBg: 'linear-gradient(135deg, #64B5F6, #90CAF9)',
-        textPrimary: '#0D47A1',  // Dark blue
+        textPrimary: '#0D47A1',
         textSecondary: '#1565C0'
       };
     }
     
-    // Hidden Treasures - Reds and browns
     if (category.includes('Hidden') || category.includes('Treasure')) {
       return {
-        primary: '#D32F2F',     // Rich red
-        secondary: '#F44336',   // Bright red
-        accent: '#FFCDD2',      // Light red
-        background: '#FFF8F8',  // Very light red
-        surface: '#FFFFFF',     // White
+        primary: '#D32F2F',
+        secondary: '#F44336',
+        accent: '#FFCDD2',
+        background: '#FFF8F8',
+        surface: '#FFFFFF',
         cardBg: 'linear-gradient(145deg, #FFF8F8, #FFEBEE, #FFFFFF)',
         headerBg: 'linear-gradient(135deg, #D32F2F, #8D4E3C)',
-        textPrimary: '#8B1538',  // Dark red-brown
+        textPrimary: '#8B1538',
         textSecondary: '#B71C1C'
       };
     }
     
-    // Default - Use theme colors
     return {
       primary: theme.primary,
       secondary: theme.secondary,
@@ -733,21 +860,17 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
     };
   };
 
-  // Get the color palette for this book's category
   const colorPalette = getCategoryColorPalette(book);
 
-  // FIXED: Handle string data from Firebase instead of arrays
   const parseStringToArray = (str, separator = ',') => {
     if (!str) return [];
     if (Array.isArray(str)) return str;
     return str.split(separator).map(item => item.trim());
   };
 
-  // FIXED: Parse authors from string format "Author1; Author2 (role)"
   const formatAuthors = (authorsString) => {
     if (!authorsString) return 'Unknown Author';
     
-    // Handle array format (legacy)
     if (Array.isArray(authorsString)) {
       if (authorsString.length === 0) return 'Unknown Author';
       if (authorsString.length === 1) return authorsString[0];
@@ -755,9 +878,7 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
       return `${authorsString[0]} & ${authorsString.length - 1} more`;
     }
     
-    // Handle string format from Firebase
     const authors = authorsString.split(';').map(author => {
-      // Remove illustrator/role info in parentheses for display
       return author.replace(/\s*\([^)]*\)\s*$/, '').trim();
     }).filter(author => author.length > 0);
     
@@ -767,48 +888,30 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
     return `${authors[0]} & ${authors.length - 1} more`;
   };
 
-  // FIXED: Parse grade levels from string format "Grades 4–7"
   const getGradeDisplay = (gradeLevelsString) => {
     if (!gradeLevelsString) return 'All Grades';
     
-    // Handle array format (legacy)
     if (Array.isArray(gradeLevelsString)) {
       if (gradeLevelsString.length === 0) return 'All Grades';
       const gradeText = gradeLevelsString[0];
       return gradeText ? gradeText.replace('Grades ', '') : 'All Grades';
     }
     
-    // Handle string format from Firebase "Grades 4–7"
     return gradeLevelsString.replace('Grades ', '');
   };
 
-  // FIXED: Parse genres from string format "Genre1, Genre2"
   const getGenreDisplay = (genresString) => {
     if (!genresString) return '';
     
-    // Handle array format (legacy)
     if (Array.isArray(genresString)) {
       if (genresString.length === 0) return '';
       const primaryGenre = genresString[0];
-      // Increased limit and made it responsive
       return primaryGenre.length > 25 ? primaryGenre.substring(0, 25) + '...' : primaryGenre;
     }
     
-    // Handle string format from Firebase "Mythology, Adventure"
     const genres = genresString.split(',').map(g => g.trim());
     const primaryGenre = genres[0];
-    // Increased limit and made it responsive
     return primaryGenre.length > 25 ? primaryGenre.substring(0, 25) + '...' : primaryGenre;
-  };
-
-  const getAllGenres = (genresString) => {
-    if (!genresString) return 'Various';
-    
-    if (Array.isArray(genresString)) {
-      return genresString.join(', ');
-    }
-    
-    return genresString; // Already a string from Firebase
   };
 
   const getLengthDisplay = (book) => {
@@ -828,7 +931,6 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
 
   const getShortCategory = (book) => {
     const category = book.displayCategory || book.internalCategory || 'Fiction';
-    // Remove emoji and shorten for display
     return category.replace(/📖\s*/, '').replace(/🎨\s*/, '').replace(/📚\s*/, '');
   };
 
@@ -857,7 +959,6 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
         textAlign: 'center',
         boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3)'
       }}>
-        {/* Category Badge - Centered at Top */}
         <div style={{
           backgroundColor: 'rgba(255,255,255,0.9)',
           color: colorPalette.textPrimary,
@@ -898,7 +999,6 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
             by {formatAuthors(book.authors)}
           </p>
 
-          {/* Genre - Small and subtle */}
           <div style={{
             display: 'flex',
             gap: '8px',
@@ -934,7 +1034,6 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
           gap: 'clamp(12px, 4vw, 16px)',
           marginBottom: '16px'
         }}>
-          {/* Enhanced Cover Image */}
           <div className="book-cover" style={{
             width: '100px',
             height: '150px',
@@ -960,7 +1059,6 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
                     objectFit: 'cover'
                   }}
                 />
-                {/* Holographic effect overlay */}
                 <div style={{
                   position: 'absolute',
                   top: 0,
@@ -976,7 +1074,6 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
             )}
           </div>
 
-          {/* Pokemon-Style Stats */}
           <div style={{ flex: 1 }}>
             <div style={{
               backgroundColor: `${theme.primary}15`,
@@ -1031,7 +1128,7 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
           </div>
         </div>
 
-        {/* Review Section - Always Visible */}
+        {/* Review Section */}
         {book.luxLibrisReview && (
           <div style={{
             backgroundColor: colorPalette.background,
@@ -1065,7 +1162,6 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
           </div>
         )}
 
-        {/* Platform Info - Only show if audiobook */}
         {book.isAudiobook && book.platforms && (
           <div style={{
             backgroundColor: colorPalette.background,
@@ -1083,7 +1179,7 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
         )}
       </div>
 
-      {/* Action Buttons - 3D Floating Card Style */}
+      {/* Action Buttons */}
       <div style={{
         padding: '12px 20px 20px',
         background: `linear-gradient(180deg, ${colorPalette.background}, ${colorPalette.surface})`
@@ -1123,22 +1219,6 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
               touchAction: 'manipulation',
               transform: 'translateY(-2px)'
             }}
-            onMouseEnter={(e) => {
-              e.target.style.transform = 'translateY(-4px)';
-              e.target.style.boxShadow = `
-                0 12px 24px rgba(0,0,0,0.15),
-                0 6px 12px ${colorPalette.primary}50,
-                inset 0 1px 0 rgba(255,255,255,0.9)
-              `;
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.transform = 'translateY(-2px)';
-              e.target.style.boxShadow = `
-                0 8px 16px rgba(0,0,0,0.1),
-                0 4px 8px ${colorPalette.primary}40,
-                inset 0 1px 0 rgba(255,255,255,0.8)
-              `;
-            }}
           >
             📖 Add Book
           </button>
@@ -1174,22 +1254,6 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
                 minHeight: '56px',
                 touchAction: 'manipulation',
                 transform: 'translateY(-2px)'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.transform = 'translateY(-4px)';
-                e.target.style.boxShadow = `
-                  0 12px 24px rgba(0,0,0,0.25),
-                  0 6px 12px ${colorPalette.primary}50,
-                  inset 0 1px 0 rgba(255,255,255,0.3)
-                `;
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.transform = 'translateY(-2px)';
-                e.target.style.boxShadow = `
-                  0 8px 16px rgba(0,0,0,0.2),
-                  0 4px 8px ${colorPalette.primary}40,
-                  inset 0 1px 0 rgba(255,255,255,0.2)
-                `;
               }}
             >
               🎧 Add Audio
