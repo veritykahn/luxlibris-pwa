@@ -241,16 +241,18 @@ export default function StudentSettings() {
   };
 
   const handleSignOut = async () => {
-    try {
-      setIsSaving(true);
-      await signOut({ redirectTo: '/' });
-    } catch (error) {
-      console.error('Error signing out:', error);
-      setShowSuccess('❌ Error signing out. Please try again.');
-      setTimeout(() => setShowSuccess(''), 3000);
-      setIsSaving(false);
-    }
-  };
+  try {
+    setIsSaving(true);
+    await signOut();
+    // Force redirect to homepage
+    window.location.href = '/';
+  } catch (error) {
+    console.error('Error signing out:', error);
+    setShowSuccess('❌ Error signing out. Please try again.');
+    setTimeout(() => setShowSuccess(''), 3000);
+    setIsSaving(false);
+  }
+};
 
   const previewTheme = themes[selectedThemePreview] || themes.classic_lux;
 
