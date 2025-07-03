@@ -2,12 +2,39 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import Head from 'next/head'
-import { useState } from 'react'
-import { useRouter } from 'next/router'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '../contexts/AuthContext'
 
 export default function Home() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  // Remove router if you're not using it for navigation
+  const router = useRouter()
+  const { user, userProfile, loading, isAuthenticated, getDashboardUrl } = useAuth()
+
+  // CRITICAL: Check authentication and redirect immediately if user is logged in
+  useEffect(() => {
+    if (!loading && isAuthenticated && userProfile) {
+      console.log('✅ User already authenticated, redirecting to dashboard')
+      router.push(getDashboardUrl())
+    }
+  }, [loading, isAuthenticated, userProfile, router, getDashboardUrl])
+
+  // Show loading while checking authentication
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-teal-50 to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-teal-200 border-t-teal-600 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Only show homepage if user is NOT authenticated
+  if (isAuthenticated && userProfile) {
+    return null // This prevents flash of homepage before redirect
+  }
   
   return (
     <>

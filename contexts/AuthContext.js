@@ -1,5 +1,3 @@
-// 1. COMPLETE FRESH AUTH CONTEXT: contexts/AuthContext.js
-
 import { createContext, useContext, useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import { authHelpers, dbHelpers, db } from '../lib/firebase'
@@ -20,18 +18,37 @@ export const AuthProvider = ({ children }) => {
   const [userProfile, setUserProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [initialized, setInitialized] = useState(false)
-  const [lastActivity, setLastActivity] = useState(Date.now())
 
   // Session timeout settings
   const ADMIN_TIMEOUT = 60 * 60 * 1000 // 60 minutes (1 hour) for admins
   const STUDENT_TIMEOUT = 7 * 24 * 60 * 60 * 1000 // 7 days for students (effectively no timeout)
 
-  // Update last activity on user interactions
+  // Initialize last activity from localStorage or current time
+  const initializeLastActivity = () => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('luxlibris_last_activity')
+      return stored ? parseInt(stored) : Date.now()
+    }
+    return Date.now()
+  }
+
+  const [lastActivity, setLastActivity] = useState(initializeLastActivity)
+
+  // Store activity in localStorage whenever it changes
+  const updateLastActivity = (timestamp = Date.now()) => {
+    setLastActivity(timestamp)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('luxlibris_last_activity', timestamp.toString())
+    }
+  }
+
+  // Update last activity on meaningful user interactions (reduced events)
   useEffect(() => {
-    const updateActivity = () => setLastActivity(Date.now())
+    const updateActivity = () => updateLastActivity()
     
     if (typeof window !== 'undefined') {
-      const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click']
+      // Only track meaningful interactions, not mouse movements
+      const events = ['click', 'keypress', 'touchstart']
       events.forEach(event => 
         document.addEventListener(event, updateActivity, true)
       )
@@ -51,7 +68,23 @@ export const AuthProvider = ({ children }) => {
     // Only check timeout for admins
     if (userProfile.accountType !== 'admin') return false
     
-    return Date.now() - lastActivity > ADMIN_TIMEOUT
+    const now = Date.now()
+    const stored = typeof window !== 'undefined' 
+      ? localStorage.getItem('luxlibris_last_activity') 
+      : null
+    
+    const lastActivityTime = stored ? parseInt(stored) : lastActivity
+    const timeSinceActivity = now - lastActivityTime
+    
+    console.log('🕐 Admin session check:', {
+      now: new Date(now).toLocaleTimeString(),
+      lastActivity: new Date(lastActivityTime).toLocaleTimeString(),
+      timeSinceActivity: Math.round(timeSinceActivity / 1000 / 60) + ' minutes',
+      timeout: Math.round(ADMIN_TIMEOUT / 1000 / 60) + ' minutes',
+      isExpired: timeSinceActivity > ADMIN_TIMEOUT
+    })
+    
+    return timeSinceActivity > ADMIN_TIMEOUT
   }
 
   useEffect(() => {
@@ -65,8 +98,22 @@ export const AuthProvider = ({ children }) => {
         try {
           const profile = await dbHelpers.getUserProfile(firebaseUser.uid)
           setUserProfile(profile)
-          // Reset activity timer when user profile loads
-          setLastActivity(Date.now())
+          
+          // Check session expiry immediately after loading profile
+          if (profile?.accountType === 'admin') {
+            // Initialize activity tracking for admin
+            updateLastActivity()
+            
+            // Check if session is expired
+            if (isSessionExpired()) {
+              console.log('⏰ Admin session expired on page load')
+              await signOut({ redirectTo: '/sign-in?reason=session-expired' })
+              return
+            }
+          } else {
+            // For students, just update activity
+            updateLastActivity()
+          }
         } catch (error) {
           console.error('Error fetching user profile:', error)
           setUserProfile(null)
@@ -75,6 +122,10 @@ export const AuthProvider = ({ children }) => {
         // User is signed out
         setUser(null)
         setUserProfile(null)
+        // Clear activity tracking
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('luxlibris_last_activity')
+        }
       }
       
       if (!initialized) {
@@ -99,6 +150,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('luxlibris_student_profile')
         localStorage.removeItem('luxlibris_account_created')
         localStorage.removeItem('luxlibris_onboarding_complete')
+        localStorage.removeItem('luxlibris_last_activity')
       }
       
       // Handle redirects
@@ -197,6 +249,7 @@ export const AuthProvider = ({ children }) => {
     belongsToSchool,
     getUserSchool,
     isSessionExpired,
+    updateLastActivity,
     
     // Computed values
     isAuthenticated: !!user,

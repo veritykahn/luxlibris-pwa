@@ -8,7 +8,7 @@ import Head from 'next/head'
 
 export default function StudentSettings() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [studentData, setStudentData] = useState(null);
   const [currentTheme, setCurrentTheme] = useState(null);
   const [selectedThemePreview, setSelectedThemePreview] = useState('');
@@ -18,6 +18,7 @@ export default function StudentSettings() {
   const [showSuccess, setShowSuccess] = useState('');
   const [parentInviteCode, setParentInviteCode] = useState('');
   const [showInviteCode, setShowInviteCode] = useState(false);
+  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
 
   // Theme definitions (same as everywhere else)
   const themes = {
@@ -237,6 +238,19 @@ export default function StudentSettings() {
     navigator.clipboard.writeText(parentInviteCode);
     setShowSuccess('📋 Invite code copied!');
     setTimeout(() => setShowSuccess(''), 2000);
+  };
+
+  const handleSignOut = async () => {
+    try {
+      setIsSaving(true);
+      await signOut();
+      // The AuthContext will handle the redirect
+    } catch (error) {
+      console.error('Error signing out:', error);
+      setShowSuccess('❌ Error signing out. Please try again.');
+      setTimeout(() => setShowSuccess(''), 3000);
+      setIsSaving(false);
+    }
   };
 
   const previewTheme = themes[selectedThemePreview] || themes.classic_lux;
@@ -707,7 +721,7 @@ export default function StudentSettings() {
           )}
         </div>
 
-        {/* Other Settings */}
+        {/* Account & Other Settings */}
         <div style={{
           backgroundColor: previewTheme.surface,
           borderRadius: '16px',
@@ -721,7 +735,7 @@ export default function StudentSettings() {
             color: previewTheme.textPrimary,
             marginBottom: '16px'
           }}>
-            ⚙️ Other Settings
+            ⚙️ Account & Settings
           </h2>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -739,6 +753,24 @@ export default function StudentSettings() {
               }}
             >
               📋 Privacy &amp; Terms
+            </button>
+
+            {/* Sign Out Button */}
+            <button
+              onClick={() => setShowSignOutConfirm(true)}
+              style={{
+                backgroundColor: 'transparent',
+                border: '1px solid #dc2626',
+                color: '#dc2626',
+                padding: '12px 16px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                textAlign: 'left',
+                fontWeight: '600'
+              }}
+            >
+              🚪 Sign Out
             </button>
           </div>
         </div>
@@ -762,6 +794,88 @@ export default function StudentSettings() {
             textAlign: 'center'
           }}>
             {showSuccess}
+          </div>
+        )}
+
+        {/* Sign Out Confirmation Modal */}
+        {showSignOutConfirm && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 2000,
+            padding: '20px'
+          }}>
+            <div style={{
+              backgroundColor: previewTheme.surface,
+              borderRadius: '16px',
+              padding: '24px',
+              maxWidth: '400px',
+              width: '100%',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
+            }}>
+              <h3 style={{
+                fontSize: '18px',
+                fontWeight: 'bold',
+                color: previewTheme.textPrimary,
+                marginBottom: '12px',
+                textAlign: 'center'
+              }}>
+                🚪 Sign Out
+              </h3>
+              <p style={{
+                fontSize: '14px',
+                color: previewTheme.textSecondary,
+                marginBottom: '20px',
+                textAlign: 'center',
+                lineHeight: '1.4'
+              }}>
+                Are you sure you want to sign out? You'll need to sign in again to access your books and progress.
+              </p>
+              <div style={{
+                display: 'flex',
+                gap: '12px',
+                justifyContent: 'center'
+              }}>
+                <button
+                  onClick={() => setShowSignOutConfirm(false)}
+                  style={{
+                    backgroundColor: 'transparent',
+                    border: `1px solid ${previewTheme.primary}50`,
+                    color: previewTheme.textPrimary,
+                    padding: '10px 20px',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '14px'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSignOut}
+                  disabled={isSaving}
+                  style={{
+                    backgroundColor: '#dc2626',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    opacity: isSaving ? 0.7 : 1
+                  }}
+                >
+                  {isSaving ? 'Signing out...' : 'Sign Out'}
+                </button>
+              </div>
+            </div>
           </div>
         )}
      </div>

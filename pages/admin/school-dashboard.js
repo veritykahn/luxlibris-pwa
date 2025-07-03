@@ -1,9 +1,24 @@
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
+import { useRouter } from 'next/router'
+import { useAuth } from '../../contexts/AuthContext' // ADDED: Authentication
 import { db } from '../../lib/firebase'
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where } from 'firebase/firestore'
 
 export default function SchoolAdminDashboard() {
+  const router = useRouter()
+  
+  // ADDED: Authentication with session timeout checking
+  const { 
+    user, 
+    userProfile, 
+    loading: authLoading, 
+    isAuthenticated, 
+    isSessionExpired, 
+    signOut,
+    updateLastActivity // Update activity on interactions
+  } = useAuth()
+
   const [activeTab, setActiveTab] = useState('students')
   const [loading, setLoading] = useState(true)
   const [school, setSchool] = useState(null)
@@ -18,8 +33,82 @@ export default function SchoolAdminDashboard() {
     historicalBooks: {}
   })
 
+  // ADDED: Session timeout warning state
+  const [showTimeoutWarning, setShowTimeoutWarning] = useState(false)
+
+  // ADDED: Authentication and session checking
   useEffect(() => {
-    loadSchoolData()
+    const checkAuthAndSession = async () => {
+      if (authLoading) return // Wait for auth to load
+
+      // Check if user is authenticated
+      if (!isAuthenticated) {
+        console.log('❌ Admin not authenticated, redirecting to sign-in')
+        router.push('/sign-in')
+        return
+      }
+
+      // Check if user is admin
+      if (userProfile && userProfile.accountType !== 'admin') {
+        console.log('❌ User is not admin, redirecting to appropriate dashboard')
+        router.push('/role-selector')
+        return
+      }
+
+      // Check session expiry for admins
+      if (userProfile?.accountType === 'admin' && isSessionExpired()) {
+        console.log('⏰ Admin session expired, signing out')
+        await signOut({ redirectTo: '/sign-in?reason=session-expired' })
+        return
+      }
+
+      // If we get here, admin is authenticated and session is valid
+      if (userProfile) {
+        loadSchoolData()
+      }
+    }
+
+    checkAuthAndSession()
+  }, [authLoading, isAuthenticated, userProfile, router, isSessionExpired, signOut])
+
+  // ADDED: Periodic session checking while on page
+  useEffect(() => {
+    if (!userProfile?.accountType === 'admin') return
+
+    const sessionCheckInterval = setInterval(() => {
+      if (isSessionExpired()) {
+        console.log('⏰ Admin session expired during use, signing out')
+        signOut({ redirectTo: '/sign-in?reason=session-expired' })
+      } else {
+        // Check if close to expiry (55 minutes = 55 * 60 * 1000)
+        const warningTime = 55 * 60 * 1000
+        const timeLeft = warningTime - (Date.now() - (parseInt(localStorage.getItem('luxlibris_last_activity')) || Date.now()))
+        
+        if (timeLeft <= 0 && timeLeft > -60000) { // Show warning in last 5 minutes
+          setShowTimeoutWarning(true)
+        }
+      }
+    }, 60000) // Check every minute
+
+    return () => clearInterval(sessionCheckInterval)
+  }, [userProfile, isSessionExpired, signOut])
+
+  // ADDED: Update activity on user interactions
+  const handleUserActivity = () => {
+    updateLastActivity()
+    setShowTimeoutWarning(false) // Hide warning if user is active
+  }
+
+  // ADDED: Set up activity tracking for this page
+  useEffect(() => {
+    // Add click listeners to update activity
+    document.addEventListener('click', handleUserActivity)
+    document.addEventListener('keypress', handleUserActivity)
+
+    return () => {
+      document.removeEventListener('click', handleUserActivity)
+      document.removeEventListener('keypress', handleUserActivity)
+    }
   }, [])
 
   const loadSchoolData = async () => {
@@ -44,7 +133,7 @@ export default function SchoolAdminDashboard() {
         setSchool(schoolData)
       }
 
-      // Load students (mock data for now since we don&apos;t have real students yet)
+      // Load students (mock data for now since we don't have real students yet)
       const mockStudents = [
         {
           id: 'student1',
@@ -154,7 +243,19 @@ export default function SchoolAdminDashboard() {
     // TODO: Update in Firebase and award saint achievement
   }
 
-  if (loading) {
+  // ADDED: Handle session extension
+  const extendSession = () => {
+    updateLastActivity()
+    setShowTimeoutWarning(false)
+  }
+
+  // ADDED: Handle sign out from timeout warning
+  const handleTimeoutSignOut = async () => {
+    await signOut({ redirectTo: '/sign-in?reason=session-expired' })
+  }
+
+  // Show loading while checking authentication OR loading data
+  if (authLoading || (isAuthenticated && !userProfile) || loading) {
     return (
       <div style={{
         minHeight: '100vh',
@@ -173,10 +274,17 @@ export default function SchoolAdminDashboard() {
             animation: 'spin 1s linear infinite',
             margin: '0 auto 1rem'
           }}></div>
-          <p style={{ color: '#223848', fontSize: '1.1rem' }}>Loading your dashboard...</p>
+          <p style={{ color: '#223848', fontSize: '1.1rem' }}>
+            {authLoading ? 'Checking authentication...' : 'Loading your dashboard...'}
+          </p>
         </div>
       </div>
     )
+  }
+
+  // Don't render if not authenticated (will redirect)
+  if (!isAuthenticated || !userProfile || userProfile.accountType !== 'admin') {
+    return null
   }
 
   return (
@@ -191,6 +299,85 @@ export default function SchoolAdminDashboard() {
         background: 'linear-gradient(135deg, #FFFCF5 0%, #C3E0DE 50%, #A1E5DB 100%)',
         fontFamily: 'system-ui, -apple-system, sans-serif'
       }}>
+        
+        {/* ADDED: Session Timeout Warning Modal */}
+        {showTimeoutWarning && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+            padding: '1rem'
+          }}>
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '1rem',
+              padding: '2rem',
+              maxWidth: '400px',
+              width: '100%',
+              textAlign: 'center',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
+            }}>
+              <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏰</div>
+              <h3 style={{
+                fontSize: '1.25rem',
+                fontWeight: 'bold',
+                color: '#223848',
+                marginBottom: '1rem'
+              }}>
+                Session Expiring Soon
+              </h3>
+              <p style={{
+                color: '#6b7280',
+                marginBottom: '1.5rem',
+                lineHeight: '1.4'
+              }}>
+                Your admin session will expire in a few minutes for security. Would you like to continue working?
+              </p>
+              <div style={{
+                display: 'flex',
+                gap: '0.75rem',
+                justifyContent: 'center'
+              }}>
+                <button
+                  onClick={handleTimeoutSignOut}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    backgroundColor: '#f3f4f6',
+                    color: '#374151',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem'
+                  }}
+                >
+                  Sign Out
+                </button>
+                <button
+                  onClick={extendSession}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    background: 'linear-gradient(135deg, #ADD4EA, #C3E0DE)',
+                    color: '#223848',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem',
+                    fontWeight: '600'
+                  }}
+                >
+                  Continue Working
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         
         {/* Header - Mobile Optimized */}
         <header style={{
@@ -256,23 +443,46 @@ export default function SchoolAdminDashboard() {
               </div>
             </div>
             
-            <button style={{
-              padding: '0.5rem 0.75rem',
-              background: 'linear-gradient(135deg, #C3E0DE, #A1E5DB)',
-              color: '#223848',
-              borderRadius: '0.5rem',
-              fontSize: '0.75rem',
-              fontWeight: '600',
-              border: 'none',
-              cursor: 'pointer',
-              flexShrink: 0,
-              minHeight: '36px', // Touch target
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.25rem'
-            }}>
-              ⚙️ Settings
-            </button>
+            {/* ADDED: Sign out button */}
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <button 
+                onClick={() => signOut()}
+                style={{
+                  padding: '0.5rem 0.75rem',
+                  background: 'linear-gradient(135deg, #f87171, #ef4444)',
+                  color: 'white',
+                  borderRadius: '0.5rem',
+                  fontSize: '0.75rem',
+                  fontWeight: '600',
+                  border: 'none',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                  minHeight: '36px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.25rem'
+                }}
+              >
+                🚪 Sign Out
+              </button>
+              <button style={{
+                padding: '0.5rem 0.75rem',
+                background: 'linear-gradient(135deg, #C3E0DE, #A1E5DB)',
+                color: '#223848',
+                borderRadius: '0.5rem',
+                fontSize: '0.75rem',
+                fontWeight: '600',
+                border: 'none',
+                cursor: 'pointer',
+                flexShrink: 0,
+                minHeight: '36px', // Touch target
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.25rem'
+              }}>
+                ⚙️ Settings
+              </button>
+            </div>
           </div>
         </header>
 
@@ -389,7 +599,7 @@ export default function SchoolAdminDashboard() {
             </div>
           </div>
 
-          {/* Tab Content */}
+          {/* Tab Content - REST STAYS THE SAME */}
           <div style={{
             background: 'white',
             borderRadius: '0 0 1rem 1rem',

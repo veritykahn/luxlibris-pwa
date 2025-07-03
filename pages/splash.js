@@ -1,4 +1,4 @@
-// pages/splash.js
+// pages/splash.js - LIMITED TO FIRST-TIME FLOWS ONLY
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
@@ -9,9 +9,17 @@ export default function Splash() {
   const videoRef = useRef(null);
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [navigated, setNavigated] = useState(false);
-  const { user, userProfile, loading, getDashboardUrl } = useAuth();
+  const { user, userProfile, loading, getDashboardUrl, isAuthenticated } = useAuth();
 
   useEffect(() => {
+    // CRITICAL: If user is already authenticated, immediately redirect to dashboard
+    // This prevents authenticated users from getting stuck on splash page
+    if (!loading && isAuthenticated && userProfile) {
+      console.log('✅ Authenticated user on splash page, redirecting to dashboard');
+      router.push(getDashboardUrl());
+      return;
+    }
+
     // Auto-navigate after 6 seconds (matching your Flutter timing)
     const timer = setTimeout(() => {
       if (!navigated) {
@@ -20,51 +28,45 @@ export default function Splash() {
     }, 6000);
 
     return () => clearTimeout(timer);
-  }, [navigated]);
+  }, [loading, isAuthenticated, userProfile, navigated, router, getDashboardUrl]);
 
   const navigateAfterDelay = async () => {
     if (navigated) return;
     setNavigated(true);
 
     try {
-      // Get userType from URL parameters
+      // Get userType from URL parameters for first-time flows
       const urlParams = new URLSearchParams(window.location.search);
       const userType = urlParams.get('type');
       
-      console.log('🔍 SPLASH DEBUG:');
+      console.log('🔍 SPLASH DEBUG (First-time flow):');
       console.log('URL params:', urlParams.toString());
       console.log('userType from URL:', userType);
       console.log('User auth state:', { user: !!user, userProfile, loading });
       
-      // If user is authenticated, use their actual profile
+      // If user is authenticated, use their actual profile (should not happen due to useEffect above)
       if (!loading && user && userProfile) {
         console.log('✅ User is authenticated, redirecting to dashboard');
         router.push(getDashboardUrl());
         return;
       }
       
-      // Handle URL-based routing for unauthenticated users
+      // Handle URL-based routing for NEW/UNAUTHENTICATED users only
       if (userType === 'school-admin') {
-        console.log('✅ Going to admin onboarding');
+        console.log('✅ Going to admin onboarding (first-time)');
         router.push('/admin/school-onboarding');
       } else if (userType === 'student') {
-        console.log('✅ Going to student flow');
+        console.log('✅ Going to student flow (first-time)');
         // Check legal acceptance first
         const hasAcceptedLegal = localStorage.getItem('hasAcceptedLegal') === 'true';
         if (!hasAcceptedLegal) {
           router.push('/legal?type=student');
         } else {
-          const studentData = localStorage.getItem('studentData');
-          if (studentData) {
-            // Returning student
-            router.push('/student-dashboard');
-          } else {
-            // New student - go to onboarding
-            router.push('/student-onboarding');
-          }
+          // New student - go to onboarding (should not have existing data)
+          router.push('/student-onboarding');
         }
       } else {
-        console.log('❌ Unknown userType, going to role selector');
+        console.log('❌ No specific userType, going to role selector');
         router.push('/role-selector');
       }
     } catch (error) {
@@ -89,6 +91,37 @@ export default function Splash() {
       navigateAfterDelay();
     }
   };
+
+  // Show loading while checking authentication
+  if (loading) {
+    return (
+      <div style={{
+        backgroundColor: '#FFFCF5',
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            width: '40px',
+            height: '40px',
+            border: '3px solid #ADD4EA30',
+            borderTop: '3px solid #ADD4EA',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 16px'
+          }} />
+          <p style={{ color: '#223848' }}>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If authenticated, show nothing (redirect will happen)
+  if (isAuthenticated && userProfile) {
+    return null;
+  }
 
   return (
     <>
@@ -198,7 +231,7 @@ export default function Splash() {
             </div>
           )}
 
-          {/* Skip Button (appears after 2 seconds) */}
+          {/* Skip Button (appears after video loads) */}
           <button
             onClick={handleScreenTap}
             style={{
