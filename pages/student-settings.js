@@ -1,5 +1,5 @@
 // pages/student-settings.js - COPY THIS CODE
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
 import { getStudentData, updateStudentData } from '../lib/firebase';
@@ -117,11 +117,7 @@ export default function StudentSettings() {
     ...value
   }));
 
-  useEffect(() => {
-    loadStudentData();
-  }, [user]);
-
-  const loadStudentData = async () => {
+  const loadStudentData = useCallback(async () => {
     try {
       if (!user?.uid) {
         router.push('/student-account-creation');
@@ -151,7 +147,11 @@ export default function StudentSettings() {
       router.push('/student-account-creation');
     }
     setIsLoading(false);
-  };
+  }, [user, router]);
+
+  useEffect(() => {
+    loadStudentData();
+  }, [loadStudentData]);
 
   const saveThemeChange = async () => {
     if (selectedThemePreview === studentData.selectedTheme) return;
@@ -836,7 +836,7 @@ export default function StudentSettings() {
                 textAlign: 'center',
                 lineHeight: '1.4'
               }}>
-                Are you sure you want to sign out? You'll need to sign in again to access your books and progress.
+                Are you sure you want to sign out? You&apos;ll need to sign in again to access your books and progress.
               </p>
               <div style={{
                 display: 'flex',
