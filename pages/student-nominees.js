@@ -106,7 +106,7 @@ primary: '#666666', // Medium grey (for buttons/elements)
  background: '#FFFFFF', // Pure white background
  surface: '#FAFAFA', // Very light grey surface
  textPrimary: '#333333', // Dark grey text (readable on all light backgrounds)
- textSecondary: '#666666' // Medium grey text
+ textSecondary: '#CCCCCC' // Light grey
 }
 };
 
