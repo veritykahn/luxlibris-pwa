@@ -13,9 +13,26 @@ export default function Home() {
 
   // CRITICAL: Check authentication and redirect immediately if user is logged in
   useEffect(() => {
+    console.log('🔍 HOMEPAGE DEBUG - Auth state:', {
+      loading,
+      isAuthenticated,
+      userProfile: userProfile ? {
+        accountType: userProfile.accountType,
+        firstName: userProfile.firstName,
+        uid: userProfile.uid || 'no uid'
+      } : 'null',
+      condition1: !loading,
+      condition2: isAuthenticated,
+      condition3: !!userProfile,
+      allConditionsMet: !loading && isAuthenticated && userProfile
+    });
+
     if (!loading && isAuthenticated && userProfile) {
-      console.log('✅ User already authenticated, redirecting to dashboard')
-      router.push(getDashboardUrl())
+      const dashboardUrl = getDashboardUrl();
+      console.log('✅ User already authenticated, redirecting to:', dashboardUrl);
+      router.push(dashboardUrl);
+    } else {
+      console.log('❌ Not redirecting because conditions not met');
     }
   }, [loading, isAuthenticated, userProfile, router, getDashboardUrl])
 
