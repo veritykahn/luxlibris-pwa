@@ -108,7 +108,7 @@ export default function StudentBookshelf() {
  background: '#FFFFFF', // Pure white background
  surface: '#FAFAFA', // Very light grey surface
  textPrimary: '#B8860B', // Deep rich gold (readable on light backgrounds)
- textSecondary: '#FFFFFF' // White text (for dark backgrounds)
+ textSecondary: '#AAAAAA' // grey text (for dark backgrounds)
 }
 };
 
