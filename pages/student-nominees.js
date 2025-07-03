@@ -1,5 +1,5 @@
-// pages/student-nominees.js - UPDATED with bookshelf-style header and desktop navigation
-import { useState, useEffect, useRef } from 'react';
+// pages/student-nominees.js - FIXED version with proper arrow styling and duplicate prevention
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
 import { getStudentData, getSchoolNominees, addBookToBookshelf } from '../lib/firebase';
@@ -23,95 +23,95 @@ export default function StudentNominees() {
 
   // Theme definitions (same as before)
   const themes = {
-  classic_lux: {
-    name: 'Lux Libris Classic',
-    assetPrefix: 'classic_lux',
-    primary: '#ADD4EA',
-    secondary: '#C3E0DE',
-    accent: '#A1E5DB',
-    background: '#FFFCF5',
-    surface: '#FFFFFF',
-    textPrimary: '#223848',
-    textSecondary: '#556B7A'
-  },
-  darkwood_sports: {
-    name: 'Athletic Champion',
-    assetPrefix: 'darkwood_sports',
-    primary: '#2F5F5F',
-    secondary: '#8B2635',
-    accent: '#F5DEB3',
-    background: '#F5F5DC',
-    surface: '#FFF8DC',
-    textPrimary: '#2F1B14',
-    textSecondary: '#5D4037'
-  },
-  lavender_space: {
-    name: 'Cosmic Explorer',
-    assetPrefix: 'lavender_space',
-    primary: '#9C88C4',
-    secondary: '#B19CD9',
-    accent: '#E1D5F7',
-    background: '#2A1B3D',
-    surface: '#3D2B54',
-    textPrimary: '#E1D5F7',
-    textSecondary: '#B19CD9'
-  },
-  mint_music: {
-    name: 'Musical Harmony',
-    assetPrefix: 'mint_music',
-    primary: '#B8E6B8',
-    secondary: '#FFB3BA',
-    accent: '#FFCCCB',
-    background: '#FEFEFE',
-    surface: '#F8FDF8',
-    textPrimary: '#2E4739',
-    textSecondary: '#4A6B57'
-  },
-  pink_plushies: {
-    name: 'Kawaii Dreams',
-    assetPrefix: 'pink_plushies',
-    primary: '#FFB6C1',
-    secondary: '#FFC0CB',
-    accent: '#FFE4E1',
-    background: '#FFF0F5',
-    surface: '#FFE4E6',
-    textPrimary: '#4A2C2A',
-    textSecondary: '#8B4B5C'
-  },
-  teal_anime: {
-    name: 'Otaku Paradise',
-    assetPrefix: 'teal_anime',
-    primary: '#20B2AA',
-    secondary: '#48D1CC',
-    accent: '#7FFFD4',
-    background: '#E0FFFF',
-    surface: '#AFEEEE',
-    textPrimary: '#2F4F4F',
-    textSecondary: '#5F9EA0'
-  },
-  white_nature: {
-    name: 'Pure Serenity',
-    assetPrefix: 'white_nature',
-    primary: '#6B8E6B',
-    secondary: '#D2B48C',
-    accent: '#F5F5DC',
-    background: '#FFFEF8',
-    surface: '#FFFFFF',
-    textPrimary: '#2F4F2F',
-    textSecondary: '#556B2F'
-  },
-  little_luminaries: {
-    name: 'Little Luminaries™',
-    assetPrefix: 'little_luminaries',
-    primary: '#666666',
-    secondary: '#000000',
-    accent: '#E8E8E8',
-    background: '#FFFFFF',
-    surface: '#FAFAFA',
-    textPrimary: '#B8860B',
-    textSecondary: '#AAAAAA'
-  }
-};
+    classic_lux: {
+      name: 'Lux Libris Classic',
+      assetPrefix: 'classic_lux',
+      primary: '#ADD4EA',
+      secondary: '#C3E0DE',
+      accent: '#A1E5DB',
+      background: '#FFFCF5',
+      surface: '#FFFFFF',
+      textPrimary: '#223848',
+      textSecondary: '#556B7A'
+    },
+    darkwood_sports: {
+      name: 'Athletic Champion',
+      assetPrefix: 'darkwood_sports',
+      primary: '#2F5F5F',
+      secondary: '#8B2635',
+      accent: '#F5DEB3',
+      background: '#F5F5DC',
+      surface: '#FFF8DC',
+      textPrimary: '#2F1B14',
+      textSecondary: '#5D4037'
+    },
+    lavender_space: {
+      name: 'Cosmic Explorer',
+      assetPrefix: 'lavender_space',
+      primary: '#9C88C4',
+      secondary: '#B19CD9',
+      accent: '#E1D5F7',
+      background: '#2A1B3D',
+      surface: '#3D2B54',
+      textPrimary: '#E1D5F7',
+      textSecondary: '#B19CD9'
+    },
+    mint_music: {
+      name: 'Musical Harmony',
+      assetPrefix: 'mint_music',
+      primary: '#B8E6B8',
+      secondary: '#FFB3BA',
+      accent: '#FFCCCB',
+      background: '#FEFEFE',
+      surface: '#F8FDF8',
+      textPrimary: '#2E4739',
+      textSecondary: '#4A6B57'
+    },
+    pink_plushies: {
+      name: 'Kawaii Dreams',
+      assetPrefix: 'pink_plushies',
+      primary: '#FFB6C1',
+      secondary: '#FFC0CB',
+      accent: '#FFE4E1',
+      background: '#FFF0F5',
+      surface: '#FFE4E6',
+      textPrimary: '#4A2C2A',
+      textSecondary: '#8B4B5C'
+    },
+    teal_anime: {
+      name: 'Otaku Paradise',
+      assetPrefix: 'teal_anime',
+      primary: '#20B2AA',
+      secondary: '#48D1CC',
+      accent: '#7FFFD4',
+      background: '#E0FFFF',
+      surface: '#AFEEEE',
+      textPrimary: '#2F4F4F',
+      textSecondary: '#5F9EA0'
+    },
+    white_nature: {
+      name: 'Pure Serenity',
+      assetPrefix: 'white_nature',
+      primary: '#6B8E6B',
+      secondary: '#D2B48C',
+      accent: '#F5F5DC',
+      background: '#FFFEF8',
+      surface: '#FFFFFF',
+      textPrimary: '#2F4F2F',
+      textSecondary: '#556B2F'
+    },
+    little_luminaries: {
+      name: 'Little Luminaries™',
+      assetPrefix: 'little_luminaries',
+      primary: '#666666',
+      secondary: '#000000',
+      accent: '#E8E8E8',
+      background: '#FFFFFF',
+      surface: '#FAFAFA',
+      textPrimary: '#B8860B',
+      textSecondary: '#AAAAAA'
+    }
+  };
 
   useEffect(() => {
     if (!loading && isAuthenticated && user) {
@@ -167,21 +167,47 @@ export default function StudentNominees() {
     setIsLoading(false);
   };
 
-  const handleAddToBookshelf = async (book, format) => {
+  // Check if book is already in bookshelf
+  const isBookInBookshelf = useCallback((bookId, format) => {
+    if (!studentData?.bookshelf) return false;
+    return studentData.bookshelf.some(book => 
+      book.bookId === bookId && book.format === format
+    );
+  }, [studentData?.bookshelf]);
+
+  // FIXED: Use useCallback to prevent stale closure issues
+  const handleAddToBookshelf = useCallback(async (book, format) => {
     if (isAddingBook) return;
+    
+    // Check if already in bookshelf (frontend check for immediate feedback)
+    if (isBookInBookshelf(book.id, format)) {
+      const message = format === 'audiobook' 
+        ? `🎧 ${book.title} is already in your bookshelf as an audiobook!`
+        : `📖 ${book.title} is already in your bookshelf!`;
+      
+      setShowAddMessage(message);
+      setTimeout(() => setShowAddMessage(''), 3000);
+      return;
+    }
     
     setIsAddingBook(true);
     
     try {
       console.log('📖 Adding book to bookshelf:', book.title, format);
       
-      await addBookToBookshelf(
+      const newBookProgress = await addBookToBookshelf(
         studentData.id,
         studentData.dioceseId,
         studentData.schoolId,
         book.id,
         format
       );
+      
+      // Update local state to reflect the addition
+      setStudentData(prev => ({
+        ...prev,
+        bookshelf: [...(prev.bookshelf || []), newBookProgress]
+      }));
       
       const message = format === 'audiobook' 
         ? `🎧 ${book.title} added as audiobook!`
@@ -192,12 +218,19 @@ export default function StudentNominees() {
       
     } catch (error) {
       console.error('❌ Error adding book:', error);
-      setShowAddMessage('❌ Error adding book. Please try again.');
+      
+      // Handle specific error messages from Firebase
+      let errorMessage = '❌ Error adding book. Please try again.';
+      if (error.message && error.message.includes('already in your bookshelf')) {
+        errorMessage = `📚 ${book.title} is already in your bookshelf!`;
+      }
+      
+      setShowAddMessage(errorMessage);
       setTimeout(() => setShowAddMessage(''), 3000);
     }
     
     setIsAddingBook(false);
-  };
+  }, [studentData, isAddingBook, isBookInBookshelf]);
 
   // Touch handlers for mobile
   const handleTouchStart = (e) => {
@@ -503,7 +536,7 @@ export default function StudentNominees() {
               flexShrink: 0
             }}
           >
-            📚
+            ▥
           </button>
         </div>
 
@@ -526,77 +559,65 @@ export default function StudentNominees() {
           onMouseUp={handleMouseUp}
           onMouseLeave={() => { isDragging.current = false; }}
         >
-          {/* Side Navigation Arrows */}
+          {/* FIXED: Minimal translucent navigation arrows centered on card */}
           {currentCardIndex > 0 && (
-            <button
+            <div
               onClick={goToPrevCard}
               style={{
                 position: 'absolute',
-                left: '10px',
+                left: '15px',
                 top: '50%',
                 transform: 'translateY(-50%)',
-                backgroundColor: 'rgba(255,255,255,0.9)',
-                border: `2px solid ${currentTheme.primary}`,
+                backgroundColor: 'rgba(255,255,255,0.5)',
+                border: 'none',
                 borderRadius: '50%',
-                width: '44px',
-                height: '44px',
+                width: '28px',
+                height: '28px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '18px',
+                fontSize: '14px',
                 cursor: 'pointer',
                 color: currentTheme.textPrimary,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                backdropFilter: 'blur(10px)',
                 zIndex: 100,
-                transition: 'all 0.2s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.backgroundColor = currentTheme.primary;
-                e.target.style.color = '#FFFFFF';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.backgroundColor = 'rgba(255,255,255,0.9)';
-                e.target.style.color = currentTheme.textPrimary;
+                transition: 'all 0.2s ease',
+                userSelect: 'none',
+                opacity: 0.7
               }}
             >
               ←
-            </button>
+            </div>
           )}
 
           {currentCardIndex < nominees.length - 1 && (
-            <button
+            <div
               onClick={goToNextCard}
               style={{
                 position: 'absolute',
-                right: '10px',
+                right: '15px',
                 top: '50%',
                 transform: 'translateY(-50%)',
-                backgroundColor: 'rgba(255,255,255,0.9)',
-                border: `2px solid ${currentTheme.primary}`,
+                backgroundColor: 'rgba(255,255,255,0.5)',
+                border: 'none',
                 borderRadius: '50%',
-                width: '44px',
-                height: '44px',
+                width: '28px',
+                height: '28px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '18px',
+                fontSize: '14px',
                 cursor: 'pointer',
                 color: currentTheme.textPrimary,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                backdropFilter: 'blur(10px)',
                 zIndex: 100,
-                transition: 'all 0.2s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.backgroundColor = currentTheme.primary;
-                e.target.style.color = '#FFFFFF';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.backgroundColor = 'rgba(255,255,255,0.9)';
-                e.target.style.color = currentTheme.textPrimary;
+                transition: 'all 0.2s ease',
+                userSelect: 'none',
+                opacity: 0.7
               }}
             >
               →
-            </button>
+            </div>
           )}
 
           {/* Main Card */}
@@ -611,6 +632,7 @@ export default function StudentNominees() {
               theme={currentTheme}
               onAddBook={handleAddToBookshelf}
               isAddingBook={isAddingBook}
+              isBookInBookshelf={isBookInBookshelf}
             />
           </div>
 
@@ -683,7 +705,7 @@ export default function StudentNominees() {
                       }}
                     />
                   ) : (
-                    '📚'
+                    '▥'
                   )}
                 </button>
               ))}
@@ -757,8 +779,8 @@ export default function StudentNominees() {
   );
 }
 
-// BookCard component stays exactly the same
-function BookCard({ book, theme, onAddBook, isAddingBook }) {
+// BookCard component with duplicate checking
+function BookCard({ book, theme, onAddBook, isAddingBook, isBookInBookshelf }) {
   
   const getCategoryColorPalette = (book) => {
     const category = book.displayCategory || book.internalCategory || '';
@@ -1190,17 +1212,19 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
         }}>
           <button
             onClick={() => onAddBook(book, 'book')}
-            disabled={isAddingBook}
+            disabled={isAddingBook || isBookInBookshelf(book.id, 'book')}
             style={{
               flex: 1,
-              background: `linear-gradient(145deg, ${colorPalette.surface}, ${colorPalette.background})`,
-              color: colorPalette.textPrimary,
+              background: isBookInBookshelf(book.id, 'book') 
+                ? 'linear-gradient(145deg, #E0E0E0, #C0C0C0)'
+                : `linear-gradient(145deg, ${colorPalette.surface}, ${colorPalette.background})`,
+              color: isBookInBookshelf(book.id, 'book') ? '#666666' : colorPalette.textPrimary,
               border: '3px solid #FFFFFF',
               padding: '18px 20px',
               borderRadius: '16px',
               fontSize: '15px',
               fontWeight: '700',
-              cursor: 'pointer',
+              cursor: isBookInBookshelf(book.id, 'book') ? 'not-allowed' : 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -1220,23 +1244,25 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
               transform: 'translateY(-2px)'
             }}
           >
-            📖 Add Book
+            {isBookInBookshelf(book.id, 'book') ? '✓ Added' : '📖 Add Book'}
           </button>
           
           {book.isAudiobook && (
             <button
               onClick={() => onAddBook(book, 'audiobook')}
-              disabled={isAddingBook}
+              disabled={isAddingBook || isBookInBookshelf(book.id, 'audiobook')}
               style={{
                 flex: 1,
-                background: `linear-gradient(145deg, ${colorPalette.textPrimary}, ${colorPalette.textSecondary})`,
-                color: '#FFFFFF',
+                background: isBookInBookshelf(book.id, 'audiobook')
+                  ? 'linear-gradient(145deg, #E0E0E0, #C0C0C0)'
+                  : `linear-gradient(145deg, ${colorPalette.textPrimary}, ${colorPalette.textSecondary})`,
+                color: isBookInBookshelf(book.id, 'audiobook') ? '#666666' : '#FFFFFF',
                 border: '3px solid #FFFFFF',
                 padding: '18px 20px',
                 borderRadius: '16px',
                 fontSize: '15px',
                 fontWeight: '700',
-                cursor: 'pointer',
+                cursor: isBookInBookshelf(book.id, 'audiobook') ? 'not-allowed' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -1256,7 +1282,7 @@ function BookCard({ book, theme, onAddBook, isAddingBook }) {
                 transform: 'translateY(-2px)'
               }}
             >
-              🎧 Add Audio
+              {isBookInBookshelf(book.id, 'audiobook') ? '✓ Added' : '🎧 Add Audio'}
             </button>
           )}
         </div>
