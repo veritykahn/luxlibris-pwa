@@ -62,8 +62,10 @@ export default function RoleSelector() {
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) {
-      // Fallback for browsers that don't support the install prompt
-      alert('To install this app:\n\n📱 iPhone/iPad: Tap Share → &quot;Add to Home Screen&quot;\n🤖 Android: Look for &quot;Install App&quot; in browser menu\n💻 Desktop: Look for install icon in address bar')
+      // Scroll to install instructions
+      document.getElementById('install-instructions').scrollIntoView({ 
+        behavior: 'smooth' 
+      })
       return
     }
 
@@ -86,6 +88,12 @@ export default function RoleSelector() {
     } catch (error) {
       console.error('Error during installation:', error)
     }
+  }
+
+  const scrollToInstallInstructions = () => {
+    document.getElementById('install-instructions').scrollIntoView({ 
+      behavior: 'smooth' 
+    })
   }
 
   // Show loading while checking auth state
@@ -134,90 +142,168 @@ export default function RoleSelector() {
         fontFamily: 'system-ui, -apple-system, sans-serif'
       }}>
         
+        {/* Header with Back Arrow */}
+        <div style={{
+          padding: '1rem 1.5rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1rem'
+        }}>
+          <button
+            onClick={() => router.push('/')}
+            style={{
+              background: 'rgba(255, 255, 255, 0.9)',
+              border: '1px solid rgba(173, 212, 234, 0.5)',
+              borderRadius: '50%',
+              width: '44px',
+              height: '44px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              fontSize: '20px',
+              color: '#223848',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.background = '#ADD4EA'
+              e.target.style.transform = 'scale(1.05)'
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.background = 'rgba(255, 255, 255, 0.9)'
+              e.target.style.transform = 'scale(1)'
+            }}
+          >
+            ←
+          </button>
+          <h1 style={{
+            fontSize: 'clamp(1.25rem, 4vw, 1.5rem)',
+            fontWeight: 'bold',
+            color: '#223848',
+            margin: 0,
+            fontFamily: 'Georgia, serif'
+          }}>
+            Choose Your Role
+          </h1>
+        </div>
+        
         <div style={{
           maxWidth: '90rem',
           margin: '0 auto',
-          padding: '3rem 1.5rem',
+          padding: '1rem 1.5rem 3rem',
           textAlign: 'center'
         }}>
           
-          <div style={{ marginBottom: '3rem' }}>
-            <h1 style={{
-              fontSize: 'clamp(2rem, 5vw, 3rem)',
-              fontWeight: 'bold',
-              color: '#223848',
-              marginBottom: '1rem',
-              fontFamily: 'Georgia, serif'
-            }}>
-              Welcome to Lux Libris!
-            </h1>
+          <div style={{ marginBottom: '2rem' }}>
             <p style={{
               fontSize: 'clamp(1rem, 3vw, 1.25rem)',
-              color: '#ADD4EA',
+              color: '#6b7280',
               marginBottom: '2rem'
             }}>
-              Choose your role to get started with your reading journey
+              Select your role to get started with your reading journey
             </p>
 
-            {/* Enhanced PWA Install Button */}
-            {showInstallButton && !isInstalled && (
-              <div style={{
-                background: 'linear-gradient(135deg, #10b981, #34d399)',
-                color: 'white',
-                padding: '1rem 1.5rem',
-                borderRadius: '1rem',
-                marginBottom: '2rem',
-                display: 'inline-block',
-                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                border: '2px solid rgba(255, 255, 255, 0.2)'
-              }}>
-                <p style={{
-                  margin: '0 0 0.75rem 0',
-                  fontSize: '1rem',
-                  fontWeight: '600'
+            {/* PROMINENT INSTALL APP BANNER */}
+            {!isInstalled && (
+              <div 
+                onClick={scrollToInstallInstructions}
+                style={{
+                  background: 'linear-gradient(135deg, #10b981, #34d399)',
+                  color: 'white',
+                  padding: '1.25rem 2rem',
+                  borderRadius: '1rem',
+                  marginBottom: '2.5rem',
+                  cursor: 'pointer',
+                  boxShadow: '0 10px 25px rgba(16, 185, 129, 0.3)',
+                  border: '2px solid rgba(255, 255, 255, 0.2)',
+                  transition: 'all 0.3s ease',
+                  transform: 'translateY(0)'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.transform = 'translateY(-4px)'
+                  e.target.style.boxShadow = '0 15px 35px rgba(16, 185, 129, 0.4)'
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.transform = 'translateY(0)'
+                  e.target.style.boxShadow = '0 10px 25px rgba(16, 185, 129, 0.3)'
+                }}
+              >
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '1rem',
+                  flexWrap: 'wrap'
                 }}>
-                  📱 Install Lux Libris as an App!
-                </p>
-                <button
-                  onClick={handleInstallClick}
-                  style={{
+                  <div style={{ fontSize: '2rem' }}>📱</div>
+                  <div style={{ textAlign: 'left', flex: '1', minWidth: '200px' }}>
+                    <h3 style={{
+                      margin: '0 0 0.5rem 0',
+                      fontSize: 'clamp(1.1rem, 3vw, 1.3rem)',
+                      fontWeight: '700'
+                    }}>
+                      Install Lux Libris as an App First!
+                    </h3>
+                    <p style={{
+                      margin: 0,
+                      fontSize: 'clamp(0.9rem, 2.5vw, 1rem)',
+                      opacity: 0.9
+                    }}>
+                      Get the best reading experience with faster loading & offline access
+                    </p>
+                  </div>
+                  <div style={{
                     background: 'rgba(255, 255, 255, 0.2)',
-                    color: 'white',
-                    border: '2px solid white',
-                    borderRadius: '0.5rem',
                     padding: '0.75rem 1.5rem',
-                    fontSize: '1rem',
+                    borderRadius: '0.5rem',
                     fontWeight: '600',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    minHeight: '44px'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.background = 'white'
-                    e.target.style.color = '#10b981'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.background = 'rgba(255, 255, 255, 0.2)'
-                    e.target.style.color = 'white'
-                  }}
-                >
-                  🚀 Install Now
-                </button>
+                    fontSize: 'clamp(0.9rem, 2.5vw, 1rem)',
+                    border: '2px solid rgba(255, 255, 255, 0.3)',
+                    minHeight: '44px',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}>
+                    🚀 Install Now
+                  </div>
+                </div>
               </div>
             )}
 
+            {/* App Already Installed Banner */}
             {isInstalled && (
               <div style={{
                 background: 'linear-gradient(135deg, #8b5cf6, #a855f7)',
                 color: 'white',
-                padding: '0.75rem 1.5rem',
+                padding: '1rem 2rem',
                 borderRadius: '1rem',
-                marginBottom: '2rem',
-                display: 'inline-block',
-                fontSize: '1rem',
-                fontWeight: '600'
+                marginBottom: '2.5rem',
+                boxShadow: '0 10px 25px rgba(139, 92, 246, 0.3)'
               }}>
-                ✅ App Installed! You&apos;re ready to go!
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '1rem'
+                }}>
+                  <div style={{ fontSize: '1.5rem' }}>✅</div>
+                  <div>
+                    <h3 style={{
+                      margin: '0 0 0.25rem 0',
+                      fontSize: 'clamp(1.1rem, 3vw, 1.3rem)',
+                      fontWeight: '700'
+                    }}>
+                      App Installed Successfully!
+                    </h3>
+                    <p style={{
+                      margin: 0,
+                      fontSize: 'clamp(0.9rem, 2.5vw, 1rem)',
+                      opacity: 0.9
+                    }}>
+                      You're all set for the best Lux Libris experience
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -236,7 +322,7 @@ export default function RoleSelector() {
             <RoleCard
               icon="🧑‍🎓"
               title="Student"
-              description="Connect to your school&apos;s reading program and start your journey!"
+              description="Connect to your school's reading program and start your journey!"
               features={[
                 "🏫 Connect to your school",
                 "📚 Interactive bookshelf",
@@ -244,19 +330,18 @@ export default function RoleSelector() {
                 "🔥 Reading streaks",
                 "🎯 Personal goals"
               ]}
-              buttonText="Join My School&apos;s Program"
+              buttonText="Join My School's Program"
               onClick={() => router.push('/student-account-creation')}
               gradient="from-blue-400 to-purple-500"
-              installPrompt={true}
             />
 
             {/* Parent Card */}
             <RoleCard
               icon="👨‍👩‍👧‍👦"
               title="Parent"
-              description="Support your child&apos;s school reading program"
+              description="Support your child's school reading program"
               features={[
-                "🏫 Connect to your child&apos;s school",
+                "🏫 Connect to your child's school",
                 "👀 Basic progress viewing (FREE)",
                 "🔐 Quiz code access",
                 "⭐ Premium analytics ($10/yr)",
@@ -265,7 +350,6 @@ export default function RoleSelector() {
               buttonText="Support My Child"
               onClick={() => router.push('/parent-account-creation')}
               gradient="from-green-400 to-teal-500"
-              installPrompt={true}
               highlight="Basic access FREE with school!"
             />
 
@@ -284,7 +368,6 @@ export default function RoleSelector() {
               buttonText="Coming Soon!"
               onClick={() => {}} // No action for disabled card
               gradient="from-amber-400 to-orange-500"
-              installPrompt={false}
               highlight="Available after pilot"
               disabled={true}
             />
@@ -293,7 +376,7 @@ export default function RoleSelector() {
             <RoleCard
               icon="👑"
               title="School Admin"
-              description="Set up and manage your school&apos;s reading program"
+              description="Set up and manage your school's reading program"
               features={[
                 "🏫 School configuration",
                 "📚 Book selection from 20 nominees",
@@ -304,12 +387,10 @@ export default function RoleSelector() {
               buttonText="Configure School"
               onClick={() => router.push('/admin/school-onboarding')}
               gradient="from-purple-500 to-pink-500"
-              installPrompt={false}
               highlight="For librarians & principals"
             />
           </div>
 
-          {/* Rest of the component stays the same... */}
           {/* Simplified Independent Option */}
           <div style={{
             background: 'rgba(255, 255, 255, 0.7)',
@@ -411,7 +492,7 @@ export default function RoleSelector() {
               textAlign: 'center',
               fontSize: 'clamp(0.875rem, 2.5vw, 1rem)'
             }}>
-              We&apos;re currently piloting with select Catholic schools. Interested in bringing Lux Libris to your school?
+              We're currently piloting with select Catholic schools. Interested in bringing Lux Libris to your school?
             </p>
             <div style={{
               display: 'flex',
@@ -436,8 +517,8 @@ export default function RoleSelector() {
             </div>
           </div>
 
-          {/* ENHANCED PWA Install Instructions Section */}
-          <div style={{
+          {/* INSTALL INSTRUCTIONS SECTION */}
+          <div id="install-instructions" style={{
             padding: '2rem',
             background: 'rgba(255, 255, 255, 0.9)',
             borderRadius: '1rem',
@@ -457,7 +538,7 @@ export default function RoleSelector() {
               justifyContent: 'center',
               gap: '0.5rem'
             }}>
-              📱 For the Best Experience: Install Lux Libris as an App
+              📱 Install Lux Libris as an App
             </h3>
             
             {isInstalled ? (
@@ -519,48 +600,6 @@ export default function RoleSelector() {
                   🚀 Install App Now
                 </button>
               </div>
-            ) : canInstall ? (
-              <div style={{
-                background: 'linear-gradient(135deg, #f59e0b, #d97706)',
-                color: 'white',
-                padding: '1rem',
-                borderRadius: '0.5rem',
-                marginBottom: '1rem',
-                textAlign: 'center'
-              }}>
-                <p style={{
-                  margin: '0 0 0.75rem 0',
-                  fontSize: 'clamp(0.875rem, 2.5vw, 1rem)',
-                  fontWeight: '600'
-                }}>
-                  📲 Install Lux Libris for the best reading experience!
-                </p>
-                <button
-                  onClick={handleInstallClick}
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.2)',
-                    color: 'white',
-                    border: '2px solid white',
-                    borderRadius: '0.5rem',
-                    padding: '0.75rem 1.5rem',
-                    fontSize: '1rem',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    minHeight: '44px'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.background = 'white'
-                    e.target.style.color = '#f59e0b'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.background = 'rgba(255, 255, 255, 0.2)'
-                    e.target.style.color = 'white'
-                  }}
-                >
-                  📖 Show Install Instructions
-                </button>
-              </div>
             ) : null}
             
             <div style={{
@@ -579,8 +618,8 @@ export default function RoleSelector() {
                 <br />
                 <span style={{ fontSize: '0.875rem', color: '#6b7280', lineHeight: '1.4' }}>
                   1. Tap the Share button (square with arrow up)<br />
-                  2. Scroll down and tap &quot;Add to Home Screen&quot;<br />
-                  3. Tap &quot;Add&quot; to install
+                  2. Scroll down and tap "Add to Home Screen"<br />
+                  3. Tap "Add" to install
                 </span>
               </div>
               <div style={{
@@ -593,7 +632,7 @@ export default function RoleSelector() {
                 <br />
                 <span style={{ fontSize: '0.875rem', color: '#6b7280', lineHeight: '1.4' }}>
                   1. Tap the browser menu (3 dots)<br />
-                  2. Look for &quot;Install app&quot; or &quot;Add to Home Screen&quot;<br />
+                  2. Look for "Install app" or "Add to Home Screen"<br />
                   3. Confirm installation
                 </span>
               </div>
@@ -607,7 +646,7 @@ export default function RoleSelector() {
                 <br />
                 <span style={{ fontSize: '0.875rem', color: '#6b7280', lineHeight: '1.4' }}>
                   1. Look for install icon in address bar<br />
-                  2. Or use browser menu &quot;Install Lux Libris&quot;<br />
+                  2. Or use browser menu "Install Lux Libris"<br />
                   3. Follow the prompts to install
                 </span>
               </div>
@@ -643,7 +682,7 @@ export default function RoleSelector() {
   )
 }
 
-function RoleCard({ icon, title, description, features, buttonText, onClick, gradient, installPrompt, highlight, disabled = false }) {
+function RoleCard({ icon, title, description, features, buttonText, onClick, gradient, highlight, disabled = false }) {
   const cardStyle = {
     background: disabled ? '#f8f9fa' : 'white',
     borderRadius: '1rem',
@@ -807,18 +846,6 @@ function RoleCard({ icon, title, description, features, buttonText, onClick, gra
           </button>
         )}
       </div>
-      
-      {installPrompt && !disabled && (
-        <p style={{
-          fontSize: 'clamp(0.65rem, 2vw, 0.75rem)',
-          color: '#ADD4EA',
-          marginTop: '0.75rem',
-          fontStyle: 'italic',
-          textAlign: 'center'
-        }}>
-          💡 Install as app for best experience!
-        </p>
-      )}
     </div>
   )
 }
