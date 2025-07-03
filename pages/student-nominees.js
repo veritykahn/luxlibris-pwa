@@ -1,8 +1,8 @@
-// pages/student-nominees.js - FIXED version with proper arrow styling and duplicate prevention
+// pages/student-nominees.js - FIXED version with smart format switching and prominent navigation
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
-import { getStudentData, getSchoolNominees, addBookToBookshelf } from '../lib/firebase';
+import { getStudentData, getSchoolNominees, addBookToBookshelf, removeBookFromBookshelf } from '../lib/firebase';
 import Head from 'next/head';
 
 export default function StudentNominees() {
@@ -15,11 +15,7 @@ export default function StudentNominees() {
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [showAddMessage, setShowAddMessage] = useState('');
   const [isAddingBook, setIsAddingBook] = useState(false);
-  const touchStartX = useRef(0);
-  const touchEndX = useRef(0);
-  const mouseStartX = useRef(0);
-  const mouseEndX = useRef(0);
-  const isDragging = useRef(false);
+  const [showFormatSwitchDialog, setShowFormatSwitchDialog] = useState(null);
 
   // Theme definitions (same as before)
   const themes = {
@@ -121,7 +117,7 @@ export default function StudentNominees() {
     }
   }, [loading, isAuthenticated, user]);
 
-  // Keyboard navigation
+  // Keyboard navigation only (no touch/swipe)
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'ArrowLeft' && currentCardIndex > 0) {
@@ -167,29 +163,61 @@ export default function StudentNominees() {
     setIsLoading(false);
   };
 
-  // Check if book is already in bookshelf
-  const isBookInBookshelf = useCallback((bookId, format) => {
+  // Check if book is already in bookshelf (any format)
+  const getBookInBookshelf = useCallback((bookId) => {
+    if (!studentData?.bookshelf) return null;
+    return studentData.bookshelf.find(book => book.bookId === bookId);
+  }, [studentData?.bookshelf]);
+
+  // Check if specific format is in bookshelf
+  const isBookFormatInBookshelf = useCallback((bookId, format) => {
     if (!studentData?.bookshelf) return false;
     return studentData.bookshelf.some(book => 
       book.bookId === bookId && book.format === format
     );
   }, [studentData?.bookshelf]);
 
-  // FIXED: Use useCallback to prevent stale closure issues
-  const handleAddToBookshelf = useCallback(async (book, format) => {
-    if (isAddingBook) return;
+  // Smart format switching logic
+  const handleAddToBookshelf = useCallback(async (format) => {
+    if (isAddingBook || !nominees.length) return;
     
-    // Check if already in bookshelf (frontend check for immediate feedback)
-    if (isBookInBookshelf(book.id, format)) {
+    const currentBook = nominees[currentCardIndex];
+    if (!currentBook) return;
+    
+    console.log('📖 Current card index:', currentCardIndex);
+    console.log('📖 Current book:', currentBook.title);
+    console.log('📖 Adding format:', format);
+    
+    // Check if this exact format is already in bookshelf
+    if (isBookFormatInBookshelf(currentBook.id, format)) {
       const message = format === 'audiobook' 
-        ? `🎧 ${book.title} is already in your bookshelf as an audiobook!`
-        : `📖 ${book.title} is already in your bookshelf!`;
+        ? `🎧 ${currentBook.title} is already in your bookshelf as an audiobook!`
+        : `📖 ${currentBook.title} is already in your bookshelf!`;
       
       setShowAddMessage(message);
       setTimeout(() => setShowAddMessage(''), 3000);
       return;
     }
     
+    // Check if book exists in any other format
+    const existingBookEntry = getBookInBookshelf(currentBook.id);
+    if (existingBookEntry && existingBookEntry.format !== format) {
+      // Show format switch dialog
+      setShowFormatSwitchDialog({
+        book: currentBook,
+        existingFormat: existingBookEntry.format,
+        newFormat: format
+      });
+      return;
+    }
+    
+    // No conflicts, add the book
+    await addBookToBookshelfInternal(currentBook, format);
+    
+  }, [nominees, currentCardIndex, studentData, isAddingBook, isBookFormatInBookshelf, getBookInBookshelf]);
+
+  // Internal function to actually add book
+  const addBookToBookshelfInternal = async (book, format) => {
     setIsAddingBook(true);
     
     try {
@@ -219,7 +247,6 @@ export default function StudentNominees() {
     } catch (error) {
       console.error('❌ Error adding book:', error);
       
-      // Handle specific error messages from Firebase
       let errorMessage = '❌ Error adding book. Please try again.';
       if (error.message && error.message.includes('already in your bookshelf')) {
         errorMessage = `📚 ${book.title} is already in your bookshelf!`;
@@ -230,59 +257,64 @@ export default function StudentNominees() {
     }
     
     setIsAddingBook(false);
-  }, [studentData, isAddingBook, isBookInBookshelf]);
-
-  // Touch handlers for mobile
-  const handleTouchStart = (e) => {
-    touchStartX.current = e.targetTouches[0].clientX;
   };
 
-  const handleTouchMove = (e) => {
-    touchEndX.current = e.targetTouches[0].clientX;
-  };
-
-  const handleTouchEnd = () => {
-    if (!touchStartX.current || !touchEndX.current) return;
+  // Handle format switching confirmation
+  const handleFormatSwitch = async (confirm) => {
+    if (!showFormatSwitchDialog) return;
     
-    const distance = touchStartX.current - touchEndX.current;
-    const isLeftSwipe = distance > 50;
-    const isRightSwipe = distance < -50;
-
-    if (isLeftSwipe && currentCardIndex < nominees.length - 1) {
-      setCurrentCardIndex(currentCardIndex + 1);
-    }
-    if (isRightSwipe && currentCardIndex > 0) {
-      setCurrentCardIndex(currentCardIndex - 1);
-    }
-  };
-
-  // Mouse handlers for desktop
-  const handleMouseDown = (e) => {
-    mouseStartX.current = e.clientX;
-    isDragging.current = true;
-  };
-
-  const handleMouseMove = (e) => {
-    if (!isDragging.current) return;
-    mouseEndX.current = e.clientX;
-  };
-
-  const handleMouseUp = () => {
-    if (!isDragging.current) return;
-    isDragging.current = false;
-
-    if (!mouseStartX.current || !mouseEndX.current) return;
+    const { book, existingFormat, newFormat } = showFormatSwitchDialog;
     
-    const distance = mouseStartX.current - mouseEndX.current;
-    const isLeftSwipe = distance > 50;
-    const isRightSwipe = distance < -50;
-
-    if (isLeftSwipe && currentCardIndex < nominees.length - 1) {
-      setCurrentCardIndex(currentCardIndex + 1);
+    if (confirm) {
+      setIsAddingBook(true);
+      
+      try {
+        // Remove old format
+        await removeBookFromBookshelf(
+          studentData.id,
+          studentData.dioceseId,
+          studentData.schoolId,
+          book.id,
+          existingFormat
+        );
+        
+        // Add new format
+        const newBookProgress = await addBookToBookshelf(
+          studentData.id,
+          studentData.dioceseId,
+          studentData.schoolId,
+          book.id,
+          newFormat
+        );
+        
+        // Update local state
+        setStudentData(prev => {
+          const updatedBookshelf = prev.bookshelf.filter(b => 
+            !(b.bookId === book.id && b.format === existingFormat)
+          );
+          return {
+            ...prev,
+            bookshelf: [...updatedBookshelf, newBookProgress]
+          };
+        });
+        
+        const message = newFormat === 'audiobook' 
+          ? `🔄 Switched to audiobook version of ${book.title}!`
+          : `🔄 Switched to book version of ${book.title}!`;
+        
+        setShowAddMessage(message);
+        setTimeout(() => setShowAddMessage(''), 3000);
+        
+      } catch (error) {
+        console.error('❌ Error switching format:', error);
+        setShowAddMessage('❌ Error switching format. Please try again.');
+        setTimeout(() => setShowAddMessage(''), 3000);
+      }
+      
+      setIsAddingBook(false);
     }
-    if (isRightSwipe && currentCardIndex > 0) {
-      setCurrentCardIndex(currentCardIndex - 1);
-    }
+    
+    setShowFormatSwitchDialog(null);
   };
 
   const goToCard = (index) => {
@@ -540,84 +572,77 @@ export default function StudentNominees() {
           </button>
         </div>
 
-        {/* MAIN CONTENT */}
-        <div 
-          style={{
-            padding: '20px 20px 0 20px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            minHeight: 'calc(100vh - 120px)',
-            paddingTop: '20px',
-            position: 'relative'
-          }}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={() => { isDragging.current = false; }}
-        >
-          {/* FIXED: Minimal translucent navigation arrows centered on card */}
+        {/* MAIN CONTENT - NO TOUCH HANDLERS */}
+        <div style={{
+          padding: '20px 20px 0 20px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          minHeight: 'calc(100vh - 120px)',
+          paddingTop: '20px',
+          position: 'relative'
+        }}>
+          {/* PROMINENT CIRCULAR NAVIGATION ARROWS */}
           {currentCardIndex > 0 && (
-            <div
+            <button
               onClick={goToPrevCard}
               style={{
                 position: 'absolute',
-                left: '15px',
+                left: '20px',
                 top: '50%',
                 transform: 'translateY(-50%)',
-                backgroundColor: 'rgba(255,255,255,0.5)',
-                border: 'none',
+                backgroundColor: currentTheme.primary,
+                border: `3px solid ${currentTheme.secondary}`,
                 borderRadius: '50%',
-                width: '28px',
-                height: '28px',
+                width: '48px',
+                height: '48px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '14px',
+                fontSize: '18px',
+                fontWeight: 'bold',
                 cursor: 'pointer',
                 color: currentTheme.textPrimary,
-                backdropFilter: 'blur(10px)',
                 zIndex: 100,
-                transition: 'all 0.2s ease',
+                transition: 'all 0.3s ease',
                 userSelect: 'none',
-                opacity: 0.7
+                boxShadow: `0 4px 12px ${currentTheme.primary}40, 0 2px 8px rgba(0,0,0,0.2)`,
+                backdropFilter: 'blur(10px)'
               }}
             >
               ←
-            </div>
+            </button>
           )}
 
           {currentCardIndex < nominees.length - 1 && (
-            <div
+            <button
               onClick={goToNextCard}
               style={{
                 position: 'absolute',
-                right: '15px',
+                right: '20px',
                 top: '50%',
                 transform: 'translateY(-50%)',
-                backgroundColor: 'rgba(255,255,255,0.5)',
-                border: 'none',
+                backgroundColor: currentTheme.primary,
+                border: `3px solid ${currentTheme.secondary}`,
                 borderRadius: '50%',
-                width: '28px',
-                height: '28px',
+                width: '48px',
+                height: '48px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '14px',
+                fontSize: '18px',
+                fontWeight: 'bold',
                 cursor: 'pointer',
                 color: currentTheme.textPrimary,
-                backdropFilter: 'blur(10px)',
                 zIndex: 100,
-                transition: 'all 0.2s ease',
+                transition: 'all 0.3s ease',
                 userSelect: 'none',
-                opacity: 0.7
+                boxShadow: `0 4px 12px ${currentTheme.primary}40, 0 2px 8px rgba(0,0,0,0.2)`,
+                backdropFilter: 'blur(10px)'
               }}
             >
               →
-            </div>
+            </button>
           )}
 
           {/* Main Card */}
@@ -632,18 +657,20 @@ export default function StudentNominees() {
               theme={currentTheme}
               onAddBook={handleAddToBookshelf}
               isAddingBook={isAddingBook}
-              isBookInBookshelf={isBookInBookshelf}
+              getBookInBookshelf={getBookInBookshelf}
+              isBookFormatInBookshelf={isBookFormatInBookshelf}
+              currentCardIndex={currentCardIndex}
             />
           </div>
 
-          {/* Swipe Hint */}
+          {/* Navigation Hint */}
           <div style={{
             fontSize: '12px',
             color: currentTheme.textSecondary,
             textAlign: 'center',
             marginBottom: '20px'
           }}>
-            👈 Swipe or use arrows to browse books 👉
+            ← Use arrows to browse books →
           </div>
 
           {/* Quick Browse */}
@@ -713,6 +740,88 @@ export default function StudentNominees() {
           </div>
         </div>
 
+        {/* Format Switch Confirmation Dialog */}
+        {showFormatSwitchDialog && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 2000,
+            padding: '20px'
+          }}>
+            <div style={{
+              backgroundColor: currentTheme.surface,
+              borderRadius: '20px',
+              padding: '24px',
+              maxWidth: '320px',
+              width: '100%',
+              textAlign: 'center',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
+            }}>
+              <h3 style={{
+                fontSize: '18px',
+                color: currentTheme.textPrimary,
+                marginBottom: '16px'
+              }}>
+                Switch Format?
+              </h3>
+              <p style={{
+                fontSize: '14px',
+                color: currentTheme.textSecondary,
+                marginBottom: '20px',
+                lineHeight: '1.4'
+              }}>
+                You already have <strong>{showFormatSwitchDialog.book.title}</strong> as a{' '}
+                {showFormatSwitchDialog.existingFormat === 'audiobook' ? 'n audiobook' : ' book'}. 
+                Switch to {showFormatSwitchDialog.newFormat === 'audiobook' ? 'audiobook' : 'book'} instead?
+              </p>
+              <div style={{
+                display: 'flex',
+                gap: '12px'
+              }}>
+                <button
+                  onClick={() => handleFormatSwitch(false)}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    backgroundColor: 'transparent',
+                    border: `2px solid ${currentTheme.primary}`,
+                    borderRadius: '12px',
+                    color: currentTheme.textPrimary,
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleFormatSwitch(true)}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    backgroundColor: currentTheme.primary,
+                    border: 'none',
+                    borderRadius: '12px',
+                    color: currentTheme.textPrimary,
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Switch
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Success Message */}
         {showAddMessage && (
           <div style={{
@@ -779,8 +888,8 @@ export default function StudentNominees() {
   );
 }
 
-// BookCard component with duplicate checking
-function BookCard({ book, theme, onAddBook, isAddingBook, isBookInBookshelf }) {
+// BookCard component with updated logic for smart format switching
+function BookCard({ book, theme, onAddBook, isAddingBook, getBookInBookshelf, isBookFormatInBookshelf, currentCardIndex }) {
   
   const getCategoryColorPalette = (book) => {
     const category = book.displayCategory || book.internalCategory || '';
@@ -955,6 +1064,11 @@ function BookCard({ book, theme, onAddBook, isAddingBook, isBookInBookshelf }) {
     const category = book.displayCategory || book.internalCategory || 'Fiction';
     return category.replace(/📖\s*/, '').replace(/🎨\s*/, '').replace(/📚\s*/, '');
   };
+
+  // Check book status for button rendering
+  const existingBookEntry = getBookInBookshelf(book.id);
+  const bookFormatExists = isBookFormatInBookshelf(book.id, 'book');
+  const audiobookFormatExists = isBookFormatInBookshelf(book.id, 'audiobook');
 
   return (
     <div style={{
@@ -1211,20 +1325,20 @@ function BookCard({ book, theme, onAddBook, isAddingBook, isBookInBookshelf }) {
           gap: '10px'
         }}>
           <button
-            onClick={() => onAddBook(book, 'book')}
-            disabled={isAddingBook || isBookInBookshelf(book.id, 'book')}
+            onClick={() => onAddBook('book')}
+            disabled={isAddingBook || bookFormatExists}
             style={{
               flex: 1,
-              background: isBookInBookshelf(book.id, 'book') 
+              background: bookFormatExists 
                 ? 'linear-gradient(145deg, #E0E0E0, #C0C0C0)'
                 : `linear-gradient(145deg, ${colorPalette.surface}, ${colorPalette.background})`,
-              color: isBookInBookshelf(book.id, 'book') ? '#666666' : colorPalette.textPrimary,
+              color: bookFormatExists ? '#666666' : colorPalette.textPrimary,
               border: '3px solid #FFFFFF',
               padding: '18px 20px',
               borderRadius: '16px',
               fontSize: '15px',
               fontWeight: '700',
-              cursor: isBookInBookshelf(book.id, 'book') ? 'not-allowed' : 'pointer',
+              cursor: bookFormatExists ? 'not-allowed' : 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -1244,25 +1358,27 @@ function BookCard({ book, theme, onAddBook, isAddingBook, isBookInBookshelf }) {
               transform: 'translateY(-2px)'
             }}
           >
-            {isBookInBookshelf(book.id, 'book') ? '✓ Added' : '📖 Add Book'}
+            {bookFormatExists ? '✓ Added' : 
+             existingBookEntry && existingBookEntry.format === 'audiobook' ? '📖 Switch to Book' : 
+             '📖 Add Book'}
           </button>
           
           {book.isAudiobook && (
             <button
-              onClick={() => onAddBook(book, 'audiobook')}
-              disabled={isAddingBook || isBookInBookshelf(book.id, 'audiobook')}
+              onClick={() => onAddBook('audiobook')}
+              disabled={isAddingBook || audiobookFormatExists}
               style={{
                 flex: 1,
-                background: isBookInBookshelf(book.id, 'audiobook')
+                background: audiobookFormatExists
                   ? 'linear-gradient(145deg, #E0E0E0, #C0C0C0)'
                   : `linear-gradient(145deg, ${colorPalette.textPrimary}, ${colorPalette.textSecondary})`,
-                color: isBookInBookshelf(book.id, 'audiobook') ? '#666666' : '#FFFFFF',
+                color: audiobookFormatExists ? '#666666' : '#FFFFFF',
                 border: '3px solid #FFFFFF',
                 padding: '18px 20px',
                 borderRadius: '16px',
                 fontSize: '15px',
                 fontWeight: '700',
-                cursor: isBookInBookshelf(book.id, 'audiobook') ? 'not-allowed' : 'pointer',
+                cursor: audiobookFormatExists ? 'not-allowed' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -1282,7 +1398,9 @@ function BookCard({ book, theme, onAddBook, isAddingBook, isBookInBookshelf }) {
                 transform: 'translateY(-2px)'
               }}
             >
-              {isBookInBookshelf(book.id, 'audiobook') ? '✓ Added' : '🎧 Add Audio'}
+              {audiobookFormatExists ? '✓ Added' : 
+               existingBookEntry && existingBookEntry.format === 'book' ? '🎧 Switch to Audio' : 
+               '🎧 Add Audio'}
             </button>
           )}
         </div>
