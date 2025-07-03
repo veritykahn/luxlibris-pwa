@@ -417,7 +417,7 @@ export default function StudentBookshelf() {
           right: 0,
           bottom: 0,
           backgroundColor: currentTheme.background,
-          opacity: 0.3,
+          opacity: 0.4,
           pointerEvents: 'none',
           zIndex: 1
         }} />
@@ -604,7 +604,7 @@ export default function StudentBookshelf() {
                             alignItems: 'center',
                             justifyContent: 'center',
                             position: 'relative',
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
                             transition: 'transform 0.2s ease',
                             transform: 'translateZ(0)',
                             margin: '0 auto'
@@ -642,7 +642,7 @@ export default function StudentBookshelf() {
                               bottom: 0,
                               left: 0,
                               right: 0,
-                              height: '3px',
+                              height: '5px',
                               backgroundColor: 'rgba(0,0,0,0.5)'
                             }}>
                               <div style={{
@@ -712,13 +712,13 @@ export default function StudentBookshelf() {
                     ))}
                   </div>
 
-                  {/* THIN CSS SHELF */}
+                  {/* THICKER CSS SHELF WITH INSET SHADOW */}
                   <div style={{
-                    height: '4px',
+                    height: '6px',
                     margin: '0 10px',
                     backgroundColor: currentTheme.primary,
                     borderRadius: '2px',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.2), inset 0 1px 2px rgba(0,0,0,0.1)',
                     position: 'relative',
                     zIndex: 5
                   }} />
@@ -728,7 +728,7 @@ export default function StudentBookshelf() {
           )}
         </div>
 
-        {/* Modal and other components stay the same... */}
+        {/* Modal and other components */}
         {showBookModal && selectedBook && (() => {
           const colorPalette = getCategoryColorPalette(selectedBook.details);
           const total = getBookTotal(selectedBook);
@@ -757,7 +757,7 @@ export default function StudentBookshelf() {
                 position: 'relative',
                 boxShadow: '0 20px 40px rgba(0,0,0,0.3)'
               }}>
-                {/* Book modal content stays the same */}
+                {/* Book modal content */}
                 <div style={{
                   position: 'relative',
                   padding: '15px 15px 10px',
@@ -771,7 +771,7 @@ export default function StudentBookshelf() {
                       position: 'absolute',
                       top: '8px',
                       right: '8px',
-                      backgroundColor: '#FF4444',
+                      backgroundColor: colorPalette.textPrimary,
                       color: 'white',
                       border: '2px solid white',
                       borderRadius: '50%',
@@ -853,8 +853,8 @@ export default function StudentBookshelf() {
                         router.push('/healthy-habits');
                       }}
                       style={{
-                        backgroundColor: '#4CAF50',
-                        color: 'white',
+                        backgroundColor: colorPalette.primary,
+                        color: colorPalette.textPrimary,
                         border: 'none',
                         padding: '8px 16px',
                         borderRadius: '16px',
@@ -870,7 +870,7 @@ export default function StudentBookshelf() {
                     </button>
                   </div>
 
-                  {/* Simplified progress, rating, notes sections... */}
+                  {/* Progress section */}
                   <div style={{ marginBottom: '15px' }}>
                     <label style={{
                       fontSize: '12px',
@@ -986,7 +986,7 @@ export default function StudentBookshelf() {
                       onClick={() => deleteBook(selectedBook.bookId)}
                       disabled={isSaving}
                       style={{
-                        backgroundColor: '#FF6B6B',
+                        backgroundColor: colorPalette.textSecondary,
                         color: 'white',
                         border: 'none',
                         padding: '10px 16px',
@@ -1042,7 +1042,7 @@ export default function StudentBookshelf() {
             width: 16px;
             height: 16px;
             border-radius: 50%;
-            background: ${currentTheme?.primary || '#ADD4EA'};
+            background: #555555;
             border: 1px solid white;
             box-shadow: 0 1px 3px rgba(0,0,0,0.3);
             cursor: pointer;
@@ -1052,7 +1052,7 @@ export default function StudentBookshelf() {
             width: 16px;
             height: 16px;
             border-radius: 50%;
-            background: ${currentTheme?.primary || '#ADD4EA'};
+            background: #555555;
             border: 1px solid white;
             box-shadow: 0 1px 3px rgba(0,0,0,0.3);
             cursor: pointer;
