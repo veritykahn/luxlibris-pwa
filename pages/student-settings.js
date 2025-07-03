@@ -243,8 +243,7 @@ export default function StudentSettings() {
   const handleSignOut = async () => {
     try {
       setIsSaving(true);
-      await signOut();
-      // The AuthContext will handle the redirect
+      await signOut({ redirectTo: '/' });
     } catch (error) {
       console.error('Error signing out:', error);
       setShowSuccess('❌ Error signing out. Please try again.');
