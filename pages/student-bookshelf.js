@@ -204,7 +204,7 @@ export default function StudentBookshelf() {
         return { message: '🎉 Book completed!', color: '#4CAF50' };
       
       case 'pending_admin_approval':
-        return { message: '⏳ Waiting for teacher approval', color: '#FF9800' };
+        return { message: '⏳ Waiting for admin approval', color: '#FF9800' };
       
       case 'pending_parent_quiz_unlock':
         return { message: '🔒 Waiting for parent to unlock quiz', color: '#2196F3' };

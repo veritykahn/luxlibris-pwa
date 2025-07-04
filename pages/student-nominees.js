@@ -409,6 +409,9 @@ export default function StudentNominees() {
       <div style={{
         backgroundColor: '#FFFCF5',
         minHeight: '100vh',
+        width: '100vw',
+        maxWidth: '100%',
+        overflowX: 'hidden',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center'
@@ -441,6 +444,9 @@ export default function StudentNominees() {
         <div style={{
           backgroundColor: currentTheme.background,
           minHeight: '100vh',
+          width: '100vw',
+          maxWidth: '100%',
+          overflowX: 'hidden',
           fontFamily: 'system-ui, -apple-system, sans-serif'
         }}>
           {/* BOOKSHELF-STYLE HEADER */}
@@ -568,6 +574,9 @@ export default function StudentNominees() {
       <div style={{
         backgroundColor: currentTheme.background,
         minHeight: '100vh',
+        width: '100vw',
+        maxWidth: '100%',
+        overflowX: 'hidden',
         fontFamily: 'system-ui, -apple-system, sans-serif'
       }}>
         {/* BOOKSHELF-STYLE HEADER */}
@@ -918,6 +927,17 @@ export default function StudentNominees() {
           
           ::-webkit-scrollbar {
             display: none;
+          }
+          
+          html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            overflow-x: hidden;
+          }
+          
+          * {
+            box-sizing: border-box;
           }
           
           @media (max-width: 480px) {
