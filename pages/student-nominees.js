@@ -1,4 +1,4 @@
-// pages/student-nominees.js - FIXED version with smart format switching and prominent navigation
+// pages/student-nominees.js - COMPLETE UPDATED version with circular navigation and category sorting
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
@@ -109,6 +109,57 @@ export default function StudentNominees() {
     }
   };
 
+  // NEW: Sorting function for nominees
+  const sortNominees = (nominees) => {
+    // Define category priority order based on exact Firebase displayCategory values
+    const categoryPriority = {
+      '📖 Chapter Books that Stick With You': 1,
+      '🖼️ Picture Books with Heart': 2, 
+      '🎨 Graphic Novels with a Twist': 3,
+      '🗝️ Hidden Treasure': 4,
+      '✝️ Our Catholic Pick': 5,
+      '🏛️ Our Classic': 6
+    };
+    
+    return nominees.sort((a, b) => {
+      // Get categories from displayCategory field
+      const getCategoryKey = (book) => {
+        const category = book.displayCategory || book.internalCategory || '';
+        
+        // Check for exact matches first
+        for (const key of Object.keys(categoryPriority)) {
+          if (category === key) {
+            return key;
+          }
+        }
+        
+        // Fallback to partial matching if exact match fails
+        for (const key of Object.keys(categoryPriority)) {
+          if (category.toLowerCase().includes(key.toLowerCase().replace(/[📖🖼️🎨🗝️✝️🏛️]/g, '').trim())) {
+            return key;
+          }
+        }
+        
+        return 'Other'; // Fallback for unmatched categories
+      };
+      
+      const categoryA = getCategoryKey(a);
+      const categoryB = getCategoryKey(b);
+      
+      // Get priority (lower number = higher priority)
+      const priorityA = categoryPriority[categoryA] || 999;
+      const priorityB = categoryPriority[categoryB] || 999;
+      
+      // First sort by category priority
+      if (priorityA !== priorityB) {
+        return priorityA - priorityB;
+      }
+      
+      // Then sort alphabetically by title
+      return (a.title || '').localeCompare(b.title || '');
+    });
+  };
+
   useEffect(() => {
     if (!loading && isAuthenticated && user) {
       loadNomineesData();
@@ -117,13 +168,21 @@ export default function StudentNominees() {
     }
   }, [loading, isAuthenticated, user]);
 
-  // Keyboard navigation only (no touch/swipe)
+  // UPDATED: Keyboard navigation with circular wrapping
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'ArrowLeft' && currentCardIndex > 0) {
-        setCurrentCardIndex(currentCardIndex - 1);
-      } else if (e.key === 'ArrowRight' && currentCardIndex < nominees.length - 1) {
-        setCurrentCardIndex(currentCardIndex + 1);
+      if (e.key === 'ArrowLeft') {
+        if (currentCardIndex > 0) {
+          setCurrentCardIndex(currentCardIndex - 1);
+        } else {
+          setCurrentCardIndex(nominees.length - 1); // Wrap to last
+        }
+      } else if (e.key === 'ArrowRight') {
+        if (currentCardIndex < nominees.length - 1) {
+          setCurrentCardIndex(currentCardIndex + 1);
+        } else {
+          setCurrentCardIndex(0); // Wrap to first
+        }
       }
     };
 
@@ -151,8 +210,12 @@ export default function StudentNominees() {
           firebaseStudentData.dioceseId, 
           firebaseStudentData.schoolId
         );
-        setNominees(schoolNominees);
-        console.log('✅ Loaded', schoolNominees.length, 'nominee books');
+        
+        // NEW: Sort the nominees before setting them
+        const sortedNominees = sortNominees(schoolNominees);
+        setNominees(sortedNominees);
+        
+        console.log('✅ Loaded', sortedNominees.length, 'nominee books (sorted by category & title)');
       }
       
     } catch (error) {
@@ -321,15 +384,22 @@ export default function StudentNominees() {
     setCurrentCardIndex(index);
   };
 
+  // UPDATED: Circular navigation functions
   const goToPrevCard = () => {
     if (currentCardIndex > 0) {
       setCurrentCardIndex(currentCardIndex - 1);
+    } else {
+      // Wrap to last card
+      setCurrentCardIndex(nominees.length - 1);
     }
   };
 
   const goToNextCard = () => {
     if (currentCardIndex < nominees.length - 1) {
       setCurrentCardIndex(currentCardIndex + 1);
+    } else {
+      // Wrap to first card
+      setCurrentCardIndex(0);
     }
   };
 
@@ -588,68 +658,65 @@ export default function StudentNominees() {
             maxWidth: '360px',
             marginBottom: '20px'
           }}>
-            {/* PROMINENT CIRCULAR NAVIGATION ARROWS - Now positioned relative to card only */}
-            {currentCardIndex > 0 && (
-              <button
-                onClick={goToPrevCard}
-                style={{
-                  position: 'absolute',
-                  left: '-24px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  backgroundColor: currentTheme.primary,
-                  border: `3px solid ${currentTheme.secondary}`,
-                  borderRadius: '50%',
-                  width: '48px',
-                  height: '48px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '18px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer',
-                  color: currentTheme.textPrimary,
-                  zIndex: 100,
-                  transition: 'all 0.3s ease',
-                  userSelect: 'none',
-                  boxShadow: `0 4px 12px ${currentTheme.primary}40, 0 2px 8px rgba(0,0,0,0.2)`,
-                  backdropFilter: 'blur(10px)'
-                }}
-              >
-                ←
-              </button>
-            )}
+            {/* UPDATED: ALWAYS SHOW LEFT ARROW */}
+            <button
+              onClick={goToPrevCard}
+              style={{
+                position: 'absolute',
+                left: '-24px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                backgroundColor: currentTheme.primary,
+                border: `3px solid ${currentTheme.secondary}`,
+                borderRadius: '50%',
+                width: '48px',
+                height: '48px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '18px',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                color: currentTheme.textPrimary,
+                zIndex: 100,
+                transition: 'all 0.3s ease',
+                userSelect: 'none',
+                boxShadow: `0 4px 12px ${currentTheme.primary}40, 0 2px 8px rgba(0,0,0,0.2)`,
+                backdropFilter: 'blur(10px)'
+              }}
+            >
+              ←
+            </button>
 
-            {currentCardIndex < nominees.length - 1 && (
-              <button
-                onClick={goToNextCard}
-                style={{
-                  position: 'absolute',
-                  right: '-24px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  backgroundColor: currentTheme.primary,
-                  border: `3px solid ${currentTheme.secondary}`,
-                  borderRadius: '50%',
-                  width: '48px',
-                  height: '48px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '18px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer',
-                  color: currentTheme.textPrimary,
-                  zIndex: 100,
-                  transition: 'all 0.3s ease',
-                  userSelect: 'none',
-                  boxShadow: `0 4px 12px ${currentTheme.primary}40, 0 2px 8px rgba(0,0,0,0.2)`,
-                  backdropFilter: 'blur(10px)'
-                }}
-              >
-                →
-              </button>
-            )}
+            {/* UPDATED: ALWAYS SHOW RIGHT ARROW */}
+            <button
+              onClick={goToNextCard}
+              style={{
+                position: 'absolute',
+                right: '-24px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                backgroundColor: currentTheme.primary,
+                border: `3px solid ${currentTheme.secondary}`,
+                borderRadius: '50%',
+                width: '48px',
+                height: '48px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '18px',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                color: currentTheme.textPrimary,
+                zIndex: 100,
+                transition: 'all 0.3s ease',
+                userSelect: 'none',
+                boxShadow: `0 4px 12px ${currentTheme.primary}40, 0 2px 8px rgba(0,0,0,0.2)`,
+                backdropFilter: 'blur(10px)'
+              }}
+            >
+              →
+            </button>
 
             <BookCard 
               book={currentBook} 
