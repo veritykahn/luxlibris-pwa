@@ -1,6 +1,5 @@
-import Image from 'next/image'
-import Link from 'next/link'
 import Head from 'next/head'
+import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '../contexts/AuthContext'
@@ -62,12 +61,11 @@ export default function Home() {
       
       <main className="min-h-screen bg-gradient-to-br from-teal-50 to-blue-50" style={{fontFamily: 'Avenir, -apple-system, BlinkMacSystemFont, system-ui, sans-serif', letterSpacing: '0.12em'}}>
         
-
         {/* Header */}
         <header className="bg-white/90 backdrop-blur-sm shadow-sm">
           <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <Image
+              <img
                 src="/images/lux_libris_logo.png"
                 alt="Lux Libris"
                 width={50}
@@ -147,7 +145,6 @@ export default function Home() {
           )}
         </header>
 
-        {/* Rest of your homepage content stays the same */}
         {/* Hero Section */}
         <section className="relative overflow-hidden bg-gradient-to-b from-teal-50 via-blue-50 to-white">
           <div className="max-w-6xl mx-auto px-6 py-20 text-center">
@@ -309,7 +306,7 @@ export default function Home() {
         <footer className="bg-slate-800 text-white py-12">
           <div className="max-w-6xl mx-auto px-6 text-center">
             <div className="flex items-center justify-center space-x-3 mb-6">
-              <Image
+              <img
                 src="/images/lux_libris_logo.png"
                 alt="Lux Libris"
                 width={40}

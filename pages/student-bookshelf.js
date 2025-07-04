@@ -20,105 +20,230 @@ export default function StudentBookshelf() {
   const [tempNotes, setTempNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState('');
-  // 🔥 ADD THESE NEW STATE VARIABLES
-const [showSubmissionPopup, setShowSubmissionPopup] = useState(false);
-const [showQuizModal, setShowQuizModal] = useState(false);
-const [quizQuestions, setQuizQuestions] = useState([]);
-const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-const [quizAnswers, setQuizAnswers] = useState([]);
-const [parentCode, setParentCode] = useState('');
+  
+  // Separate states for each screen
+  const [showSubmissionPopup, setShowSubmissionPopup] = useState(false);
+  const [showParentPermission, setShowParentPermission] = useState(false);
+  const [showQuizModal, setShowQuizModal] = useState(false);
+  const [quizQuestions, setQuizQuestions] = useState([]);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [quizAnswers, setQuizAnswers] = useState([]);
+  const [parentCode, setParentCode] = useState('');
+  
+  // Quiz timer states
+  const [quizStartTime, setQuizStartTime] = useState(null);
+  const [timeRemaining, setTimeRemaining] = useState(30 * 60); // 30 minutes in seconds
+  const [timerActive, setTimerActive] = useState(false);
 
   // Theme definitions
   const themes = {
-  classic_lux: {
-    name: 'Lux Libris Classic',
-    assetPrefix: 'classic_lux',
-    primary: '#ADD4EA',
-    secondary: '#C3E0DE',
-    accent: '#A1E5DB',
-    background: '#FFFCF5',
-    surface: '#FFFFFF',
-    textPrimary: '#223848',
-    textSecondary: '#556B7A'
-  },
-  darkwood_sports: {
-    name: 'Athletic Champion',
-    assetPrefix: 'darkwood_sports',
-    primary: '#2F5F5F',        // Deep teal (your preferred)
-    secondary: '#8B2635',      // Burnt subdued red (your preferred)
-    accent: '#F5DEB3',         // Warm wheat/cream (your preferred)
-    background: '#F5F5DC',
-    surface: '#FFF8DC',        // Cream surface (your preferred)
-    textPrimary: '#2F1B14',
-    textSecondary: '#5D4037'
-  },
-  lavender_space: {
-    name: 'Cosmic Explorer',
-    assetPrefix: 'lavender_space',
-    primary: '#9C88C4',
-    secondary: '#B19CD9',
-    accent: '#E1D5F7',
-    background: '#2A1B3D',
-    surface: '#3D2B54',
-    textPrimary: '#E1D5F7',
-    textSecondary: '#B19CD9'
-  },
-  mint_music: {
-    name: 'Musical Harmony',
-    assetPrefix: 'mint_music',
-    primary: '#B8E6B8',        // Soft pastel green (new)
-    secondary: '#FFB3BA',      // Soft coral (new)
-    accent: '#FFCCCB',         // Pastel coral (new)
-    background: '#FEFEFE',     // Pure white
-    surface: '#F8FDF8',        // Very subtle green tint
-    textPrimary: '#2E4739',
-    textSecondary: '#4A6B57'
-  },
-  pink_plushies: {
-    name: 'Kawaii Dreams',
-    assetPrefix: 'pink_plushies',
-    primary: '#FFB6C1',
-    secondary: '#FFC0CB',
-    accent: '#FFE4E1',
-    background: '#FFF0F5',
-    surface: '#FFE4E6',
-    textPrimary: '#4A2C2A',
-    textSecondary: '#8B4B5C'
-  },
-  teal_anime: {
-    name: 'Otaku Paradise',
-    assetPrefix: 'teal_anime',
-    primary: '#20B2AA',
-    secondary: '#48D1CC',
-    accent: '#7FFFD4',
-    background: '#E0FFFF',
-    surface: '#AFEEEE',
-    textPrimary: '#2F4F4F',
-    textSecondary: '#5F9EA0'
-  },
-  white_nature: {
-    name: 'Pure Serenity',
-    assetPrefix: 'white_nature',
-    primary: '#6B8E6B',        // Forest green (your preferred)
-    secondary: '#D2B48C',      // Warm tan/khaki (your preferred)
-    accent: '#F5F5DC',         // Beige accent (your preferred)
-    background: '#FFFEF8',     // Warm white (your preferred)
-    surface: '#FFFFFF',
-    textPrimary: '#2F4F2F',
-    textSecondary: '#556B2F'
-  },
-  little_luminaries: {
-    name: 'Luxlings™',
-    assetPrefix: 'little_luminaries',
- primary: '#666666', // Medium grey (for buttons/elements)
- secondary: '#000000', // Black (for striking accents)
- accent: '#E8E8E8', // Light grey accent
- background: '#FFFFFF', // Pure white background
- surface: '#FAFAFA', // Very light grey surface
- textPrimary: '#B8860B', // Deep rich gold (readable on light backgrounds)
- textSecondary: '#AAAAAA' // grey text (for dark backgrounds)
-}
-};
+    classic_lux: {
+      name: 'Lux Libris Classic',
+      assetPrefix: 'classic_lux',
+      primary: '#ADD4EA',
+      secondary: '#C3E0DE',
+      accent: '#A1E5DB',
+      background: '#FFFCF5',
+      surface: '#FFFFFF',
+      textPrimary: '#223848',
+      textSecondary: '#556B7A'
+    },
+    darkwood_sports: {
+      name: 'Athletic Champion',
+      assetPrefix: 'darkwood_sports',
+      primary: '#2F5F5F',
+      secondary: '#8B2635',
+      accent: '#F5DEB3',
+      background: '#F5F5DC',
+      surface: '#FFF8DC',
+      textPrimary: '#2F1B14',
+      textSecondary: '#5D4037'
+    },
+    lavender_space: {
+      name: 'Cosmic Explorer',
+      assetPrefix: 'lavender_space',
+      primary: '#9C88C4',
+      secondary: '#B19CD9',
+      accent: '#E1D5F7',
+      background: '#2A1B3D',
+      surface: '#3D2B54',
+      textPrimary: '#E1D5F7',
+      textSecondary: '#B19CD9'
+    },
+    mint_music: {
+      name: 'Musical Harmony',
+      assetPrefix: 'mint_music',
+      primary: '#B8E6B8',
+      secondary: '#FFB3BA',
+      accent: '#FFCCCB',
+      background: '#FEFEFE',
+      surface: '#F8FDF8',
+      textPrimary: '#2E4739',
+      textSecondary: '#4A6B57'
+    },
+    pink_plushies: {
+      name: 'Kawaii Dreams',
+      assetPrefix: 'pink_plushies',
+      primary: '#FFB6C1',
+      secondary: '#FFC0CB',
+      accent: '#FFE4E1',
+      background: '#FFF0F5',
+      surface: '#FFE4E6',
+      textPrimary: '#4A2C2A',
+      textSecondary: '#8B4B5C'
+    },
+    teal_anime: {
+      name: 'Otaku Paradise',
+      assetPrefix: 'teal_anime',
+      primary: '#20B2AA',
+      secondary: '#48D1CC',
+      accent: '#7FFFD4',
+      background: '#E0FFFF',
+      surface: '#AFEEEE',
+      textPrimary: '#2F4F4F',
+      textSecondary: '#5F9EA0'
+    },
+    white_nature: {
+      name: 'Pure Serenity',
+      assetPrefix: 'white_nature',
+      primary: '#6B8E6B',
+      secondary: '#D2B48C',
+      accent: '#F5F5DC',
+      background: '#FFFEF8',
+      surface: '#FFFFFF',
+      textPrimary: '#2F4F2F',
+      textSecondary: '#556B2F'
+    },
+    little_luminaries: {
+      name: 'Luxlings™',
+      assetPrefix: 'little_luminaries',
+      primary: '#666666',
+      secondary: '#000000',
+      accent: '#E8E8E8',
+      background: '#FFFFFF',
+      surface: '#FAFAFA',
+      textPrimary: '#B8860B',
+      textSecondary: '#AAAAAA'
+    }
+  };
+
+  // Quiz timer effect
+  useEffect(() => {
+    let interval = null;
+    if (timerActive && timeRemaining > 0) {
+      interval = setInterval(() => {
+        setTimeRemaining(time => {
+          if (time <= 1) {
+            setTimerActive(false);
+            handleQuizComplete(quizAnswers);
+            return 0;
+          }
+          return time - 1;
+        });
+      }, 1000);
+    } else if (timeRemaining === 0) {
+      setTimerActive(false);
+    }
+    return () => clearInterval(interval);
+  }, [timerActive, timeRemaining, quizAnswers]);
+
+  // Format timer display
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // NEW: Book state management functions
+  const getBookState = (book) => {
+    const now = new Date();
+    
+    // Check if completed
+    if (book.completed && book.status === 'completed') {
+      return 'completed';
+    }
+    
+    // Check for pending states
+    if (book.status === 'pending_approval') {
+      return 'pending_admin_approval';
+    }
+    
+    if (book.status === 'pending_parent_quiz_unlock') {
+      return 'pending_parent_quiz_unlock';
+    }
+    
+    // Check for failed quiz with cooldown
+    if (book.status === 'quiz_failed' && book.failedAt) {
+      const failedTime = new Date(book.failedAt);
+      const cooldownEnd = new Date(failedTime.getTime() + 24 * 60 * 60 * 1000);
+      if (now < cooldownEnd) {
+        return 'quiz_cooldown';
+      }
+    }
+    
+    // Check for admin rejection with cooldown
+    if (book.status === 'admin_rejected' && book.rejectedAt) {
+      const rejectedTime = new Date(book.rejectedAt);
+      const cooldownEnd = new Date(rejectedTime.getTime() + 24 * 60 * 60 * 1000);
+      if (now < cooldownEnd) {
+        return 'admin_cooldown';
+      }
+    }
+    
+    return 'in_progress';
+  };
+
+  const getBookStateMessage = (book) => {
+    const state = getBookState(book);
+    const now = new Date();
+    
+    switch (state) {
+      case 'completed':
+        return { message: '🎉 Book completed!', color: '#4CAF50' };
+      
+      case 'pending_admin_approval':
+        return { message: '⏳ Waiting for teacher approval', color: '#FF9800' };
+      
+      case 'pending_parent_quiz_unlock':
+        return { message: '🔒 Waiting for parent to unlock quiz', color: '#2196F3' };
+      
+      case 'quiz_cooldown':
+        if (book.failedAt) {
+          const failedTime = new Date(book.failedAt);
+          const cooldownEnd = new Date(failedTime.getTime() + 24 * 60 * 60 * 1000);
+          const hoursLeft = Math.ceil((cooldownEnd - now) / (1000 * 60 * 60));
+          return { message: `❌ Quiz failed - try again in ${hoursLeft} hours`, color: '#F44336' };
+        }
+        break;
+      
+      case 'admin_cooldown':
+        if (book.rejectedAt) {
+          const rejectedTime = new Date(book.rejectedAt);
+          const cooldownEnd = new Date(rejectedTime.getTime() + 24 * 60 * 60 * 1000);
+          const hoursLeft = Math.ceil((cooldownEnd - now) / (1000 * 60 * 60));
+          return { message: `⏳ Resubmit in ${hoursLeft} hours`, color: '#FF5722' };
+        }
+        break;
+      
+      default:
+        return null;
+    }
+  };
+
+  const isBookLocked = (book) => {
+    const state = getBookState(book);
+    return ['pending_admin_approval', 'pending_parent_quiz_unlock', 'quiz_cooldown', 'admin_cooldown', 'completed'].includes(state);
+  };
+
+  const shouldShowReadingButton = (book) => {
+    const state = getBookState(book);
+    return state !== 'completed';
+  };
+
+  const shouldShowRemoveButton = (book) => {
+    const state = getBookState(book);
+    return state !== 'completed';
+  };
 
   useEffect(() => {
     if (!loading && isAuthenticated && user) {
@@ -128,44 +253,43 @@ const [parentCode, setParentCode] = useState('');
     }
   }, [loading, isAuthenticated, user]);
 
- const loadBookshelfData = async () => {
-  try {
-    const firebaseStudentData = await getStudentData(user.uid);
-    if (!firebaseStudentData) {
-      router.push('/student-onboarding');
-      return;
-    }
-    
-    setStudentData(firebaseStudentData);
-    
-    const selectedThemeKey = firebaseStudentData.selectedTheme || 'classic_lux';
-    const selectedTheme = themes[selectedThemeKey];
-    setCurrentTheme(selectedTheme);
-    
-    if (firebaseStudentData.dioceseId && firebaseStudentData.schoolId) {
-      const schoolNominees = await getSchoolNominees(
-        firebaseStudentData.dioceseId, 
-        firebaseStudentData.schoolId
-      );
-      setNominees(schoolNominees);
-      
-      // 🔥 NEW: Load school submission options
-      const schoolDoc = await getDoc(doc(db, `dioceses/${firebaseStudentData.dioceseId}/schools`, firebaseStudentData.schoolId));
-      if (schoolDoc.exists()) {
-        const schoolData = schoolDoc.data();
-        firebaseStudentData.schoolSubmissionOptions = schoolData.submissionOptions || {};
-        firebaseStudentData.parentQuizCode = schoolData.parentQuizCode || '';
-        setStudentData(firebaseStudentData); // Update with school options
+  const loadBookshelfData = async () => {
+    try {
+      const firebaseStudentData = await getStudentData(user.uid);
+      if (!firebaseStudentData) {
+        router.push('/student-onboarding');
+        return;
       }
+      
+      setStudentData(firebaseStudentData);
+      
+      const selectedThemeKey = firebaseStudentData.selectedTheme || 'classic_lux';
+      const selectedTheme = themes[selectedThemeKey];
+      setCurrentTheme(selectedTheme);
+      
+      if (firebaseStudentData.dioceseId && firebaseStudentData.schoolId) {
+        const schoolNominees = await getSchoolNominees(
+          firebaseStudentData.dioceseId, 
+          firebaseStudentData.schoolId
+        );
+        setNominees(schoolNominees);
+        
+        const schoolDoc = await getDoc(doc(db, `dioceses/${firebaseStudentData.dioceseId}/schools`, firebaseStudentData.schoolId));
+        if (schoolDoc.exists()) {
+          const schoolData = schoolDoc.data();
+          firebaseStudentData.schoolSubmissionOptions = schoolData.submissionOptions || {};
+          firebaseStudentData.parentQuizCode = schoolData.parentQuizCode || '';
+          setStudentData(firebaseStudentData);
+        }
+      }
+      
+    } catch (error) {
+      console.error('❌ Error loading bookshelf:', error);
+      router.push('/student-dashboard');
     }
     
-  } catch (error) {
-    console.error('❌ Error loading bookshelf:', error);
-    router.push('/student-dashboard');
-  }
-  
-  setIsLoading(false);
-};
+    setIsLoading(false);
+  };
 
   const getBookDetails = (bookId) => {
     return nominees.find(book => book.id === bookId);
@@ -288,17 +412,57 @@ const [parentCode, setParentCode] = useState('');
   };
 
   const saveBookProgress = async () => {
-  if (!selectedBook || !studentData) return;
-  
-  setIsSaving(true);
-  try {
-    const total = getBookTotal(selectedBook);
-    const isNowCompleted = tempProgress >= total && total > 0;
-    const wasAlreadyCompleted = selectedBook.completed;
+    if (!selectedBook || !studentData) return;
     
-    // 🎯 NEW: Check if this is a new completion (hitting 100% for first time)
-    if (isNowCompleted && !wasAlreadyCompleted) {
-      // Save the progress first
+    setIsSaving(true);
+    try {
+      const total = getBookTotal(selectedBook);
+      const isNowCompleted = tempProgress >= total && total > 0;
+      const wasAlreadyCompleted = selectedBook.completed;
+      
+      // 🔒 COOLDOWN FIX: Check current book state from studentData, not selectedBook
+      const currentBookInShelf = studentData.bookshelf.find(book => book.bookId === selectedBook.bookId);
+      const currentBookState = currentBookInShelf ? getBookState(currentBookInShelf) : 'in_progress';
+      const isCurrentlyLocked = ['pending_admin_approval', 'pending_parent_quiz_unlock', 'quiz_cooldown', 'admin_cooldown', 'completed'].includes(currentBookState);
+      
+      // Check if this is a new completion (hitting 100% for first time)
+      if (isNowCompleted && !wasAlreadyCompleted && !isCurrentlyLocked) {
+        // Save the progress first
+        const updatedBookshelf = studentData.bookshelf.map(book => {
+          if (book.bookId === selectedBook.bookId) {
+            return {
+              ...book,
+              currentProgress: tempProgress,
+              rating: tempRating,
+              notes: tempNotes,
+              completed: false  // Keep as incomplete until submission
+            };
+          }
+          return book;
+        });
+        
+        await updateStudentData(studentData.id, studentData.dioceseId, studentData.schoolId, {
+          bookshelf: updatedBookshelf
+        });
+        
+        setStudentData({ ...studentData, bookshelf: updatedBookshelf });
+        
+        // Show submission popup
+        setShowSubmissionPopup(true);
+        setIsSaving(false);
+        return;
+      }
+      
+      // 🚫 BLOCK submission if book is in cooldown
+      if (isNowCompleted && isCurrentlyLocked) {
+        const stateMessage = getBookStateMessage(currentBookInShelf);
+        setShowSuccess(stateMessage ? `🚫 ${stateMessage.message}` : '🚫 Cannot submit while book is locked');
+        setTimeout(() => setShowSuccess(''), 3000);
+        setIsSaving(false);
+        return;
+      }
+      
+      // Regular progress save (not at 100% or already completed)
       const updatedBookshelf = studentData.bookshelf.map(book => {
         if (book.bookId === selectedBook.bookId) {
           return {
@@ -306,7 +470,7 @@ const [parentCode, setParentCode] = useState('');
             currentProgress: tempProgress,
             rating: tempRating,
             notes: tempNotes,
-            completed: false  // ← Keep as incomplete until submission
+            completed: book.completed
           };
         }
         return book;
@@ -317,46 +481,19 @@ const [parentCode, setParentCode] = useState('');
       });
       
       setStudentData({ ...studentData, bookshelf: updatedBookshelf });
+      setShowSuccess('📚 Progress saved!');
       
-      // 🔥 NEW: Show submission popup instead of just saving
       closeBookModal();
-      setShowSubmissionPopup(true);  // ← This triggers the submission workflow
-      setIsSaving(false);
-      return; // Exit early - don't show regular success message
+      setTimeout(() => setShowSuccess(''), 3000);
+      
+    } catch (error) {
+      console.error('❌ Error saving progress:', error);
+      setShowSuccess('❌ Error saving. Please try again.');
+      setTimeout(() => setShowSuccess(''), 3000);
     }
     
-    // Regular progress save (not at 100% or already completed)
-    const updatedBookshelf = studentData.bookshelf.map(book => {
-      if (book.bookId === selectedBook.bookId) {
-        return {
-          ...book,
-          currentProgress: tempProgress,
-          rating: tempRating,
-          notes: tempNotes,
-          completed: book.completed  // Keep existing completion status
-        };
-      }
-      return book;
-    });
-    
-    await updateStudentData(studentData.id, studentData.dioceseId, studentData.schoolId, {
-      bookshelf: updatedBookshelf
-    });
-    
-    setStudentData({ ...studentData, bookshelf: updatedBookshelf });
-    setShowSuccess('📚 Progress saved!');
-    
-    closeBookModal();
-    setTimeout(() => setShowSuccess(''), 3000);
-    
-  } catch (error) {
-    console.error('❌ Error saving progress:', error);
-    setShowSuccess('❌ Error saving. Please try again.');
-    setTimeout(() => setShowSuccess(''), 3000);
-  }
-  
-  setIsSaving(false);
-};
+    setIsSaving(false);
+  };
 
   const deleteBook = async (bookId) => {
     if (!studentData) return;
@@ -383,131 +520,120 @@ const [parentCode, setParentCode] = useState('');
     
     setIsSaving(false);
   };
-// 🔥 NEW: Handle quiz submission path
-const handleQuizSubmission = async () => {
-  if (!selectedBook) return;
-  
-  try {
-    // Check if parent code is required and valid
-    const requiredParentCode = studentData.parentQuizCode || '';
+
+  const handleQuizSubmission = async () => {
+    if (!selectedBook) return;
     
-    if (!parentCode) {
-      // Show parent code input - quiz modal will handle this
+    setShowSubmissionPopup(false);
+    setShowParentPermission(true);
+  };
+
+  const handleParentCodeSubmit = async () => {
+    if (!selectedBook) {
+      setShowSuccess('❌ No book selected.');
+      setTimeout(() => setShowSuccess(''), 3000);
+      return;
+    }
+    
+    setIsSaving(true);
+    
+    try {
+      const requiredParentCode = studentData.parentQuizCode || '';
+      
+      if (!parentCode.trim()) {
+        setShowSuccess('❌ Please enter parent code.');
+        setTimeout(() => setShowSuccess(''), 3000);
+        setIsSaving(false);
+        return;
+      }
+      
+      if (parentCode.trim() !== requiredParentCode) {
+        setShowSuccess('❌ Incorrect parent code. Please try again.');
+        setTimeout(() => setShowSuccess(''), 3000);
+        setIsSaving(false);
+        return;
+      }
+
+      const quizRef = doc(db, 'quizzes', selectedBook.bookId);
+      const quizDoc = await getDoc(quizRef);
+
+      if (!quizDoc.exists()) {
+        setShowSuccess('❌ Quiz not available for this book yet.');
+        setTimeout(() => setShowSuccess(''), 3000);
+        setIsSaving(false);
+        return;
+      }
+
+      const quizData = quizDoc.data();
+      let allQuestions = [];
+      
+      if (quizData.questions && Array.isArray(quizData.questions)) {
+        allQuestions = quizData.questions;
+      }
+
+      if (allQuestions.length === 0) {
+        setShowSuccess('❌ No quiz questions found for this book.');
+        setTimeout(() => setShowSuccess(''), 3000);
+        setIsSaving(false);
+        return;
+      }
+
+      const shuffled = [...allQuestions].sort(() => 0.5 - Math.random());
+      const selectedQuestions = shuffled.slice(0, Math.min(10, allQuestions.length));
+
+      setQuizQuestions(selectedQuestions);
+      setCurrentQuestionIndex(0);
+      setQuizAnswers([]);
+      setTimeRemaining(30 * 60);
+      setTimerActive(false);
+      setShowParentPermission(false);
       setShowQuizModal(true);
-      setShowSubmissionPopup(false);
-      return;
-    }
-    
-    if (parentCode !== requiredParentCode) {
-      setShowSuccess('❌ Incorrect parent code. Please try again.');
+      setIsSaving(false);
+      
+    } catch (error) {
+      console.error('❌ Error loading quiz:', error);
+      setShowSuccess('❌ Error loading quiz. Please try again.');
       setTimeout(() => setShowSuccess(''), 3000);
-      return;
+      setIsSaving(false);
     }
+  };
+
+  const handleRequestParentApproval = async () => {
+    if (!selectedBook || !studentData) return;
     
-    // Load quiz questions for this book
-    const quizRef = doc(db, 'quizzes', selectedBook.bookId);
-    const quizDoc = await getDoc(quizRef);
-    
-    if (!quizDoc.exists()) {
-      setShowSuccess('❌ Quiz not available for this book yet.');
+    setIsSaving(true);
+    try {
+      setShowSuccess('📧 Parent approval request sent! Check back later.');
+      setShowParentPermission(false);
+      setTimeout(() => setShowSuccess(''), 4000);
+      
+    } catch (error) {
+      console.error('❌ Error sending parent request:', error);
+      setShowSuccess('❌ Error sending request. Please try again.');
       setTimeout(() => setShowSuccess(''), 3000);
-      return;
     }
     
-    const quizData = quizDoc.data();
-    const allQuestions = quizData.questions || [];
-    
-    // Select 10 random questions from 20
-    const shuffled = [...allQuestions].sort(() => 0.5 - Math.random());
-    const selectedQuestions = shuffled.slice(0, 10);
-    
-    setQuizQuestions(selectedQuestions);
-    setCurrentQuestionIndex(0);
-    setQuizAnswers([]);
-    setShowQuizModal(true);
-    setShowSubmissionPopup(false);
-    
-  } catch (error) {
-    console.error('❌ Error loading quiz:', error);
-    setShowSuccess('❌ Error loading quiz. Please try again.');
-    setTimeout(() => setShowSuccess(''), 3000);
-  }
-};
+    setIsSaving(false);
+  };
 
-// 🔥 NEW: Handle admin approval submission path
-const handleBookSubmission = async (submissionType) => {
-  if (!selectedBook || !studentData) return;
-  
-  setIsSaving(true);
-  try {
-    // Create submission record for admin approval
-    const submission = {
-      bookId: selectedBook.bookId,
-      bookTitle: selectedBook.details.title,
-      studentId: studentData.id,
-      studentName: `${studentData.firstName} ${studentData.lastInitial || ''}`,
-      submissionType: submissionType,
-      submittedAt: new Date(),
-      status: 'pending',
-      progress: tempProgress,
-      rating: tempRating,
-      notes: tempNotes
-    };
+  const handleBookSubmission = async (submissionType) => {
+    if (!selectedBook || !studentData) return;
     
-    // Add to admin approval queue (you can implement this collection)
-    // For now, we will mark the book as submitted in student data
-    const updatedBookshelf = studentData.bookshelf.map(book => {
-      if (book.bookId === selectedBook.bookId) {
-        return {
-          ...book,
-          currentProgress: tempProgress,
-          rating: tempRating,
-          notes: tempNotes,
-          completed: true,
-          submissionType: submissionType,
-          submittedAt: new Date(),
-          status: 'pending_approval'
-        };
-      }
-      return book;
-    });
-    
-    await updateStudentData(studentData.id, studentData.dioceseId, studentData.schoolId, {
-      bookshelf: updatedBookshelf
-    });
-    
-    setStudentData({ ...studentData, bookshelf: updatedBookshelf });
-    setShowSubmissionPopup(false);
-    setShowSuccess(`📤 Book submitted for ${submissionType} approval!`);
-    setTimeout(() => setShowSuccess(''), 3000);
-    
-  } catch (error) {
-    console.error('❌ Error submitting book:', error);
-    setShowSuccess('❌ Error submitting book. Please try again.');
-    setTimeout(() => setShowSuccess(''), 3000);
-  }
-  
-  setIsSaving(false);
-};
-
-// 🔥 NEW: Handle quiz completion and grading
-const handleQuizComplete = async (answers) => {
-  if (!selectedBook || !quizQuestions.length) return;
-  
-  setIsSaving(true);
-  try {
-    // Grade the quiz
-    let correctAnswers = 0;
-    quizQuestions.forEach((question, index) => {
-      if (answers[index] === question.answer) {
-        correctAnswers++;
-      }
-    });
-    
-    const passed = correctAnswers >= 7; // 7 out of 10 to pass
-    
-    if (passed) {
-      // Mark book as completed via quiz
+    setIsSaving(true);
+    try {
+      const submission = {
+        bookId: selectedBook.bookId,
+        bookTitle: selectedBook.details.title,
+        studentId: studentData.id,
+        studentName: `${studentData.firstName} ${studentData.lastInitial || ''}`,
+        submissionType: submissionType,
+        submittedAt: new Date(),
+        status: 'pending',
+        progress: tempProgress,
+        rating: tempRating,
+        notes: tempNotes
+      };
+      
       const updatedBookshelf = studentData.bookshelf.map(book => {
         if (book.bookId === selectedBook.bookId) {
           return {
@@ -516,48 +642,134 @@ const handleQuizComplete = async (answers) => {
             rating: tempRating,
             notes: tempNotes,
             completed: true,
-            submissionType: 'quiz',
+            submissionType: submissionType,
             submittedAt: new Date(),
-            status: 'completed',
-            quizScore: `${correctAnswers}/10`
+            status: 'pending_approval'
           };
         }
         return book;
       });
       
       await updateStudentData(studentData.id, studentData.dioceseId, studentData.schoolId, {
-        bookshelf: updatedBookshelf,
-        booksSubmittedThisYear: (studentData.booksSubmittedThisYear || 0) + 1,
-        lifetimeBooksSubmitted: (studentData.lifetimeBooksSubmitted || 0) + 1
+        bookshelf: updatedBookshelf
       });
       
-      setStudentData({ 
-        ...studentData, 
-        bookshelf: updatedBookshelf,
-        booksSubmittedThisYear: (studentData.booksSubmittedThisYear || 0) + 1,
-        lifetimeBooksSubmitted: (studentData.lifetimeBooksSubmitted || 0) + 1
-      });
+      setStudentData({ ...studentData, bookshelf: updatedBookshelf });
+      setShowSubmissionPopup(false);
+      setShowSuccess(`📤 Book submitted for ${submissionType} approval!`);
+      setTimeout(() => setShowSuccess(''), 3000);
       
-      setShowQuizModal(false);
-      setShowSuccess(`🎉 Quiz passed! ${correctAnswers}/10 correct. Book completed!`);
-      
-      // TODO: Trigger saint unlock logic here
-      
-    } else {
-      setShowQuizModal(false);
-      setShowSuccess(`❌ Quiz failed. ${correctAnswers}/10 correct. Need 7+ to pass. Try again in 24 hours.`);
+    } catch (error) {
+      console.error('❌ Error submitting book:', error);
+      setShowSuccess('❌ Error submitting book. Please try again.');
+      setTimeout(() => setShowSuccess(''), 3000);
     }
     
-    setTimeout(() => setShowSuccess(''), 4000);
+    setIsSaving(false);
+  };
+
+  const handleQuizAnswer = (questionIndex, answer) => {
+    const newAnswers = [...quizAnswers];
+    newAnswers[questionIndex] = answer;
+    setQuizAnswers(newAnswers);
     
-  } catch (error) {
-    console.error('❌ Error completing quiz:', error);
-    setShowSuccess('❌ Error processing quiz. Please try again.');
-    setTimeout(() => setShowSuccess(''), 3000);
-  }
-  
-  setIsSaving(false);
-};
+    if (!timerActive && questionIndex === 0) {
+      setTimerActive(true);
+      setQuizStartTime(new Date());
+    }
+  };
+
+  const handleQuizComplete = async (answers) => {
+    if (!selectedBook || !quizQuestions.length) return;
+    
+    setIsSaving(true);
+    setTimerActive(false);
+    
+    try {
+      let correctAnswers = 0;
+      quizQuestions.forEach((question, index) => {
+        if (answers[index] === question.answer) {
+          correctAnswers++;
+        }
+      });
+      
+      const passed = correctAnswers >= 7;
+      
+      if (passed) {
+        const updatedBookshelf = studentData.bookshelf.map(book => {
+          if (book.bookId === selectedBook.bookId) {
+            return {
+              ...book,
+              currentProgress: tempProgress,
+              rating: tempRating,
+              notes: tempNotes,
+              completed: true,
+              submissionType: 'quiz',
+              submittedAt: new Date(),
+              status: 'completed',
+              quizScore: `${correctAnswers}/10`
+            };
+          }
+          return book;
+        });
+        
+        await updateStudentData(studentData.id, studentData.dioceseId, studentData.schoolId, {
+          bookshelf: updatedBookshelf,
+          booksSubmittedThisYear: (studentData.booksSubmittedThisYear || 0) + 1,
+          lifetimeBooksSubmitted: (studentData.lifetimeBooksSubmitted || 0) + 1
+        });
+        
+        setStudentData({ 
+          ...studentData, 
+          bookshelf: updatedBookshelf,
+          booksSubmittedThisYear: (studentData.booksSubmittedThisYear || 0) + 1,
+          lifetimeBooksSubmitted: (studentData.lifetimeBooksSubmitted || 0) + 1
+        });
+        
+        setShowQuizModal(false);
+        closeBookModal(); // 🔒 COOLDOWN FIX: Close modal so user sees updated state
+        setShowSuccess(`🎉 Quiz passed! ${correctAnswers}/10 correct. Book completed!`);
+        
+      } else {
+        // Update book with failed status
+        const updatedBookshelf = studentData.bookshelf.map(book => {
+          if (book.bookId === selectedBook.bookId) {
+            return {
+              ...book,
+              status: 'quiz_failed',
+              failedAt: new Date(),
+              lastQuizScore: `${correctAnswers}/10`
+            };
+          }
+          return book;
+        });
+        
+        await updateStudentData(studentData.id, studentData.dioceseId, studentData.schoolId, {
+          bookshelf: updatedBookshelf
+        });
+        
+        setStudentData({ ...studentData, bookshelf: updatedBookshelf });
+        setShowQuizModal(false);
+        closeBookModal(); // 🔒 COOLDOWN FIX: Close modal so user sees cooldown state
+        setShowSuccess(`❌ Quiz failed. ${correctAnswers}/10 correct. Need 7+ to pass. Try again in 24 hours.`);
+      }
+      
+      setParentCode('');
+      setQuizQuestions([]);
+      setQuizAnswers([]);
+      setCurrentQuestionIndex(0);
+      
+      setTimeout(() => setShowSuccess(''), 4000);
+      
+    } catch (error) {
+      console.error('❌ Error completing quiz:', error);
+      setShowSuccess('❌ Error processing quiz. Please try again.');
+      setTimeout(() => setShowSuccess(''), 3000);
+    }
+    
+    setIsSaving(false);
+  };
+
   // Show loading
   if (loading || isLoading || !studentData || !currentTheme) {
     return (
@@ -587,13 +799,11 @@ const handleQuizComplete = async (answers) => {
   const bookshelf = studentData.bookshelf || [];
   const totalBooks = bookshelf.length;
   
-  // Always 4 books per shelf
   const booksPerShelf = 4;
   const shelves = [];
   for (let i = 0; i < bookshelf.length; i += booksPerShelf) {
     shelves.push(bookshelf.slice(i, i + booksPerShelf));
   }
-  // Add empty shelves only if we have books
   if (bookshelf.length > 0) {
     while (shelves.length < 5) {
       shelves.push([]);
@@ -615,15 +825,13 @@ const handleQuizComplete = async (answers) => {
         minHeight: '100vh',
         fontFamily: 'Avenir, system-ui, -apple-system, sans-serif',
         position: 'relative',
-        // REFINED TILING - sweet spot for mobile
         backgroundImage: `url(${decorativeOverlay})`,
-        backgroundSize: '400px', // Perfect balance for mobile
+        backgroundSize: '400px',
         backgroundRepeat: 'repeat',
         backgroundPosition: 'top left',
         backgroundColor: currentTheme.background
       }}>
         
-        {/* SUBTLE OVERLAY to reduce wallpaper intensity */}
         <div style={{
           position: 'absolute',
           top: 0,
@@ -636,11 +844,11 @@ const handleQuizComplete = async (answers) => {
           zIndex: 1
         }} />
         
-        {/* EXTRA SLIM HEADER */}
+        {/* HEADER */}
         <div style={{
           background: `linear-gradient(135deg, ${currentTheme.primary}F0, ${currentTheme.secondary}F0)`,
           backdropFilter: 'blur(20px)',
-          padding: '30px 20px 12px', // Even slimmer
+          padding: '30px 20px 12px',
           position: 'relative',
           borderRadius: '0 0 25px 25px',
           boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
@@ -649,7 +857,6 @@ const handleQuizComplete = async (answers) => {
           alignItems: 'center',
           justifyContent: 'space-between'
         }}>
-          {/* Back Arrow */}
           <button
             onClick={() => router.push('/student-dashboard')}
             style={{
@@ -671,9 +878,8 @@ const handleQuizComplete = async (answers) => {
             ←
           </button>
 
-          {/* CENTERED TITLE - SMALLER FONT */}
           <h1 style={{
-            fontSize: '24px',     // Smaller title font
+            fontSize: '24px',
             fontWeight: '400',
             color: currentTheme.textPrimary,
             margin: '0',
@@ -685,7 +891,6 @@ const handleQuizComplete = async (answers) => {
             My Bookshelf
           </h1>
 
-          {/* Settings Icon */}
           <button
             onClick={() => router.push('/student-settings')}
             style={{
@@ -708,15 +913,14 @@ const handleQuizComplete = async (answers) => {
           </button>
         </div>
 
-        {/* MAIN CONTENT - PHONE SCREEN OPTIMIZED */}
+        {/* MAIN CONTENT */}
         <div style={{
           padding: '15px',
           minHeight: 'calc(100vh - 120px)',
           position: 'relative',
-          zIndex: 10 // Above overlay
+          zIndex: 10
         }}>
           {bookshelf.length === 0 ? (
-            // Empty Bookshelf
             <div style={{
               textAlign: 'center',
               padding: '60px 20px',
@@ -729,16 +933,16 @@ const handleQuizComplete = async (answers) => {
             }}>
               <div style={{ fontSize: '48px', marginBottom: '16px' }}>📚</div>
               <h2 style={{
-                fontSize: '16px',   // Smaller heading
+                fontSize: '16px',
                 fontWeight: '400',
                 color: currentTheme.textPrimary,
                 marginBottom: '8px',
-                fontFamily: 'Didot, "Times New Roman", serif' // Didot for headings
+                fontFamily: 'Didot, "Times New Roman", serif'
               }}>
                 Your bookshelf is empty
               </h2>
               <p style={{ 
-                fontSize: '13px',   // Smaller body text
+                fontSize: '13px',
                 marginBottom: '20px',
                 fontFamily: 'Avenir, system-ui, sans-serif',
                 letterSpacing: '0.5px',
@@ -752,13 +956,13 @@ const handleQuizComplete = async (answers) => {
                   backgroundColor: currentTheme.primary,
                   color: currentTheme.textPrimary,
                   border: 'none',
-                  padding: '10px 20px',  // Slightly smaller button
+                  padding: '10px 20px',
                   borderRadius: '12px',
-                  fontSize: '13px',      // Smaller button text
+                  fontSize: '13px',
                   fontWeight: '500',
                   cursor: 'pointer',
-                  minHeight: '40px',     // Smaller button height
-                  fontFamily: 'system-ui, -apple-system, sans-serif', // System fonts for UI
+                  minHeight: '44px',
+                  fontFamily: 'system-ui, -apple-system, sans-serif',
                   letterSpacing: '0.3px'
                 }}
               >
@@ -766,7 +970,6 @@ const handleQuizComplete = async (answers) => {
               </button>
             </div>
           ) : (
-            // CLOSE SHELVES - FIT ON PHONE SCREEN
             <div style={{
               maxWidth: '350px',
               margin: '0 auto'
@@ -774,11 +977,10 @@ const handleQuizComplete = async (answers) => {
               {shelves.map((shelf, shelfIndex) => (
                 <div key={shelfIndex} style={{ 
                   position: 'relative',
-                  marginBottom: '12px' // SUPER close spacing
+                  marginBottom: '12px'
                 }}>
-                  {/* SMALL BOOKS */}
                   <div style={{
-                    height: '98px', // Accommodate slightly larger books
+                    height: '98px',
                     padding: '0 15px',
                     marginBottom: '6px',
                     display: 'grid',
@@ -793,6 +995,7 @@ const handleQuizComplete = async (answers) => {
                       const progressPercent = getProgressPercentage(book);
                       const total = getBookTotal(book);
                       const progressColor = getProgressColor(book.currentProgress, total);
+                      const bookState = getBookState(book);
                       
                       return (
                         <button
@@ -806,11 +1009,10 @@ const handleQuizComplete = async (answers) => {
                             padding: 0
                           }}
                         >
-                          {/* SLIGHTLY LARGER BOOK COVER */}
                           <div style={{
                             width: '100%',
-                            maxWidth: '68px', // Slightly larger books
-                            height: '88px',   // Proportionally taller
+                            maxWidth: '68px',
+                            height: '88px',
                             borderRadius: '3px',
                             overflow: 'hidden',
                             backgroundColor: '#F5F5F5',
@@ -850,7 +1052,6 @@ const handleQuizComplete = async (answers) => {
                               <span style={{ fontSize: '20px' }}>📚</span>
                             )}
                             
-                            {/* Progress bar */}
                             <div style={{
                               position: 'absolute',
                               bottom: 0,
@@ -867,7 +1068,7 @@ const handleQuizComplete = async (answers) => {
                               }} />
                             </div>
                             
-                            {/* KEEP Audio Badge */}
+                            {/* Audio Badge */}
                             {book.format === 'audiobook' && (
                               <div style={{
                                 position: 'absolute',
@@ -887,8 +1088,32 @@ const handleQuizComplete = async (answers) => {
                               </div>
                             )}
                             
+                            {/* Sand Timer for Pending/Cooldown States */}
+                            {(bookState === 'pending_admin_approval' || 
+                              bookState === 'pending_parent_quiz_unlock' || 
+                              bookState === 'quiz_cooldown' || 
+                              bookState === 'admin_cooldown') && (
+                              <div style={{
+                                position: 'absolute',
+                                top: '2px',
+                                right: book.format === 'audiobook' ? '18px' : '2px',
+                                backgroundColor: 'rgba(255,152,0,0.9)',
+                                color: 'white',
+                                borderRadius: '50%',
+                                width: '14px',
+                                height: '14px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '7px',
+                                animation: bookState.includes('cooldown') ? 'pulse 2s infinite' : 'none'
+                              }}>
+                                ⏳
+                              </div>
+                            )}
+                            
                             {/* Completion Badge */}
-                            {book.completed && (
+                            {bookState === 'completed' && (
                               <div style={{
                                 position: 'absolute',
                                 top: '2px',
@@ -912,21 +1137,19 @@ const handleQuizComplete = async (answers) => {
                       );
                     })}
                     
-                    {/* Empty slots */}
                     {Array(booksPerShelf - shelf.length).fill(null).map((_, emptyIndex) => (
                       <div
                         key={`empty-${shelfIndex}-${emptyIndex}`}
                         style={{
                           width: '100%',
-                          maxWidth: '68px',  // Match new book size
-                          height: '88px',    // Match new book height
+                          maxWidth: '68px',
+                          height: '88px',
                           margin: '0 auto'
                         }}
                       />
                     ))}
                   </div>
 
-                  {/* THICKER CSS SHELF WITH INSET SHADOW */}
                   <div style={{
                     height: '6px',
                     margin: '0 10px',
@@ -942,10 +1165,13 @@ const handleQuizComplete = async (answers) => {
           )}
         </div>
 
-        {/* Modal and other components */}
+        {/* BOOK MODAL */}
         {showBookModal && selectedBook && (() => {
           const colorPalette = getCategoryColorPalette(selectedBook.details);
           const total = getBookTotal(selectedBook);
+          const bookState = getBookState(selectedBook);
+          const stateMessage = getBookStateMessage(selectedBook);
+          const locked = isBookLocked(selectedBook);
           
           return (
             <div style={{
@@ -971,7 +1197,6 @@ const handleQuizComplete = async (answers) => {
                 position: 'relative',
                 boxShadow: '0 20px 40px rgba(0,0,0,0.3)'
               }}>
-                {/* Book modal content */}
                 <div style={{
                   position: 'relative',
                   padding: '15px 15px 10px',
@@ -1014,7 +1239,8 @@ const handleQuizComplete = async (answers) => {
                     alignItems: 'center',
                     justifyContent: 'center',
                     boxShadow: '0 6px 15px rgba(0,0,0,0.2)',
-                    border: '2px solid white'
+                    border: '2px solid white',
+                    position: 'relative'
                   }}>
                     {selectedBook.details.coverImageUrl ? (
                       <img 
@@ -1028,6 +1254,28 @@ const handleQuizComplete = async (answers) => {
                       />
                     ) : (
                       <span style={{ fontSize: '40px' }}>📚</span>
+                    )}
+                    
+                    {/* Celebration icon for completed books */}
+                    {bookState === 'completed' && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '8px',
+                        right: '8px',
+                        backgroundColor: '#4CAF50',
+                        color: 'white',
+                        borderRadius: '50%',
+                        width: '24px',
+                        height: '24px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '12px',
+                        fontWeight: 'bold',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+                      }}>
+                        🎉
+                      </div>
                     )}
                   </div>
                 </div>
@@ -1046,7 +1294,7 @@ const handleQuizComplete = async (answers) => {
                       color: colorPalette.textPrimary,
                       margin: '0 0 4px 0',
                       lineHeight: '1.2',
-                      fontFamily: 'Didot, "Times New Roman", serif' // Didot for book titles
+                      fontFamily: 'Didot, "Times New Roman", serif'
                     }}>
                       {selectedBook.details.title}
                     </h2>
@@ -1061,27 +1309,48 @@ const handleQuizComplete = async (answers) => {
                       by {selectedBook.details.authors}
                     </p>
 
-                    <button
-                      onClick={() => {
-                        closeBookModal();
-                        router.push('/healthy-habits');
-                      }}
-                      style={{
-                        backgroundColor: colorPalette.primary,
-                        color: colorPalette.textPrimary,
-                        border: 'none',
-                        padding: '8px 16px',
+                    {/* Status Message */}
+                    {stateMessage && (
+                      <div style={{
+                        backgroundColor: stateMessage.color,
+                        color: 'white',
+                        padding: '8px 12px',
                         borderRadius: '16px',
                         fontSize: '12px',
                         fontWeight: '500',
-                        cursor: 'pointer',
-                        width: '100%',
-                        minHeight: '36px',
-                        fontFamily: 'system-ui, -apple-system, sans-serif' // System fonts for buttons
-                      }}
-                    >
-                      📖 Start Reading
-                    </button>
+                        margin: '0 0 12px 0',
+                        fontFamily: 'Avenir, system-ui, sans-serif'
+                      }}>
+                        {stateMessage.message}
+                      </div>
+                    )}
+
+                    {/* Start Reading Session Button - Only show if not completed */}
+                    {shouldShowReadingButton(selectedBook) && (
+                      <button
+                        onClick={() => {
+                          closeBookModal();
+                          router.push('/healthy-habits');
+                        }}
+                        disabled={locked}
+                        style={{
+                          backgroundColor: locked ? '#E0E0E0' : colorPalette.primary,
+                          color: locked ? '#999' : colorPalette.textPrimary,
+                          border: 'none',
+                          padding: '8px 16px',
+                          borderRadius: '16px',
+                          fontSize: '12px',
+                          fontWeight: '500',
+                          cursor: locked ? 'not-allowed' : 'pointer',
+                          width: '100%',
+                          minHeight: '44px',
+                          fontFamily: 'system-ui, -apple-system, sans-serif',
+                          opacity: locked ? 0.6 : 1
+                        }}
+                      >
+                        📖 Start Reading Session
+                      </button>
+                    )}
                   </div>
 
                   {/* Progress section */}
@@ -1089,7 +1358,7 @@ const handleQuizComplete = async (answers) => {
                     <label style={{
                       fontSize: '12px',
                       fontWeight: '500',
-                      color: colorPalette.textPrimary,
+                      color: locked ? '#999' : colorPalette.textPrimary,
                       display: 'block',
                       marginBottom: '6px',
                       fontFamily: 'Avenir, system-ui, sans-serif',
@@ -1104,15 +1373,17 @@ const handleQuizComplete = async (answers) => {
                       max={total}
                       value={tempProgress}
                       onChange={(e) => setTempProgress(parseInt(e.target.value))}
+                      disabled={locked}
                       style={{
                         width: '100%',
                         height: '6px',
                         borderRadius: '3px',
-                        background: `linear-gradient(to right, ${colorPalette.primary} 0%, ${colorPalette.primary} ${(tempProgress/total)*100}%, #E0E0E0 ${(tempProgress/total)*100}%, #E0E0E0 100%)`,
+                        background: `linear-gradient(to right, ${locked ? '#E0E0E0' : colorPalette.primary} 0%, ${locked ? '#E0E0E0' : colorPalette.primary} ${(tempProgress/total)*100}%, #E0E0E0 ${(tempProgress/total)*100}%, #E0E0E0 100%)`,
                         outline: 'none',
                         appearance: 'none',
                         WebkitAppearance: 'none',
-                        cursor: 'pointer'
+                        cursor: locked ? 'not-allowed' : 'pointer',
+                        opacity: locked ? 0.6 : 1
                       }}
                     />
                   </div>
@@ -1145,8 +1416,8 @@ const handleQuizComplete = async (answers) => {
                             cursor: 'pointer',
                             color: star <= tempRating ? '#FFD700' : '#E0E0E0',
                             padding: '1px',
-                            minHeight: '28px',
-                            minWidth: '28px'
+                            minHeight: '44px',
+                            minWidth: '44px'
                           }}
                         >
                           ★
@@ -1166,7 +1437,7 @@ const handleQuizComplete = async (answers) => {
                         padding: '8px',
                         border: `1px solid ${colorPalette.primary}40`,
                         borderRadius: '6px',
-                        fontSize: '12px',
+                        fontSize: '16px',
                         backgroundColor: '#FFFFFF',
                         color: colorPalette.textPrimary,
                         fontFamily: 'inherit',
@@ -1190,31 +1461,35 @@ const handleQuizComplete = async (answers) => {
                         fontWeight: '500',
                         cursor: 'pointer',
                         opacity: isSaving ? 0.7 : 1,
-                        minHeight: '36px',
+                        minHeight: '44px',
                         fontFamily: 'system-ui, -apple-system, sans-serif'
                       }}
                     >
                       {isSaving ? 'Saving...' : '💾 Save'}
                     </button>
-                    <button
-                      onClick={() => deleteBook(selectedBook.bookId)}
-                      disabled={isSaving}
-                      style={{
-                        backgroundColor: colorPalette.textSecondary,
-                        color: 'white',
-                        border: 'none',
-                        padding: '10px 16px',
-                        borderRadius: '16px',
-                        fontSize: '12px',
-                        cursor: 'pointer',
-                        opacity: isSaving ? 0.7 : 1,
-                        minHeight: '36px',
-                        fontWeight: '500',
-                        fontFamily: 'system-ui, -apple-system, sans-serif'
-                      }}
-                    >
-                      🗑️ Remove
-                    </button>
+                    
+                    {/* Remove button - Only show if not completed */}
+                    {shouldShowRemoveButton(selectedBook) && (
+                      <button
+                        onClick={() => deleteBook(selectedBook.bookId)}
+                        disabled={isSaving || locked}
+                        style={{
+                          backgroundColor: locked ? '#E0E0E0' : colorPalette.textSecondary,
+                          color: locked ? '#999' : 'white',
+                          border: 'none',
+                          padding: '10px 16px',
+                          borderRadius: '16px',
+                          fontSize: '12px',
+                          cursor: locked ? 'not-allowed' : 'pointer',
+                          opacity: isSaving ? 0.7 : (locked ? 0.6 : 1),
+                          minHeight: '44px',
+                          fontWeight: '500',
+                          fontFamily: 'system-ui, -apple-system, sans-serif'
+                        }}
+                      >
+                        🗑️ Remove
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1222,627 +1497,814 @@ const handleQuizComplete = async (answers) => {
           );
         })()}
 
-        {/* 🎯 SUBMISSION POPUP - Choose how to complete book */}
+        {/* SUBMISSION POPUP */}
         {showSubmissionPopup && selectedBook && (() => {
-          const colorPalette = getCategoryColorPalette(selectedBook.details);
+          const colorPalette = currentTheme;
           
           return (
             <div style={{
-  position: 'fixed',
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  backgroundColor: 'rgba(0,0,0,0.85)',
-  zIndex: 1001,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  padding: '20px'
-}}>
-  <div style={{
-    backgroundColor: '#FFFFFF',
-    borderRadius: '20px',
-    maxWidth: '360px',
-    width: '100%',
-    maxHeight: '80vh',
-    overflowY: 'auto',
-    position: 'relative',
-    boxShadow: '0 20px 40px rgba(0,0,0,0.3)'
-  }}>
-    
-    {/* Header */}
-    <div style={{
-      background: `linear-gradient(135deg, ${colorPalette.primary}, ${colorPalette.secondary})`,
-      borderRadius: '20px 20px 0 0',
-      padding: '20px',
-      textAlign: 'center',
-      position: 'relative'
-    }}>
-      <button
-        onClick={() => setShowSubmissionPopup(false)}
-        style={{
-          position: 'absolute',
-          top: '10px',
-          right: '10px',
-          backgroundColor: 'rgba(255,255,255,0.9)',
-          border: 'none',
-          borderRadius: '50%',
-          width: '32px',
-          height: '32px',
-          fontSize: '16px',
-          fontWeight: 'bold',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: colorPalette.textPrimary
-        }}
-      >
-        ✕
-      </button>
-
-      <div style={{ fontSize: '48px', marginBottom: '12px' }}>🎉</div>
-      <h2 style={{
-        fontSize: '20px',
-        fontWeight: '600',
-        color: 'white',
-        margin: '0 0 8px 0',
-        fontFamily: 'Didot, "Times New Roman", serif'
-      }}>
-        Book Complete!
-      </h2>
-      <p style={{
-        fontSize: '14px',
-        color: 'rgba(255,255,255,0.9)',
-        margin: '0',
-        fontFamily: 'Avenir, system-ui, sans-serif'
-      }}>
-        How would you like to show you have read "{selectedBook.details.title}"?
-      </p>
-    </div>
-
-    {/* Submission Options */}
-    <div style={{ padding: '20px' }}>
-      
-      {/* Quiz Option - Always Available */}
-      <button
-        onClick={handleQuizSubmission}
-        style={{
-          width: '100%',
-          backgroundColor: colorPalette.primary,
-          color: 'white',
-          border: 'none',
-          borderRadius: '12px',
-          padding: '16px',
-          marginBottom: '12px',
-          fontSize: '14px',
-          fontWeight: '600',
-          cursor: 'pointer',
-          textAlign: 'left',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          minHeight: '60px',
-          fontFamily: 'Avenir, system-ui, sans-serif'
-        }}
-      >
-        <span style={{ fontSize: '24px' }}>📝</span>
-        <div>
-          <div style={{ fontWeight: '600', marginBottom: '4px' }}>Take Quiz</div>
-          <div style={{ fontSize: '12px', opacity: 0.9 }}>
-            Parent code required • 10 questions • 7 correct to pass
-          </div>
-        </div>
-      </button>
-
-      {/* Admin-defined submission options */}
-      {studentData.schoolSubmissionOptions?.presentToTeacher && (
-        <button
-          onClick={() => handleBookSubmission('presentToTeacher')}
-          style={{
-            width: '100%',
-            backgroundColor: colorPalette.surface,
-            color: colorPalette.textPrimary,
-            border: `2px solid ${colorPalette.primary}40`,
-            borderRadius: '12px',
-            padding: '16px',
-            marginBottom: '12px',
-            fontSize: '14px',
-            fontWeight: '500',
-            cursor: 'pointer',
-            textAlign: 'left',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            minHeight: '60px',
-            fontFamily: 'Avenir, system-ui, sans-serif'
-          }}
-        >
-          <span style={{ fontSize: '24px' }}>🗣️</span>
-          <div>
-            <div style={{ fontWeight: '600', marginBottom: '4px' }}>Present to Teacher</div>
-            <div style={{ fontSize: '12px', opacity: 0.7 }}>
-              Oral presentation or discussion
-            </div>
-          </div>
-        </button>
-      )}
-
-      {studentData.schoolSubmissionOptions?.submitReview && (
-        <button
-          onClick={() => handleBookSubmission('submitReview')}
-          style={{
-            width: '100%',
-            backgroundColor: colorPalette.surface,
-            color: colorPalette.textPrimary,
-            border: `2px solid ${colorPalette.primary}40`,
-            borderRadius: '12px',
-            padding: '16px',
-            marginBottom: '12px',
-            fontSize: '14px',
-            fontWeight: '500',
-            cursor: 'pointer',
-            textAlign: 'left',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            minHeight: '60px',
-            fontFamily: 'Avenir, system-ui, sans-serif'
-          }}
-        >
-          <span style={{ fontSize: '24px' }}>✍️</span>
-          <div>
-            <div style={{ fontWeight: '600', marginBottom: '4px' }}>Submit Written Review</div>
-            <div style={{ fontSize: '12px', opacity: 0.7 }}>
-              Written book review or summary
-            </div>
-          </div>
-        </button>
-      )}
-
-      {studentData.schoolSubmissionOptions?.createStoryboard && (
-        <button
-          onClick={() => handleBookSubmission('createStoryboard')}
-          style={{
-            width: '100%',
-            backgroundColor: colorPalette.surface,
-            color: colorPalette.textPrimary,
-            border: `2px solid ${colorPalette.primary}40`,
-            borderRadius: '12px',
-            padding: '16px',
-            marginBottom: '12px',
-            fontSize: '14px',
-            fontWeight: '500',
-            cursor: 'pointer',
-            textAlign: 'left',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            minHeight: '60px',
-            fontFamily: 'Avenir, system-ui, sans-serif'
-          }}
-        >
-          <span style={{ fontSize: '24px' }}>🎨</span>
-          <div>
-            <div style={{ fontWeight: '600', marginBottom: '4px' }}>Create Storyboard</div>
-            <div style={{ fontSize: '12px', opacity: 0.7 }}>
-              Visual art or comic strip
-            </div>
-          </div>
-        </button>
-      )}
-
-      {studentData.schoolSubmissionOptions?.bookReport && (
-        <button
-          onClick={() => handleBookSubmission('bookReport')}
-          style={{
-            width: '100%',
-            backgroundColor: colorPalette.surface,
-            color: colorPalette.textPrimary,
-            border: `2px solid ${colorPalette.primary}40`,
-            borderRadius: '12px',
-            padding: '16px',
-            marginBottom: '12px',
-            fontSize: '14px',
-            fontWeight: '500',
-            cursor: 'pointer',
-            textAlign: 'left',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            minHeight: '60px',
-            fontFamily: 'Avenir, system-ui, sans-serif'
-          }}
-        >
-          <span style={{ fontSize: '24px' }}>📚</span>
-          <div>
-            <div style={{ fontWeight: '600', marginBottom: '4px' }}>Traditional Book Report</div>
-            <div style={{ fontSize: '12px', opacity: 0.7 }}>
-              Formal written report
-            </div>
-          </div>
-        </button>
-      )}
-
-      {studentData.schoolSubmissionOptions?.discussWithLibrarian && (
-        <button
-          onClick={() => handleBookSubmission('discussWithLibrarian')}
-          style={{
-            width: '100%',
-            backgroundColor: colorPalette.surface,
-            color: colorPalette.textPrimary,
-            border: `2px solid ${colorPalette.primary}40`,
-            borderRadius: '12px',
-            padding: '16px',
-            marginBottom: '12px',
-            fontSize: '14px',
-            fontWeight: '500',
-            cursor: 'pointer',
-            textAlign: 'left',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            minHeight: '60px',
-            fontFamily: 'Avenir, system-ui, sans-serif'
-          }}
-        >
-          <span style={{ fontSize: '24px' }}>💬</span>
-          <div>
-            <div style={{ fontWeight: '600', marginBottom: '4px' }}>Discussion with Librarian</div>
-            <div style={{ fontSize: '12px', opacity: 0.7 }}>
-              One-on-one book discussion
-            </div>
-          </div>
-        </button>
-      )}
-
-      {studentData.schoolSubmissionOptions?.actOutScene && (
-        <button
-          onClick={() => handleBookSubmission('actOutScene')}
-          style={{
-            width: '100%',
-            backgroundColor: colorPalette.surface,
-            color: colorPalette.textPrimary,
-            border: `2px solid ${colorPalette.primary}40`,
-            borderRadius: '12px',
-            padding: '16px',
-            marginBottom: '12px',
-            fontSize: '14px',
-            fontWeight: '500',
-            cursor: 'pointer',
-            textAlign: 'left',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            minHeight: '60px',
-            fontFamily: 'Avenir, system-ui, sans-serif'
-          }}
-        >
-          <span style={{ fontSize: '24px' }}>🎭</span>
-          <div>
-            <div style={{ fontWeight: '600', marginBottom: '4px' }}>Act Out Scene</div>
-            <div style={{ fontSize: '12px', opacity: 0.7 }}>
-              Performance or dramatic reading
-            </div>
-          </div>
-        </button>
-      )}
-
-      {/* Cancel Button */}
-      <button
-        onClick={() => setShowSubmissionPopup(false)}
-        style={{
-          width: '100%',
-          backgroundColor: '#F5F5F5',
-          color: '#666',
-          border: 'none',
-          borderRadius: '12px',
-          padding: '14px',
-          fontSize: '14px',
-          fontWeight: '500',
-          cursor: 'pointer',
-          fontFamily: 'Avenir, system-ui, sans-serif'
-        }}
-      >
-        Cancel
-      </button>
-    </div>
-  </div>
-</div>
-          );
-        })()}
-{/* 🧠 QUIZ MODAL - 10 random questions from 20 */}
-{showQuizModal && quizQuestions.length > 0 && (() => {
-  const colorPalette = getCategoryColorPalette(selectedBook.details);
-  const currentQuestion = quizQuestions[currentQuestionIndex];
-  const isLastQuestion = currentQuestionIndex === quizQuestions.length - 1;
-  
-  return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0,0,0,0.9)',
-      zIndex: 1002,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '20px'
-    }}>
-      <div style={{
-        backgroundColor: '#FFFFFF',
-        borderRadius: '20px',
-        maxWidth: '400px',
-        width: '100%',
-        maxHeight: '85vh',
-        overflowY: 'auto',
-        position: 'relative',
-        boxShadow: '0 25px 50px rgba(0,0,0,0.4)'
-      }}>
-        
-        {/* Quiz Header */}
-        <div style={{
-          background: `linear-gradient(135deg, ${colorPalette.primary}, ${colorPalette.secondary})`,
-          borderRadius: '20px 20px 0 0',
-          padding: '20px',
-          textAlign: 'center',
-          color: 'white'
-        }}>
-          <div style={{ 
-            fontSize: '14px', 
-            opacity: 0.9,
-            marginBottom: '8px',
-            fontFamily: 'Avenir, system-ui, sans-serif'
-          }}>
-            Question {currentQuestionIndex + 1} of {quizQuestions.length}
-          </div>
-          <div style={{
-            backgroundColor: 'rgba(255,255,255,0.2)',
-            borderRadius: '10px',
-            height: '6px',
-            margin: '0 auto 16px',
-            overflow: 'hidden'
-          }}>
-            <div style={{
-              backgroundColor: 'white',
-              height: '100%',
-              width: `${((currentQuestionIndex + 1) / quizQuestions.length) * 100}%`,
-              transition: 'width 0.3s ease'
-            }} />
-          </div>
-          <h3 style={{
-            fontSize: '18px',
-            fontWeight: '600',
-            margin: '0',
-            fontFamily: 'Didot, "Times New Roman", serif'
-          }}>
-            📝 Quiz: {selectedBook.details.title}
-          </h3>
-        </div>
-
-        {/* Quiz Content */}
-        <div style={{ padding: '24px' }}>
-          
-          {/* Parent Code Input - Show on first question only */}
-          {currentQuestionIndex === 0 && !parentCode && (
-            <div style={{ 
-              marginBottom: '24px',
-              padding: '16px',
-              backgroundColor: colorPalette.background,
-              borderRadius: '12px',
-              border: `2px solid ${colorPalette.primary}30`
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0,0,0,0.85)',
+              zIndex: 1001,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '20px'
             }}>
-              <label style={{
-                fontSize: '14px',
-                fontWeight: '600',
-                color: colorPalette.textPrimary,
-                display: 'block',
-                marginBottom: '8px',
-                fontFamily: 'Avenir, system-ui, sans-serif'
-              }}>
-                🔐 Parent Code Required
-              </label>
-              <input
-                type="text"
-                value={parentCode}
-                onChange={(e) => setParentCode(e.target.value.toUpperCase())}
-                placeholder="Enter parent quiz code"
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: `1px solid ${colorPalette.primary}40`,
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontFamily: 'system-ui, -apple-system, sans-serif',
-                  boxSizing: 'border-box',
-                  textAlign: 'center',
-                  fontWeight: 'bold',
-                  letterSpacing: '0.1em'
-                }}
-                maxLength={20}
-              />
-              <p style={{
-                fontSize: '12px',
-                color: colorPalette.textSecondary,
-                margin: '8px 0 0 0',
-                textAlign: 'center',
-                fontFamily: 'Avenir, system-ui, sans-serif'
-              }}>
-                Ask your parent for the quiz code
-              </p>
-            </div>
-          )}
-
-          {/* Question */}
-          {(parentCode || currentQuestionIndex > 0) && (
-            <>
               <div style={{
-                fontSize: '16px',
-                fontWeight: '600',
-                color: colorPalette.textPrimary,
-                marginBottom: '20px',
-                lineHeight: '1.4',
-                fontFamily: 'Avenir, system-ui, sans-serif'
+                backgroundColor: '#FFFFFF',
+                borderRadius: '20px',
+                maxWidth: '360px',
+                width: '100%',
+                maxHeight: '80vh',
+                overflowY: 'auto',
+                position: 'relative',
+                boxShadow: '0 20px 40px rgba(0,0,0,0.3)'
               }}>
-                {currentQuestion.question}
-              </div>
-
-              {/* Answer Options */}
-              <div style={{ marginBottom: '24px' }}>
-                {currentQuestion.options.map((option, optionIndex) => (
+                
+                <div style={{
+                  background: `linear-gradient(135deg, ${colorPalette.primary}, ${colorPalette.secondary})`,
+                  borderRadius: '20px 20px 0 0',
+                  padding: '20px',
+                  textAlign: 'center',
+                  position: 'relative'
+                }}>
                   <button
-                    key={optionIndex}
-                    onClick={() => {
-                      const newAnswers = [...quizAnswers];
-                      newAnswers[currentQuestionIndex] = option;
-                      setQuizAnswers(newAnswers);
+                    onClick={() => setShowSubmissionPopup(false)}
+                    style={{
+                      position: 'absolute',
+                      top: '10px',
+                      right: '10px',
+                      backgroundColor: 'rgba(255,255,255,0.9)',
+                      border: 'none',
+                      borderRadius: '50%',
+                      width: '32px',
+                      height: '32px',
+                      fontSize: '16px',
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: colorPalette.textPrimary
                     }}
+                  >
+                    ✕
+                  </button>
+
+                  <div style={{ fontSize: '48px', marginBottom: '12px' }}>🎉</div>
+                  <h2 style={{
+                    fontSize: '20px',
+                    fontWeight: '600',
+                    color: 'white',
+                    margin: '0 0 8px 0',
+                    fontFamily: 'Didot, "Times New Roman", serif'
+                  }}>
+                    Book Complete!
+                  </h2>
+                  <p style={{
+                    fontSize: '14px',
+                    color: 'rgba(255,255,255,0.9)',
+                    margin: '0',
+                    fontFamily: 'Avenir, system-ui, sans-serif'
+                  }}>
+                    How would you like to show you have read "{selectedBook.details.title}"?
+                  </p>
+                </div>
+
+                <div style={{ padding: '20px' }}>
+                  
+                  <button
+                    onClick={handleQuizSubmission}
                     style={{
                       width: '100%',
-                      backgroundColor: quizAnswers[currentQuestionIndex] === option 
-                        ? colorPalette.primary 
-                        : '#F8F8F8',
-                      color: quizAnswers[currentQuestionIndex] === option 
-                        ? 'white' 
-                        : colorPalette.textPrimary,
-                      border: quizAnswers[currentQuestionIndex] === option 
-                        ? `2px solid ${colorPalette.primary}` 
-                        : '2px solid #E0E0E0',
+                      backgroundColor: colorPalette.primary,
+                      color: 'white',
+                      border: 'none',
                       borderRadius: '12px',
                       padding: '16px',
                       marginBottom: '12px',
                       fontSize: '14px',
+                      fontWeight: '600',
                       cursor: 'pointer',
                       textAlign: 'left',
-                      transition: 'all 0.2s ease',
-                      fontFamily: 'Avenir, system-ui, sans-serif',
-                      lineHeight: '1.3'
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      minHeight: '60px',
+                      fontFamily: 'Avenir, system-ui, sans-serif'
                     }}
                   >
-                    <span style={{ 
-                      fontWeight: '600', 
-                      marginRight: '8px',
-                      opacity: 0.8
-                    }}>
-                      {String.fromCharCode(65 + optionIndex)}.
-                    </span>
-                    {option}
+                    <span style={{ fontSize: '24px' }}>📝</span>
+                    <div>
+                      <div style={{ fontWeight: '600', marginBottom: '4px' }}>Take Quiz</div>
+                      <div style={{ fontSize: '12px', opacity: 0.9 }}>
+                        Parent code required • 10 questions • 7 correct to pass
+                      </div>
+                    </div>
                   </button>
-                ))}
-              </div>
 
-              {/* Navigation Buttons */}
-              <div style={{ 
-                display: 'flex', 
-                gap: '12px',
-                justifyContent: 'space-between'
-              }}>
-                {currentQuestionIndex > 0 && (
+                  {studentData.schoolSubmissionOptions?.presentToTeacher && (
+                    <button
+                      onClick={() => handleBookSubmission('presentToTeacher')}
+                      style={{
+                        width: '100%',
+                        backgroundColor: colorPalette.surface,
+                        color: colorPalette.textPrimary,
+                        border: `2px solid ${colorPalette.primary}40`,
+                        borderRadius: '12px',
+                        padding: '16px',
+                        marginBottom: '12px',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        minHeight: '60px',
+                        fontFamily: 'Avenir, system-ui, sans-serif'
+                      }}
+                    >
+                      <span style={{ fontSize: '24px' }}>🗣️</span>
+                      <div>
+                        <div style={{ fontWeight: '600', marginBottom: '4px' }}>Present to Teacher</div>
+                        <div style={{ fontSize: '12px', opacity: 0.7 }}>
+                          Oral presentation or discussion
+                        </div>
+                      </div>
+                    </button>
+                  )}
+
+                  {studentData.schoolSubmissionOptions?.submitReview && (
+                    <button
+                      onClick={() => handleBookSubmission('submitReview')}
+                      style={{
+                        width: '100%',
+                        backgroundColor: colorPalette.surface,
+                        color: colorPalette.textPrimary,
+                        border: `2px solid ${colorPalette.primary}40`,
+                        borderRadius: '12px',
+                        padding: '16px',
+                        marginBottom: '12px',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        minHeight: '60px',
+                        fontFamily: 'Avenir, system-ui, sans-serif'
+                      }}
+                    >
+                      <span style={{ fontSize: '24px' }}>✍️</span>
+                      <div>
+                        <div style={{ fontWeight: '600', marginBottom: '4px' }}>Submit Written Review</div>
+                        <div style={{ fontSize: '12px', opacity: 0.7 }}>
+                          Written book review or summary
+                        </div>
+                      </div>
+                    </button>
+                  )}
+
+                  {studentData.schoolSubmissionOptions?.createStoryboard && (
+                    <button
+                      onClick={() => handleBookSubmission('createStoryboard')}
+                      style={{
+                        width: '100%',
+                        backgroundColor: colorPalette.surface,
+                        color: colorPalette.textPrimary,
+                        border: `2px solid ${colorPalette.primary}40`,
+                        borderRadius: '12px',
+                        padding: '16px',
+                        marginBottom: '12px',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        minHeight: '60px',
+                        fontFamily: 'Avenir, system-ui, sans-serif'
+                      }}
+                    >
+                      <span style={{ fontSize: '24px' }}>🎨</span>
+                      <div>
+                        <div style={{ fontWeight: '600', marginBottom: '4px' }}>Create Storyboard</div>
+                        <div style={{ fontSize: '12px', opacity: 0.7 }}>
+                          Visual art or comic strip
+                        </div>
+                      </div>
+                    </button>
+                  )}
+
+                  {studentData.schoolSubmissionOptions?.bookReport && (
+                    <button
+                      onClick={() => handleBookSubmission('bookReport')}
+                      style={{
+                        width: '100%',
+                        backgroundColor: colorPalette.surface,
+                        color: colorPalette.textPrimary,
+                        border: `2px solid ${colorPalette.primary}40`,
+                        borderRadius: '12px',
+                        padding: '16px',
+                        marginBottom: '12px',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        minHeight: '60px',
+                        fontFamily: 'Avenir, system-ui, sans-serif'
+                      }}
+                    >
+                      <span style={{ fontSize: '24px' }}>📚</span>
+                      <div>
+                        <div style={{ fontWeight: '600', marginBottom: '4px' }}>Traditional Book Report</div>
+                        <div style={{ fontSize: '12px', opacity: 0.7 }}>
+                          Formal written report
+                        </div>
+                      </div>
+                    </button>
+                  )}
+
+                  {studentData.schoolSubmissionOptions?.discussWithLibrarian && (
+                    <button
+                      onClick={() => handleBookSubmission('discussWithLibrarian')}
+                      style={{
+                        width: '100%',
+                        backgroundColor: colorPalette.surface,
+                        color: colorPalette.textPrimary,
+                        border: `2px solid ${colorPalette.primary}40`,
+                        borderRadius: '12px',
+                        padding: '16px',
+                        marginBottom: '12px',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        minHeight: '60px',
+                        fontFamily: 'Avenir, system-ui, sans-serif'
+                      }}
+                    >
+                      <span style={{ fontSize: '24px' }}>💬</span>
+                      <div>
+                        <div style={{ fontWeight: '600', marginBottom: '4px' }}>Discussion with Librarian</div>
+                        <div style={{ fontSize: '12px', opacity: 0.7 }}>
+                          One-on-one book discussion
+                        </div>
+                      </div>
+                    </button>
+                  )}
+
+                  {studentData.schoolSubmissionOptions?.actOutScene && (
+                    <button
+                      onClick={() => handleBookSubmission('actOutScene')}
+                      style={{
+                        width: '100%',
+                        backgroundColor: colorPalette.surface,
+                        color: colorPalette.textPrimary,
+                        border: `2px solid ${colorPalette.primary}40`,
+                        borderRadius: '12px',
+                        padding: '16px',
+                        marginBottom: '12px',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        minHeight: '60px',
+                        fontFamily: 'Avenir, system-ui, sans-serif'
+                      }}
+                    >
+                      <span style={{ fontSize: '24px' }}>🎭</span>
+                      <div>
+                        <div style={{ fontWeight: '600', marginBottom: '4px' }}>Act Out Scene</div>
+                        <div style={{ fontSize: '12px', opacity: 0.7 }}>
+                          Performance or dramatic reading
+                        </div>
+                      </div>
+                    </button>
+                  )}
+
                   <button
-                    onClick={() => setCurrentQuestionIndex(currentQuestionIndex - 1)}
+                    onClick={() => setShowSubmissionPopup(false)}
                     style={{
+                      width: '100%',
                       backgroundColor: '#F5F5F5',
                       color: '#666',
                       border: 'none',
                       borderRadius: '12px',
-                      padding: '12px 20px',
+                      padding: '14px',
                       fontSize: '14px',
                       fontWeight: '500',
                       cursor: 'pointer',
                       fontFamily: 'Avenir, system-ui, sans-serif'
                     }}
                   >
-                    ← Previous
+                    Cancel
                   </button>
-                )}
-
-                {!isLastQuestion ? (
-                  <button
-                    onClick={() => setCurrentQuestionIndex(currentQuestionIndex + 1)}
-                    disabled={!quizAnswers[currentQuestionIndex]}
-                    style={{
-                      backgroundColor: quizAnswers[currentQuestionIndex] 
-                        ? colorPalette.primary 
-                        : '#E0E0E0',
-                      color: quizAnswers[currentQuestionIndex] 
-                        ? 'white' 
-                        : '#999',
-                      border: 'none',
-                      borderRadius: '12px',
-                      padding: '12px 20px',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      cursor: quizAnswers[currentQuestionIndex] ? 'pointer' : 'not-allowed',
-                      marginLeft: 'auto',
-                      fontFamily: 'Avenir, system-ui, sans-serif'
-                    }}
-                  >
-                    Next →
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => handleQuizComplete(quizAnswers)}
-                    disabled={!quizAnswers[currentQuestionIndex] || isSaving}
-                    style={{
-                      backgroundColor: quizAnswers[currentQuestionIndex] && !isSaving
-                        ? '#4CAF50' 
-                        : '#E0E0E0',
-                      color: quizAnswers[currentQuestionIndex] && !isSaving
-                        ? 'white' 
-                        : '#999',
-                      border: 'none',
-                      borderRadius: '12px',
-                      padding: '12px 20px',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      cursor: quizAnswers[currentQuestionIndex] && !isSaving 
-                        ? 'pointer' 
-                        : 'not-allowed',
-                      marginLeft: 'auto',
-                      fontFamily: 'Avenir, system-ui, sans-serif'
-                    }}
-                  >
-                    {isSaving ? 'Submitting...' : '✓ Finish Quiz'}
-                  </button>
-                )}
+                </div>
               </div>
-            </>
-          )}
-        </div>
+            </div>
+          );
+        })()}
 
-        {/* Cancel Quiz Button */}
-        <div style={{ 
-          padding: '0 24px 24px',
-          borderTop: '1px solid #F0F0F0'
-        }}>
-          <button
-            onClick={() => {
-              setShowQuizModal(false);
-              setCurrentQuestionIndex(0);
-              setQuizAnswers([]);
-              setParentCode('');
-            }}
-            style={{
-              width: '100%',
-              backgroundColor: 'transparent',
-              color: '#999',
-              border: 'none',
-              padding: '16px',
-              fontSize: '13px',
-              cursor: 'pointer',
-              fontFamily: 'Avenir, system-ui, sans-serif'
-            }}
-          >
-            Cancel Quiz
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-})()}
+        {/* PARENT PERMISSION SCREEN */}
+        {showParentPermission && selectedBook && (() => {
+          const colorPalette = currentTheme;
+          
+          return (
+            <div style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0,0,0,0.9)',
+              zIndex: 1002,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '20px'
+            }}>
+              <div style={{
+                backgroundColor: '#FFFFFF',
+                borderRadius: '20px',
+                maxWidth: '400px',
+                width: '100%',
+                maxHeight: '85vh',
+                overflowY: 'auto',
+                position: 'relative',
+                boxShadow: '0 25px 50px rgba(0,0,0,0.4)'
+              }}>
+                
+                <div style={{
+                  background: `linear-gradient(135deg, ${colorPalette.primary}, ${colorPalette.secondary})`,
+                  borderRadius: '20px 20px 0 0',
+                  padding: '24px',
+                  textAlign: 'center',
+                  color: 'white'
+                }}>
+                  <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔐</div>
+                  <h3 style={{
+                    fontSize: '20px',
+                    fontWeight: '600',
+                    margin: '0 0 8px 0',
+                    fontFamily: 'Didot, "Times New Roman", serif'
+                  }}>
+                    Parent Permission Required
+                  </h3>
+                  <p style={{
+                    fontSize: '14px',
+                    opacity: 0.9,
+                    margin: '0',
+                    fontFamily: 'Avenir, system-ui, sans-serif'
+                  }}>
+                    To take the quiz for "{selectedBook.details.title}"
+                  </p>
+                </div>
+
+                <div style={{ padding: '24px' }}>
+                  
+                  <div style={{
+                    marginBottom: '20px',
+                    padding: '20px',
+                    backgroundColor: colorPalette.background,
+                    borderRadius: '16px',
+                    border: `2px solid ${colorPalette.primary}30`
+                  }}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      marginBottom: '16px'
+                    }}>
+                      <span style={{ fontSize: '24px' }}>⚡</span>
+                      <div>
+                        <h4 style={{
+                          fontSize: '16px',
+                          fontWeight: '600',
+                          color: colorPalette.textPrimary,
+                          margin: '0 0 4px 0',
+                          fontFamily: 'Avenir, system-ui, sans-serif'
+                        }}>
+                          Start Quiz Now
+                        </h4>
+                        <p style={{
+                          fontSize: '12px',
+                          color: colorPalette.textSecondary,
+                          margin: '0',
+                          fontFamily: 'Avenir, system-ui, sans-serif'
+                        }}>
+                          If your parent is available
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <input
+                      type="text"
+                      value={parentCode}
+                      onChange={(e) => {
+                        const newCode = e.target.value.toUpperCase();
+                        setParentCode(newCode);
+                      }}
+                      placeholder="Ask parent to enter quiz code"
+                      style={{
+                        width: '100%',
+                        padding: '14px',
+                        border: `2px solid ${colorPalette.primary}`,
+                        borderRadius: '12px',
+                        fontSize: '16px',
+                        fontFamily: 'system-ui, -apple-system, sans-serif',
+                        boxSizing: 'border-box',
+                        textAlign: 'center',
+                        fontWeight: '600',
+                        letterSpacing: '0.1em',
+                        color: '#000000',
+                        backgroundColor: '#FFFFFF',
+                        marginBottom: '12px'
+                      }}
+                      maxLength={20}
+                      autoComplete="off"
+                      autoCorrect="off"
+                      autoCapitalize="characters"
+                    />
+                    
+                    <button
+                      onClick={handleParentCodeSubmit}
+                      disabled={!parentCode.trim() || isSaving}
+                      style={{
+                        width: '100%',
+                        backgroundColor: (parentCode.trim() && !isSaving) ? colorPalette.primary : '#E0E0E0',
+                        color: (parentCode.trim() && !isSaving) ? 'white' : '#999',
+                        border: 'none',
+                        borderRadius: '12px',
+                        padding: '14px',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        cursor: (parentCode.trim() && !isSaving) ? 'pointer' : 'not-allowed',
+                        fontFamily: 'Avenir, system-ui, sans-serif',
+                        opacity: isSaving ? 0.7 : 1,
+                        minHeight: '44px'
+                      }}
+                    >
+                      {isSaving ? '🔄 Loading Quiz...' : '🚀 Start Quiz'}
+                    </button>
+                  </div>
+
+                  <div style={{
+                    marginBottom: '20px',
+                    padding: '20px',
+                    backgroundColor: '#F8F9FA',
+                    borderRadius: '16px',
+                    border: '2px solid #E9ECEF'
+                  }}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      marginBottom: '16px'
+                    }}>
+                      <span style={{ fontSize: '24px' }}>📧</span>
+                      <div>
+                        <h4 style={{
+                          fontSize: '16px',
+                          fontWeight: '600',
+                          color: '#495057',
+                          margin: '0 0 4px 0',
+                          fontFamily: 'Avenir, system-ui, sans-serif'
+                        }}>
+                          Request Later
+                        </h4>
+                        <p style={{
+                          fontSize: '12px',
+                          color: '#6C757D',
+                          margin: '0',
+                          fontFamily: 'Avenir, system-ui, sans-serif'
+                        }}>
+                          If your parent is not available now
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <button
+                      onClick={handleRequestParentApproval}
+                      disabled={isSaving}
+                      style={{
+                        width: '100%',
+                        backgroundColor: '#6C757D',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '12px',
+                        padding: '14px',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                        fontFamily: 'Avenir, system-ui, sans-serif',
+                        opacity: isSaving ? 0.7 : 1,
+                        minHeight: '44px'
+                      }}
+                    >
+                      {isSaving ? 'Sending...' : '📮 Send Request to Parent'}
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setShowParentPermission(false);
+                      setParentCode('');
+                    }}
+                    style={{
+                      width: '100%',
+                      backgroundColor: 'transparent',
+                      color: '#999',
+                      border: 'none',
+                      padding: '16px',
+                      fontSize: '14px',
+                      cursor: 'pointer',
+                      fontFamily: 'Avenir, system-ui, sans-serif'
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* QUIZ MODAL */}
+        {showQuizModal && (() => {
+          const colorPalette = currentTheme;
+          const currentQuestion = quizQuestions[currentQuestionIndex];
+          const isLastQuestion = currentQuestionIndex === quizQuestions.length - 1;
+          
+          return (
+            <div style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0,0,0,0.95)',
+              zIndex: 1003,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '20px'
+            }}>
+              <div style={{
+                backgroundColor: '#FFFFFF',
+                borderRadius: '20px',
+                maxWidth: '420px',
+                width: '100%',
+                maxHeight: '90vh',
+                overflowY: 'auto',
+                position: 'relative',
+                boxShadow: '0 25px 50px rgba(0,0,0,0.5)'
+              }}>
+                
+                <div style={{
+                  background: `linear-gradient(135deg, ${colorPalette.primary}, ${colorPalette.secondary})`,
+                  borderRadius: '20px 20px 0 0',
+                  padding: '20px',
+                  textAlign: 'center',
+                  color: 'white'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '12px'
+                  }}>
+                    <div style={{
+                      fontSize: '14px',
+                      opacity: 0.9,
+                      fontFamily: 'Avenir, system-ui, sans-serif'
+                    }}>
+                      Question {currentQuestionIndex + 1} of {quizQuestions.length}
+                    </div>
+                    
+                    <div style={{
+                      fontSize: '16px',
+                      fontWeight: '600',
+                      backgroundColor: timerActive ? (timeRemaining < 300 ? '#FF4757' : 'rgba(255,255,255,0.2)') : 'rgba(255,255,255,0.2)',
+                      padding: '6px 12px',
+                      borderRadius: '12px',
+                      fontFamily: 'system-ui, monospace'
+                    }}>
+                      {timerActive ? formatTime(timeRemaining) : '30:00'}
+                    </div>
+                  </div>
+                  
+                  <div style={{
+                    backgroundColor: 'rgba(255,255,255,0.2)',
+                    borderRadius: '10px',
+                    height: '6px',
+                    margin: '0 auto 16px',
+                    overflow: 'hidden'
+                  }}>
+                    <div style={{
+                      backgroundColor: 'white',
+                      height: '100%',
+                      width: `${((currentQuestionIndex + 1) / quizQuestions.length) * 100}%`,
+                      transition: 'width 0.3s ease'
+                    }} />
+                  </div>
+                  
+                  <h3 style={{
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    margin: '0',
+                    fontFamily: 'Didot, "Times New Roman", serif'
+                  }}>
+                    📝 Quiz: {selectedBook.details.title}
+                  </h3>
+                </div>
+
+                <div style={{ padding: '24px' }}>
+                  
+                  {currentQuestion && (
+                    <>
+                      <div style={{
+                        fontSize: '16px',
+                        fontWeight: '600',
+                        color: colorPalette.textPrimary,
+                        marginBottom: '24px',
+                        lineHeight: '1.5',
+                        fontFamily: 'Avenir, system-ui, sans-serif'
+                      }}>
+                        {currentQuestion.question}
+                      </div>
+
+                      <div style={{ marginBottom: '24px' }}>
+                        {currentQuestion.options.map((option, optionIndex) => (
+                          <button
+                            key={optionIndex}
+                            onClick={() => handleQuizAnswer(currentQuestionIndex, option)}
+                            style={{
+                              width: '100%',
+                              backgroundColor: quizAnswers[currentQuestionIndex] === option 
+                                ? colorPalette.primary 
+                                : '#F8F8F8',
+                              color: quizAnswers[currentQuestionIndex] === option 
+                                ? 'white' 
+                                : colorPalette.textPrimary,
+                              border: quizAnswers[currentQuestionIndex] === option 
+                                ? `2px solid ${colorPalette.primary}` 
+                                : '2px solid #E0E0E0',
+                              borderRadius: '12px',
+                              padding: '16px',
+                              marginBottom: '12px',
+                              fontSize: '14px',
+                              cursor: 'pointer',
+                              textAlign: 'left',
+                              transition: 'all 0.2s ease',
+                              fontFamily: 'Avenir, system-ui, sans-serif',
+                              lineHeight: '1.4',
+                              minHeight: '44px'
+                            }}
+                          >
+                            <span style={{ 
+                              fontWeight: '600', 
+                              marginRight: '8px',
+                              opacity: 0.8
+                            }}>
+                              {String.fromCharCode(65 + optionIndex)}.
+                            </span>
+                            {option}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div style={{ 
+                        display: 'flex', 
+                        gap: '12px',
+                        justifyContent: 'space-between'
+                      }}>
+                        {currentQuestionIndex > 0 && (
+                          <button
+                            onClick={() => setCurrentQuestionIndex(currentQuestionIndex - 1)}
+                            style={{
+                              backgroundColor: '#F5F5F5',
+                              color: '#666',
+                              border: 'none',
+                              borderRadius: '12px',
+                              padding: '12px 20px',
+                              fontSize: '14px',
+                              fontWeight: '500',
+                              cursor: 'pointer',
+                              fontFamily: 'Avenir, system-ui, sans-serif',
+                              minHeight: '44px'
+                            }}
+                          >
+                            ← Previous
+                          </button>
+                        )}
+
+                        {!isLastQuestion ? (
+                          <button
+                            onClick={() => setCurrentQuestionIndex(currentQuestionIndex + 1)}
+                            disabled={!quizAnswers[currentQuestionIndex]}
+                            style={{
+                              backgroundColor: quizAnswers[currentQuestionIndex] 
+                                ? colorPalette.primary 
+                                : '#E0E0E0',
+                              color: quizAnswers[currentQuestionIndex] 
+                                ? 'white' 
+                                : '#999',
+                              border: 'none',
+                              borderRadius: '12px',
+                              padding: '12px 20px',
+                              fontSize: '14px',
+                              fontWeight: '500',
+                              cursor: quizAnswers[currentQuestionIndex] ? 'pointer' : 'not-allowed',
+                              marginLeft: 'auto',
+                              fontFamily: 'Avenir, system-ui, sans-serif',
+                              minHeight: '44px'
+                            }}
+                          >
+                            Next →
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleQuizComplete(quizAnswers)}
+                            disabled={!quizAnswers[currentQuestionIndex] || isSaving}
+                            style={{
+                              backgroundColor: quizAnswers[currentQuestionIndex] && !isSaving
+                                ? '#4CAF50' 
+                                : '#E0E0E0',
+                              color: quizAnswers[currentQuestionIndex] && !isSaving
+                                ? 'white' 
+                                : '#999',
+                              border: 'none',
+                              borderRadius: '12px',
+                              padding: '12px 20px',
+                              fontSize: '14px',
+                              fontWeight: '600',
+                              cursor: quizAnswers[currentQuestionIndex] && !isSaving 
+                                ? 'pointer' 
+                                : 'not-allowed',
+                              marginLeft: 'auto',
+                              fontFamily: 'Avenir, system-ui, sans-serif',
+                              minHeight: '44px'
+                            }}
+                          >
+                            {isSaving ? 'Submitting...' : '✓ Submit Quiz'}
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div style={{ 
+                  padding: '0 24px 24px',
+                  borderTop: '1px solid #F0F0F0'
+                }}>
+                  <button
+                    onClick={() => {
+                      setShowQuizModal(false);
+                      setCurrentQuestionIndex(0);
+                      setQuizAnswers([]);
+                      setParentCode('');
+                      setTimerActive(false);
+                      setTimeRemaining(30 * 60);
+                    }}
+                    style={{
+                      width: '100%',
+                      backgroundColor: 'transparent',
+                      color: '#999',
+                      border: 'none',
+                      padding: '16px',
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                      fontFamily: 'Avenir, system-ui, sans-serif'
+                    }}
+                  >
+                    Exit Quiz
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* SUCCESS MESSAGE */}
         {showSuccess && (
           <div style={{
             position: 'fixed',
@@ -1854,7 +2316,7 @@ const handleQuizComplete = async (answers) => {
             padding: '12px 24px',
             borderRadius: '20px',
             boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
-            zIndex: 1001, // Above everything
+            zIndex: 1001,
             fontSize: '14px',
             fontWeight: '500',
             maxWidth: '85vw',
@@ -1870,6 +2332,11 @@ const handleQuizComplete = async (answers) => {
           @keyframes spin {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
+          }
+          
+          @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
           }
           
           input[type="range"]::-webkit-slider-thumb {

@@ -1,6 +1,6 @@
-// pages/_app.js - Updated with Authentication Context
+// pages/_app.js - RESTORED
 import { AuthProvider } from '../contexts/AuthContext'
-import '../app/globals.css'
+import '../styles/globals.css'
 
 function MyApp({ Component, pageProps }) {
   return (
