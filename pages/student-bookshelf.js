@@ -1572,7 +1572,7 @@ export default function StudentBookshelf() {
                     margin: '0',
                     fontFamily: 'Avenir, system-ui, sans-serif'
                   }}>
-                    How would you like to show you have read "{selectedBook.details.title}"?
+                    How would you like to show you have read &ldquo;{selectedBook.details.title}&rdquo;?
                   </p>
                 </div>
 
@@ -1874,7 +1874,7 @@ export default function StudentBookshelf() {
                     margin: '0',
                     fontFamily: 'Avenir, system-ui, sans-serif'
                   }}>
-                    To take the quiz for "{selectedBook.details.title}"
+                    To take the quiz for &ldquo;{selectedBook.details.title}&rdquo;
                   </p>
                 </div>
 
