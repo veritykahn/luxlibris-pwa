@@ -174,7 +174,8 @@ export default function StudentBookshelf() {
     
     // Check for failed quiz with cooldown
     if (book.status === 'quiz_failed' && book.failedAt) {
-      const failedTime = new Date(book.failedAt);
+      // 🔧 FIX: Handle Firebase Timestamp properly
+      const failedTime = book.failedAt?.toDate ? book.failedAt.toDate() : new Date(book.failedAt);
       const cooldownEnd = new Date(failedTime.getTime() + 24 * 60 * 60 * 1000);
       if (now < cooldownEnd) {
         return 'quiz_cooldown';
@@ -183,7 +184,8 @@ export default function StudentBookshelf() {
     
     // Check for admin rejection with cooldown
     if (book.status === 'admin_rejected' && book.rejectedAt) {
-      const rejectedTime = new Date(book.rejectedAt);
+      // 🔧 FIX: Handle Firebase Timestamp properly
+      const rejectedTime = book.rejectedAt?.toDate ? book.rejectedAt.toDate() : new Date(book.rejectedAt);
       const cooldownEnd = new Date(rejectedTime.getTime() + 24 * 60 * 60 * 1000);
       if (now < cooldownEnd) {
         return 'admin_cooldown';
@@ -209,7 +211,8 @@ export default function StudentBookshelf() {
       
       case 'quiz_cooldown':
         if (book.failedAt) {
-          const failedTime = new Date(book.failedAt);
+          // 🔧 FIX: Handle Firebase Timestamp properly
+          const failedTime = book.failedAt?.toDate ? book.failedAt.toDate() : new Date(book.failedAt);
           const cooldownEnd = new Date(failedTime.getTime() + 24 * 60 * 60 * 1000);
           const hoursLeft = Math.ceil((cooldownEnd - now) / (1000 * 60 * 60));
           return { message: `❌ Quiz failed - try again in ${hoursLeft} hours`, color: '#F44336' };
@@ -218,7 +221,8 @@ export default function StudentBookshelf() {
       
       case 'admin_cooldown':
         if (book.rejectedAt) {
-          const rejectedTime = new Date(book.rejectedAt);
+          // 🔧 FIX: Handle Firebase Timestamp properly
+          const rejectedTime = book.rejectedAt?.toDate ? book.rejectedAt.toDate() : new Date(book.rejectedAt);
           const cooldownEnd = new Date(rejectedTime.getTime() + 24 * 60 * 60 * 1000);
           const hoursLeft = Math.ceil((cooldownEnd - now) / (1000 * 60 * 60));
           return { message: `⏳ Resubmit in ${hoursLeft} hours`, color: '#FF5722' };
@@ -603,8 +607,29 @@ export default function StudentBookshelf() {
     
     setIsSaving(true);
     try {
-      setShowSuccess('📧 Parent approval request sent! Check back later.');
+      // 🔧 FIX: Actually lock the book with pending parent approval status
+      const updatedBookshelf = studentData.bookshelf.map(book => {
+        if (book.bookId === selectedBook.bookId) {
+          return {
+            ...book,
+            currentProgress: tempProgress,
+            rating: tempRating,
+            notes: tempNotes,
+            status: 'pending_parent_quiz_unlock',
+            requestedAt: new Date()
+          };
+        }
+        return book;
+      });
+      
+      await updateStudentData(studentData.id, studentData.dioceseId, studentData.schoolId, {
+        bookshelf: updatedBookshelf
+      });
+      
+      setStudentData({ ...studentData, bookshelf: updatedBookshelf });
       setShowParentPermission(false);
+      closeBookModal(); // Close modal so user sees locked state
+      setShowSuccess('📧 Parent approval request sent! Book locked until parent approves.');
       setTimeout(() => setShowSuccess(''), 4000);
       
     } catch (error) {
