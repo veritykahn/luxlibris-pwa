@@ -30,6 +30,9 @@ export default function StudentHealthyHabits() {
   // UI states
   const [showSuccess, setShowSuccess] = useState('');
   const [showCompletionCelebration, setShowCompletionCelebration] = useState(false);
+  
+  // Wake lock state
+  const [wakeLock, setWakeLock] = useState(null);
 
   // Theme definitions - moved to useMemo to prevent recreation on every render
   const themes = useMemo(() => ({
@@ -122,6 +125,100 @@ export default function StudentHealthyHabits() {
       textSecondary: '#AAAAAA'
     }
   }), []);
+
+  // Notification functions
+  const requestWakeLock = async () => {
+    try {
+      if ('wakeLock' in navigator) {
+        const lock = await navigator.wakeLock.request('screen');
+        setWakeLock(lock);
+        console.log('✅ Screen will stay on during reading');
+        
+        // Listen for wake lock release
+        lock.addEventListener('release', () => {
+          console.log('📱 Screen wake lock released');
+          setWakeLock(null);
+        });
+      }
+    } catch (err) {
+      console.log('⚠️ Wake lock not supported on this device');
+    }
+  };
+
+  const releaseWakeLock = () => {
+    if (wakeLock) {
+      wakeLock.release();
+      setWakeLock(null);
+    }
+  };
+
+  const playNotificationSound = () => {
+    try {
+      // Create audio context
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      
+      // Create a pleasant notification sound (two-tone chime)
+      const createTone = (frequency, startTime, duration) => {
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.value = frequency;
+        gainNode.gain.setValueAtTime(0, startTime);
+        gainNode.gain.linearRampToValueAtTime(0.3, startTime + 0.1);
+        gainNode.gain.linearRampToValueAtTime(0, startTime + duration);
+        
+        oscillator.start(startTime);
+        oscillator.stop(startTime + duration);
+      };
+      
+      // Play two pleasant tones
+      createTone(600, audioContext.currentTime, 0.4);
+      createTone(800, audioContext.currentTime + 0.5, 0.4);
+      
+    } catch (err) {
+      console.log('⚠️ Audio notification not supported');
+    }
+  };
+
+  const vibrateNotification = () => {
+    try {
+      if ('vibrate' in navigator) {
+        // Celebratory vibration pattern
+        navigator.vibrate([200, 100, 200, 100, 300]);
+      }
+    } catch (err) {
+      console.log('⚠️ Vibration not supported');
+    }
+  };
+
+  const showBrowserNotification = () => {
+    try {
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('Reading Timer Complete! 🎉', {
+          body: 'Congratulations on completing your reading session!',
+          icon: '/images/lux_libris_logo.png',
+          badge: '/images/lux_libris_logo.png',
+          silent: false
+        });
+      }
+    } catch (err) {
+      console.log('⚠️ Browser notifications not supported');
+    }
+  };
+
+  // Request notification permission on mount
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          console.log('✅ Notification permission granted');
+        }
+      });
+    }
+  }, []);
 
   const loadStreakData = useCallback(async (studentData) => {
     try {
@@ -329,6 +426,14 @@ export default function StudentHealthyHabits() {
     setIsTimerActive(false);
     setIsTimerPaused(false);
     
+    // Release wake lock first
+    releaseWakeLock();
+    
+    // Multi-sensory notifications
+    playNotificationSound();
+    vibrateNotification();
+    showBrowserNotification();
+    
     // Save completed session to Firebase
     await saveReadingSession(Math.floor(timerDuration / 60), true);
     
@@ -359,9 +464,19 @@ export default function StudentHealthyHabits() {
     return () => clearInterval(timerRef.current);
   }, [isTimerActive, isTimerPaused, timeRemaining, handleTimerComplete]);
 
+  // Cleanup wake lock on unmount
+  useEffect(() => {
+    return () => {
+      if (wakeLock) {
+        wakeLock.release();
+      }
+    };
+  }, [wakeLock]);
+
   const handleStartTimer = () => {
     setIsTimerActive(true);
     setIsTimerPaused(false);
+    requestWakeLock(); // Keep screen on during reading
   };
 
   const handlePauseTimer = () => {
@@ -376,6 +491,7 @@ export default function StudentHealthyHabits() {
     setIsTimerActive(false);
     setIsTimerPaused(false);
     setTimeRemaining(timerDuration);
+    releaseWakeLock(); // Allow screen to turn off
   };
 
   const formatTime = (seconds) => {
@@ -566,6 +682,16 @@ export default function StudentHealthyHabits() {
                 }}>
                   {isTimerActive ? (isTimerPaused ? 'PAUSED' : 'READING') : 'READY'}
                 </div>
+                {wakeLock && (
+                  <div style={{
+                    fontSize: 'clamp(8px, 2.5vw, 10px)',
+                    color: currentTheme.primary,
+                    fontWeight: '600',
+                    marginTop: '2px'
+                  }}>
+                    📱 Screen staying on
+                  </div>
+                )}
               </div>
             </div>
 
@@ -660,6 +786,17 @@ export default function StudentHealthyHabits() {
             >
               Timer length can be adjusted in settings →
             </button>
+            
+            {/* Feature info */}
+            <p style={{
+              fontSize: '10px',
+              color: currentTheme.textSecondary,
+              margin: '8px 0 0 0',
+              textAlign: 'center',
+              lineHeight: '1.3'
+            }}>
+              📱 Screen stays on • 🔊 Audio alerts • 📳 Vibration
+            </p>
           </div>
 
           {/* TODAY'S PROGRESS */}
