@@ -286,13 +286,13 @@ export default function StudentHealthyHabits() {
     const avgMinutes = minutesToday; // TODO: Calculate 7-day average
     
     if (avgMinutes >= 51) {
-      setReadingLevel({ name: 'Luminous Legend', emoji: '✨', color: '#E3F2FD', textColor: '#1565C0' });
+      setReadingLevel({ name: 'Luminous Legend', emoji: '✨', color: '#E3F2FD', textColor: '#0D47A1' });
     } else if (avgMinutes >= 36) {
-      setReadingLevel({ name: 'Radiant Reader', emoji: '🌟', color: '#FFF9C4', textColor: '#F57F17' });
+      setReadingLevel({ name: 'Radiant Reader', emoji: '🌟', color: '#FFF9C4', textColor: '#E65100' });
     } else if (avgMinutes >= 21) {
-      setReadingLevel({ name: 'Bright Beacon', emoji: '⭐', color: '#FFF8E1', textColor: '#E65100' });
+      setReadingLevel({ name: 'Bright Beacon', emoji: '⭐', color: '#FFF8E1', textColor: '#D84315' });
     } else {
-      setReadingLevel({ name: 'Faithful Flame', emoji: '🕯️', color: '#FFE0B2', textColor: '#BF360C' });
+      setReadingLevel({ name: 'Faithful Flame', emoji: '🕯️', color: '#FFCC80', textColor: '#FFFFFF' });
     }
   }, []);
 
@@ -318,6 +318,8 @@ export default function StudentHealthyHabits() {
           minutesToday += session.duration;
         }
       });
+      
+      console.log(`📊 Loaded ${sessions.length} sessions for today, ${minutesToday} minutes total`);
       
       setTodaysSessions(sessions);
       setTodaysMinutes(minutesToday);
@@ -358,22 +360,29 @@ export default function StudentHealthyHabits() {
         bookId: currentBookId || null // Include book ID if available
       };
       
-      const sessionsRef = collection(db, `dioceses/${studentData.dioceseId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
-      await addDoc(sessionsRef, sessionData);
+      console.log(`💾 Saving reading session: ${duration} minutes, completed: ${completed}`);
       
-      // Update today's data
-      setTodaysSessions(prev => [sessionData, ...prev]);
+      const sessionsRef = collection(db, `dioceses/${studentData.dioceseId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
+      const docRef = await addDoc(sessionsRef, sessionData);
+      
+      console.log(`✅ Session saved with ID: ${docRef.id}`);
+      
+      // Add the new session with its ID to local state
+      const newSession = { id: docRef.id, ...sessionData };
+      setTodaysSessions(prev => [newSession, ...prev]);
+      
       if (completed) {
         setTodaysMinutes(prev => {
           const newMinutes = prev + duration;
+          console.log(`📈 Updated today's minutes: ${prev} + ${duration} = ${newMinutes}`);
           calculateReadingLevel(newMinutes);
           return newMinutes;
         });
-      }
-      
-      // Update streak if this is first session today
-      if (completed && todaysSessions.filter(s => s.completed).length === 0) {
-        await updateStreakData();
+        
+        // Update streak if this is first completed session today
+        if (todaysSessions.filter(s => s.completed).length === 0) {
+          await updateStreakData();
+        }
       }
       
       setShowSuccess(completed ? '🎉 Reading session completed!' : '📖 Progress saved!');
@@ -384,7 +393,7 @@ export default function StudentHealthyHabits() {
       setShowSuccess('❌ Error saving session. Please try again.');
       setTimeout(() => setShowSuccess(''), 3000);
     }
-  }, [studentData, timerDuration, todaysSessions, calculateReadingLevel, updateStreakData]);
+  }, [studentData, timerDuration, todaysSessions, calculateReadingLevel, updateStreakData, currentBookId]);
 
   const loadHealthyHabitsData = useCallback(async () => {
     try {
@@ -743,94 +752,6 @@ export default function StudentHealthyHabits() {
                     📱 Screen staying on
                   </div>
                 )}
-
-        {/* BOOK PROGRESS MODAL */}
-        {showBookProgressModal && currentBookTitle && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.8)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1002,
-            padding: '20px'
-          }}>
-            <div style={{
-              backgroundColor: currentTheme.surface,
-              borderRadius: '20px',
-              padding: 'clamp(20px, 6vw, 30px)',
-              textAlign: 'center',
-              maxWidth: '90vw',
-              width: '100%',
-              maxWidth: '350px'
-            }}>
-              <div style={{ fontSize: 'clamp(40px, 12vw, 48px)', marginBottom: '16px' }}>📖</div>
-              <h2 style={{
-                fontSize: 'clamp(18px, 5vw, 20px)',
-                fontWeight: 'bold',
-                color: currentTheme.textPrimary,
-                margin: '0 0 8px 0'
-              }}>
-                Update Reading Progress?
-              </h2>
-              <p style={{
-                fontSize: 'clamp(12px, 3.5vw, 14px)',
-                color: currentTheme.textSecondary,
-                margin: '0 0 20px 0',
-                lineHeight: '1.4'
-              }}>
-                You were reading <strong style={{ color: currentTheme.textPrimary }}>{currentBookTitle}</strong>. 
-                Would you like to mark your progress?
-              </p>
-              
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                <button
-                  onClick={() => {
-                    setShowBookProgressModal(false);
-                    // Navigate back to bookshelf with progress update
-                    router.push(`/student-bookshelf?updateProgress=${currentBookId}&title=${encodeURIComponent(currentBookTitle)}`);
-                  }}
-                  style={{
-                    backgroundColor: currentTheme.primary,
-                    color: currentTheme.textPrimary,
-                    border: 'none',
-                    borderRadius: '16px',
-                    padding: '12px 20px',
-                    fontSize: 'clamp(12px, 3.5vw, 14px)',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    minHeight: '44px',
-                    minWidth: '120px'
-                  }}
-                >
-                  📝 Update Progress
-                </button>
-                
-                <button
-                  onClick={() => setShowBookProgressModal(false)}
-                  style={{
-                    backgroundColor: currentTheme.textSecondary,
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '16px',
-                    padding: '12px 20px',
-                    fontSize: 'clamp(12px, 3.5vw, 14px)',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    minHeight: '44px',
-                    minWidth: '120px'
-                  }}
-                >
-                  ⏭️ Skip
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
               </div>
             </div>
 
@@ -910,28 +831,7 @@ export default function StudentHealthyHabits() {
                     >
                       💾 Bank Session
                     </button>
-                  ) : (
-                    <button
-                      onClick={handleStopTimer}
-                      style={{
-                        backgroundColor: currentTheme.textSecondary,
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '16px',
-                        padding: '12px 20px',
-                        fontSize: 'clamp(12px, 3.5vw, 14px)',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        minHeight: '48px',
-                        minWidth: '100px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}
-                    >
-                      ⏹️ Stop
-                    </button>
-                  )}
+                  ) : null}
                 </>
               )}
             </div>
@@ -993,14 +893,15 @@ export default function StudentHealthyHabits() {
               <div style={{
                 fontSize: '16px',
                 fontWeight: 'bold',
-                color: readingLevel.textColor || currentTheme.textPrimary,
+                color: readingLevel.textColor,
                 marginBottom: '4px'
               }}>
                 {readingLevel.name}
               </div>
               <div style={{
                 fontSize: '12px',
-                color: readingLevel.textColor || currentTheme.textSecondary
+                color: readingLevel.textColor,
+                opacity: 0.9
               }}>
                 {readingLevel.name === 'Luminous Legend' && 'Your dedication illuminates the world!'}
                 {readingLevel.name === 'Radiant Reader' && 'You&apos;re shining bright with wisdom!'}
@@ -1175,6 +1076,94 @@ export default function StudentHealthyHabits() {
               }}>
                 Great job building your healthy reading habit!
               </p>
+            </div>
+          </div>
+        )}
+
+        {/* BOOK PROGRESS MODAL */}
+        {showBookProgressModal && currentBookTitle && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1002,
+            padding: '20px'
+          }}>
+            <div style={{
+              backgroundColor: currentTheme.surface,
+              borderRadius: '20px',
+              padding: 'clamp(20px, 6vw, 30px)',
+              textAlign: 'center',
+              maxWidth: '90vw',
+              width: '100%',
+              maxWidth: '350px'
+            }}>
+              <div style={{ fontSize: 'clamp(40px, 12vw, 48px)', marginBottom: '16px' }}>📖</div>
+              <h2 style={{
+                fontSize: 'clamp(18px, 5vw, 20px)',
+                fontWeight: 'bold',
+                color: currentTheme.textPrimary,
+                margin: '0 0 8px 0'
+              }}>
+                Update Reading Progress?
+              </h2>
+              <p style={{
+                fontSize: 'clamp(12px, 3.5vw, 14px)',
+                color: currentTheme.textSecondary,
+                margin: '0 0 20px 0',
+                lineHeight: '1.4'
+              }}>
+                You were reading <strong style={{ color: currentTheme.textPrimary }}>{currentBookTitle}</strong>. 
+                Would you like to mark your progress?
+              </p>
+              
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => {
+                    setShowBookProgressModal(false);
+                    // Navigate back to bookshelf with progress update
+                    router.push(`/student-bookshelf?updateProgress=${currentBookId}&title=${encodeURIComponent(currentBookTitle)}`);
+                  }}
+                  style={{
+                    backgroundColor: currentTheme.primary,
+                    color: currentTheme.textPrimary,
+                    border: 'none',
+                    borderRadius: '16px',
+                    padding: '12px 20px',
+                    fontSize: 'clamp(12px, 3.5vw, 14px)',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    minHeight: '44px',
+                    minWidth: '120px'
+                  }}
+                >
+                  📝 Update Progress
+                </button>
+                
+                <button
+                  onClick={() => setShowBookProgressModal(false)}
+                  style={{
+                    backgroundColor: currentTheme.textSecondary,
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '16px',
+                    padding: '12px 20px',
+                    fontSize: 'clamp(12px, 3.5vw, 14px)',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    minHeight: '44px',
+                    minWidth: '120px'
+                  }}
+                >
+                  ⏭️ Skip
+                </button>
+              </div>
             </div>
           </div>
         )}
