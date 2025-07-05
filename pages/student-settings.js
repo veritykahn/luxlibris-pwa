@@ -517,6 +517,8 @@ export default function StudentSettings() {
           )}
         </div>
 
+        // In your student-settings.js file, find this section (around lines 280-390):
+
         {/* Reading Timer Duration Section */}
         <div style={{
           backgroundColor: previewTheme.surface,
@@ -604,6 +606,135 @@ export default function StudentSettings() {
               <span>Perfect</span>
               <span>Deep Focus</span>
             </div>
+          </div>
+
+          {timerDuration !== (studentData.readingSettings?.defaultTimerDuration || 20) && (
+            <button
+              onClick={saveTimerChange}
+              disabled={isSaving}
+              style={{
+                backgroundColor: previewTheme.primary,
+                color: previewTheme.textPrimary,
+                border: 'none',
+                padding: '12px 24px',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                opacity: isSaving ? 0.7 : 1
+              }}
+            >
+              {isSaving ? 'Saving...' : `Save Timer (${timerDuration} min)`}
+            </button>
+          )}
+        </div>
+
+
+        {/* Reading Timer Duration Section */}
+        <div style={{
+          backgroundColor: previewTheme.surface,
+          borderRadius: '16px',
+          padding: '20px',
+          marginBottom: '24px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+        }}>
+          <h2 style={{
+            fontSize: '18px',
+            fontWeight: 'bold',
+            color: previewTheme.textPrimary,
+            marginBottom: '8px'
+          }}>
+            ⏱️ Reading Session Timer
+          </h2>
+          <p style={{
+            fontSize: '14px',
+            color: previewTheme.textSecondary,
+            marginBottom: '16px'
+          }}>
+            How long should your reading sessions be?
+          </p>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                onClick={() => setTimerDuration(Math.max(5, timerDuration - 5))}
+                style={{
+                  backgroundColor: previewTheme.primary,
+                  color: previewTheme.textPrimary,
+                  border: 'none',
+                  borderRadius: '8px',
+                  width: '40px',
+                  height: '40px',
+                  fontSize: '20px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                −
+              </button>
+              <div style={{
+                padding: '12px 16px',
+                border: `2px solid ${previewTheme.primary}50`,
+                borderRadius: '8px',
+                fontSize: '18px',
+                fontWeight: 'bold',
+                minWidth: '100px',
+                textAlign: 'center',
+                backgroundColor: previewTheme.background,
+                color: previewTheme.textPrimary
+              }}>
+                {timerDuration} min
+              </div>
+              <button
+                onClick={() => setTimerDuration(Math.min(60, timerDuration + 5))}
+                style={{
+                  backgroundColor: previewTheme.primary,
+                  color: previewTheme.textPrimary,
+                  border: 'none',
+                  borderRadius: '8px',
+                  width: '40px',
+                  height: '40px',
+                  fontSize: '20px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                +
+              </button>
+            </div>
+          </div>
+          
+          {/* Visual indicator of timer length */}
+          <div style={{
+            backgroundColor: `${previewTheme.primary}20`,
+            borderRadius: '8px',
+            padding: '12px',
+            marginBottom: '16px',
+            textAlign: 'center'
+          }}>
+            <div style={{
+              fontSize: '12px',
+              color: previewTheme.textSecondary,
+              marginBottom: '4px'
+            }}>
+              {timerDuration <= 10 ? '⚡ Quick Session' : 
+               timerDuration <= 30 ? '📚 Perfect Session' : 
+               '🎯 Deep Focus Session'}
+            </div>
+            <div style={{
+              backgroundColor: previewTheme.primary,
+              height: '4px',
+              borderRadius: '2px',
+              width: `${(timerDuration / 60) * 100}%`,
+              margin: '0 auto',
+              transition: 'width 0.3s ease'
+            }} />
           </div>
 
           {timerDuration !== (studentData.readingSettings?.defaultTimerDuration || 20) && (
