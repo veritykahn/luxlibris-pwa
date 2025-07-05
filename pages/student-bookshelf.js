@@ -257,6 +257,33 @@ export default function StudentBookshelf() {
     }
   }, [loading, isAuthenticated, user]);
 
+  // NEW: Handle return from timer with progress update
+  useEffect(() => {
+    const handleTimerReturn = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const updateProgressId = urlParams.get('updateProgress');
+      const bookTitle = urlParams.get('title');
+      
+      if (updateProgressId && bookTitle && studentData) {
+        // Find the book in the bookshelf
+        const bookToUpdate = studentData.bookshelf.find(book => book.bookId === updateProgressId);
+        if (bookToUpdate) {
+          // Auto-open the book modal for progress update
+          openBookModal(bookToUpdate);
+          setShowSuccess(`📖 Welcome back! Update your progress for "${decodeURIComponent(bookTitle)}"`);
+          setTimeout(() => setShowSuccess(''), 4000);
+        }
+        
+        // Clean up URL parameters
+        router.replace('/student-bookshelf', undefined, { shallow: true });
+      }
+    };
+
+    if (studentData && nominees.length > 0) {
+      handleTimerReturn();
+    }
+  }, [studentData, nominees, router]);
+
   const loadBookshelfData = async () => {
     try {
       const firebaseStudentData = await getStudentData(user.uid);
@@ -413,6 +440,16 @@ export default function StudentBookshelf() {
   const closeBookModal = () => {
     setShowBookModal(false);
     setSelectedBook(null);
+  };
+
+  // NEW: Navigate to timer with book context
+  const startReadingSession = (book) => {
+    const bookDetails = getBookDetails(book.bookId);
+    if (!bookDetails) return;
+    
+    closeBookModal();
+    const bookTitle = encodeURIComponent(bookDetails.title);
+    router.push(`/student-healthy-habits?bookId=${book.bookId}&bookTitle=${bookTitle}`);
   };
 
   const saveBookProgress = async () => {
@@ -1350,13 +1387,10 @@ export default function StudentBookshelf() {
                       </div>
                     )}
 
-                    {/* Start Reading Session Button - Only show if not completed */}
+                    {/* Start Reading Session Button - Only show if not completed and not locked */}
                     {shouldShowReadingButton(selectedBook) && (
                       <button
-                        onClick={() => {
-                          closeBookModal();
-                          router.push('/student-healthy-habits');
-                        }}
+                        onClick={() => startReadingSession(selectedBook)}
                         disabled={locked}
                         style={{
                           backgroundColor: locked ? '#E0E0E0' : colorPalette.primary,
@@ -1370,7 +1404,8 @@ export default function StudentBookshelf() {
                           width: '100%',
                           minHeight: '44px',
                           fontFamily: 'system-ui, -apple-system, sans-serif',
-                          opacity: locked ? 0.6 : 1
+                          opacity: locked ? 0.6 : 1,
+                          marginBottom: '12px'
                         }}
                       >
                         📖 Start Reading Session

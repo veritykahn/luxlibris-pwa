@@ -30,6 +30,9 @@ export default function StudentHealthyHabits() {
   // UI states
   const [showSuccess, setShowSuccess] = useState('');
   const [showCompletionCelebration, setShowCompletionCelebration] = useState(false);
+  const [showBookProgressModal, setShowBookProgressModal] = useState(false);
+  const [currentBookId, setCurrentBookId] = useState(null);
+  const [currentBookTitle, setCurrentBookTitle] = useState('');
   
   // Wake lock state
   const [wakeLock, setWakeLock] = useState(null);
@@ -283,13 +286,13 @@ export default function StudentHealthyHabits() {
     const avgMinutes = minutesToday; // TODO: Calculate 7-day average
     
     if (avgMinutes >= 51) {
-      setReadingLevel({ name: 'Luminous Legend', emoji: '✨', color: '#E3F2FD' });
+      setReadingLevel({ name: 'Luminous Legend', emoji: '✨', color: '#E3F2FD', textColor: '#1565C0' });
     } else if (avgMinutes >= 36) {
-      setReadingLevel({ name: 'Radiant Reader', emoji: '🌟', color: '#FFF9C4' });
+      setReadingLevel({ name: 'Radiant Reader', emoji: '🌟', color: '#FFF9C4', textColor: '#F57F17' });
     } else if (avgMinutes >= 21) {
-      setReadingLevel({ name: 'Bright Beacon', emoji: '⭐', color: '#FFF8E1' });
+      setReadingLevel({ name: 'Bright Beacon', emoji: '⭐', color: '#FFF8E1', textColor: '#E65100' });
     } else {
-      setReadingLevel({ name: 'Faithful Flame', emoji: '🕯️', color: '#FFE0B2' });
+      setReadingLevel({ name: 'Faithful Flame', emoji: '🕯️', color: '#FFE0B2', textColor: '#BF360C' });
     }
   }, []);
 
@@ -352,7 +355,7 @@ export default function StudentHealthyHabits() {
         duration: duration,
         targetDuration: Math.floor(timerDuration / 60),
         completed: completed,
-        bookId: null // Can be set if started from specific book
+        bookId: currentBookId || null // Include book ID if available
       };
       
       const sessionsRef = collection(db, `dioceses/${studentData.dioceseId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
@@ -416,6 +419,16 @@ export default function StudentHealthyHabits() {
   // Load student data and reading data
   useEffect(() => {
     if (!loading && isAuthenticated && user) {
+      // Check if we came from a specific book
+      const urlParams = new URLSearchParams(window.location.search);
+      const bookId = urlParams.get('bookId');
+      const bookTitle = urlParams.get('bookTitle');
+      
+      if (bookId && bookTitle) {
+        setCurrentBookId(bookId);
+        setCurrentBookTitle(decodeURIComponent(bookTitle));
+      }
+      
       loadHealthyHabitsData();
     } else if (!loading && !isAuthenticated) {
       router.push('/role-selector');
@@ -439,11 +452,17 @@ export default function StudentHealthyHabits() {
     
     // Show celebration
     setShowCompletionCelebration(true);
-    setTimeout(() => setShowCompletionCelebration(false), 3000);
+    setTimeout(() => {
+      setShowCompletionCelebration(false);
+      // Show book progress modal after celebration if they came from a book
+      if (currentBookId && currentBookTitle) {
+        setShowBookProgressModal(true);
+      }
+    }, 3000);
     
     // Reset timer
     setTimeRemaining(timerDuration);
-  }, [timerDuration, saveReadingSession]);
+  }, [timerDuration, saveReadingSession, currentBookId, currentBookTitle]);
 
   // Timer effect
   useEffect(() => {
@@ -492,6 +511,38 @@ export default function StudentHealthyHabits() {
     setIsTimerPaused(false);
     setTimeRemaining(timerDuration);
     releaseWakeLock(); // Allow screen to turn off
+  };
+
+  const handleBankSession = async () => {
+    const minutesRead = Math.floor((timerDuration - timeRemaining) / 60);
+    
+    if (minutesRead < 1) {
+      setShowSuccess('⏱️ Read for at least 1 minute to bank progress');
+      setTimeout(() => setShowSuccess(''), 3000);
+      return;
+    }
+
+    setIsTimerActive(false);
+    setIsTimerPaused(false);
+    releaseWakeLock(); // Allow screen to turn off
+    
+    // Save banked session (not completed unless 20+ minutes)
+    const isCompleted = minutesRead >= 20;
+    await saveReadingSession(minutesRead, isCompleted);
+    
+    // Show book progress modal if they came from a book
+    if (currentBookId && currentBookTitle) {
+      setShowBookProgressModal(true);
+    }
+    
+    // Reset timer
+    setTimeRemaining(timerDuration);
+    
+    setShowSuccess(isCompleted ? 
+      '🎉 Session banked and streak earned!' : 
+      `📖 ${minutesRead} minutes banked! Read 20+ minutes for streak credit`
+    );
+    setTimeout(() => setShowSuccess(''), 4000);
   };
 
   const formatTime = (seconds) => {
@@ -692,6 +743,94 @@ export default function StudentHealthyHabits() {
                     📱 Screen staying on
                   </div>
                 )}
+
+        {/* BOOK PROGRESS MODAL */}
+        {showBookProgressModal && currentBookTitle && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1002,
+            padding: '20px'
+          }}>
+            <div style={{
+              backgroundColor: currentTheme.surface,
+              borderRadius: '20px',
+              padding: 'clamp(20px, 6vw, 30px)',
+              textAlign: 'center',
+              maxWidth: '90vw',
+              width: '100%',
+              maxWidth: '350px'
+            }}>
+              <div style={{ fontSize: 'clamp(40px, 12vw, 48px)', marginBottom: '16px' }}>📖</div>
+              <h2 style={{
+                fontSize: 'clamp(18px, 5vw, 20px)',
+                fontWeight: 'bold',
+                color: currentTheme.textPrimary,
+                margin: '0 0 8px 0'
+              }}>
+                Update Reading Progress?
+              </h2>
+              <p style={{
+                fontSize: 'clamp(12px, 3.5vw, 14px)',
+                color: currentTheme.textSecondary,
+                margin: '0 0 20px 0',
+                lineHeight: '1.4'
+              }}>
+                You were reading <strong style={{ color: currentTheme.textPrimary }}>{currentBookTitle}</strong>. 
+                Would you like to mark your progress?
+              </p>
+              
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => {
+                    setShowBookProgressModal(false);
+                    // Navigate back to bookshelf with progress update
+                    router.push(`/student-bookshelf?updateProgress=${currentBookId}&title=${encodeURIComponent(currentBookTitle)}`);
+                  }}
+                  style={{
+                    backgroundColor: currentTheme.primary,
+                    color: currentTheme.textPrimary,
+                    border: 'none',
+                    borderRadius: '16px',
+                    padding: '12px 20px',
+                    fontSize: 'clamp(12px, 3.5vw, 14px)',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    minHeight: '44px',
+                    minWidth: '120px'
+                  }}
+                >
+                  📝 Update Progress
+                </button>
+                
+                <button
+                  onClick={() => setShowBookProgressModal(false)}
+                  style={{
+                    backgroundColor: currentTheme.textSecondary,
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '16px',
+                    padding: '12px 20px',
+                    fontSize: 'clamp(12px, 3.5vw, 14px)',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    minHeight: '44px',
+                    minWidth: '120px'
+                  }}
+                >
+                  ⏭️ Skip
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
               </div>
             </div>
 
@@ -748,26 +887,51 @@ export default function StudentHealthyHabits() {
                     {isTimerPaused ? '▶️ Resume' : '⏸️ Pause'}
                   </button>
                   
-                  <button
-                    onClick={handleStopTimer}
-                    style={{
-                      backgroundColor: currentTheme.textSecondary,
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '16px',
-                      padding: '12px 20px',
-                      fontSize: 'clamp(12px, 3.5vw, 14px)',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      minHeight: '48px',
-                      minWidth: '100px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                  >
-                    ⏹️ Stop
-                  </button>
+                  {isTimerPaused ? (
+                    <button
+                      onClick={handleBankSession}
+                      style={{
+                        backgroundColor: '#4CAF50',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '16px',
+                        padding: '12px 20px',
+                        fontSize: 'clamp(12px, 3.5vw, 14px)',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        minHeight: '48px',
+                        minWidth: '100px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 4px 12px rgba(76, 175, 80, 0.3)',
+                        animation: 'pulse 2s infinite'
+                      }}
+                    >
+                      💾 Bank Session
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleStopTimer}
+                      style={{
+                        backgroundColor: currentTheme.textSecondary,
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '16px',
+                        padding: '12px 20px',
+                        fontSize: 'clamp(12px, 3.5vw, 14px)',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        minHeight: '48px',
+                        minWidth: '100px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      ⏹️ Stop
+                    </button>
+                  )}
                 </>
               )}
             </div>
@@ -829,14 +993,14 @@ export default function StudentHealthyHabits() {
               <div style={{
                 fontSize: '16px',
                 fontWeight: 'bold',
-                color: currentTheme.textPrimary,
+                color: readingLevel.textColor || currentTheme.textPrimary,
                 marginBottom: '4px'
               }}>
                 {readingLevel.name}
               </div>
               <div style={{
                 fontSize: '12px',
-                color: currentTheme.textSecondary
+                color: readingLevel.textColor || currentTheme.textSecondary
               }}>
                 {readingLevel.name === 'Luminous Legend' && 'Your dedication illuminates the world!'}
                 {readingLevel.name === 'Radiant Reader' && 'You&apos;re shining bright with wisdom!'}
@@ -1044,8 +1208,14 @@ export default function StudentHealthyHabits() {
           }
           
           @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
+            0%, 100% { 
+              opacity: 1; 
+              transform: scale(1);
+            }
+            50% { 
+              opacity: 0.8; 
+              transform: scale(1.02);
+            }
           }
           
           button {
