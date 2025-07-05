@@ -421,7 +421,8 @@ export default function StudentSettings() {
             borderRadius: '16px',
             padding: '20px',
             marginBottom: '24px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            textAlign: 'center'
           }}>
             <h2 style={{
               fontSize: '18px',
@@ -439,7 +440,7 @@ export default function StudentSettings() {
               How many books do you want to read this year?
             </p>
             
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px', justifyContent: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <button
                   onClick={() => setNewGoal(Math.max(1, newGoal - 1))}
@@ -517,13 +518,14 @@ export default function StudentSettings() {
             )}
           </div>
 
-          {/* NEW TIMER SECTION - PLUS/MINUS BUTTONS */}
+          {/* Reading Session Timer Section */}
           <div style={{
             backgroundColor: previewTheme.surface,
             borderRadius: '16px',
             padding: '20px',
             marginBottom: '24px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            textAlign: 'center'
           }}>
             <h2 style={{
               fontSize: '18px',
@@ -541,10 +543,10 @@ export default function StudentSettings() {
               How long should your reading sessions be?
             </p>
             
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px', justifyContent: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <button
-                  onClick={() => setTimerDuration(Math.max(5, timerDuration - 5))}
+                  onClick={() => setTimerDuration(Math.max(20, timerDuration - 5))}
                   style={{
                     backgroundColor: previewTheme.primary,
                     color: previewTheme.textPrimary,
@@ -610,8 +612,8 @@ export default function StudentSettings() {
                 color: previewTheme.textSecondary,
                 marginBottom: '4px'
               }}>
-                {timerDuration <= 10 ? '⚡ Quick Session' : 
-                 timerDuration <= 30 ? '📚 Perfect Session' : 
+                {timerDuration <= 30 ? '📚 Perfect Session' : 
+                 timerDuration <= 40 ? '⚡ Extended Session' : 
                  '🎯 Deep Focus Session'}
               </div>
               <div style={{
@@ -651,7 +653,8 @@ export default function StudentSettings() {
             borderRadius: '16px',
             padding: '20px',
             marginBottom: '24px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            textAlign: 'center'
           }}>
             <h2 style={{
               fontSize: '18px',
@@ -752,7 +755,8 @@ export default function StudentSettings() {
             borderRadius: '16px',
             padding: '20px',
             marginBottom: '24px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            textAlign: 'center'
           }}>
             <h2 style={{
               fontSize: '18px',
@@ -860,7 +864,7 @@ export default function StudentSettings() {
 
             {/* Save Button */}
             {selectedThemePreview !== studentData.selectedTheme && (
-              <div style={{ textAlign: 'center' }}>
+              <div>
                 <button
                   onClick={saveThemeChange}
                   disabled={isSaving}
