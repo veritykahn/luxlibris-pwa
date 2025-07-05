@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
-import { getStudentData, updateStudentData } from '../lib/firebase';
+import { getStudentData, updateStudentData, getSchoolNominees } from '../lib/firebase';
 import { createParentInviteCode } from '../lib/parentLinking';
 import Head from 'next/head'
 
@@ -112,6 +112,7 @@ export default function StudentSettings() {
   const [showInviteCode, setShowInviteCode] = useState(false);
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
   const [timerDuration, setTimerDuration] = useState(20);
+  const [maxNominees, setMaxNominees] = useState(100); // Max 100 books per year
 
   const themesArray = Object.entries(themes).map(([key, value]) => ({
     assetPrefix: key,
@@ -143,6 +144,22 @@ export default function StudentSettings() {
       setNewGoal(realStudentData.personalGoal || 20);
       setParentInviteCode(realStudentData.parentInviteCode || '');
       setTimerDuration(realStudentData.readingSettings?.defaultTimerDuration || 20);
+      
+      // Load nominees to get the reading goal cap (max 100 per year)
+      if (realStudentData.dioceseId && realStudentData.schoolId) {
+        try {
+          const schoolNominees = await getSchoolNominees(
+            realStudentData.dioceseId, 
+            realStudentData.schoolId
+          );
+          const availableBooks = Math.min(schoolNominees.length || 100, 100); // Cap at 100 max
+          setMaxNominees(availableBooks);
+          console.log(`📚 School has ${schoolNominees.length} nominees, reading goal capped at ${availableBooks}`);
+        } catch (error) {
+          console.warn('⚠️ Could not load nominees for reading goal cap:', error);
+          setMaxNominees(100); // Fallback to 100 if nominees can't be loaded
+        }
+      }
       
     } catch (error) {
       console.error('❌ Error loading student data:', error);
@@ -437,7 +454,7 @@ export default function StudentSettings() {
               color: previewTheme.textSecondary,
               marginBottom: '16px'
             }}>
-              How many books do you want to read this year?
+              How many books do you want to read this year? (Max: {maxNominees} books)
             </p>
             
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px', justifyContent: 'center' }}>
@@ -475,7 +492,8 @@ export default function StudentSettings() {
                   {newGoal}
                 </div>
                 <button
-                  onClick={() => setNewGoal(Math.min(100, newGoal + 1))}
+                  onClick={() => setNewGoal(Math.min(maxNominees, newGoal + 1))}
+                  disabled={newGoal >= maxNominees}
                   style={{
                     backgroundColor: previewTheme.primary,
                     color: previewTheme.textPrimary,
@@ -485,16 +503,19 @@ export default function StudentSettings() {
                     height: '40px',
                     fontSize: '20px',
                     fontWeight: 'bold',
-                    cursor: 'pointer',
+                    cursor: newGoal >= maxNominees ? 'not-allowed' : 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center'
+                    justifyContent: 'center',
+                    opacity: newGoal >= maxNominees ? 0.5 : 1
                   }}
                 >
                   +
                 </button>
               </div>
-              <span style={{ fontSize: '16px', color: previewTheme.textPrimary }}>books this year</span>
+              <span style={{ fontSize: '16px', color: previewTheme.textPrimary }}>
+                books this year {newGoal === maxNominees ? '(max reached)' : ''}
+              </span>
             </div>
 
             {newGoal !== studentData.personalGoal && (
