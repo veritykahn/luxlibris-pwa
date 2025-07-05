@@ -220,12 +220,13 @@ export default function StudentHealthyHabits() {
 
   const loadStreakData = useCallback(async (studentData) => {
     try {
+      // Get last 30 days for proper streak calculation and rare saint unlock
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       
       const sessionsRef = collection(db, `dioceses/${studentData.dioceseId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
       
-      // FIXED: Use separate queries to avoid composite index requirement
+      // Get all sessions from last 30 days
       const recentQuery = query(
         sessionsRef,
         where('date', '>=', thirtyDaysAgo.toISOString().split('T')[0])
@@ -234,6 +235,7 @@ export default function StudentHealthyHabits() {
       const recentSnapshot = await getDocs(recentQuery);
       const sessionsByDate = {};
       
+      // FIXED: Only count COMPLETED sessions (20+ min) for streaks
       recentSnapshot.forEach(doc => {
         const session = doc.data();
         if (session.completed) {
@@ -241,51 +243,93 @@ export default function StudentHealthyHabits() {
         }
       });
       
-      // Build calendar array (last 30 days)
+      // Build 30-day calendar array and calculate streak properly
       const calendar = [];
       let streakCount = 0;
-      let streakBroken = false;
       
-      for (let i = 0; i < 30; i++) {
+      // Build calendar for last 30 days
+      for (let i = 29; i >= 0; i--) {
         const date = new Date();
         date.setDate(date.getDate() - i);
         const dateStr = date.toISOString().split('T')[0];
         const hasReading = !!sessionsByDate[dateStr];
         
-        calendar.unshift({
+        calendar.push({
           date: dateStr,
           hasReading,
           dayName: date.toLocaleDateString('en', { weekday: 'short' }).charAt(0)
         });
-        
-        // Calculate current streak (from today backwards)
-        if (i === 0 && hasReading) {
-          streakCount = 1;
-        } else if (streakCount > 0 && hasReading && !streakBroken) {
+      }
+      
+      // FIXED: Calculate current streak from today backwards (only completed sessions)
+      const today = new Date().toISOString().split('T')[0];
+      let currentDate = new Date();
+      
+      // Check streak starting from today
+      while (true) {
+        const dateStr = currentDate.toISOString().split('T')[0];
+        if (sessionsByDate[dateStr]) {
           streakCount++;
-        } else if (streakCount > 0 && !hasReading && !streakBroken) {
-          streakBroken = true;
+          currentDate.setDate(currentDate.getDate() - 1);
+        } else {
+          break;
         }
       }
       
       setStreakCalendar(calendar);
       setCurrentStreak(streakCount);
       
+      console.log(`🔥 Current streak: ${streakCount} days (completed sessions only)`);
+      
     } catch (error) {
       console.error('❌ Error loading streak data:', error);
     }
   }, []);
 
-  const calculateReadingLevel = useCallback((minutesToday) => {
-    const avgMinutes = minutesToday;
-    
-    if (avgMinutes >= 51) {
-      setReadingLevel({ name: 'Luminous Legend', emoji: '✨', color: '#E3F2FD', textColor: '#0D47A1' });
-    } else if (avgMinutes >= 36) {
-      setReadingLevel({ name: 'Radiant Reader', emoji: '🌟', color: '#FFF9C4', textColor: '#E65100' });
-    } else if (avgMinutes >= 21) {
-      setReadingLevel({ name: 'Bright Beacon', emoji: '⭐', color: '#FFF8E1', textColor: '#D84315' });
-    } else {
+  const calculateReadingLevel = useCallback(async (studentData) => {
+    try {
+      // FIXED: Base reading level on 7-day average with incremental progression
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      
+      const sessionsRef = collection(db, `dioceses/${studentData.dioceseId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
+      const weekQuery = query(
+        sessionsRef,
+        where('date', '>=', sevenDaysAgo.toISOString().split('T')[0])
+      );
+      
+      const weekSnapshot = await getDocs(weekQuery);
+      const dailyMinutes = {};
+      
+      // Calculate total minutes per day for last 7 days (all sessions, not just completed)
+      weekSnapshot.forEach(doc => {
+        const session = doc.data();
+        if (!dailyMinutes[session.date]) {
+          dailyMinutes[session.date] = 0;
+        }
+        dailyMinutes[session.date] += session.duration;
+      });
+      
+      // Calculate 7-day average
+      const totalMinutes = Object.values(dailyMinutes).reduce((sum, minutes) => sum + minutes, 0);
+      const averageMinutesPerDay = totalMinutes / 7; // Always divide by 7 to get true daily average
+      
+      // FIXED: Updated progression levels with cleaner boundaries
+      if (averageMinutesPerDay >= 51) {
+        setReadingLevel({ name: 'Luminous Legend', emoji: '✨', color: '#E3F2FD', textColor: '#0D47A1' });
+      } else if (averageMinutesPerDay >= 36) {
+        setReadingLevel({ name: 'Radiant Reader', emoji: '🌟', color: '#FFF9C4', textColor: '#E65100' });
+      } else if (averageMinutesPerDay >= 21) {
+        setReadingLevel({ name: 'Bright Beacon', emoji: '⭐', color: '#FFF8E1', textColor: '#D84315' });
+      } else {
+        setReadingLevel({ name: 'Faithful Flame', emoji: '🕯️', color: '#FFCC80', textColor: '#FFFFFF' });
+      }
+      
+      console.log(`📚 Reading level: ${averageMinutesPerDay.toFixed(1)} min/day average over last 7 days`);
+      
+    } catch (error) {
+      console.error('❌ Error calculating reading level:', error);
+      // Fallback to default
       setReadingLevel({ name: 'Faithful Flame', emoji: '🕯️', color: '#FFCC80', textColor: '#FFFFFF' });
     }
   }, []);
@@ -320,9 +364,8 @@ export default function StudentHealthyHabits() {
       
       sessionData.forEach(session => {
         sessions.push(session);
-        if (session.completed) {
-          minutesToday += session.duration;
-        }
+        // FIXED: Count ALL minutes for today (both completed and banked sessions)
+        minutesToday += session.duration;
       });
       
       console.log(`📊 Loaded ${sessions.length} sessions for today, ${minutesToday} minutes total`);
@@ -331,7 +374,7 @@ export default function StudentHealthyHabits() {
       setTodaysMinutes(minutesToday);
       
       await loadStreakData(studentData);
-      calculateReadingLevel(minutesToday);
+      await calculateReadingLevel(studentData);
       
     } catch (error) {
       console.error('❌ Error loading reading data:', error);
@@ -376,12 +419,13 @@ export default function StudentHealthyHabits() {
         setTodaysMinutes(prev => {
           const newMinutes = prev + duration;
           console.log(`📈 Updated today's minutes: ${prev} + ${duration} = ${newMinutes}`);
-          calculateReadingLevel(newMinutes);
           return newMinutes;
         });
         
         if (todaysSessions.filter(s => s.completed).length === 0) {
           await updateStreakData();
+          // Recalculate reading level after streak update
+          await calculateReadingLevel(studentData);
         }
       }
       
@@ -464,6 +508,26 @@ export default function StudentHealthyHabits() {
     setTimeRemaining(timerDuration);
   }, [timerDuration, saveReadingSession, currentBookId, currentBookTitle]);
 
+  // FIXED: Handle page visibility for proper timer pause/resume
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden && isTimerActive && !isTimerPaused) {
+        // Page is hidden and timer is running - pause it
+        console.log('📱 Page hidden - pausing timer');
+        setIsTimerPaused(true);
+      } else if (!document.hidden && isTimerActive && isTimerPaused && timeRemaining > 0) {
+        // Page is visible again and timer was paused - don't auto-resume, let user choose
+        console.log('📱 Page visible again - timer remains paused');
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isTimerActive, isTimerPaused, timeRemaining]);
+
   // Timer effect
   useEffect(() => {
     if (isTimerActive && !isTimerPaused && timeRemaining > 0) {
@@ -500,10 +564,14 @@ export default function StudentHealthyHabits() {
 
   const handlePauseTimer = () => {
     setIsTimerPaused(true);
+    // FIXED: Release wake lock when pausing
+    releaseWakeLock();
   };
 
   const handleResumeTimer = () => {
     setIsTimerPaused(false);
+    // FIXED: Re-request wake lock when resuming
+    requestWakeLock();
   };
 
   const handleStopTimer = () => {
@@ -888,14 +956,14 @@ export default function StudentHealthyHabits() {
                 color: readingLevel.textColor,
                 opacity: 0.9
               }}>
-                {readingLevel.name === 'Luminous Legend' && 'Your dedication illuminates the world!'}
-                {readingLevel.name === 'Radiant Reader' && 'You&apos;re shining bright with wisdom!'}
+                {readingLevel.name === 'Luminous Legend' && 'Your dedication will illuminate the world!'}
+                {readingLevel.name === 'Radiant Reader' && 'You are shining bright with wisdom!'}
                 {readingLevel.name === 'Bright Beacon' && 'Your light guides others to great books!'}
                 {readingLevel.name === 'Faithful Flame' && 'You keep the flame of learning burning bright!'}
               </div>
             </div>
 
-            {/* FIXED: Better display of minutes and sessions */}
+            {/* FIXED: Better display of minutes and current streak */}
             <div style={{
               display: 'grid',
               gridTemplateColumns: '1fr 1fr',
@@ -934,13 +1002,13 @@ export default function StudentHealthyHabits() {
                   fontWeight: 'bold',
                   color: currentTheme.textPrimary
                 }}>
-                  {todaysSessions.filter(s => s.completed).length}
+                  {currentStreak}
                 </div>
                 <div style={{
                   fontSize: '12px',
                   color: currentTheme.textSecondary
                 }}>
-                  sessions completed
+                  day streak
                 </div>
               </div>
             </div>
@@ -981,7 +1049,7 @@ export default function StudentHealthyHabits() {
               </div>
             </div>
 
-            {/* Calendar Grid */}
+            {/* FIXED: Calendar Grid - Show full 30 days for rare saint unlock */}
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(7, 1fr)',
@@ -989,18 +1057,18 @@ export default function StudentHealthyHabits() {
               marginBottom: '12px',
               justifyItems: 'center'
             }}>
-              {streakCalendar.slice(-21).map((day, index) => (
+              {streakCalendar.map((day, index) => (
                 <div
                   key={day.date}
                   style={{
-                    width: 'clamp(28px, 8vw, 32px)',
-                    height: 'clamp(28px, 8vw, 32px)',
+                    width: 'clamp(24px, 6vw, 28px)',
+                    height: 'clamp(24px, 6vw, 28px)',
                     borderRadius: '6px',
                     backgroundColor: day.hasReading ? currentTheme.primary : `${currentTheme.primary}20`,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: 'clamp(8px, 2.5vw, 10px)',
+                    fontSize: 'clamp(8px, 2vw, 10px)',
                     fontWeight: '600',
                     color: day.hasReading ? 'white' : currentTheme.textSecondary
                   }}
@@ -1016,7 +1084,9 @@ export default function StudentHealthyHabits() {
               textAlign: 'center',
               margin: 0
             }}>
-              {currentStreak >= 7 ? "Amazing! Keep the fire burning! 🔥" : "Read every day to build your streak!"}
+              {currentStreak >= 30 ? "🏆 30-day streak! Rare saints unlocked!" : 
+               currentStreak >= 7 ? "Amazing! Keep the fire burning! 🔥" : 
+               "Read every day to build your streak!"}
             </p>
           </div>
         </div>
