@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
 import { getStudentData, updateStudentData } from '../lib/firebase';
@@ -130,7 +130,7 @@ export default function StudentHealthyHabits() {
     } else if (!loading && !isAuthenticated) {
       router.push('/role-selector');
     }
-  }, [loading, isAuthenticated, user]);
+  }, [loading, isAuthenticated, user, router]);
 
   // Timer effect
   useEffect(() => {
@@ -310,7 +310,7 @@ export default function StudentHealthyHabits() {
     setTimeRemaining(timerDuration);
   };
 
-  const handleTimerComplete = async () => {
+  const handleTimerComplete = useCallback(async () => {
     setIsTimerActive(false);
     setIsTimerPaused(false);
     
@@ -323,7 +323,7 @@ export default function StudentHealthyHabits() {
     
     // Reset timer
     setTimeRemaining(timerDuration);
-  };
+  }, [timerDuration]);
 
   const saveReadingSession = async (duration, completed) => {
     try {
@@ -696,7 +696,10 @@ export default function StudentHealthyHabits() {
                 fontSize: '12px',
                 color: currentTheme.textSecondary
               }}>
-                You&apos;re shining bright with wisdom!
+                {readingLevel.name === 'Luminous Legend' && 'Your dedication illuminates the world!'}
+                {readingLevel.name === 'Radiant Reader' && 'You&apos;re shining bright with wisdom!'}
+                {readingLevel.name === 'Bright Beacon' && 'Your light guides others to great books!'}
+                {readingLevel.name === 'Faithful Flame' && 'You keep the flame of learning burning bright!'}
               </div>
             </div>
 
