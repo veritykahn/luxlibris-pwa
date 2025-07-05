@@ -1355,7 +1355,7 @@ export default function StudentBookshelf() {
                       <button
                         onClick={() => {
                           closeBookModal();
-                          router.push('/healthy-habits');
+                          router.push('/student-healthy-habits');
                         }}
                         disabled={locked}
                         style={{

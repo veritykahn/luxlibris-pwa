@@ -1,4 +1,4 @@
-// pages/student-settings.js - COPY THIS CODE
+// pages/student-settings.js - INTEGRATED WITH TIMER
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
@@ -19,6 +19,7 @@ export default function StudentSettings() {
   const [parentInviteCode, setParentInviteCode] = useState('');
   const [showInviteCode, setShowInviteCode] = useState(false);
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
+  const [timerDuration, setTimerDuration] = useState(20);
 
   // Theme definitions (same as everywhere else)
   const themes = {
@@ -141,6 +142,7 @@ export default function StudentSettings() {
       setSelectedThemePreview(realStudentData.selectedTheme || 'classic_lux');
       setNewGoal(realStudentData.personalGoal || 20);
       setParentInviteCode(realStudentData.parentInviteCode || '');
+      setTimerDuration(realStudentData.readingSettings?.defaultTimerDuration || 20);
       
     } catch (error) {
       console.error('❌ Error loading student data:', error);
@@ -199,6 +201,37 @@ export default function StudentSettings() {
     } catch (error) {
       console.error('❌ Error saving goal:', error);
       setShowSuccess('❌ Error saving goal. Please try again.');
+      setTimeout(() => setShowSuccess(''), 3000);
+    }
+    setIsSaving(false);
+  };
+
+  const saveTimerChange = async () => {
+    if (timerDuration === (studentData.readingSettings?.defaultTimerDuration || 20)) return;
+    
+    setIsSaving(true);
+    try {
+      const updatedReadingSettings = {
+        ...studentData.readingSettings,
+        defaultTimerDuration: timerDuration
+      };
+      
+      await updateStudentData(studentData.id, studentData.dioceseId, studentData.schoolId, {
+        readingSettings: updatedReadingSettings
+      });
+      
+      const updatedData = { 
+        ...studentData, 
+        readingSettings: updatedReadingSettings 
+      };
+      setStudentData(updatedData);
+      
+      setShowSuccess(`⏱️ Timer updated to ${timerDuration} minutes!`);
+      setTimeout(() => setShowSuccess(''), 3000);
+      
+    } catch (error) {
+      console.error('❌ Error saving timer:', error);
+      setShowSuccess('❌ Error saving timer. Please try again.');
       setTimeout(() => setShowSuccess(''), 3000);
     }
     setIsSaving(false);
@@ -480,6 +513,116 @@ export default function StudentSettings() {
               }}
             >
               {isSaving ? 'Saving...' : `Save Goal (${newGoal} books)`}
+            </button>
+          )}
+        </div>
+
+        {/* Reading Timer Duration Section */}
+        <div style={{
+          backgroundColor: previewTheme.surface,
+          borderRadius: '16px',
+          padding: '20px',
+          marginBottom: '24px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+        }}>
+          <h2 style={{
+            fontSize: '18px',
+            fontWeight: 'bold',
+            color: previewTheme.textPrimary,
+            marginBottom: '8px'
+          }}>
+            ⏱️ Reading Session Timer
+          </h2>
+          <p style={{
+            fontSize: '14px',
+            color: previewTheme.textSecondary,
+            marginBottom: '16px'
+          }}>
+            How long should your reading sessions be?
+          </p>
+          
+          <div style={{ marginBottom: '16px' }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '12px'
+            }}>
+              <span style={{
+                fontSize: '14px',
+                color: previewTheme.textPrimary,
+                fontWeight: '600'
+              }}>
+                5 min
+              </span>
+              <span style={{
+                fontSize: '18px',
+                fontWeight: 'bold',
+                color: previewTheme.primary,
+                backgroundColor: `${previewTheme.primary}20`,
+                padding: '8px 16px',
+                borderRadius: '12px'
+              }}>
+                {timerDuration} minutes
+              </span>
+              <span style={{
+                fontSize: '14px',
+                color: previewTheme.textPrimary,
+                fontWeight: '600'
+              }}>
+                60 min
+              </span>
+            </div>
+            
+            <input
+              type="range"
+              min="5"
+              max="60"
+              step="5"
+              value={timerDuration}
+              onChange={(e) => setTimerDuration(parseInt(e.target.value))}
+              style={{
+                width: '100%',
+                height: '8px',
+                borderRadius: '4px',
+                background: `linear-gradient(to right, ${previewTheme.primary} 0%, ${previewTheme.primary} ${((timerDuration-5)/55)*100}%, #E0E0E0 ${((timerDuration-5)/55)*100}%, #E0E0E0 100%)`,
+                outline: 'none',
+                appearance: 'none',
+                WebkitAppearance: 'none',
+                cursor: 'pointer'
+              }}
+            />
+            
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              marginTop: '8px',
+              fontSize: '12px',
+              color: previewTheme.textSecondary
+            }}>
+              <span>Quick</span>
+              <span>Perfect</span>
+              <span>Deep Focus</span>
+            </div>
+          </div>
+
+          {timerDuration !== (studentData.readingSettings?.defaultTimerDuration || 20) && (
+            <button
+              onClick={saveTimerChange}
+              disabled={isSaving}
+              style={{
+                backgroundColor: previewTheme.primary,
+                color: previewTheme.textPrimary,
+                border: 'none',
+                padding: '12px 24px',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                opacity: isSaving ? 0.7 : 1
+              }}
+            >
+              {isSaving ? 'Saving...' : `Save Timer (${timerDuration} min)`}
             </button>
           )}
         </div>
