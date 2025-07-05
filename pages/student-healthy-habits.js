@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
 import { getStudentData, updateStudentData } from '../lib/firebase';
@@ -31,8 +31,8 @@ export default function StudentHealthyHabits() {
   const [showSuccess, setShowSuccess] = useState('');
   const [showCompletionCelebration, setShowCompletionCelebration] = useState(false);
 
-  // Theme definitions
-  const themes = {
+  // Theme definitions - moved to useMemo to prevent recreation on every render
+  const themes = useMemo(() => ({
     classic_lux: {
       name: 'Lux Libris Classic',
       assetPrefix: 'classic_lux',
@@ -121,104 +121,9 @@ export default function StudentHealthyHabits() {
       textPrimary: '#B8860B',
       textSecondary: '#AAAAAA'
     }
-  };
+  }), []);
 
-  // Load student data and reading data
-  useEffect(() => {
-    if (!loading && isAuthenticated && user) {
-      loadHealthyHabitsData();
-    } else if (!loading && !isAuthenticated) {
-      router.push('/role-selector');
-    }
-  }, [loading, isAuthenticated, user, router]);
-
-  // Timer effect
-  useEffect(() => {
-    if (isTimerActive && !isTimerPaused && timeRemaining > 0) {
-      timerRef.current = setInterval(() => {
-        setTimeRemaining(prev => {
-          if (prev <= 1) {
-            handleTimerComplete();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    } else {
-      clearInterval(timerRef.current);
-    }
-
-    return () => clearInterval(timerRef.current);
-  }, [isTimerActive, isTimerPaused, timeRemaining]);
-
-  const loadHealthyHabitsData = async () => {
-    try {
-      const firebaseStudentData = await getStudentData(user.uid);
-      if (!firebaseStudentData) {
-        router.push('/student-onboarding');
-        return;
-      }
-      
-      setStudentData(firebaseStudentData);
-      
-      const selectedThemeKey = firebaseStudentData.selectedTheme || 'classic_lux';
-      const selectedTheme = themes[selectedThemeKey];
-      setCurrentTheme(selectedTheme);
-      
-      // Set timer duration from settings
-      const defaultDuration = firebaseStudentData.readingSettings?.defaultTimerDuration || 20;
-      setTimerDuration(defaultDuration * 60);
-      setTimeRemaining(defaultDuration * 60);
-      
-      // Load reading sessions and streak data
-      await loadReadingData(firebaseStudentData);
-      
-    } catch (error) {
-      console.error('❌ Error loading healthy habits data:', error);
-      router.push('/student-dashboard');
-    }
-    
-    setIsLoading(false);
-  };
-
-  const loadReadingData = async (studentData) => {
-    try {
-      // Get today's sessions
-      const today = new Date().toISOString().split('T')[0];
-      const sessionsRef = collection(db, `dioceses/${studentData.dioceseId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
-      const todayQuery = query(
-        sessionsRef,
-        where('date', '==', today),
-        orderBy('startTime', 'desc')
-      );
-      
-      const todaySnapshot = await getDocs(todayQuery);
-      const sessions = [];
-      let minutesToday = 0;
-      
-      todaySnapshot.forEach(doc => {
-        const session = { id: doc.id, ...doc.data() };
-        sessions.push(session);
-        if (session.completed) {
-          minutesToday += session.duration;
-        }
-      });
-      
-      setTodaysSessions(sessions);
-      setTodaysMinutes(minutesToday);
-      
-      // Load streak data and calendar
-      await loadStreakData(studentData);
-      
-      // Calculate reading level
-      calculateReadingLevel(minutesToday);
-      
-    } catch (error) {
-      console.error('❌ Error loading reading data:', error);
-    }
-  };
-
-  const loadStreakData = async (studentData) => {
+  const loadStreakData = useCallback(async (studentData) => {
     try {
       // Get last 30 days of reading sessions
       const thirtyDaysAgo = new Date();
@@ -274,9 +179,9 @@ export default function StudentHealthyHabits() {
     } catch (error) {
       console.error('❌ Error loading streak data:', error);
     }
-  };
+  }, []);
 
-  const calculateReadingLevel = (minutesToday) => {
+  const calculateReadingLevel = useCallback((minutesToday) => {
     // Based on average daily minutes over last 7 days (simplified to today for now)
     const avgMinutes = minutesToday; // TODO: Calculate 7-day average
     
@@ -289,43 +194,57 @@ export default function StudentHealthyHabits() {
     } else {
       setReadingLevel({ name: 'Faithful Flame', emoji: '🕯️', color: '#FFE0B2' });
     }
-  };
+  }, []);
 
-  const handleStartTimer = () => {
-    setIsTimerActive(true);
-    setIsTimerPaused(false);
-  };
+  const loadReadingData = useCallback(async (studentData) => {
+    try {
+      // Get today's sessions
+      const today = new Date().toISOString().split('T')[0];
+      const sessionsRef = collection(db, `dioceses/${studentData.dioceseId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
+      const todayQuery = query(
+        sessionsRef,
+        where('date', '==', today),
+        orderBy('startTime', 'desc')
+      );
+      
+      const todaySnapshot = await getDocs(todayQuery);
+      const sessions = [];
+      let minutesToday = 0;
+      
+      todaySnapshot.forEach(doc => {
+        const session = { id: doc.id, ...doc.data() };
+        sessions.push(session);
+        if (session.completed) {
+          minutesToday += session.duration;
+        }
+      });
+      
+      setTodaysSessions(sessions);
+      setTodaysMinutes(minutesToday);
+      
+      // Load streak data and calendar
+      await loadStreakData(studentData);
+      
+      // Calculate reading level
+      calculateReadingLevel(minutesToday);
+      
+    } catch (error) {
+      console.error('❌ Error loading reading data:', error);
+    }
+  }, [loadStreakData, calculateReadingLevel]);
 
-  const handlePauseTimer = () => {
-    setIsTimerPaused(true);
-  };
+  const updateStreakData = useCallback(async () => {
+    try {
+      // Recalculate streak
+      if (studentData) {
+        await loadStreakData(studentData);
+      }
+    } catch (error) {
+      console.error('❌ Error updating streak:', error);
+    }
+  }, [studentData, loadStreakData]);
 
-  const handleResumeTimer = () => {
-    setIsTimerPaused(false);
-  };
-
-  const handleStopTimer = () => {
-    setIsTimerActive(false);
-    setIsTimerPaused(false);
-    setTimeRemaining(timerDuration);
-  };
-
-  const handleTimerComplete = useCallback(async () => {
-    setIsTimerActive(false);
-    setIsTimerPaused(false);
-    
-    // Save completed session to Firebase
-    await saveReadingSession(Math.floor(timerDuration / 60), true);
-    
-    // Show celebration
-    setShowCompletionCelebration(true);
-    setTimeout(() => setShowCompletionCelebration(false), 3000);
-    
-    // Reset timer
-    setTimeRemaining(timerDuration);
-  }, [timerDuration]);
-
-  const saveReadingSession = async (duration, completed) => {
+  const saveReadingSession = useCallback(async (duration, completed) => {
     try {
       if (!studentData) return;
       
@@ -345,8 +264,11 @@ export default function StudentHealthyHabits() {
       // Update today's data
       setTodaysSessions(prev => [sessionData, ...prev]);
       if (completed) {
-        setTodaysMinutes(prev => prev + duration);
-        calculateReadingLevel(todaysMinutes + duration);
+        setTodaysMinutes(prev => {
+          const newMinutes = prev + duration;
+          calculateReadingLevel(newMinutes);
+          return newMinutes;
+        });
       }
       
       // Update streak if this is first session today
@@ -362,15 +284,98 @@ export default function StudentHealthyHabits() {
       setShowSuccess('❌ Error saving session. Please try again.');
       setTimeout(() => setShowSuccess(''), 3000);
     }
+  }, [studentData, timerDuration, todaysSessions, calculateReadingLevel, updateStreakData]);
+
+  const loadHealthyHabitsData = useCallback(async () => {
+    try {
+      const firebaseStudentData = await getStudentData(user.uid);
+      if (!firebaseStudentData) {
+        router.push('/student-onboarding');
+        return;
+      }
+      
+      setStudentData(firebaseStudentData);
+      
+      const selectedThemeKey = firebaseStudentData.selectedTheme || 'classic_lux';
+      const selectedTheme = themes[selectedThemeKey];
+      setCurrentTheme(selectedTheme);
+      
+      // Set timer duration from settings
+      const defaultDuration = firebaseStudentData.readingSettings?.defaultTimerDuration || 20;
+      setTimerDuration(defaultDuration * 60);
+      setTimeRemaining(defaultDuration * 60);
+      
+      // Load reading sessions and streak data
+      await loadReadingData(firebaseStudentData);
+      
+    } catch (error) {
+      console.error('❌ Error loading healthy habits data:', error);
+      router.push('/student-dashboard');
+    }
+    
+    setIsLoading(false);
+  }, [user, router, themes, loadReadingData]);
+
+  // Load student data and reading data
+  useEffect(() => {
+    if (!loading && isAuthenticated && user) {
+      loadHealthyHabitsData();
+    } else if (!loading && !isAuthenticated) {
+      router.push('/role-selector');
+    }
+  }, [loading, isAuthenticated, user, router, loadHealthyHabitsData]);
+
+  const handleTimerComplete = useCallback(async () => {
+    setIsTimerActive(false);
+    setIsTimerPaused(false);
+    
+    // Save completed session to Firebase
+    await saveReadingSession(Math.floor(timerDuration / 60), true);
+    
+    // Show celebration
+    setShowCompletionCelebration(true);
+    setTimeout(() => setShowCompletionCelebration(false), 3000);
+    
+    // Reset timer
+    setTimeRemaining(timerDuration);
+  }, [timerDuration, saveReadingSession]);
+
+  // Timer effect
+  useEffect(() => {
+    if (isTimerActive && !isTimerPaused && timeRemaining > 0) {
+      timerRef.current = setInterval(() => {
+        setTimeRemaining(prev => {
+          if (prev <= 1) {
+            handleTimerComplete();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      clearInterval(timerRef.current);
+    }
+
+    return () => clearInterval(timerRef.current);
+  }, [isTimerActive, isTimerPaused, timeRemaining, handleTimerComplete]);
+
+  const handleStartTimer = () => {
+    setIsTimerActive(true);
+    setIsTimerPaused(false);
   };
 
-  const updateStreakData = async () => {
-    try {
-      // Recalculate streak
-      await loadStreakData(studentData);
-    } catch (error) {
-      console.error('❌ Error updating streak:', error);
-    }
+  const handlePauseTimer = () => {
+    setIsTimerPaused(true);
+  };
+
+  const handleResumeTimer = () => {
+    setIsTimerPaused(false);
+  };
+
+  const handleStopTimer = () => {
+    setIsTimerActive(false);
+    setIsTimerPaused(false);
+    setTimeRemaining(timerDuration);
   };
 
   const formatTime = (seconds) => {
@@ -671,7 +676,7 @@ export default function StudentHealthyHabits() {
               color: currentTheme.textPrimary,
               margin: '0 0 16px 0'
             }}>
-              📈 Today's Progress
+              📈 Today&apos;s Progress
             </h3>
             
             <div style={{
