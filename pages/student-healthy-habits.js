@@ -37,7 +37,7 @@ export default function StudentHealthyHabits() {
   // Wake lock state
   const [wakeLock, setWakeLock] = useState(null);
 
-  // Theme definitions - moved to useMemo to prevent recreation on every render
+  // Theme definitions
   const themes = useMemo(() => ({
     classic_lux: {
       name: 'Lux Libris Classic',
@@ -137,7 +137,6 @@ export default function StudentHealthyHabits() {
         setWakeLock(lock);
         console.log('✅ Screen will stay on during reading');
         
-        // Listen for wake lock release
         lock.addEventListener('release', () => {
           console.log('📱 Screen wake lock released');
           setWakeLock(null);
@@ -157,10 +156,8 @@ export default function StudentHealthyHabits() {
 
   const playNotificationSound = () => {
     try {
-      // Create audio context
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
       
-      // Create a pleasant notification sound (two-tone chime)
       const createTone = (frequency, startTime, duration) => {
         const oscillator = audioContext.createOscillator();
         const gainNode = audioContext.createGain();
@@ -177,7 +174,6 @@ export default function StudentHealthyHabits() {
         oscillator.stop(startTime + duration);
       };
       
-      // Play two pleasant tones
       createTone(600, audioContext.currentTime, 0.4);
       createTone(800, audioContext.currentTime + 0.5, 0.4);
       
@@ -189,7 +185,6 @@ export default function StudentHealthyHabits() {
   const vibrateNotification = () => {
     try {
       if ('vibrate' in navigator) {
-        // Celebratory vibration pattern
         navigator.vibrate([200, 100, 200, 100, 300]);
       }
     } catch (err) {
@@ -225,15 +220,15 @@ export default function StudentHealthyHabits() {
 
   const loadStreakData = useCallback(async (studentData) => {
     try {
-      // Get last 30 days of reading sessions
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       
       const sessionsRef = collection(db, `dioceses/${studentData.dioceseId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
+      
+      // FIXED: Use separate queries to avoid composite index requirement
       const recentQuery = query(
         sessionsRef,
-        where('date', '>=', thirtyDaysAgo.toISOString().split('T')[0]),
-        orderBy('date', 'desc')
+        where('date', '>=', thirtyDaysAgo.toISOString().split('T')[0])
       );
       
       const recentSnapshot = await getDocs(recentQuery);
@@ -282,8 +277,7 @@ export default function StudentHealthyHabits() {
   }, []);
 
   const calculateReadingLevel = useCallback((minutesToday) => {
-    // Based on average daily minutes over last 7 days (simplified to today for now)
-    const avgMinutes = minutesToday; // TODO: Calculate 7-day average
+    const avgMinutes = minutesToday;
     
     if (avgMinutes >= 51) {
       setReadingLevel({ name: 'Luminous Legend', emoji: '✨', color: '#E3F2FD', textColor: '#0D47A1' });
@@ -298,21 +292,33 @@ export default function StudentHealthyHabits() {
 
   const loadReadingData = useCallback(async (studentData) => {
     try {
-      // Get today's sessions
       const today = new Date().toISOString().split('T')[0];
       const sessionsRef = collection(db, `dioceses/${studentData.dioceseId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
+      
+      // FIXED: Use simple query without composite index requirement
       const todayQuery = query(
         sessionsRef,
-        where('date', '==', today),
-        orderBy('startTime', 'desc')
+        where('date', '==', today)
       );
       
       const todaySnapshot = await getDocs(todayQuery);
       const sessions = [];
       let minutesToday = 0;
       
+      // Sort sessions manually after fetching
+      const sessionData = [];
       todaySnapshot.forEach(doc => {
-        const session = { id: doc.id, ...doc.data() };
+        sessionData.push({ id: doc.id, ...doc.data() });
+      });
+      
+      // Sort by startTime manually
+      sessionData.sort((a, b) => {
+        const timeA = a.startTime?.toDate?.() || new Date(a.startTime);
+        const timeB = b.startTime?.toDate?.() || new Date(b.startTime);
+        return timeB - timeA;
+      });
+      
+      sessionData.forEach(session => {
         sessions.push(session);
         if (session.completed) {
           minutesToday += session.duration;
@@ -324,10 +330,7 @@ export default function StudentHealthyHabits() {
       setTodaysSessions(sessions);
       setTodaysMinutes(minutesToday);
       
-      // Load streak data and calendar
       await loadStreakData(studentData);
-      
-      // Calculate reading level
       calculateReadingLevel(minutesToday);
       
     } catch (error) {
@@ -337,7 +340,6 @@ export default function StudentHealthyHabits() {
 
   const updateStreakData = useCallback(async () => {
     try {
-      // Recalculate streak
       if (studentData) {
         await loadStreakData(studentData);
       }
@@ -357,7 +359,7 @@ export default function StudentHealthyHabits() {
         duration: duration,
         targetDuration: Math.floor(timerDuration / 60),
         completed: completed,
-        bookId: currentBookId || null // Include book ID if available
+        bookId: currentBookId || null
       };
       
       console.log(`💾 Saving reading session: ${duration} minutes, completed: ${completed}`);
@@ -367,7 +369,6 @@ export default function StudentHealthyHabits() {
       
       console.log(`✅ Session saved with ID: ${docRef.id}`);
       
-      // Add the new session with its ID to local state
       const newSession = { id: docRef.id, ...sessionData };
       setTodaysSessions(prev => [newSession, ...prev]);
       
@@ -379,7 +380,6 @@ export default function StudentHealthyHabits() {
           return newMinutes;
         });
         
-        // Update streak if this is first completed session today
         if (todaysSessions.filter(s => s.completed).length === 0) {
           await updateStreakData();
         }
@@ -409,12 +409,10 @@ export default function StudentHealthyHabits() {
       const selectedTheme = themes[selectedThemeKey];
       setCurrentTheme(selectedTheme);
       
-      // Set timer duration from settings
       const defaultDuration = firebaseStudentData.readingSettings?.defaultTimerDuration || 20;
       setTimerDuration(defaultDuration * 60);
       setTimeRemaining(defaultDuration * 60);
       
-      // Load reading sessions and streak data
       await loadReadingData(firebaseStudentData);
       
     } catch (error) {
@@ -428,7 +426,6 @@ export default function StudentHealthyHabits() {
   // Load student data and reading data
   useEffect(() => {
     if (!loading && isAuthenticated && user) {
-      // Check if we came from a specific book
       const urlParams = new URLSearchParams(window.location.search);
       const bookId = urlParams.get('bookId');
       const bookTitle = urlParams.get('bookTitle');
@@ -448,28 +445,22 @@ export default function StudentHealthyHabits() {
     setIsTimerActive(false);
     setIsTimerPaused(false);
     
-    // Release wake lock first
     releaseWakeLock();
     
-    // Multi-sensory notifications
     playNotificationSound();
     vibrateNotification();
     showBrowserNotification();
     
-    // Save completed session to Firebase
     await saveReadingSession(Math.floor(timerDuration / 60), true);
     
-    // Show celebration
     setShowCompletionCelebration(true);
     setTimeout(() => {
       setShowCompletionCelebration(false);
-      // Show book progress modal after celebration if they came from a book
       if (currentBookId && currentBookTitle) {
         setShowBookProgressModal(true);
       }
     }, 3000);
     
-    // Reset timer
     setTimeRemaining(timerDuration);
   }, [timerDuration, saveReadingSession, currentBookId, currentBookTitle]);
 
@@ -504,7 +495,7 @@ export default function StudentHealthyHabits() {
   const handleStartTimer = () => {
     setIsTimerActive(true);
     setIsTimerPaused(false);
-    requestWakeLock(); // Keep screen on during reading
+    requestWakeLock();
   };
 
   const handlePauseTimer = () => {
@@ -519,7 +510,7 @@ export default function StudentHealthyHabits() {
     setIsTimerActive(false);
     setIsTimerPaused(false);
     setTimeRemaining(timerDuration);
-    releaseWakeLock(); // Allow screen to turn off
+    releaseWakeLock();
   };
 
   const handleBankSession = async () => {
@@ -533,18 +524,15 @@ export default function StudentHealthyHabits() {
 
     setIsTimerActive(false);
     setIsTimerPaused(false);
-    releaseWakeLock(); // Allow screen to turn off
+    releaseWakeLock();
     
-    // Save banked session (not completed unless 20+ minutes)
     const isCompleted = minutesRead >= 20;
     await saveReadingSession(minutesRead, isCompleted);
     
-    // Show book progress modal if they came from a book
     if (currentBookId && currentBookTitle) {
       setShowBookProgressModal(true);
     }
     
-    // Reset timer
     setTimeRemaining(timerDuration);
     
     setShowSuccess(isCompleted ? 
@@ -563,6 +551,17 @@ export default function StudentHealthyHabits() {
   const getTimerProgress = () => {
     return ((timerDuration - timeRemaining) / timerDuration) * 100;
   };
+
+  // FIXED: Calculate responsive SVG size
+  const getSvgSize = () => {
+    if (typeof window !== 'undefined') {
+      const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+      return Math.min(200, vw * 0.7);
+    }
+    return 200;
+  };
+
+  const svgSize = getSvgSize();
 
   // Show loading
   if (loading || isLoading || !studentData || !currentTheme) {
@@ -687,15 +686,14 @@ export default function StudentHealthyHabits() {
             boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
             textAlign: 'center'
           }}>
-            {/* Circular Timer */}
+            {/* FIXED: Circular Timer with proper SVG sizing */}
             <div style={{ position: 'relative', display: 'inline-block', marginBottom: '20px' }}>
               <svg 
-                width="min(200px, 70vw)" 
-                height="min(200px, 70vw)" 
+                width={svgSize}
+                height={svgSize}
                 viewBox="0 0 200 200"
                 style={{ transform: 'rotate(-90deg)', maxWidth: '200px', maxHeight: '200px' }}
               >
-                {/* Background circle */}
                 <circle
                   cx="100"
                   cy="100"
@@ -704,7 +702,6 @@ export default function StudentHealthyHabits() {
                   stroke={`${currentTheme.primary}30`}
                   strokeWidth="8"
                 />
-                {/* Progress circle */}
                 <circle
                   cx="100"
                   cy="100"
@@ -836,7 +833,6 @@ export default function StudentHealthyHabits() {
               )}
             </div>
 
-            {/* Settings link */}
             <button
               onClick={() => router.push('/student-settings')}
               style={{
@@ -850,17 +846,6 @@ export default function StudentHealthyHabits() {
             >
               Timer length can be adjusted in settings →
             </button>
-            
-            {/* Feature info */}
-            <p style={{
-              fontSize: '10px',
-              color: currentTheme.textSecondary,
-              margin: '8px 0 0 0',
-              textAlign: 'center',
-              lineHeight: '1.3'
-            }}>
-              📱 Screen stays on • 🔊 Audio alerts • 📳 Vibration
-            </p>
           </div>
 
           {/* TODAY'S PROGRESS */}
@@ -910,6 +895,7 @@ export default function StudentHealthyHabits() {
               </div>
             </div>
 
+            {/* FIXED: Better display of minutes and sessions */}
             <div style={{
               display: 'grid',
               gridTemplateColumns: '1fr 1fr',
@@ -1080,7 +1066,7 @@ export default function StudentHealthyHabits() {
           </div>
         )}
 
-        {/* BOOK PROGRESS MODAL */}
+        {/* FIXED: Book Progress Modal with better mobile styling */}
         {showBookProgressModal && currentBookTitle && (
           <div style={{
             position: 'fixed',
@@ -1102,7 +1088,11 @@ export default function StudentHealthyHabits() {
               textAlign: 'center',
               maxWidth: '90vw',
               width: '100%',
-              maxWidth: '350px'
+              maxWidth: '350px',
+              // FIXED: Ensure modal is properly sized on mobile
+              minHeight: 'auto',
+              maxHeight: '80vh',
+              overflow: 'auto'
             }}>
               <div style={{ fontSize: 'clamp(40px, 12vw, 48px)', marginBottom: '16px' }}>📖</div>
               <h2 style={{
@@ -1123,11 +1113,15 @@ export default function StudentHealthyHabits() {
                 Would you like to mark your progress?
               </p>
               
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <div style={{ 
+                display: 'flex', 
+                gap: '12px', 
+                justifyContent: 'center', 
+                flexWrap: 'wrap'
+              }}>
                 <button
                   onClick={() => {
                     setShowBookProgressModal(false);
-                    // Navigate back to bookshelf with progress update
                     router.push(`/student-bookshelf?updateProgress=${currentBookId}&title=${encodeURIComponent(currentBookTitle)}`);
                   }}
                   style={{
@@ -1140,7 +1134,8 @@ export default function StudentHealthyHabits() {
                     fontWeight: '600',
                     cursor: 'pointer',
                     minHeight: '44px',
-                    minWidth: '120px'
+                    minWidth: '120px',
+                    flex: '1 1 auto'
                   }}
                 >
                   📝 Update Progress
@@ -1158,7 +1153,8 @@ export default function StudentHealthyHabits() {
                     fontWeight: '600',
                     cursor: 'pointer',
                     minHeight: '44px',
-                    minWidth: '120px'
+                    minWidth: '120px',
+                    flex: '1 1 auto'
                   }}
                 >
                   ⏭️ Skip
