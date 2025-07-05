@@ -1172,7 +1172,7 @@ export default function StudentHealthyHabits() {
               </h3>
             </div>
 
-            {/* FIXED: Weeks and months completed display - more prominent */}
+            {/* FIXED: Weeks and months completed display - compact single line */}
             <div style={{
               display: 'flex',
               justifyContent: 'space-between',
@@ -1183,18 +1183,20 @@ export default function StudentHealthyHabits() {
               borderRadius: '8px'
             }}>
               <div style={{
-                fontSize: '14px',
+                fontSize: '13px',
                 color: currentTheme.textPrimary,
-                fontWeight: '600'
+                fontWeight: '500',
+                whiteSpace: 'nowrap'
               }}>
-                📅 {streakStats.weeks} weeks completed
+                📅 {streakStats.weeks} weeks
               </div>
               <div style={{
-                fontSize: '14px',
+                fontSize: '13px',
                 color: currentTheme.textPrimary,
-                fontWeight: '600'
+                fontWeight: '500',
+                whiteSpace: 'nowrap'
               }}>
-                🗓️ {streakStats.months} months completed
+                🗓️ {streakStats.months} months
               </div>
             </div>
 
