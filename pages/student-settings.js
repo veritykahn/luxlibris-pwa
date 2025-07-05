@@ -149,7 +149,7 @@ export default function StudentSettings() {
       router.push('/student-account-creation');
     }
     setIsLoading(false);
-  }, [user, router]);
+  }, [user, router, themes]);
 
   useEffect(() => {
     loadStudentData();
