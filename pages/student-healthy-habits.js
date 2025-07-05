@@ -130,12 +130,15 @@ export default function StudentHealthyHabits() {
     }
   }), []);
 
-  // Utility function to get local date string (YYYY-MM-DD)
+  // Utility function to get local date string (YYYY-MM-DD) - FIXED for timezone consistency
   const getLocalDateString = (date = new Date()) => {
+    // Use local timezone, not UTC
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    const localDate = `${year}-${month}-${day}`;
+    console.log(`📅 Local date string: ${localDate}`);
+    return localDate;
   };
 
   // Utility function to get start of week (Sunday)
@@ -297,13 +300,26 @@ export default function StudentHealthyHabits() {
       let streakCount = 0;
       let currentDate = new Date(today);
       
+      console.log(`🔥 Starting streak calculation from: ${todayStr}`);
+      console.log(`📊 Completed sessions by date:`, completedSessionsByDate);
+      
       // Check streak starting from today going backwards
       while (true) {
         const dateStr = getLocalDateString(currentDate);
+        console.log(`🔍 Checking date: ${dateStr}, has completed session: ${!!completedSessionsByDate[dateStr]}`);
+        
         if (completedSessionsByDate[dateStr]) {
           streakCount++;
+          console.log(`✅ Streak continues: ${streakCount} days`);
           currentDate.setDate(currentDate.getDate() - 1);
         } else {
+          console.log(`❌ Streak broken at: ${dateStr}`);
+          break;
+        }
+        
+        // Safety break to prevent infinite loop
+        if (streakCount > 365) {
+          console.log('⚠️ Streak calculation safety break at 365 days');
           break;
         }
       }
@@ -448,9 +464,11 @@ export default function StudentHealthyHabits() {
   const loadReadingData = useCallback(async (studentData) => {
     try {
       const today = getLocalDateString(new Date());
+      console.log(`🔍 Loading reading data for today: ${today}`);
+      
       const sessionsRef = collection(db, `dioceses/${studentData.dioceseId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
       
-      // Get only today's sessions
+      // Get only today's sessions with explicit date matching
       const todayQuery = query(
         sessionsRef,
         where('date', '==', today)
@@ -460,10 +478,14 @@ export default function StudentHealthyHabits() {
       const sessions = [];
       let minutesToday = 0;
       
+      console.log(`📊 Found ${todaySnapshot.size} sessions for ${today}`);
+      
       // Process today's sessions
       const sessionData = [];
       todaySnapshot.forEach(doc => {
-        sessionData.push({ id: doc.id, ...doc.data() });
+        const data = doc.data();
+        console.log(`📖 Session: ${data.date}, duration: ${data.duration}, completed: ${data.completed}`);
+        sessionData.push({ id: doc.id, ...data });
       });
       
       // Sort by startTime manually
@@ -475,13 +497,16 @@ export default function StudentHealthyHabits() {
       
       sessionData.forEach(session => {
         sessions.push(session);
-        // FIXED: Only count today's minutes
+        // FIXED: Double-check date match and only count today's minutes
         if (session.date === today) {
           minutesToday += session.duration;
+          console.log(`➕ Adding ${session.duration} minutes to today's total`);
+        } else {
+          console.log(`⚠️ Session date ${session.date} doesn't match today ${today}`);
         }
       });
       
-      console.log(`📊 Loaded ${sessions.length} sessions for today, ${minutesToday} minutes total`);
+      console.log(`📊 Final today's total: ${minutesToday} minutes from ${sessions.length} sessions`);
       
       setTodaysSessions(sessions);
       setTodaysMinutes(minutesToday);
@@ -518,7 +543,7 @@ export default function StudentHealthyHabits() {
         bookId: currentBookId || null
       };
       
-      console.log(`💾 Saving reading session: ${duration} minutes, completed: ${completed}`);
+      console.log(`💾 Saving reading session for ${today}: ${duration} minutes, completed: ${completed}`);
       
       const sessionsRef = collection(db, `dioceses/${studentData.dioceseId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
       const docRef = await addDoc(sessionsRef, sessionData);
@@ -528,7 +553,7 @@ export default function StudentHealthyHabits() {
       const newSession = { id: docRef.id, ...sessionData };
       setTodaysSessions(prev => [newSession, ...prev]);
       
-      // Update today's minutes
+      // Update today's minutes immediately
       setTodaysMinutes(prev => {
         const newMinutes = prev + duration;
         console.log(`📈 Updated today's minutes: ${prev} + ${duration} = ${newMinutes}`);
@@ -536,7 +561,8 @@ export default function StudentHealthyHabits() {
       });
       
       // Update streak and level if this was the first completed session today
-      if (completed && todaysSessions.filter(s => s.completed).length === 0) {
+      if (completed && todaysSessions.filter(s => s.completed && s.date === today).length === 0) {
+        console.log(`🔥 First completed session today - updating streak and level`);
         await updateStreakData();
         await calculateReadingLevel(studentData);
       }
@@ -1134,7 +1160,7 @@ export default function StudentHealthyHabits() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              marginBottom: '16px'
+              marginBottom: '12px'
             }}>
               <h3 style={{
                 fontSize: '18px',
@@ -1144,16 +1170,31 @@ export default function StudentHealthyHabits() {
               }}>
                 🔥 Reading Streak
               </h3>
-              
+            </div>
+
+            {/* FIXED: Weeks and months completed display - more prominent */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '16px',
+              padding: '8px 12px',
+              backgroundColor: `${currentTheme.primary}15`,
+              borderRadius: '8px'
+            }}>
               <div style={{
-                backgroundColor: currentStreak >= 7 ? '#FF6B35' : `${currentTheme.primary}30`,
-                color: currentStreak >= 7 ? 'white' : currentTheme.textPrimary,
-                padding: '6px 12px',
-                borderRadius: '12px',
                 fontSize: '14px',
-                fontWeight: 'bold'
+                color: currentTheme.textPrimary,
+                fontWeight: '600'
               }}>
-                {currentStreak} days
+                📅 {streakStats.weeks} weeks completed
+              </div>
+              <div style={{
+                fontSize: '14px',
+                color: currentTheme.textPrimary,
+                fontWeight: '600'
+              }}>
+                🗓️ {streakStats.months} months completed
               </div>
             </div>
 
@@ -1199,38 +1240,16 @@ export default function StudentHealthyHabits() {
               ))}
             </div>
 
-            {/* FIXED: Weeks and months completed display */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '8px'
-            }}>
-              <div style={{
-                fontSize: '12px',
-                color: currentTheme.textSecondary,
-                fontWeight: '500'
-              }}>
-                📅 {streakStats.weeks} weeks completed
-              </div>
-              <div style={{
-                fontSize: '12px',
-                color: currentTheme.textSecondary,
-                fontWeight: '500'
-              }}>
-                🗓️ {streakStats.months} months completed
-              </div>
-            </div>
-
             <p style={{
-              fontSize: '12px',
+              fontSize: '13px',
               color: currentTheme.textSecondary,
               textAlign: 'center',
-              margin: 0
+              margin: 0,
+              fontWeight: '500'
             }}>
               {currentStreak >= 30 ? "🏆 30-day streak! Rare saints unlocked!" : 
                currentStreak >= 7 ? "Amazing! Keep the fire burning! 🔥" : 
-               "Read every day to build your streak!"}
+               "Read every day to build a healthy habit!"}
             </p>
           </div>
         </div>
