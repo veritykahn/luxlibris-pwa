@@ -6,23 +6,8 @@ import { getStudentData, updateStudentData } from '../lib/firebase';
 import { createParentInviteCode } from '../lib/parentLinking';
 import Head from 'next/head'
 
-export default function StudentSettings() {
-  const router = useRouter();
-  const { user, signOut } = useAuth();
-  const [studentData, setStudentData] = useState(null);
-  const [currentTheme, setCurrentTheme] = useState(null);
-  const [selectedThemePreview, setSelectedThemePreview] = useState('');
-  const [newGoal, setNewGoal] = useState(20);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [showSuccess, setShowSuccess] = useState('');
-  const [parentInviteCode, setParentInviteCode] = useState('');
-  const [showInviteCode, setShowInviteCode] = useState(false);
-  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
-  const [timerDuration, setTimerDuration] = useState(20);
-
-  // Theme definitions (same as everywhere else)
-  const themes = {
+// Theme definitions - MOVED OUTSIDE COMPONENT TO FIX USECALLBACK DEPENDENCY
+const themes = {
   classic_lux: {
     name: 'Lux Libris Classic',
     assetPrefix: 'classic_lux',
@@ -103,15 +88,30 @@ export default function StudentSettings() {
   little_luminaries: {
     name: 'Luxlings™',
     assetPrefix: 'little_luminaries',
-  primary: '#666666', // Medium grey (for buttons/elements)
- secondary: '#000000', // Black (for striking accents)
- accent: '#E8E8E8', // Light grey accent
- background: '#FFFFFF', // Pure white background
- surface: '#FAFAFA', // Very light grey surface
- textPrimary: '#B8860B', // Deep rich gold (readable on light backgrounds)
- textSecondary: '#AAAAAA' // grey text (for dark backgrounds)
-}
+    primary: '#666666', // Medium grey (for buttons/elements)
+    secondary: '#000000', // Black (for striking accents)
+    accent: '#E8E8E8', // Light grey accent
+    background: '#FFFFFF', // Pure white background
+    surface: '#FAFAFA', // Very light grey surface
+    textPrimary: '#B8860B', // Deep rich gold (readable on light backgrounds)
+    textSecondary: '#AAAAAA' // grey text (for dark backgrounds)
+  }
 };
+
+export default function StudentSettings() {
+  const router = useRouter();
+  const { user, signOut } = useAuth();
+  const [studentData, setStudentData] = useState(null);
+  const [currentTheme, setCurrentTheme] = useState(null);
+  const [selectedThemePreview, setSelectedThemePreview] = useState('');
+  const [newGoal, setNewGoal] = useState(20);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showSuccess, setShowSuccess] = useState('');
+  const [parentInviteCode, setParentInviteCode] = useState('');
+  const [showInviteCode, setShowInviteCode] = useState(false);
+  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
+  const [timerDuration, setTimerDuration] = useState(20);
 
   const themesArray = Object.entries(themes).map(([key, value]) => ({
     assetPrefix: key,
@@ -149,7 +149,7 @@ export default function StudentSettings() {
       router.push('/student-account-creation');
     }
     setIsLoading(false);
-  }, [user, router, themes]);
+  }, [user, router]); // REMOVED 'themes' from dependencies since it's now stable
 
   useEffect(() => {
     loadStudentData();
@@ -274,18 +274,18 @@ export default function StudentSettings() {
   };
 
   const handleSignOut = async () => {
-  try {
-    setIsSaving(true);
-    await signOut();
-    // Force redirect to homepage
-    window.location.href = '/';
-  } catch (error) {
-    console.error('Error signing out:', error);
-    setShowSuccess('❌ Error signing out. Please try again.');
-    setTimeout(() => setShowSuccess(''), 3000);
-    setIsSaving(false);
-  }
-};
+    try {
+      setIsSaving(true);
+      await signOut();
+      // Force redirect to homepage
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Error signing out:', error);
+      setShowSuccess('❌ Error signing out. Please try again.');
+      setTimeout(() => setShowSuccess(''), 3000);
+      setIsSaving(false);
+    }
+  };
 
   const previewTheme = themes[selectedThemePreview] || themes.classic_lux;
 
@@ -315,846 +315,732 @@ export default function StudentSettings() {
   }
 
   return (
-  <>
-    <Head>
-      <title>Student Settings - Lux Libris</title>
-      <meta name="description" content="Customize your reading experience, themes, and account settings" />
-      <link rel="icon" href="/images/lux_libris_logo.png" />
-    </Head>
-    
-    <div style={{
-      backgroundColor: previewTheme.background,
-      minHeight: '100vh',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
-      transition: 'background-color 0.3s ease'
-    }}>
-      {/* Header */}
+    <>
+      <Head>
+        <title>Student Settings - Lux Libris</title>
+        <meta name="description" content="Customize your reading experience, themes, and account settings" />
+        <link rel="icon" href="/images/lux_libris_logo.png" />
+      </Head>
+      
       <div style={{
-        backgroundColor: previewTheme.secondary,
-        padding: '16px 24px',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+        backgroundColor: previewTheme.background,
+        minHeight: '100vh',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
         transition: 'background-color 0.3s ease'
       }}>
+        {/* Header */}
         <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '16px'
+          backgroundColor: previewTheme.secondary,
+          padding: '16px 24px',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+          transition: 'background-color 0.3s ease'
         }}>
-          <button
-            onClick={() => router.back()}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: previewTheme.textPrimary,
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px'
+          }}>
+            <button
+              onClick={() => router.back()}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: previewTheme.textPrimary,
+                fontSize: '20px',
+                cursor: 'pointer',
+                padding: '4px'
+              }}
+            >
+              ←
+            </button>
+            <h1 style={{
+              fontFamily: 'Didot, serif',
               fontSize: '20px',
-              cursor: 'pointer',
-              padding: '4px'
-            }}
-          >
-            ←
-          </button>
-          <h1 style={{
-            fontFamily: 'Didot, serif',
-            fontSize: '20px',
-            color: previewTheme.textPrimary,
-            margin: 0
-          }}>
-            Settings
-          </h1>
-        </div>
-      </div>
-
-      <div style={{ padding: '24px', maxWidth: '800px', margin: '0 auto' }}>
-        {/* Student Info Section */}
-        <div style={{
-          backgroundColor: previewTheme.surface,
-          borderRadius: '16px',
-          padding: '20px',
-          marginBottom: '24px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-        }}>
-          <h2 style={{
-            fontSize: '18px',
-            fontWeight: 'bold',
-            color: previewTheme.textPrimary,
-            marginBottom: '12px'
-          }}>
-            👋 Your Profile
-          </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-            <div>
-              <p style={{ fontSize: '14px', color: previewTheme.textSecondary, margin: '0 0 4px 0' }}>Name</p>
-              <p style={{ fontSize: '16px', color: previewTheme.textPrimary, margin: 0, fontWeight: '600' }}>
-                {studentData.firstName} {studentData.lastInitial}.
-              </p>
-            </div>
-            <div>
-              <p style={{ fontSize: '14px', color: previewTheme.textSecondary, margin: '0 0 4px 0' }}>Grade</p>
-              <p style={{ fontSize: '16px', color: previewTheme.textPrimary, margin: 0, fontWeight: '600' }}>
-                {studentData.grade}th Grade
-              </p>
-            </div>
-            <div>
-              <p style={{ fontSize: '14px', color: previewTheme.textSecondary, margin: '0 0 4px 0' }}>Username</p>
-              <p style={{ fontSize: '16px', color: previewTheme.textPrimary, margin: 0, fontWeight: '600', fontFamily: 'monospace' }}>
-                {studentData.displayUsername}
-              </p>
-            </div>
-            <div>
-              <p style={{ fontSize: '14px', color: previewTheme.textSecondary, margin: '0 0 4px 0' }}>School Code</p>
-              <p style={{ fontSize: '16px', color: previewTheme.textPrimary, margin: 0, fontWeight: '600', fontFamily: 'monospace' }}>
-                {studentData.schoolCode || 'TEST-STUDENT-2025'}
-              </p>
-            </div>
-            <div>
-              <p style={{ fontSize: '14px', color: previewTheme.textSecondary, margin: '0 0 4px 0' }}>School</p>
-              <p style={{ fontSize: '16px', color: previewTheme.textPrimary, margin: 0, fontWeight: '600' }}>
-                {studentData.schoolName || 'Test Catholic School'}
-              </p>
-            </div>
+              color: previewTheme.textPrimary,
+              margin: 0
+            }}>
+              Settings
+            </h1>
           </div>
         </div>
 
-        {/* Reading Goal Section */}
-        <div style={{
-          backgroundColor: previewTheme.surface,
-          borderRadius: '16px',
-          padding: '20px',
-          marginBottom: '24px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-        }}>
-          <h2 style={{
-            fontSize: '18px',
-            fontWeight: 'bold',
-            color: previewTheme.textPrimary,
-            marginBottom: '8px'
+        <div style={{ padding: '24px', maxWidth: '800px', margin: '0 auto' }}>
+          {/* Student Info Section */}
+          <div style={{
+            backgroundColor: previewTheme.surface,
+            borderRadius: '16px',
+            padding: '20px',
+            marginBottom: '24px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
           }}>
-            🎯 Reading Goal
-          </h2>
-          <p style={{
-            fontSize: '14px',
-            color: previewTheme.textSecondary,
-            marginBottom: '16px'
-          }}>
-            How many books do you want to read this year?
-          </p>
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
-  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-    <button
-      onClick={() => setNewGoal(Math.max(1, newGoal - 1))}
-      style={{
-        backgroundColor: previewTheme.primary,
-        color: previewTheme.textPrimary,
-        border: 'none',
-        borderRadius: '8px',
-        width: '40px',
-        height: '40px',
-        fontSize: '20px',
-        fontWeight: 'bold',
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}
-    >
-      −
-    </button>
-    <div style={{
-      padding: '12px 16px',
-      border: `2px solid ${previewTheme.primary}50`,
-      borderRadius: '8px',
-      fontSize: '18px',
-      fontWeight: 'bold',
-      minWidth: '60px',
-      textAlign: 'center',
-      backgroundColor: previewTheme.background,
-      color: previewTheme.textPrimary
-    }}>
-      {newGoal}
-    </div>
-    <button
-      onClick={() => setNewGoal(Math.min(100, newGoal + 1))}
-      style={{
-        backgroundColor: previewTheme.primary,
-        color: previewTheme.textPrimary,
-        border: 'none',
-        borderRadius: '8px',
-        width: '40px',
-        height: '40px',
-        fontSize: '20px',
-        fontWeight: 'bold',
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}
-    >
-      +
-    </button>
-  </div>
-  <span style={{ fontSize: '16px', color: previewTheme.textPrimary }}>books this year</span>
-</div>
-
-          {newGoal !== studentData.personalGoal && (
-            <button
-              onClick={saveGoalChange}
-              disabled={isSaving}
-              style={{
-                backgroundColor: previewTheme.primary,
-                color: previewTheme.textPrimary,
-                border: 'none',
-                padding: '12px 24px',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                opacity: isSaving ? 0.7 : 1
-              }}
-            >
-              {isSaving ? 'Saving...' : `Save Goal (${newGoal} books)`}
-            </button>
-          )}
-        </div>
-
-        // In your student-settings.js file, find this section (around lines 280-390):
-
-        {/* Reading Timer Duration Section */}
-        <div style={{
-          backgroundColor: previewTheme.surface,
-          borderRadius: '16px',
-          padding: '20px',
-          marginBottom: '24px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-        }}>
-          <h2 style={{
-            fontSize: '18px',
-            fontWeight: 'bold',
-            color: previewTheme.textPrimary,
-            marginBottom: '8px'
-          }}>
-            ⏱️ Reading Session Timer
-          </h2>
-          <p style={{
-            fontSize: '14px',
-            color: previewTheme.textSecondary,
-            marginBottom: '16px'
-          }}>
-            How long should your reading sessions be?
-          </p>
-          
-          <div style={{ marginBottom: '16px' }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
+            <h2 style={{
+              fontSize: '18px',
+              fontWeight: 'bold',
+              color: previewTheme.textPrimary,
               marginBottom: '12px'
             }}>
-              <span style={{
-                fontSize: '14px',
-                color: previewTheme.textPrimary,
-                fontWeight: '600'
-              }}>
-                5 min
-              </span>
-              <span style={{
-                fontSize: '18px',
-                fontWeight: 'bold',
-                color: previewTheme.primary,
-                backgroundColor: `${previewTheme.primary}20`,
-                padding: '8px 16px',
-                borderRadius: '12px'
-              }}>
-                {timerDuration} minutes
-              </span>
-              <span style={{
-                fontSize: '14px',
-                color: previewTheme.textPrimary,
-                fontWeight: '600'
-              }}>
-                60 min
-              </span>
-            </div>
-            
-            <input
-              type="range"
-              min="5"
-              max="60"
-              step="5"
-              value={timerDuration}
-              onChange={(e) => setTimerDuration(parseInt(e.target.value))}
-              style={{
-                width: '100%',
-                height: '8px',
-                borderRadius: '4px',
-                background: `linear-gradient(to right, ${previewTheme.primary} 0%, ${previewTheme.primary} ${((timerDuration-5)/55)*100}%, #E0E0E0 ${((timerDuration-5)/55)*100}%, #E0E0E0 100%)`,
-                outline: 'none',
-                appearance: 'none',
-                WebkitAppearance: 'none',
-                cursor: 'pointer'
-              }}
-            />
-            
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              marginTop: '8px',
-              fontSize: '12px',
-              color: previewTheme.textSecondary
-            }}>
-              <span>Quick</span>
-              <span>Perfect</span>
-              <span>Deep Focus</span>
-            </div>
-          </div>
-
-          {timerDuration !== (studentData.readingSettings?.defaultTimerDuration || 20) && (
-            <button
-              onClick={saveTimerChange}
-              disabled={isSaving}
-              style={{
-                backgroundColor: previewTheme.primary,
-                color: previewTheme.textPrimary,
-                border: 'none',
-                padding: '12px 24px',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                opacity: isSaving ? 0.7 : 1
-              }}
-            >
-              {isSaving ? 'Saving...' : `Save Timer (${timerDuration} min)`}
-            </button>
-          )}
-        </div>
-
-
-        {/* Reading Timer Duration Section */}
-        <div style={{
-          backgroundColor: previewTheme.surface,
-          borderRadius: '16px',
-          padding: '20px',
-          marginBottom: '24px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-        }}>
-          <h2 style={{
-            fontSize: '18px',
-            fontWeight: 'bold',
-            color: previewTheme.textPrimary,
-            marginBottom: '8px'
-          }}>
-            ⏱️ Reading Session Timer
-          </h2>
-          <p style={{
-            fontSize: '14px',
-            color: previewTheme.textSecondary,
-            marginBottom: '16px'
-          }}>
-            How long should your reading sessions be?
-          </p>
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <button
-                onClick={() => setTimerDuration(Math.max(5, timerDuration - 5))}
-                style={{
-                  backgroundColor: previewTheme.primary,
-                  color: previewTheme.textPrimary,
-                  border: 'none',
-                  borderRadius: '8px',
-                  width: '40px',
-                  height: '40px',
-                  fontSize: '20px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                −
-              </button>
-              <div style={{
-                padding: '12px 16px',
-                border: `2px solid ${previewTheme.primary}50`,
-                borderRadius: '8px',
-                fontSize: '18px',
-                fontWeight: 'bold',
-                minWidth: '100px',
-                textAlign: 'center',
-                backgroundColor: previewTheme.background,
-                color: previewTheme.textPrimary
-              }}>
-                {timerDuration} min
+              👋 Your Profile
+            </h2>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+              <div>
+                <p style={{ fontSize: '14px', color: previewTheme.textSecondary, margin: '0 0 4px 0' }}>Name</p>
+                <p style={{ fontSize: '16px', color: previewTheme.textPrimary, margin: 0, fontWeight: '600' }}>
+                  {studentData.firstName} {studentData.lastInitial}.
+                </p>
               </div>
-              <button
-                onClick={() => setTimerDuration(Math.min(60, timerDuration + 5))}
-                style={{
-                  backgroundColor: previewTheme.primary,
-                  color: previewTheme.textPrimary,
-                  border: 'none',
-                  borderRadius: '8px',
-                  width: '40px',
-                  height: '40px',
-                  fontSize: '20px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                +
-              </button>
+              <div>
+                <p style={{ fontSize: '14px', color: previewTheme.textSecondary, margin: '0 0 4px 0' }}>Grade</p>
+                <p style={{ fontSize: '16px', color: previewTheme.textPrimary, margin: 0, fontWeight: '600' }}>
+                  {studentData.grade}th Grade
+                </p>
+              </div>
+              <div>
+                <p style={{ fontSize: '14px', color: previewTheme.textSecondary, margin: '0 0 4px 0' }}>Username</p>
+                <p style={{ fontSize: '16px', color: previewTheme.textPrimary, margin: 0, fontWeight: '600', fontFamily: 'monospace' }}>
+                  {studentData.displayUsername}
+                </p>
+              </div>
+              <div>
+                <p style={{ fontSize: '14px', color: previewTheme.textSecondary, margin: '0 0 4px 0' }}>School Code</p>
+                <p style={{ fontSize: '16px', color: previewTheme.textPrimary, margin: 0, fontWeight: '600', fontFamily: 'monospace' }}>
+                  {studentData.schoolCode || 'TEST-STUDENT-2025'}
+                </p>
+              </div>
+              <div>
+                <p style={{ fontSize: '14px', color: previewTheme.textSecondary, margin: '0 0 4px 0' }}>School</p>
+                <p style={{ fontSize: '16px', color: previewTheme.textPrimary, margin: 0, fontWeight: '600' }}>
+                  {studentData.schoolName || 'Test Catholic School'}
+                </p>
+              </div>
             </div>
           </div>
-          
-          {/* Visual indicator of timer length */}
+
+          {/* Reading Goal Section */}
           <div style={{
-            backgroundColor: `${previewTheme.primary}20`,
-            borderRadius: '8px',
-            padding: '12px',
-            marginBottom: '16px',
-            textAlign: 'center'
+            backgroundColor: previewTheme.surface,
+            borderRadius: '16px',
+            padding: '20px',
+            marginBottom: '24px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
           }}>
-            <div style={{
-              fontSize: '12px',
+            <h2 style={{
+              fontSize: '18px',
+              fontWeight: 'bold',
+              color: previewTheme.textPrimary,
+              marginBottom: '8px'
+            }}>
+              🎯 Reading Goal
+            </h2>
+            <p style={{
+              fontSize: '14px',
               color: previewTheme.textSecondary,
-              marginBottom: '4px'
+              marginBottom: '16px'
             }}>
-              {timerDuration <= 10 ? '⚡ Quick Session' : 
-               timerDuration <= 30 ? '📚 Perfect Session' : 
-               '🎯 Deep Focus Session'}
-            </div>
-            <div style={{
-              backgroundColor: previewTheme.primary,
-              height: '4px',
-              borderRadius: '2px',
-              width: `${(timerDuration / 60) * 100}%`,
-              margin: '0 auto',
-              transition: 'width 0.3s ease'
-            }} />
-          </div>
-
-          {timerDuration !== (studentData.readingSettings?.defaultTimerDuration || 20) && (
-            <button
-              onClick={saveTimerChange}
-              disabled={isSaving}
-              style={{
-                backgroundColor: previewTheme.primary,
-                color: previewTheme.textPrimary,
-                border: 'none',
-                padding: '12px 24px',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                opacity: isSaving ? 0.7 : 1
-              }}
-            >
-              {isSaving ? 'Saving...' : `Save Timer (${timerDuration} min)`}
-            </button>
-          )}
-        </div>
-
-        {/* Parent Invite Section */}
-        <div style={{
-          backgroundColor: previewTheme.surface,
-          borderRadius: '16px',
-          padding: '20px',
-          marginBottom: '24px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-        }}>
-          <h2 style={{
-            fontSize: '18px',
-            fontWeight: 'bold',
-            color: previewTheme.textPrimary,
-            marginBottom: '8px'
-          }}>
-            👨‍👩‍👧‍👦 Invite Your Parents
-          </h2>
-          <p style={{
-            fontSize: '14px',
-            color: previewTheme.textSecondary,
-            marginBottom: '16px'
-          }}>
-            Let your parents see your reading progress and celebrate your achievements!
-          </p>
-
-          {!parentInviteCode ? (
-            <button
-              onClick={generateParentInvite}
-              disabled={isSaving}
-              style={{
-                backgroundColor: previewTheme.primary,
-                color: previewTheme.textPrimary,
-                border: 'none',
-                padding: '12px 24px',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                opacity: isSaving ? 0.7 : 1
-              }}
-            >
-              {isSaving ? 'Generating...' : '✨ Generate Parent Invite Code'}
-            </button>
-          ) : (
-            <div style={{
-              backgroundColor: `${previewTheme.primary}20`,
-              border: `2px solid ${previewTheme.primary}50`,
-              borderRadius: '12px',
-              padding: '16px'
-            }}>
-              <p style={{
-                fontSize: '14px',
-                color: previewTheme.textPrimary,
-                marginBottom: '8px',
-                fontWeight: '600'
-              }}>
-                🎉 Your Parent Invite Code:
-              </p>
-              <div style={{
-                backgroundColor: previewTheme.surface,
-                border: `1px solid ${previewTheme.primary}`,
-                borderRadius: '8px',
-                padding: '12px',
-                marginBottom: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between'
-              }}>
-                <code style={{
-                  fontSize: '18px',
-                  fontWeight: 'bold',
-                  color: previewTheme.textPrimary,
-                  fontFamily: 'monospace'
-                }}>
-                  {parentInviteCode}
-                </code>
+              How many books do you want to read this year?
+            </p>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <button
-                  onClick={copyInviteCode}
+                  onClick={() => setNewGoal(Math.max(1, newGoal - 1))}
                   style={{
                     backgroundColor: previewTheme.primary,
                     color: previewTheme.textPrimary,
                     border: 'none',
-                    padding: '6px 12px',
-                    borderRadius: '6px',
-                    fontSize: '12px',
-                    cursor: 'pointer'
+                    borderRadius: '8px',
+                    width: '40px',
+                    height: '40px',
+                    fontSize: '20px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
                   }}
                 >
-                  📋 Copy
+                  −
+                </button>
+                <div style={{
+                  padding: '12px 16px',
+                  border: `2px solid ${previewTheme.primary}50`,
+                  borderRadius: '8px',
+                  fontSize: '18px',
+                  fontWeight: 'bold',
+                  minWidth: '60px',
+                  textAlign: 'center',
+                  backgroundColor: previewTheme.background,
+                  color: previewTheme.textPrimary
+                }}>
+                  {newGoal}
+                </div>
+                <button
+                  onClick={() => setNewGoal(Math.min(100, newGoal + 1))}
+                  style={{
+                    backgroundColor: previewTheme.primary,
+                    color: previewTheme.textPrimary,
+                    border: 'none',
+                    borderRadius: '8px',
+                    width: '40px',
+                    height: '40px',
+                    fontSize: '20px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  +
                 </button>
               </div>
-              <p style={{
-                fontSize: '12px',
-                color: previewTheme.textSecondary,
-                margin: 0
-              }}>
-                Share this code with your parents so they can create an account and see your progress!
-              </p>
+              <span style={{ fontSize: '16px', color: previewTheme.textPrimary }}>books this year</span>
             </div>
-          )}
-        </div>
 
-        {/* Theme Selection */}
-        <div style={{
-          backgroundColor: previewTheme.surface,
-          borderRadius: '16px',
-          padding: '20px',
-          marginBottom: '24px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-        }}>
-          <h2 style={{
-            fontSize: '18px',
-            fontWeight: 'bold',
-            color: previewTheme.textPrimary,
-            marginBottom: '8px'
-          }}>
-            🎨 Choose Your Theme
-          </h2>
-          <p style={{
-            fontSize: '14px',
-            color: previewTheme.textSecondary,
-            marginBottom: '20px'
-          }}>
-            Select your bookshelf &amp; trophy case design. Changes apply instantly!
-          </p>
-
-          {/* Theme Grid */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-            gap: '16px',
-            marginBottom: '20px'
-          }}>
-            {themesArray.map(theme => {
-              const isSelected = theme.assetPrefix === selectedThemePreview;
-              return (
-                <button
-                  key={theme.assetPrefix}
-                  onClick={() => setSelectedThemePreview(theme.assetPrefix)}
-                  style={{
-                    padding: '12px',
-                    backgroundColor: theme.surface,
-                    border: `${isSelected ? '3px' : '2px'} solid ${isSelected ? theme.primary : `${theme.primary}50`}`,
-                    borderRadius: '16px',
-                    cursor: 'pointer',
-                    transition: 'all 0.3s ease',
-                    boxShadow: isSelected ? `0 8px 24px ${theme.primary}40` : '0 2px 8px rgba(0,0,0,0.1)',
-                    transform: isSelected ? 'scale(1.05)' : 'scale(1)',
-                    position: 'relative'
-                  }}
-                >
-                  {/* Bookshelf Preview */}
-                  <div style={{
-                    width: '100%',
-                    height: '60px',
-                    borderRadius: '8px',
-                    marginBottom: '6px',
-                    backgroundImage: `url(/bookshelves/${theme.assetPrefix}.jpg)`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    backgroundRepeat: 'no-repeat',
-                    backgroundColor: `${theme.primary}20`
-                  }} />
-                  
-                  {/* Trophy Case Preview */}
-                  <div style={{
-                    width: '100%',
-                    height: '45px',
-                    borderRadius: '6px',
-                    marginBottom: '8px',
-                    backgroundImage: `url(/trophy_cases/${theme.assetPrefix}.jpg)`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    backgroundRepeat: 'no-repeat',
-                    backgroundColor: `${theme.accent}20`
-                  }} />
-                  
-                  {/* Theme Name */}
-                  <div style={{
-                    fontSize: '12px',
-                    fontWeight: '600',
-                    color: theme.textPrimary,
-                    textAlign: 'center',
-                    lineHeight: '1.2'
-                  }}>
-                    {theme.name}
-                  </div>
-                  
-                  {/* Selected Indicator */}
-                  {isSelected && (
-                    <div style={{
-                      position: 'absolute',
-                      top: '8px',
-                      right: '8px',
-                      backgroundColor: theme.primary,
-                      color: 'white',
-                      borderRadius: '50%',
-                      width: '20px',
-                      height: '20px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '10px',
-                      fontWeight: 'bold',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                    }}>
-                      ✓
-                    </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Save Button */}
-          {selectedThemePreview !== studentData.selectedTheme && (
-            <div style={{ textAlign: 'center' }}>
+            {newGoal !== studentData.personalGoal && (
               <button
-                onClick={saveThemeChange}
+                onClick={saveGoalChange}
                 disabled={isSaving}
                 style={{
                   backgroundColor: previewTheme.primary,
                   color: previewTheme.textPrimary,
                   border: 'none',
-                  padding: '12px 32px',
-                  borderRadius: '12px',
-                  fontSize: '16px',
+                  padding: '12px 24px',
+                  borderRadius: '8px',
+                  fontSize: '14px',
                   fontWeight: '600',
                   cursor: 'pointer',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                   opacity: isSaving ? 0.7 : 1
                 }}
               >
-                {isSaving ? 'Saving...' : `Save ${previewTheme.name}`}
+                {isSaving ? 'Saving...' : `Save Goal (${newGoal} books)`}
               </button>
-            </div>
-          )}
-        </div>
-
-        {/* Account & Other Settings */}
-        <div style={{
-          backgroundColor: previewTheme.surface,
-          borderRadius: '16px',
-          padding: '20px',
-          marginBottom: '80px', // Space for navigation
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-        }}>
-          <h2 style={{
-            fontSize: '18px',
-            fontWeight: 'bold',
-            color: previewTheme.textPrimary,
-            marginBottom: '16px'
-          }}>
-            ⚙️ Account & Settings
-          </h2>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <button
-              onClick={() => router.push('/legal')}
-              style={{
-                backgroundColor: 'transparent',
-                border: `1px solid ${previewTheme.primary}50`,
-                color: previewTheme.textPrimary,
-                padding: '12px 16px',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                textAlign: 'left'
-              }}
-            >
-              📋 Privacy &amp; Terms
-            </button>
-
-            {/* Sign Out Button */}
-            <button
-              onClick={() => setShowSignOutConfirm(true)}
-              style={{
-                backgroundColor: 'transparent',
-                border: '1px solid #dc2626',
-                color: '#dc2626',
-                padding: '12px 16px',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                textAlign: 'left',
-                fontWeight: '600'
-              }}
-            >
-              🚪 Sign Out
-            </button>
+            )}
           </div>
-        </div>
 
-        {/* Success Message */}
-        {showSuccess && (
+          {/* NEW TIMER SECTION - PLUS/MINUS BUTTONS */}
           <div style={{
-            position: 'fixed',
-            bottom: '100px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            backgroundColor: previewTheme.primary,
-            color: previewTheme.textPrimary,
-            padding: '12px 24px',
-            borderRadius: '24px',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-            zIndex: 1000,
-            fontSize: '14px',
-            fontWeight: '600',
-            maxWidth: '90vw',
-            textAlign: 'center'
+            backgroundColor: previewTheme.surface,
+            borderRadius: '16px',
+            padding: '20px',
+            marginBottom: '24px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
           }}>
-            {showSuccess}
-          </div>
-        )}
-
-        {/* Sign Out Confirmation Modal */}
-        {showSignOutConfirm && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 2000,
-            padding: '20px'
-          }}>
-            <div style={{
-              backgroundColor: previewTheme.surface,
-              borderRadius: '16px',
-              padding: '24px',
-              maxWidth: '400px',
-              width: '100%',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
+            <h2 style={{
+              fontSize: '18px',
+              fontWeight: 'bold',
+              color: previewTheme.textPrimary,
+              marginBottom: '8px'
             }}>
-              <h3 style={{
-                fontSize: '18px',
-                fontWeight: 'bold',
-                color: previewTheme.textPrimary,
-                marginBottom: '12px',
-                textAlign: 'center'
-              }}>
-                🚪 Sign Out
-              </h3>
-              <p style={{
-                fontSize: '14px',
-                color: previewTheme.textSecondary,
-                marginBottom: '20px',
-                textAlign: 'center',
-                lineHeight: '1.4'
-              }}>
-                Are you sure you want to sign out? You&apos;ll need to sign in again to access your books and progress.
-              </p>
-              <div style={{
-                display: 'flex',
-                gap: '12px',
-                justifyContent: 'center'
-              }}>
+              ⏱️ Reading Session Timer
+            </h2>
+            <p style={{
+              fontSize: '14px',
+              color: previewTheme.textSecondary,
+              marginBottom: '16px'
+            }}>
+              How long should your reading sessions be?
+            </p>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <button
-                  onClick={() => setShowSignOutConfirm(false)}
+                  onClick={() => setTimerDuration(Math.max(5, timerDuration - 5))}
                   style={{
-                    backgroundColor: 'transparent',
-                    border: `1px solid ${previewTheme.primary}50`,
+                    backgroundColor: previewTheme.primary,
                     color: previewTheme.textPrimary,
-                    padding: '10px 20px',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontSize: '14px'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSignOut}
-                  disabled={isSaving}
-                  style={{
-                    backgroundColor: '#dc2626',
-                    color: 'white',
                     border: 'none',
-                    padding: '10px 20px',
                     borderRadius: '8px',
+                    width: '40px',
+                    height: '40px',
+                    fontSize: '20px',
+                    fontWeight: 'bold',
                     cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    opacity: isSaving ? 0.7 : 1
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
                   }}
                 >
-                  {isSaving ? 'Signing out...' : 'Sign Out'}
+                  −
+                </button>
+                <div style={{
+                  padding: '12px 16px',
+                  border: `2px solid ${previewTheme.primary}50`,
+                  borderRadius: '8px',
+                  fontSize: '18px',
+                  fontWeight: 'bold',
+                  minWidth: '100px',
+                  textAlign: 'center',
+                  backgroundColor: previewTheme.background,
+                  color: previewTheme.textPrimary
+                }}>
+                  {timerDuration} min
+                </div>
+                <button
+                  onClick={() => setTimerDuration(Math.min(60, timerDuration + 5))}
+                  style={{
+                    backgroundColor: previewTheme.primary,
+                    color: previewTheme.textPrimary,
+                    border: 'none',
+                    borderRadius: '8px',
+                    width: '40px',
+                    height: '40px',
+                    fontSize: '20px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  +
                 </button>
               </div>
             </div>
+            
+            {/* Visual indicator of timer length */}
+            <div style={{
+              backgroundColor: `${previewTheme.primary}20`,
+              borderRadius: '8px',
+              padding: '12px',
+              marginBottom: '16px',
+              textAlign: 'center'
+            }}>
+              <div style={{
+                fontSize: '12px',
+                color: previewTheme.textSecondary,
+                marginBottom: '4px'
+              }}>
+                {timerDuration <= 10 ? '⚡ Quick Session' : 
+                 timerDuration <= 30 ? '📚 Perfect Session' : 
+                 '🎯 Deep Focus Session'}
+              </div>
+              <div style={{
+                backgroundColor: previewTheme.primary,
+                height: '4px',
+                borderRadius: '2px',
+                width: `${(timerDuration / 60) * 100}%`,
+                margin: '0 auto',
+                transition: 'width 0.3s ease'
+              }} />
+            </div>
+
+            {timerDuration !== (studentData.readingSettings?.defaultTimerDuration || 20) && (
+              <button
+                onClick={saveTimerChange}
+                disabled={isSaving}
+                style={{
+                  backgroundColor: previewTheme.primary,
+                  color: previewTheme.textPrimary,
+                  border: 'none',
+                  padding: '12px 24px',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  opacity: isSaving ? 0.7 : 1
+                }}
+              >
+                {isSaving ? 'Saving...' : `Save Timer (${timerDuration} min)`}
+              </button>
+            )}
           </div>
-        )}
-     </div>
-    </div>
-  </>
-);
+
+          {/* Parent Invite Section */}
+          <div style={{
+            backgroundColor: previewTheme.surface,
+            borderRadius: '16px',
+            padding: '20px',
+            marginBottom: '24px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+          }}>
+            <h2 style={{
+              fontSize: '18px',
+              fontWeight: 'bold',
+              color: previewTheme.textPrimary,
+              marginBottom: '8px'
+            }}>
+              👨‍👩‍👧‍👦 Invite Your Parents
+            </h2>
+            <p style={{
+              fontSize: '14px',
+              color: previewTheme.textSecondary,
+              marginBottom: '16px'
+            }}>
+              Let your parents see your reading progress and celebrate your achievements!
+            </p>
+
+            {!parentInviteCode ? (
+              <button
+                onClick={generateParentInvite}
+                disabled={isSaving}
+                style={{
+                  backgroundColor: previewTheme.primary,
+                  color: previewTheme.textPrimary,
+                  border: 'none',
+                  padding: '12px 24px',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  opacity: isSaving ? 0.7 : 1
+                }}
+              >
+                {isSaving ? 'Generating...' : '✨ Generate Parent Invite Code'}
+              </button>
+            ) : (
+              <div style={{
+                backgroundColor: `${previewTheme.primary}20`,
+                border: `2px solid ${previewTheme.primary}50`,
+                borderRadius: '12px',
+                padding: '16px'
+              }}>
+                <p style={{
+                  fontSize: '14px',
+                  color: previewTheme.textPrimary,
+                  marginBottom: '8px',
+                  fontWeight: '600'
+                }}>
+                  🎉 Your Parent Invite Code:
+                </p>
+                <div style={{
+                  backgroundColor: previewTheme.surface,
+                  border: `1px solid ${previewTheme.primary}`,
+                  borderRadius: '8px',
+                  padding: '12px',
+                  marginBottom: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between'
+                }}>
+                  <code style={{
+                    fontSize: '18px',
+                    fontWeight: 'bold',
+                    color: previewTheme.textPrimary,
+                    fontFamily: 'monospace'
+                  }}>
+                    {parentInviteCode}
+                  </code>
+                  <button
+                    onClick={copyInviteCode}
+                    style={{
+                      backgroundColor: previewTheme.primary,
+                      color: previewTheme.textPrimary,
+                      border: 'none',
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    📋 Copy
+                  </button>
+                </div>
+                <p style={{
+                  fontSize: '12px',
+                  color: previewTheme.textSecondary,
+                  margin: 0
+                }}>
+                  Share this code with your parents so they can create an account and see your progress!
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Theme Selection */}
+          <div style={{
+            backgroundColor: previewTheme.surface,
+            borderRadius: '16px',
+            padding: '20px',
+            marginBottom: '24px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+          }}>
+            <h2 style={{
+              fontSize: '18px',
+              fontWeight: 'bold',
+              color: previewTheme.textPrimary,
+              marginBottom: '8px'
+            }}>
+              🎨 Choose Your Theme
+            </h2>
+            <p style={{
+              fontSize: '14px',
+              color: previewTheme.textSecondary,
+              marginBottom: '20px'
+            }}>
+              Select your bookshelf &amp; trophy case design. Changes apply instantly!
+            </p>
+
+            {/* Theme Grid */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+              gap: '16px',
+              marginBottom: '20px'
+            }}>
+              {themesArray.map(theme => {
+                const isSelected = theme.assetPrefix === selectedThemePreview;
+                return (
+                  <button
+                    key={theme.assetPrefix}
+                    onClick={() => setSelectedThemePreview(theme.assetPrefix)}
+                    style={{
+                      padding: '12px',
+                      backgroundColor: theme.surface,
+                      border: `${isSelected ? '3px' : '2px'} solid ${isSelected ? theme.primary : `${theme.primary}50`}`,
+                      borderRadius: '16px',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease',
+                      boxShadow: isSelected ? `0 8px 24px ${theme.primary}40` : '0 2px 8px rgba(0,0,0,0.1)',
+                      transform: isSelected ? 'scale(1.05)' : 'scale(1)',
+                      position: 'relative'
+                    }}
+                  >
+                    {/* Bookshelf Preview */}
+                    <div style={{
+                      width: '100%',
+                      height: '60px',
+                      borderRadius: '8px',
+                      marginBottom: '6px',
+                      backgroundImage: `url(/bookshelves/${theme.assetPrefix}.jpg)`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      backgroundRepeat: 'no-repeat',
+                      backgroundColor: `${theme.primary}20`
+                    }} />
+                    
+                    {/* Trophy Case Preview */}
+                    <div style={{
+                      width: '100%',
+                      height: '45px',
+                      borderRadius: '6px',
+                      marginBottom: '8px',
+                      backgroundImage: `url(/trophy_cases/${theme.assetPrefix}.jpg)`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      backgroundRepeat: 'no-repeat',
+                      backgroundColor: `${theme.accent}20`
+                    }} />
+                    
+                    {/* Theme Name */}
+                    <div style={{
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      color: theme.textPrimary,
+                      textAlign: 'center',
+                      lineHeight: '1.2'
+                    }}>
+                      {theme.name}
+                    </div>
+                    
+                    {/* Selected Indicator */}
+                    {isSelected && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '8px',
+                        right: '8px',
+                        backgroundColor: theme.primary,
+                        color: 'white',
+                        borderRadius: '50%',
+                        width: '20px',
+                        height: '20px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '10px',
+                        fontWeight: 'bold',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                      }}>
+                        ✓
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Save Button */}
+            {selectedThemePreview !== studentData.selectedTheme && (
+              <div style={{ textAlign: 'center' }}>
+                <button
+                  onClick={saveThemeChange}
+                  disabled={isSaving}
+                  style={{
+                    backgroundColor: previewTheme.primary,
+                    color: previewTheme.textPrimary,
+                    border: 'none',
+                    padding: '12px 32px',
+                    borderRadius: '12px',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                    opacity: isSaving ? 0.7 : 1
+                  }}
+                >
+                  {isSaving ? 'Saving...' : `Save ${previewTheme.name}`}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Account & Other Settings */}
+          <div style={{
+            backgroundColor: previewTheme.surface,
+            borderRadius: '16px',
+            padding: '20px',
+            marginBottom: '80px', 
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+          }}>
+            <h2 style={{
+              fontSize: '18px',
+              fontWeight: 'bold',
+              color: previewTheme.textPrimary,
+              marginBottom: '16px'
+            }}>
+              ⚙️ Account & Settings
+            </h2>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <button
+                onClick={() => router.push('/legal')}
+                style={{
+                  backgroundColor: 'transparent',
+                  border: `1px solid ${previewTheme.primary}50`,
+                  color: previewTheme.textPrimary,
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  textAlign: 'left'
+                }}
+              >
+                📋 Privacy &amp; Terms
+              </button>
+
+              <button
+                onClick={() => setShowSignOutConfirm(true)}
+                style={{
+                  backgroundColor: 'transparent',
+                  border: '1px solid #dc2626',
+                  color: '#dc2626',
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  textAlign: 'left',
+                  fontWeight: '600'
+                }}
+              >
+                🚪 Sign Out
+              </button>
+            </div>
+          </div>
+
+          {/* Success Message */}
+          {showSuccess && (
+            <div style={{
+              position: 'fixed',
+              bottom: '100px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              backgroundColor: previewTheme.primary,
+              color: previewTheme.textPrimary,
+              padding: '12px 24px',
+              borderRadius: '24px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+              zIndex: 1000,
+              fontSize: '14px',
+              fontWeight: '600',
+              maxWidth: '90vw',
+              textAlign: 'center'
+            }}>
+              {showSuccess}
+            </div>
+          )}
+
+          {/* Sign Out Confirmation Modal */}
+          {showSignOutConfirm && (
+            <div style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 2000,
+              padding: '20px'
+            }}>
+              <div style={{
+                backgroundColor: previewTheme.surface,
+                borderRadius: '16px',
+                padding: '24px',
+                maxWidth: '400px',
+                width: '100%',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
+              }}>
+                <h3 style={{
+                  fontSize: '18px',
+                  fontWeight: 'bold',
+                  color: previewTheme.textPrimary,
+                  marginBottom: '12px',
+                  textAlign: 'center'
+                }}>
+                  🚪 Sign Out
+                </h3>
+                <p style={{
+                  fontSize: '14px',
+                  color: previewTheme.textSecondary,
+                  marginBottom: '20px',
+                  textAlign: 'center',
+                  lineHeight: '1.4'
+                }}>
+                  Are you sure you want to sign out? You&apos;ll need to sign in again to access your books and progress.
+                </p>
+                <div style={{
+                  display: 'flex',
+                  gap: '12px',
+                  justifyContent: 'center'
+                }}>
+                  <button
+                    onClick={() => setShowSignOutConfirm(false)}
+                    style={{
+                      backgroundColor: 'transparent',
+                      border: `1px solid ${previewTheme.primary}50`,
+                      color: previewTheme.textPrimary,
+                      padding: '10px 20px',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '14px'
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSignOut}
+                    disabled={isSaving}
+                    style={{
+                      backgroundColor: '#dc2626',
+                      color: 'white',
+                      border: 'none',
+                      padding: '10px 20px',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      opacity: isSaving ? 0.7 : 1
+                    }}
+                  >
+                    {isSaving ? 'Signing out...' : 'Sign Out'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
 }
