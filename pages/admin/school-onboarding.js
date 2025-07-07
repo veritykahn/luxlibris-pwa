@@ -69,12 +69,41 @@ export default function TeacherOnboarding() {
     }
   }, [authLoading, initialized, user, userProfile, createdUser])
 
+  // Fetch nominees
+  const fetchNominees = async () => {
+    try {
+      const nomineesRef = collection(db, 'masterNominees')
+      const snapshot = await getDocs(nomineesRef)
+      const nomineesData = []
+      
+      snapshot.forEach((doc) => {
+        nomineesData.push({
+          id: doc.id,
+          ...doc.data(),
+          selected: true
+        })
+      })
+      
+      setNominees(nomineesData)
+      
+      // Only auto-select all if no previous selection
+      if (onboardingData.selectedNominees.length === 0) {
+        setOnboardingData(prev => ({
+          ...prev,
+          selectedNominees: nomineesData.map(n => n.id)
+        }))
+      }
+    } catch (error) {
+      console.error('Error fetching nominees:', error)
+    }
+  }
+
   // Load nominees when we reach program selection
   useEffect(() => {
     if (currentStep >= 3) {
       fetchNominees()
     }
-  }, [currentStep, fetchNominees])
+  }, [currentStep])
 
   // Recalculate achievement tiers when nominees change
   useEffect(() => {
@@ -303,35 +332,6 @@ export default function TeacherOnboarding() {
       { books: tier4, reward: 'Medal', type: 'annual' },
       { books: lifetimeGoal, reward: 'Plaque', type: 'lifetime' }
     ]
-  }
-
-  // Fetch nominees
-  const fetchNominees = async () => {
-    try {
-      const nomineesRef = collection(db, 'masterNominees')
-      const snapshot = await getDocs(nomineesRef)
-      const nomineesData = []
-      
-      snapshot.forEach((doc) => {
-        nomineesData.push({
-          id: doc.id,
-          ...doc.data(),
-          selected: true
-        })
-      })
-      
-      setNominees(nomineesData)
-      
-      // Only auto-select all if no previous selection
-      if (onboardingData.selectedNominees.length === 0) {
-        setOnboardingData(prev => ({
-          ...prev,
-          selectedNominees: nomineesData.map(n => n.id)
-        }))
-      }
-    } catch (error) {
-      console.error('Error fetching nominees:', error)
-    }
   }
 
   // Toggle nominee selection
