@@ -2,6 +2,7 @@
 import Head from 'next/head'
 import Link from 'next/link'
 import { useState } from 'react'
+import Image from 'next/image';
 
 export default function ForSchools() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -20,13 +21,13 @@ export default function ForSchools() {
         <header className="bg-white/90 backdrop-blur-sm shadow-sm">
           <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
             <Link href="/" className="flex items-center space-x-3">
-              <img
-                src="/images/lux_libris_logo.png"
-                alt="Lux Libris"
-                width={50}
-                height={50}
-                className="rounded-full"
-              />
+              <Image
+  src="/images/lux_libris_logo.png"
+  alt="Lux Libris"
+  width={50}
+  height={50}
+  className="rounded-full"
+/>
               <h1 className="text-2xl font-bold text-slate-800" style={{fontFamily: 'Didot, Georgia, serif', letterSpacing: '0.05em'}}>
                 Lux Libris
               </h1>
@@ -106,7 +107,7 @@ export default function ForSchools() {
             <div className="mb-8">
               <h2 className="text-5xl md:text-6xl font-bold text-slate-800 mb-6"
                   style={{fontFamily: 'Didot, Georgia, serif', letterSpacing: '0.02em'}}>
-                Transform Your School's
+                Transform Your School&apos;s
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-500 to-blue-600">
                   {" "}Reading Program
                 </span>
@@ -163,7 +164,7 @@ export default function ForSchools() {
                 How Lux Libris Works for Schools
               </h2>
               <p className="text-xl text-slate-600 max-w-2xl mx-auto">
-                A simple three-step process to transform your school's reading culture
+                A simple three-step process to transform your school&apos;s reading culture
               </p>
             </div>
 
@@ -240,7 +241,7 @@ export default function ForSchools() {
                 Flexible for Any Organization
               </h2>
               <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-                Whether you're part of a large diocese, an independent school district, 
+                Whether you&apos;re part of a large diocese, an independent school district, 
                 or a single institution, Lux Libris adapts to your structure.
               </p>
             </div>

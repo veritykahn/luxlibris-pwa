@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
+import Image from 'next/image'
 import { db, auth } from '../../lib/firebase'
 import { collection, getDocs, doc, getDoc, updateDoc, addDoc, query, where } from 'firebase/firestore'
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth'
@@ -74,7 +75,7 @@ export default function TeacherOnboarding() {
     if (currentStep >= 3) {
       fetchNominees()
     }
-  }, [currentStep])
+  }, [currentStep, fetchNominees])
 
   // Recalculate achievement tiers when nominees change
   useEffect(() => {
@@ -970,7 +971,7 @@ export default function TeacherOnboarding() {
                     lineHeight: '1.4',
                     fontFamily: 'Avenir'
                   }}>
-                    <strong>🎯 Next:</strong> Let's configure your book selection and achievement rewards!
+                    <strong>🎯 Next:</strong> Let&apos;s configure your book selection and achievement rewards!
                   </p>
                 </div>
               </div>
@@ -1374,17 +1375,17 @@ function BookCard({ book, isSelected, onToggle }) {
         </div>
         
         {book.coverImageUrl && (
-          <img 
-            src={book.coverImageUrl}
-            alt={`Cover of ${book.title}`}
-            style={{
-              width: '40px',
-              height: '60px',
-              objectFit: 'cover',
-              borderRadius: '0.25rem',
-              flexShrink: 0
-            }}
-          />
+          <Image
+  src={book.coverImageUrl}
+  alt={`Cover of ${book.title}`}
+  width={40}
+  height={60}
+  style={{
+    objectFit: 'cover',
+    borderRadius: '0.25rem',
+    flexShrink: 0
+  }}
+/>
         )}
         
         <div style={{ flex: 1, minWidth: 0 }}>

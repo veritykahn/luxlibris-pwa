@@ -70,10 +70,10 @@ export default function SchoolDashboard() {
 
   // ENHANCED: Load program data when school data is loaded - WITH COMPREHENSIVE ERROR HANDLING
   useEffect(() => {
-    if (schoolData) {
-      loadProgramData()
-    }
-  }, [schoolData, parentEntity])
+  if (schoolData) {
+    loadProgramData()
+  }
+}, [schoolData, parentEntity, loadProgramData])
 
   // FIXED: Load program data with comprehensive fallbacks and error handling
   const loadProgramData = async () => {
@@ -220,7 +220,7 @@ export default function SchoolDashboard() {
     if (school) {
       setAuthData(prev => ({ ...prev, schoolCode: school.toUpperCase() }))
     }
-  }, [router.query])
+  }, [router.query, SESSION_TIMEOUT])
 
   // Save session to localStorage
   useEffect(() => {
@@ -235,7 +235,7 @@ export default function SchoolDashboard() {
     } else {
       localStorage.removeItem('schoolSession')
     }
-  }, [authData.isAuthenticated, schoolData, lastActivity])
+  }, [authData.isAuthenticated, schoolData, lastActivity, authData.email, authData.schoolCode])
 
   // Session management effects (timeout, activity tracking)
   useEffect(() => {
@@ -259,7 +259,7 @@ export default function SchoolDashboard() {
     checkSession()
     
     return () => clearInterval(interval)
-  }, [authData.isAuthenticated, lastActivity])
+  }, [authData.isAuthenticated, lastActivity, SESSION_TIMEOUT])
 
   useEffect(() => {
     if (!authData.isAuthenticated) return
@@ -288,7 +288,7 @@ export default function SchoolDashboard() {
         document.removeEventListener(event, updateActivity, true)
       )
     }
-  }, [authData.isAuthenticated, schoolData])
+  }, [authData.isAuthenticated, schoolData, authData.email, authData.schoolCode])
 
   // Handle school authentication (3-field: school code + email + password)
   const handleSchoolAuth = async () => {
