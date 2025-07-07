@@ -82,9 +82,9 @@ export default function Home() {
               <a href="#features" className="text-slate-600 hover:text-teal-600 transition-colors">
                 Features
               </a>
-              <a href="#for-schools" className="text-slate-600 hover:text-teal-600 transition-colors">
-                For Schools
-              </a>
+              <Link href="/for-schools" className="text-slate-600 hover:text-teal-600 transition-colors">
+  For Schools
+</Link>
               <a href="#contact" className="text-slate-600 hover:text-teal-600 transition-colors">
                 Contact
               </a>
@@ -126,13 +126,13 @@ export default function Home() {
                 >
                   Features
                 </a>
-                <a 
-                  href="#for-schools" 
-                  className="block text-slate-600 hover:text-teal-600 transition-colors py-2"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  For Schools
-                </a>
+                <Link
+  href="/for-schools"
+  className="block text-slate-600 hover:text-teal-600 transition-colors py-2"
+  onClick={() => setMobileMenuOpen(false)}
+>
+  For Schools
+</Link>
                 <a 
                   href="#contact" 
                   className="block text-slate-600 hover:text-teal-600 transition-colors py-2"

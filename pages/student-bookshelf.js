@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
-import { getStudentData, getSchoolNominees, updateStudentData } from '../lib/firebase';
+import { getStudentDataEntities, getSchoolNomineesEntities, updateStudentDataEntities } from '../lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import Head from 'next/head';
@@ -286,7 +286,7 @@ export default function StudentBookshelf() {
 
   const loadBookshelfData = async () => {
     try {
-      const firebaseStudentData = await getStudentData(user.uid);
+      const firebaseStudentData = await getStudentDataEntities(user.uid);
       if (!firebaseStudentData) {
         router.push('/student-onboarding');
         return;
@@ -298,14 +298,14 @@ export default function StudentBookshelf() {
       const selectedTheme = themes[selectedThemeKey];
       setCurrentTheme(selectedTheme);
       
-      if (firebaseStudentData.dioceseId && firebaseStudentData.schoolId) {
-        const schoolNominees = await getSchoolNominees(
-          firebaseStudentData.dioceseId, 
+      if (firebaseStudentData.entityId && firebaseStudentData.schoolId) {
+        const schoolNominees = await getSchoolNomineesEntities(
+          firebaseStudentData.entityId, 
           firebaseStudentData.schoolId
         );
         setNominees(schoolNominees);
         
-        const schoolDoc = await getDoc(doc(db, `dioceses/${firebaseStudentData.dioceseId}/schools`, firebaseStudentData.schoolId));
+        const schoolDoc = await getDoc(doc(db, `dioceses/${firebaseStudentData.entityId}/schools`, firebaseStudentData.schoolId));
         if (schoolDoc.exists()) {
           const schoolData = schoolDoc.data();
           firebaseStudentData.schoolSubmissionOptions = schoolData.submissionOptions || {};
@@ -482,7 +482,7 @@ export default function StudentBookshelf() {
           return book;
         });
         
-        await updateStudentData(studentData.id, studentData.dioceseId, studentData.schoolId, {
+        await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
           bookshelf: updatedBookshelf
         });
         
@@ -517,7 +517,7 @@ export default function StudentBookshelf() {
         return book;
       });
       
-      await updateStudentData(studentData.id, studentData.dioceseId, studentData.schoolId, {
+      await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
         bookshelf: updatedBookshelf
       });
       
@@ -543,7 +543,7 @@ export default function StudentBookshelf() {
     try {
       const updatedBookshelf = studentData.bookshelf.filter(book => book.bookId !== bookId);
       
-      await updateStudentData(studentData.id, studentData.dioceseId, studentData.schoolId, {
+      await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
         bookshelf: updatedBookshelf
       });
       
@@ -659,7 +659,7 @@ export default function StudentBookshelf() {
         return book;
       });
       
-      await updateStudentData(studentData.id, studentData.dioceseId, studentData.schoolId, {
+      await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
         bookshelf: updatedBookshelf
       });
       
@@ -712,7 +712,7 @@ export default function StudentBookshelf() {
         return book;
       });
       
-      await updateStudentData(studentData.id, studentData.dioceseId, studentData.schoolId, {
+      await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
         bookshelf: updatedBookshelf
       });
       
@@ -775,7 +775,7 @@ export default function StudentBookshelf() {
           return book;
         });
         
-        await updateStudentData(studentData.id, studentData.dioceseId, studentData.schoolId, {
+        await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
           bookshelf: updatedBookshelf,
           booksSubmittedThisYear: (studentData.booksSubmittedThisYear || 0) + 1,
           lifetimeBooksSubmitted: (studentData.lifetimeBooksSubmitted || 0) + 1
@@ -806,7 +806,7 @@ export default function StudentBookshelf() {
           return book;
         });
         
-        await updateStudentData(studentData.id, studentData.dioceseId, studentData.schoolId, {
+        await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
           bookshelf: updatedBookshelf
         });
         

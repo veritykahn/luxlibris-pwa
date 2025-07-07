@@ -1,8 +1,8 @@
-// pages/student-dashboard.js - COMPLETE VERSION with all functions integrated
+// pages/student-dashboard.js - COMPLETE VERSION with loading splash integrated
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
-import { getStudentData, getSchoolNominees } from '../lib/firebase';
+import { getStudentDataEntities, getSchoolNomineesEntities } from '../lib/firebase';
 import { 
   collection, 
   getDocs, 
@@ -16,12 +16,17 @@ import Head from 'next/head';
 
 export default function StudentDashboard() {
   const router = useRouter();
-  const { user, userProfile, isAuthenticated, loading } = useAuth();
+  const { user, userProfile, isAuthenticated, loading: authLoading } = useAuth();
   const [studentData, setStudentData] = useState(null);
   const [nominees, setNominees] = useState([]);
   const [currentTheme, setCurrentTheme] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showComingSoon, setShowComingSoon] = useState('');
+  
+  // Loading splash state variables
+  const [showLoadingSplash, setShowLoadingSplash] = useState(true);
+  const [loadingMessage, setLoadingMessage] = useState('Loading your dashboard...');
+  const [minLoadingTime, setMinLoadingTime] = useState(false);
   
   // Enhanced dashboard data
   const [gradeStats, setGradeStats] = useState(null);
@@ -134,14 +139,50 @@ export default function StudentDashboard() {
     }
   };
 
+  // Loading splash useEffect hooks
+  useEffect(() => {
+    // Check if this is a newly created account
+    const isNewAccount = localStorage.getItem('luxlibris_account_created') === 'true' ||
+                         localStorage.getItem('studentData') ||
+                         localStorage.getItem('luxlibris_account_flow') === 'student';
+
+    if (isNewAccount) {
+      setLoadingMessage('Setting up your reading adventure...');
+      console.log('🎉 New account detected - showing extended loading screen');
+    } else {
+      setLoadingMessage('Loading your dashboard...');
+      console.log('🔄 Returning user - showing quick loading screen');
+    }
+
+    const minTime = isNewAccount ? 3000 : 500;
+    
+    const timer = setTimeout(() => {
+      setMinLoadingTime(true);
+      if (isNewAccount) {
+        localStorage.removeItem('luxlibris_account_created');
+        localStorage.removeItem('luxlibris_account_flow');
+      }
+    }, minTime);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!authLoading && userProfile && minLoadingTime) {
+      setTimeout(() => {
+        setShowLoadingSplash(false);
+      }, 500);
+    }
+  }, [authLoading, userProfile, minLoadingTime]);
+
   // INTEGRATED HELPER FUNCTIONS
   
   // Get aggregated grade stats for social competition
-  const getGradeStats = async (dioceseId, schoolId, grade) => {
+  const getGradeStats = async (entityId, schoolId, grade) => {
     try {
       console.log(`📊 Loading grade ${grade} stats for school ${schoolId}`);
       
-      const studentsRef = collection(db, 'dioceses', dioceseId, 'schools', schoolId, 'students');
+      const studentsRef = collection(db, 'entities', entityId, 'schools', schoolId, 'students');
       const gradeQuery = query(studentsRef, where('grade', '==', grade));
       const gradeSnapshot = await getDocs(gradeQuery);
       
@@ -177,11 +218,11 @@ export default function StudentDashboard() {
   };
 
   // Get aggregated school stats for school pride
-  const getSchoolStats = async (dioceseId, schoolId) => {
+  const getSchoolStats = async (entityId, schoolId) => {
     try {
       console.log(`🏫 Loading school stats for ${schoolId}`);
       
-      const studentsRef = collection(db, 'dioceses', dioceseId, 'schools', schoolId, 'students');
+      const studentsRef = collection(db, 'entities', entityId, 'schools', schoolId, 'students');
       const studentsSnapshot = await getDocs(studentsRef);
       
       let totalBooksSubmitted = 0;
@@ -223,11 +264,11 @@ export default function StudentDashboard() {
   };
 
   // Get school's achievement tiers configuration
-  const getSchoolAchievementTiers = async (dioceseId, schoolId) => {
+  const getSchoolAchievementTiers = async (entityId, schoolId) => {
     try {
       console.log(`🎯 Loading achievement tiers for school ${schoolId}`);
       
-      const schoolRef = doc(db, 'dioceses', dioceseId, 'schools', schoolId);
+      const schoolRef = doc(db, 'entities', entityId, 'schools', schoolId);
       const schoolDoc = await getDoc(schoolRef);
       
       if (schoolDoc.exists()) {
@@ -412,7 +453,7 @@ export default function StudentDashboard() {
   };
 
   // Get today's reading session stats
-  const getTodayReadingStats = async (dioceseId, schoolId, studentId) => {
+  const getTodayReadingStats = async (entityId, schoolId, studentId) => {
     try {
       // TODO: Integrate with actual reading sessions collection
       return {
@@ -433,19 +474,19 @@ export default function StudentDashboard() {
   };
 
   useEffect(() => {
-    if (!loading && isAuthenticated && user) {
+    if (!authLoading && isAuthenticated && user) {
       loadEnhancedDashboardData();
-    } else if (!loading && !isAuthenticated) {
+    } else if (!authLoading && !isAuthenticated) {
       router.push('/role-selector');
     }
-  }, [loading, isAuthenticated, user]);
+  }, [authLoading, isAuthenticated, user]);
 
   const loadEnhancedDashboardData = async () => {
     try {
       console.log('📚 Loading enhanced dashboard data...');
       
       // Get student data
-      const firebaseStudentData = await getStudentData(user.uid);
+      const firebaseStudentData = await getStudentDataEntities(user.uid);
       if (!firebaseStudentData) {
         console.log('❌ No student data found, redirecting to onboarding');
         router.push('/student-onboarding');
@@ -460,12 +501,12 @@ export default function StudentDashboard() {
       setCurrentTheme(themes[selectedTheme]);
       
       // Load school nominees and stats
-      if (firebaseStudentData.dioceseId && firebaseStudentData.schoolId) {
+      if (firebaseStudentData.entityId && firebaseStudentData.schoolId) {
         console.log('📖 Loading school nominees and stats...');
         
         // Load nominees
-        const schoolNominees = await getSchoolNominees(
-          firebaseStudentData.dioceseId, 
+        const schoolNominees = await getSchoolNomineesEntities(
+          firebaseStudentData.entityId, 
           firebaseStudentData.schoolId
         );
         setNominees(schoolNominees);
@@ -479,7 +520,7 @@ export default function StudentDashboard() {
         
         // Load achievement tiers
         const tiers = await getSchoolAchievementTiers(
-          firebaseStudentData.dioceseId,
+          firebaseStudentData.entityId,
           firebaseStudentData.schoolId
         );
         setAchievementTiers(tiers);
@@ -491,7 +532,7 @@ export default function StudentDashboard() {
         
         // Load grade stats
         const gradeData = await getGradeStats(
-          firebaseStudentData.dioceseId,
+          firebaseStudentData.entityId,
           firebaseStudentData.schoolId,
           firebaseStudentData.grade
         );
@@ -499,7 +540,7 @@ export default function StudentDashboard() {
         
         // Load school stats
         const schoolData = await getSchoolStats(
-          firebaseStudentData.dioceseId,
+          firebaseStudentData.entityId,
           firebaseStudentData.schoolId
         );
         setSchoolStats(schoolData);
@@ -513,7 +554,7 @@ export default function StudentDashboard() {
         
         // Load today's reading stats
         const todayStats = await getTodayReadingStats(
-          firebaseStudentData.dioceseId,
+          firebaseStudentData.entityId,
           firebaseStudentData.schoolId,
           firebaseStudentData.id
         );
@@ -721,8 +762,13 @@ export default function StudentDashboard() {
 
   const getDaysUntilEnd = getDaysUntilCompetitionEnd();
 
-  // Show loading
-  if (loading || isLoading || !studentData || !currentTheme) {
+  // Show loading splash when needed
+  if (showLoadingSplash || authLoading || !userProfile) {
+    return <StudentLoadingSplash message={loadingMessage} />;
+  }
+
+  // Show loading for data loading
+  if (isLoading || !studentData || !currentTheme) {
     return (
       <div style={{
         backgroundColor: '#FFFCF5',
@@ -1553,9 +1599,105 @@ export default function StudentDashboard() {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.7; }
           }
+          @keyframes breathe {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+          }
         `}</style>
       </div>
     </>
+  );
+}
+
+// Loading Splash Component
+function StudentLoadingSplash({ message }) {
+  const [dots, setDots] = useState('');
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDots(prev => prev.length >= 3 ? '' : prev + '.');
+    }, 500);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div style={{
+      backgroundColor: '#FFFCF5',
+      minHeight: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontFamily: 'system-ui, -apple-system, sans-serif'
+    }}>
+      <div style={{
+        width: '120px',
+        height: '120px',
+        background: 'linear-gradient(135deg, #ADD4EA, #C3E0DE)',
+        borderRadius: '60px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: '60px',
+        marginBottom: '32px',
+        animation: 'breathe 3s ease-in-out infinite'
+      }}>
+        📚
+      </div>
+
+      <h1 style={{
+        fontFamily: 'Didot, serif',
+        fontSize: '32px',
+        color: '#223848',
+        margin: '0 0 16px 0',
+        letterSpacing: '2px',
+        textAlign: 'center'
+      }}>
+        Lux Libris
+      </h1>
+
+      <p style={{
+        color: '#556B7A',
+        fontSize: '18px',
+        margin: '0 0 32px 0',
+        letterSpacing: '1px',
+        textAlign: 'center'
+      }}>
+        {message}{dots}
+      </p>
+
+      <div style={{
+        width: '40px',
+        height: '40px',
+        border: '3px solid rgba(173, 212, 234, 0.3)',
+        borderTop: '3px solid #ADD4EA',
+        borderRadius: '50%',
+        animation: 'spin 1s linear infinite'
+      }} />
+
+      <p style={{
+        color: '#556B7A',
+        fontSize: '14px',
+        margin: '24px 0 0 0',
+        opacity: 0.7,
+        textAlign: 'center',
+        maxWidth: '300px'
+      }}>
+        Preparing your personalized reading experience...
+      </p>
+
+      <style jsx>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        
+        @keyframes breathe {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.05); }
+        }
+      `}</style>
+    </div>
   );
 }
 

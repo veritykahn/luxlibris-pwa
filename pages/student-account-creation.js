@@ -1,8 +1,9 @@
-// pages/student-account-creation.js - FIXED for Diocese Structure
+// pages/student-account-creation.js - FIXED: No Backwards Compatibility
 import { useState } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
-import { dbHelpers } from '../lib/firebase'
+import { db } from '../lib/firebase'
+import { collection, getDocs, query, where } from 'firebase/firestore'
 
 export default function StudentAccountCreation() {
   const router = useRouter()
@@ -10,9 +11,71 @@ export default function StudentAccountCreation() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [studentData, setStudentData] = useState({
-    schoolJoinCode: ''
+    teacherJoinCode: ''
   })
+  const [teacherData, setTeacherData] = useState(null)
   const [schoolData, setSchoolData] = useState(null)
+
+  // Find teacher by studentJoinCode across all entities/schools
+  const findTeacherByStudentCode = async (studentJoinCode) => {
+    try {
+      console.log('🔍 Searching for teacher with student code:', studentJoinCode);
+      
+      // Search all entities
+      const entitiesRef = collection(db, 'entities');
+      const entitiesSnapshot = await getDocs(entitiesRef);
+      
+      for (const entityDoc of entitiesSnapshot.docs) {
+        const entityId = entityDoc.id;
+        
+        try {
+          // Search all schools in this entity
+          const schoolsRef = collection(db, `entities/${entityId}/schools`);
+          const schoolsSnapshot = await getDocs(schoolsRef);
+          
+          for (const schoolDoc of schoolsSnapshot.docs) {
+            const schoolId = schoolDoc.id;
+            const schoolData = schoolDoc.data();
+            
+            try {
+              // Search all teachers in this school
+              const teachersRef = collection(db, `entities/${entityId}/schools/${schoolId}/teachers`);
+              const teachersSnapshot = await getDocs(teachersRef);
+              
+              for (const teacherDoc of teachersSnapshot.docs) {
+                const teacherData = teacherDoc.data();
+                
+                if (teacherData.studentJoinCode === studentJoinCode) {
+                  console.log('✅ Found teacher:', teacherData.firstName, teacherData.lastName);
+                  return {
+                    teacher: {
+                      id: teacherDoc.id,
+                      ...teacherData
+                    },
+                    school: {
+                      id: schoolId,
+                      entityId: entityId,
+                      ...schoolData
+                    }
+                  };
+                }
+              }
+            } catch (teacherError) {
+              console.log('No teachers found in school:', schoolId);
+            }
+          }
+        } catch (schoolError) {
+          console.log('No schools found in entity:', entityId);
+        }
+      }
+      
+      console.log('❌ No teacher found with student code:', studentJoinCode);
+      return null;
+    } catch (error) {
+      console.error('❌ Error searching for teacher:', error);
+      return null;
+    }
+  };
 
   const handleNext = async () => {
     setError('')
@@ -20,61 +83,58 @@ export default function StudentAccountCreation() {
 
     try {
       if (step === 1) {
-        // Verify school code using new diocese structure
-        if (!studentData.schoolJoinCode.trim()) {
-          setError('Please enter your school join code')
+        // Verify teacher join code
+        if (!studentData.teacherJoinCode.trim()) {
+          setError('Please enter your teacher code')
           setLoading(false)
           return
         }
 
-        console.log('🔍 Verifying school code:', studentData.schoolJoinCode.toUpperCase())
-        
-        // Use the new helper function that searches diocese structure
-        const school = await dbHelpers.findSchoolByStudentAccessCode(studentData.schoolJoinCode.toUpperCase())
-        
-        if (!school) {
-          setError('School not found with that code. Please check the code and try again.')
+        const result = await findTeacherByStudentCode(studentData.teacherJoinCode.toUpperCase())
+        if (!result) {
+          setError('Invalid teacher code. Please check with your teacher.')
           setLoading(false)
           return
         }
 
-        console.log('✅ Found school:', school.name)
-        setSchoolData(school)
+        setTeacherData(result.teacher)
+        setSchoolData(result.school)
         setStep(2)
       } else if (step === 2) {
-        // Store school data for onboarding to use
+        // Store teacher and school data for onboarding
         try {
-          console.log('💾 Saving school data for onboarding...')
-          console.log('🏫 School ID:', schoolData.id)
-          console.log('🏫 Diocese ID:', schoolData.dioceseId)
-          console.log('🏫 School Name:', schoolData.name)
-          console.log('🔑 Student Access Code:', studentData.schoolJoinCode)
+          console.log('💾 Saving teacher and school data for onboarding...');
+          console.log('👩‍🏫 Teacher:', teacherData.firstName, teacherData.lastName);
+          console.log('🏫 School:', schoolData.name);
+          console.log('🔑 Teacher Code:', studentData.teacherJoinCode);
           
-          // Store school data for onboarding to use (UPDATED for diocese structure)
           if (typeof window !== 'undefined') {
             const tempData = {
-              schoolId: schoolData.id,  // School document ID
-              dioceseId: schoolData.dioceseId,  // Diocese document ID  
+              // Teacher information
+              teacherId: teacherData.id,
+              teacherName: `${teacherData.firstName} ${teacherData.lastName}`,
+              teacherJoinCode: studentData.teacherJoinCode.toUpperCase(),
+              
+              // School information  
+              schoolId: schoolData.id,
+              entityId: schoolData.entityId,
               schoolName: schoolData.name,
               schoolCity: schoolData.city,
-              schoolState: schoolData.state,
-              schoolJoinCode: studentData.schoolJoinCode.toUpperCase(),
-              studentAccessCode: schoolData.studentAccessCode,
-              parentQuizCode: schoolData.parentQuizCode
-            }
+              schoolState: schoolData.state
+            };
             
-            localStorage.setItem('tempSchoolData', JSON.stringify(tempData))
-            localStorage.setItem('luxlibris_account_flow', 'student')
+            localStorage.setItem('tempTeacherData', JSON.stringify(tempData));
+            localStorage.setItem('luxlibris_account_flow', 'student');
             
-            console.log('✅ Temp school data saved:', tempData)
+            console.log('✅ Temp teacher data saved:', tempData);
           }
 
           // Redirect to legal acceptance first, then onboarding will create the actual account
-          router.push('/legal?flow=student-onboarding')
+          router.push('/legal?flow=student-onboarding');
           
         } catch (error) {
           console.error('Data storage error:', error)
-          setError('Error saving school information. Please try again.')
+          setError('Error saving teacher information. Please try again.')
         }
       }
     } catch (error) {
@@ -97,11 +157,9 @@ export default function StudentAccountCreation() {
   return (
     <>
       <Head>
-  <title>Join Your School - Lux Libris</title>
-  <meta name="description" content="Connect to your school's Lux Libris reading program and start your journey" />
-  <link rel="icon" href="/images/lux_libris_logo.png" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-</Head>
+        <title>Join Your Teacher - Lux Libris</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      </Head>
 
       <div style={{
         minHeight: '100vh',
@@ -134,7 +192,7 @@ export default function StudentAccountCreation() {
               margin: '0 auto 1rem',
               fontSize: '1.75rem'
             }}>
-              🏫
+              👩‍🏫
             </div>
             <h1 style={{
               fontSize: 'clamp(1.5rem, 5vw, 1.875rem)',
@@ -143,7 +201,7 @@ export default function StudentAccountCreation() {
               margin: '0 0 0.5rem 0',
               fontFamily: 'Georgia, serif'
             }}>
-              Join Your School
+              Join Your Teacher
             </h1>
             <p style={{
               color: '#6b7280',
@@ -151,7 +209,7 @@ export default function StudentAccountCreation() {
               margin: 0,
               lineHeight: '1.4'
             }}>
-              Connect to your school&apos;s Lux Libris reading program
+              Enter the teacher code to connect to your reading program
             </p>
           </div>
 
@@ -199,7 +257,7 @@ export default function StudentAccountCreation() {
           {/* Step Content */}
           <div style={{ marginBottom: '2rem' }}>
             
-            {/* Step 1: School Join Code */}
+            {/* Step 1: Teacher Join Code */}
             {step === 1 && (
               <div>
                 <h2 style={{
@@ -209,7 +267,7 @@ export default function StudentAccountCreation() {
                   marginBottom: '1rem',
                   textAlign: 'center'
                 }}>
-                  Enter your school code
+                  Enter your teacher code
                 </h2>
                 <p style={{
                   color: '#6b7280',
@@ -218,7 +276,7 @@ export default function StudentAccountCreation() {
                   marginBottom: '1.5rem',
                   lineHeight: '1.4'
                 }}>
-                  Your teacher or librarian will have given you a special code to join your school
+                  Your teacher will have given you a special code that connects you to their reading program
                 </p>
 
                 <div style={{ marginBottom: '1.5rem' }}>
@@ -229,28 +287,29 @@ export default function StudentAccountCreation() {
                     color: '#374151',
                     marginBottom: '0.5rem'
                   }}>
-                    School Access Code *
+                    Teacher Code *
                   </label>
                   <input
                     type="text"
-                    value={studentData.schoolJoinCode}
+                    value={studentData.teacherJoinCode}
                     onChange={(e) => setStudentData(prev => ({ 
                       ...prev, 
-                      schoolJoinCode: e.target.value.toUpperCase() 
+                      teacherJoinCode: e.target.value.toUpperCase() 
                     }))}
-                    placeholder="DEMO-STUDENT-2025"
+                    placeholder="LUXLIB-SCHOOL-SMITH25-STUDENT"
                     style={{
                       width: '100%',
                       padding: '0.875rem',
                       border: '2px solid #e5e7eb',
                       borderRadius: '0.75rem',
-                      fontSize: '1rem',
+                      fontSize: '0.875rem',
                       boxSizing: 'border-box',
                       transition: 'border-color 0.2s',
                       outline: 'none',
                       textAlign: 'center',
                       fontWeight: 'bold',
-                      letterSpacing: '0.1em'
+                      letterSpacing: '0.05em',
+                      fontFamily: 'monospace'
                     }}
                     onFocus={(e) => e.target.style.borderColor = '#ADD4EA'}
                     onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
@@ -261,7 +320,7 @@ export default function StudentAccountCreation() {
                     margin: '0.5rem 0 0 0',
                     textAlign: 'center'
                   }}>
-                    This code was generated when your school was set up
+                    Ask your teacher if you don&apos;t have this code
                   </p>
                 </div>
 
@@ -278,14 +337,14 @@ export default function StudentAccountCreation() {
                     margin: 0,
                     lineHeight: '1.4'
                   }}>
-                    💡 <strong>What&apos;s next:</strong> After we verify your school, you&apos;ll set up your profile with your name, grade, and reading preferences!
+                    💡 <strong>What&apos;s next:</strong> After we verify your teacher, you&apos;ll set up your profile with your name, grade, and reading preferences!
                   </p>
                 </div>
               </div>
             )}
 
             {/* Step 2: Confirmation */}
-            {step === 2 && schoolData && (
+            {step === 2 && teacherData && schoolData && (
               <div>
                 <h2 style={{
                   fontSize: '1.25rem',
@@ -294,7 +353,7 @@ export default function StudentAccountCreation() {
                   marginBottom: '1rem',
                   textAlign: 'center'
                 }}>
-                  School found! 🎉
+                  Teacher found! 🎉
                 </h2>
 
                 <div style={{
@@ -314,16 +373,16 @@ export default function StudentAccountCreation() {
                   </h3>
                   <div style={{ fontSize: '0.875rem', color: '#374151', lineHeight: '1.6' }}>
                     <p style={{ margin: '0 0 0.5rem 0' }}>
+                      <strong>👩‍🏫 Teacher:</strong> {teacherData.firstName} {teacherData.lastName}
+                    </p>
+                    <p style={{ margin: '0 0 0.5rem 0' }}>
                       <strong>📚 School:</strong> {schoolData.name}
                     </p>
                     <p style={{ margin: '0 0 0.5rem 0' }}>
                       <strong>📍 Location:</strong> {schoolData.city}, {schoolData.state}
                     </p>
-                    <p style={{ margin: '0 0 0.5rem 0' }}>
-                      <strong>🔑 Access Code:</strong> {studentData.schoolJoinCode}
-                    </p>
                     <p style={{ margin: 0 }}>
-                      <strong>⛪ Diocese:</strong> Connected to diocese system
+                      <strong>🔑 Teacher Code:</strong> {studentData.teacherJoinCode}
                     </p>
                   </div>
                 </div>
@@ -358,7 +417,7 @@ export default function StudentAccountCreation() {
                     margin: 0,
                     lineHeight: '1.4'
                   }}>
-                    <strong>🔑 Remember:</strong> Your password will be this school code: <strong>{studentData.schoolJoinCode}</strong>
+                    <strong>👨‍👩‍👧‍👦 For parents:</strong> After setup, your child will get a special link to share with you so you can track their reading progress!
                   </p>
                 </div>
               </div>
@@ -443,7 +502,7 @@ export default function StudentAccountCreation() {
                   animation: 'spin 1s linear infinite'
                 }}></div>
               )}
-              {step === 2 ? 'Continue to Setup' : 'Verify School'}
+              {step === 2 ? 'Continue to Setup' : 'Verify Teacher Code'}
             </button>
           </div>
 
@@ -460,7 +519,7 @@ export default function StudentAccountCreation() {
               margin: 0,
               lineHeight: '1.4'
             }}>
-              Need help? Ask your teacher or librarian for your school&apos;s access code.
+              Need help? Ask your teacher for your teacher code.
             </p>
           </div>
         </div>

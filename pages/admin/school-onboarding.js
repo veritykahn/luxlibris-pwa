@@ -1,33 +1,46 @@
-// pages/admin/school-onboarding.js - UPDATED to connect to God Mode diocese structure
+// pages/admin/school-onboarding.js - FIXED VERSION - No Race Conditions
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
-import { db, authHelpers } from '../../lib/firebase'
-import { collection, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore'
+import { db, auth } from '../../lib/firebase'
+import { collection, getDocs, doc, getDoc, updateDoc, addDoc, query, where } from 'firebase/firestore'
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth'
+import { useAuth } from '../../contexts/AuthContext'
 
-export default function SchoolAdminOnboarding() {
+export default function TeacherOnboarding() {
   const router = useRouter()
-  const [currentStep, setCurrentStep] = useState(1)
+  const { user, userProfile, loading: authLoading, initialized } = useAuth()
+  
+  const [currentStep, setCurrentStep] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [nominees, setNominees] = useState([])
-  
-  // School data will be loaded from God Mode diocese structure
-  const [schoolData, setSchoolData] = useState({
-    id: '',
-    dioceseId: '',
-    name: '',
-    city: '',
-    state: '',
+  const [createdUser, setCreatedUser] = useState(null)
+  const [createdProfile, setCreatedProfile] = useState(null)
+
+  // Account creation data
+  const [accountData, setAccountData] = useState({
+    teacherJoinCode: '',
     email: '',
-    adminEmail: '',
-    adminPassword: '',
-    studentAccessCode: '',
-    parentQuizCode: '',
+    password: '',
+    confirmPassword: '',
+    firstName: '',
+    lastName: ''
+  })
+
+  // School and program data
+  const [schoolData, setSchoolData] = useState(null)
+  const [teacherCodes, setTeacherCodes] = useState({
+    studentCode: '',
+    parentCode: ''
+  })
+
+  // Onboarding data
+  const [onboardingData, setOnboardingData] = useState({
     selectedNominees: [],
     achievementTiers: [],
     submissionOptions: {
-      quiz: true, // Always enabled
+      quiz: true,
       presentToTeacher: false,
       submitReview: false,
       createStoryboard: false,
@@ -37,39 +50,252 @@ export default function SchoolAdminOnboarding() {
     }
   })
 
-  // Authentication state
-  const [authData, setAuthData] = useState({
-    email: '',
-    password: '',
-    schoolCode: '',
-    isAuthenticated: false
-  })
-
-  // Fetch nominees on load
+  // Auto-populate teacher join code from URL
   useEffect(() => {
-    fetchNominees()
-  }, [])
+    if (router.query.code) {
+      setAccountData(prev => ({ ...prev, teacherJoinCode: router.query.code.toUpperCase() }))
+    }
+  }, [router.query.code])
 
-  // Recalculate achievement tiers when nominees selection changes
+  // Check for existing authenticated teachers on load only
   useEffect(() => {
-    if (schoolData.selectedNominees.length > 0) {
-      const dynamicTiers = calculateAchievementTiers(schoolData.selectedNominees.length)
-      setSchoolData(prev => ({
+    if (!authLoading && initialized && user && userProfile) {
+      // Only redirect existing teachers who haven't just been created
+      if (userProfile.accountType === 'teacher' && !createdUser && userProfile.onboardingCompleted) {
+        // Existing teacher with completed onboarding - go to dashboard
+        window.location.href = '/admin/school-dashboard'
+        return
+      }
+    }
+  }, [authLoading, initialized, user, userProfile, createdUser])
+
+  // Load nominees when we reach program selection
+  useEffect(() => {
+    if (currentStep >= 3) {
+      fetchNominees()
+    }
+  }, [currentStep])
+
+  // Recalculate achievement tiers when nominees change
+  useEffect(() => {
+    if (onboardingData.selectedNominees.length > 0) {
+      const dynamicTiers = calculateAchievementTiers(onboardingData.selectedNominees.length)
+      setOnboardingData(prev => ({
         ...prev,
         achievementTiers: dynamicTiers
       }))
     }
-  }, [schoolData.selectedNominees])
+  }, [onboardingData.selectedNominees])
 
+  // Find school by teacher join code
+  const findSchoolByTeacherJoinCode = async (joinCode) => {
+    try {
+      const entitiesRef = collection(db, 'entities')
+      const entitiesSnapshot = await getDocs(entitiesRef)
+      
+      for (const entityDoc of entitiesSnapshot.docs) {
+        try {
+          const schoolsRef = collection(db, `entities/${entityDoc.id}/schools`)
+          const schoolsSnapshot = await getDocs(schoolsRef)
+          
+          for (const schoolDoc of schoolsSnapshot.docs) {
+            const schoolData = schoolDoc.data()
+            if (schoolData.teacherJoinCode === joinCode) {
+              return {
+                id: schoolDoc.id,
+                dioceseId: entityDoc.id,
+                ...schoolData
+              }
+            }
+          }
+        } catch (subError) {
+          // No schools in this entity
+        }
+      }
+      
+      return null
+    } catch (error) {
+      console.error('Error finding school:', error)
+      return null
+    }
+  }
+
+  // Generate teacher codes
+  const generateTeacherCodes = (school, teacherInfo) => {
+    const schoolIdentifier = school.schoolAccessCode ? 
+      school.schoolAccessCode.split('-').slice(0, 2).join('-') : 
+      school.accessCode ? 
+        school.accessCode.split('-').slice(0, 2).join('-') : 
+        'LUXLIB-SCHOOL'
+    
+    const teacherLastName = teacherInfo.lastName.toUpperCase().replace(/[^A-Z]/g, '')
+    const suffix = Date.now().toString().slice(-2)
+    
+    const codes = {
+      studentCode: `${schoolIdentifier}-${teacherLastName}${suffix}-STUDENT`,
+      parentCode: `${schoolIdentifier}-${teacherLastName}${suffix}-PARENT`
+    }
+    
+    console.log('✅ Generated codes:', codes)
+    return codes
+  }
+
+  // STEP 0: Verify Teacher Join Code
+  const handleVerifyJoinCode = async () => {
+    if (!accountData.teacherJoinCode.trim()) {
+      setError('Please enter your teacher join code')
+      return
+    }
+
+    setLoading(true)
+    setError('')
+
+    try {
+      const school = await findSchoolByTeacherJoinCode(accountData.teacherJoinCode.toUpperCase())
+      
+      if (!school) {
+        setError('Invalid teacher join code. Please check with your school administrator.')
+        setLoading(false)
+        return
+      }
+
+      setSchoolData(school)
+      setCurrentStep(1)
+      
+    } catch (error) {
+      console.error('Error verifying join code:', error)
+      setError('Error verifying join code. Please try again.')
+    }
+    
+    setLoading(false)
+  }
+
+  // Check if teacher email already exists
+  const checkExistingTeacher = async (school, email) => {
+    try {
+      const teachersRef = collection(db, `entities/${school.dioceseId}/schools/${school.id}/teachers`)
+      const teacherQuery = query(teachersRef, where('email', '==', email))
+      const teacherSnapshot = await getDocs(teacherQuery)
+      
+      return !teacherSnapshot.empty
+    } catch (error) {
+      console.error('Error checking existing teacher:', error)
+      return false
+    }
+  }
+
+  // STEP 1: Create Teacher Account - FIXED
+  const handleCreateAccount = async () => {
+    // Validation
+    if (!accountData.email || !accountData.password || !accountData.firstName || !accountData.lastName) {
+      setError('Please fill in all required fields')
+      return
+    }
+
+    if (accountData.password !== accountData.confirmPassword) {
+      setError('Passwords do not match')
+      return
+    }
+
+    if (accountData.password.length < 8) {
+      setError('Password must be at least 8 characters')
+      return
+    }
+
+    setLoading(true)
+    setError('')
+
+    try {
+      console.log('👨‍🏫 Creating teacher account...')
+      
+      // Check if teacher email already exists in this school
+      const existingTeacher = await checkExistingTeacher(schoolData, accountData.email)
+      if (existingTeacher) {
+        setError('An account with this email already exists for this school')
+        setLoading(false)
+        return
+      }
+      
+      // Create Firebase Auth account
+      const authResult = await createUserWithEmailAndPassword(auth, accountData.email, accountData.password)
+      
+      // Generate unique teacher codes
+      const codes = generateTeacherCodes(schoolData, accountData)
+      setTeacherCodes(codes)
+      
+      // Create teacher profile
+      const teacherProfile = {
+        uid: authResult.user.uid,
+        email: accountData.email,
+        firstName: accountData.firstName,
+        lastName: accountData.lastName,
+        role: 'teacher',
+        accountType: 'teacher',
+        schoolId: schoolData.id,
+        schoolName: schoolData.name,
+        dioceseId: schoolData.dioceseId,
+        joinedWithCode: accountData.teacherJoinCode,
+        managementType: 'school_reading_program',
+        studentJoinCode: codes.studentCode,
+        parentTestCode: codes.parentCode,
+        status: 'active',
+        createdAt: new Date(),
+        lastModified: new Date(),
+        permissions: ['manage_school_program', 'view_all_students', 'configure_nominees', 'generate_reports'],
+        
+        // Initialize empty program configuration
+        selectedNominees: [],
+        achievementTiers: [],
+        submissionOptions: {
+          quiz: true,
+          presentToTeacher: false,
+          submitReview: false,
+          createStoryboard: false,
+          bookReport: false,
+          discussWithLibrarian: false,
+          actOutScene: false
+        },
+        onboardingCompleted: false
+      }
+      
+      // Save to nested teachers collection
+      const teacherDocRef = await addDoc(
+        collection(db, `entities/${schoolData.dioceseId}/schools/${schoolData.id}/teachers`), 
+        teacherProfile
+      )
+      
+      console.log('✅ Teacher account created successfully')
+      
+      // FIXED: Store created user data separately to avoid race conditions
+      setCreatedUser(authResult.user)
+      setCreatedProfile({ id: teacherDocRef.id, ...teacherProfile })
+      
+      // Sign in the new teacher (this will trigger auth context updates)
+      await signInWithEmailAndPassword(auth, accountData.email, accountData.password)
+      
+      // FIXED: Move to step 2 immediately, don't wait for auth context
+      setCurrentStep(2)
+      
+    } catch (error) {
+      console.error('❌ Error creating teacher account:', error)
+      if (error.code === 'auth/email-already-in-use') {
+        setError('This email is already registered. Try signing in instead.')
+      } else {
+        setError(error.message || 'Error creating account. Please try again.')
+      }
+    }
+    
+    setLoading(false)
+  }
+
+  // Calculate achievement tiers
   const calculateAchievementTiers = (bookCount) => {
     if (bookCount === 0) return []
     
-    const tier1 = Math.max(1, Math.ceil(bookCount * 0.25))  // 25%
-    const tier2 = Math.max(2, Math.ceil(bookCount * 0.50))  // 50%
-    const tier3 = Math.max(3, Math.ceil(bookCount * 0.75))  // 75%
-    const tier4 = bookCount                                 // 100%
-    
-    // Lifetime goal: 5x multiplier for 5-year program
+    const tier1 = Math.max(1, Math.ceil(bookCount * 0.25))
+    const tier2 = Math.max(2, Math.ceil(bookCount * 0.50))
+    const tier3 = Math.max(3, Math.ceil(bookCount * 0.75))
+    const tier4 = bookCount
     const lifetimeGoal = Math.max(25, Math.ceil(bookCount * 5))
     
     return [
@@ -81,6 +307,7 @@ export default function SchoolAdminOnboarding() {
     ]
   }
 
+  // Fetch nominees
   const fetchNominees = async () => {
     try {
       const nomineesRef = collection(db, 'masterNominees')
@@ -91,164 +318,27 @@ export default function SchoolAdminOnboarding() {
         nomineesData.push({
           id: doc.id,
           ...doc.data(),
-          selected: true // Default all selected
+          selected: true
         })
       })
       
       setNominees(nomineesData)
-      setSchoolData(prev => ({
-        ...prev,
-        selectedNominees: nomineesData.map(n => n.id)
-      }))
+      
+      // Only auto-select all if no previous selection
+      if (onboardingData.selectedNominees.length === 0) {
+        setOnboardingData(prev => ({
+          ...prev,
+          selectedNominees: nomineesData.map(n => n.id)
+        }))
+      }
     } catch (error) {
       console.error('Error fetching nominees:', error)
     }
   }
 
-  // NEW: Admin authentication step
-  const handleAdminAuth = async () => {
-    setError('')
-    setLoading(true)
-
-    try {
-      if (!authData.email || !authData.password || !authData.schoolCode) {
-        setError('Please enter your email, password, and school code')
-        setLoading(false)
-        return
-      }
-
-      console.log('🔐 Authenticating admin...')
-      console.log('📧 Email:', authData.email)
-      console.log('🏫 School Code:', authData.schoolCode)
-
-      // Find the school in the diocese structure
-      const school = await findSchoolByStudentAccessCode(authData.schoolCode.toUpperCase())
-      if (!school) {
-        setError('School not found with that code')
-        setLoading(false)
-        return
-      }
-
-      // Verify this email is the admin for this school
-      if (school.adminEmail !== authData.email) {
-        setError('Email does not match the admin for this school')
-        setLoading(false)
-        return
-      }
-
-      // Verify password by attempting to sign in
-      try {
-        await authHelpers.signIn(authData.email, authData.password)
-        console.log('✅ Admin authenticated successfully')
-      } catch (error) {
-        setError('Incorrect password')
-        setLoading(false)
-        return
-      }
-
-      // Load the school data
-      setSchoolData({
-        id: school.id,
-        dioceseId: school.dioceseId,
-        name: school.name,
-        city: school.city,
-        state: school.state,
-        email: school.email,
-        adminEmail: school.adminEmail,
-        adminPassword: authData.password,
-        studentAccessCode: school.studentAccessCode,
-        parentQuizCode: school.parentQuizCode,
-        selectedNominees: school.selectedNominees || nominees.map(n => n.id),
-        achievementTiers: school.achievementTiers || [],
-        submissionOptions: school.submissionOptions || {
-          quiz: true,
-          presentToTeacher: false,
-          submitReview: false,
-          createStoryboard: false,
-          bookReport: false,
-          discussWithLibrarian: false,
-          actOutScene: false
-        }
-      })
-
-      setAuthData(prev => ({ ...prev, isAuthenticated: true }))
-      setCurrentStep(2) // Skip to step 2 since basic info is already loaded
-
-    } catch (error) {
-      console.error('Admin auth error:', error)
-      setError('Authentication failed. Please check your credentials.')
-    }
-
-    setLoading(false)
-  }
-
-  // Helper function to find school by student access code
-  const findSchoolByStudentAccessCode = async (studentAccessCode) => {
-    try {
-      // Search all dioceses for schools with this student access code
-      const diocesesRef = collection(db, 'dioceses')
-      const diocesesSnapshot = await getDocs(diocesesRef)
-      
-      for (const dioceseDoc of diocesesSnapshot.docs) {
-        const dioceseId = dioceseDoc.id
-        const schoolsRef = collection(db, `dioceses/${dioceseId}/schools`)
-        const schoolsSnapshot = await getDocs(schoolsRef)
-        
-        for (const schoolDoc of schoolsSnapshot.docs) {
-          const schoolDataDoc = schoolDoc.data()
-          if (schoolDataDoc.studentAccessCode === studentAccessCode) {
-            return {
-              id: schoolDoc.id,
-              dioceseId: dioceseId,
-              ...schoolDataDoc
-            }
-          }
-        }
-      }
-      
-      return null
-    } catch (error) {
-      console.error('Error finding school:', error)
-      return null
-    }
-  }
-
-  const handleNext = () => {
-    if (currentStep < 6) setCurrentStep(currentStep + 1)
-  }
-
-  const handleBack = () => {
-    if (currentStep > 1) setCurrentStep(currentStep - 1)
-  }
-
-  const handleSubmit = async () => {
-    setLoading(true)
-    try {
-      // Update the school in the diocese structure with the onboarding data
-      const schoolRef = doc(db, `dioceses/${schoolData.dioceseId}/schools`, schoolData.id)
-      
-      await updateDoc(schoolRef, {
-        selectedNominees: schoolData.selectedNominees,
-        achievementTiers: schoolData.achievementTiers,
-        submissionOptions: schoolData.submissionOptions,
-        onboardingCompleted: true,
-        onboardingCompletedAt: new Date()
-      })
-
-      console.log('✅ School onboarding completed and saved to diocese structure')
-
-      // Navigate to admin dashboard
-      router.push('/admin/school-dashboard')
-
-    } catch (error) {
-      console.error('Error completing onboarding:', error)
-      setError('Error saving configuration. Please try again.')
-    }
-    setLoading(false)
-  }
-
+  // Toggle nominee selection
   const toggleNominee = (nomineeId) => {
-    setSchoolData(prev => ({
+    setOnboardingData(prev => ({
       ...prev,
       selectedNominees: prev.selectedNominees.includes(nomineeId)
         ? prev.selectedNominees.filter(id => id !== nomineeId)
@@ -256,8 +346,9 @@ export default function SchoolAdminOnboarding() {
     }))
   }
 
+  // Update achievement tier
   const updateAchievementTier = (index, field, value) => {
-    setSchoolData(prev => ({
+    setOnboardingData(prev => ({
       ...prev,
       achievementTiers: prev.achievementTiers.map((tier, i) => 
         i === index ? { ...tier, [field]: value } : tier
@@ -265,17 +356,112 @@ export default function SchoolAdminOnboarding() {
     }))
   }
 
+  // FIXED: Complete onboarding - Use only stored data, no hook calls in event handler
+  const handleCompleteOnboarding = async () => {
+    setLoading(true)
+    setError('')
+    
+    try {
+      // FIXED: Use only createdProfile data - no hook calls in event handler
+      if (!createdUser || !createdProfile) {
+        setError('Session expired. Please refresh and try again.')
+        setLoading(false)
+        return
+      }
+
+      // Find the teacher document to update using stored profile data
+      const teachersRef = collection(db, `entities/${createdProfile.dioceseId}/schools/${createdProfile.schoolId}/teachers`)
+      const teacherQuery = query(teachersRef, where('uid', '==', createdUser.uid))
+      const teacherSnapshot = await getDocs(teacherQuery)
+      
+      if (teacherSnapshot.empty) {
+        setError('Teacher profile not found. Please contact support.')
+        setLoading(false)
+        return
+      }
+
+      const teacherDoc = teacherSnapshot.docs[0]
+      
+      // Save program configuration to teacher document
+      await updateDoc(teacherDoc.ref, {
+        selectedNominees: onboardingData.selectedNominees,
+        achievementTiers: onboardingData.achievementTiers,
+        submissionOptions: onboardingData.submissionOptions,
+        onboardingCompleted: true,
+        onboardingCompletedAt: new Date(),
+        lastModified: new Date()
+      })
+
+      // Redirect immediately to dashboard - no splash page needed
+      window.location.href = '/admin/school-dashboard'
+
+    } catch (error) {
+      console.error('Error completing onboarding:', error)
+      setError(`Error saving configuration: ${error.message}. Please try again.`)
+      setLoading(false)
+    }
+  }
+
+  // Navigation
+  const handleNext = () => {
+    if (currentStep < 5) setCurrentStep(currentStep + 1)
+  }
+
+  const handleBack = () => {
+    if (currentStep > 0) setCurrentStep(currentStep - 1)
+  }
+
+  // Show loading during auth initialization
+  if (authLoading || !initialized) {
+    return (
+      <>
+        <Head>
+          <title>Teacher Setup - Lux Libris</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+        </Head>
+        <div style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'linear-gradient(135deg, #FFFCF5 0%, #C3E0DE 50%, #A1E5DB 100%)'
+        }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{
+              width: '3rem',
+              height: '3rem',
+              border: '4px solid #C3E0DE',
+              borderTop: '4px solid #223848',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite',
+              margin: '0 auto 1rem'
+            }}></div>
+            <p style={{ color: '#223848', fontSize: '1.1rem' }}>
+              Loading...
+            </p>
+          </div>
+        </div>
+        <style jsx>{`
+          @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
+      </>
+    )
+  }
+
   return (
     <>
       <Head>
-        <title>School Admin Setup - Lux Libris</title>
+        <title>Teacher Setup - Lux Libris</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
       
       <div style={{
         minHeight: '100vh',
         background: 'linear-gradient(135deg, #FFFCF5 0%, #C3E0DE 50%, #A1E5DB 100%)',
-        fontFamily: 'system-ui, -apple-system, sans-serif'
+        fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
       }}>
         
         {/* Header */}
@@ -304,62 +490,70 @@ export default function SchoolAdminOnboarding() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '1.5rem'
+                fontSize: '1.5rem',
+                flexShrink: 0
               }}>
-                🏫
+                👩‍🏫
               </div>
-              <div>
+              <div style={{ minWidth: 0 }}>
                 <h1 style={{
                   fontSize: 'clamp(1.25rem, 4vw, 1.5rem)',
-                  fontWeight: 'bold',
+                  fontWeight: '300',
                   color: '#223848',
                   margin: 0,
-                  fontFamily: 'Georgia, serif'
+                  fontFamily: 'Didot, Georgia, serif',
+                  letterSpacing: '1.2px'
                 }}>
-                  School Admin Setup
+                  {currentStep === 0 ? 'Join Your School' :
+                   currentStep === 1 ? 'Create Account' :
+                   currentStep === 2 ? '🎉 Welcome!' :
+                   currentStep === 3 ? 'Select Books' :
+                   currentStep === 4 ? 'Achievement Rewards' :
+                   currentStep === 5 ? 'Completion Options' :
+                   'Review & Launch'}
                 </h1>
                 <p style={{
                   color: '#A1E5DB',
                   fontSize: 'clamp(0.75rem, 3vw, 0.875rem)',
-                  margin: 0
+                  margin: 0,
+                  fontFamily: 'Avenir',
+                  letterSpacing: '1.2px'
                 }}>
-                  Configure your Lux Libris reading program
+                  Set up your reading program
                 </p>
               </div>
             </div>
             
             {/* Progress Indicator */}
-            {authData.isAuthenticated && (
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '0.5rem',
-                flexWrap: 'wrap',
-                justifyContent: 'center'
-              }}>
-                {[1, 2, 3, 4, 5, 6].map(step => (
-                  <div
-                    key={step}
-                    style={{
-                      width: 'clamp(1.5rem, 5vw, 2rem)',
-                      height: 'clamp(1.5rem, 5vw, 2rem)',
-                      borderRadius: '50%',
-                      background: currentStep >= step 
-                        ? 'linear-gradient(135deg, #C3E0DE, #A1E5DB)' 
-                        : '#e5e7eb',
-                      color: currentStep >= step ? 'white' : '#6b7280',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 'clamp(0.75rem, 3vw, 0.875rem)',
-                      fontWeight: 'bold'
-                    }}
-                  >
-                    {step}
-                  </div>
-                ))}
-              </div>
-            )}
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.5rem',
+              flexWrap: 'wrap',
+              justifyContent: 'center'
+            }}>
+              {[0, 1, 2, 3, 4, 5].map(step => (
+                <div
+                  key={step}
+                  style={{
+                    width: 'clamp(1.5rem, 5vw, 2rem)',
+                    height: 'clamp(1.5rem, 5vw, 2rem)',
+                    borderRadius: '50%',
+                    background: currentStep >= step 
+                      ? 'linear-gradient(135deg, #C3E0DE, #A1E5DB)' 
+                      : '#e5e7eb',
+                    color: currentStep >= step ? 'white' : '#6b7280',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 'clamp(0.75rem, 3vw, 0.875rem)',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  {step + 1}
+                </div>
+              ))}
+            </div>
           </div>
         </header>
 
@@ -379,10 +573,10 @@ export default function SchoolAdminOnboarding() {
             overflow: 'hidden'
           }}>
             
-            {/* Step 1: Admin Authentication */}
-            {!authData.isAuthenticated && (
+            {/* STEP 0: Teacher Join Code */}
+            {currentStep === 0 && (
               <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 'clamp(2rem, 8vw, 4rem)', marginBottom: '1rem' }}>🔐</div>
+                <div style={{ fontSize: 'clamp(2rem, 8vw, 4rem)', marginBottom: '1rem' }}>🏫</div>
                 <h2 style={{
                   fontSize: 'clamp(1.5rem, 6vw, 2.5rem)',
                   fontWeight: 'bold',
@@ -390,7 +584,7 @@ export default function SchoolAdminOnboarding() {
                   marginBottom: '1rem',
                   fontFamily: 'Georgia, serif'
                 }}>
-                  Admin Authentication
+                  Join Your School
                 </h2>
                 <p style={{
                   fontSize: 'clamp(1rem, 4vw, 1.125rem)',
@@ -398,62 +592,10 @@ export default function SchoolAdminOnboarding() {
                   marginBottom: '2rem',
                   lineHeight: '1.6'
                 }}>
-                  Sign in with your admin credentials to configure your school&apos;s reading program.
+                  Enter the teacher join code provided by your school administrator.
                 </p>
                 
                 <div style={{ maxWidth: '400px', margin: '0 auto', textAlign: 'left' }}>
-                  <div style={{ marginBottom: '1rem' }}>
-                    <label style={{
-                      display: 'block',
-                      fontSize: '0.875rem',
-                      fontWeight: '600',
-                      color: '#374151',
-                      marginBottom: '0.5rem'
-                    }}>
-                      Admin Email
-                    </label>
-                    <input
-                      type="email"
-                      value={authData.email}
-                      onChange={(e) => setAuthData(prev => ({ ...prev, email: e.target.value }))}
-                      placeholder="admin@testschool.edu"
-                      style={{
-                        width: '100%',
-                        padding: '0.75rem',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '0.5rem',
-                        fontSize: '1rem',
-                        boxSizing: 'border-box'
-                      }}
-                    />
-                  </div>
-
-                  <div style={{ marginBottom: '1rem' }}>
-                    <label style={{
-                      display: 'block',
-                      fontSize: '0.875rem',
-                      fontWeight: '600',
-                      color: '#374151',
-                      marginBottom: '0.5rem'
-                    }}>
-                      Password
-                    </label>
-                    <input
-                      type="password"
-                      value={authData.password}
-                      onChange={(e) => setAuthData(prev => ({ ...prev, password: e.target.value }))}
-                      placeholder="Your chosen password"
-                      style={{
-                        width: '100%',
-                        padding: '0.75rem',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '0.5rem',
-                        fontSize: '1rem',
-                        boxSizing: 'border-box'
-                      }}
-                    />
-                  </div>
-
                   <div style={{ marginBottom: '1.5rem' }}>
                     <label style={{
                       display: 'block',
@@ -462,18 +604,21 @@ export default function SchoolAdminOnboarding() {
                       color: '#374151',
                       marginBottom: '0.5rem'
                     }}>
-                      School Code
+                      Teacher Join Code *
                     </label>
                     <input
                       type="text"
-                      value={authData.schoolCode}
-                      onChange={(e) => setAuthData(prev => ({ ...prev, schoolCode: e.target.value.toUpperCase() }))}
-                      placeholder="DEMO-STUDENT-2025"
+                      value={accountData.teacherJoinCode}
+                      onChange={(e) => setAccountData(prev => ({ 
+                        ...prev, 
+                        teacherJoinCode: e.target.value.toUpperCase() 
+                      }))}
+                      placeholder="TXTEST-DEMO-TEACHER-2025"
                       style={{
                         width: '100%',
-                        padding: '0.75rem',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '0.5rem',
+                        padding: '0.875rem',
+                        border: '2px solid #e5e7eb',
+                        borderRadius: '0.75rem',
                         fontSize: '1rem',
                         boxSizing: 'border-box',
                         textAlign: 'center',
@@ -481,379 +626,392 @@ export default function SchoolAdminOnboarding() {
                         letterSpacing: '0.1em'
                       }}
                     />
-                    <p style={{
-                      fontSize: '0.75rem',
-                      color: '#6b7280',
-                      margin: '0.5rem 0 0 0',
-                      textAlign: 'center'
-                    }}>
-                      Your school&apos;s student access code
-                    </p>
                   </div>
 
-                  <div style={{
-                    background: 'rgba(168, 85, 247, 0.1)',
-                    border: '1px solid rgba(168, 85, 247, 0.3)',
-                    borderRadius: '0.5rem',
-                    padding: '1rem',
-                    marginBottom: '1.5rem'
+                  <div style={{ 
+                    textAlign: 'center',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    width: '100%'
                   }}>
-                    <p style={{
-                      color: '#223848',
-                      fontSize: '0.875rem',
-                      margin: 0,
-                      lineHeight: '1.4'
-                    }}>
-                      👑 <strong>Admin Access:</strong> These credentials were provided when your school was created via God Mode.
-                    </p>
-                  </div>
-
-                  <div style={{ textAlign: 'center' }}>
-                    <ActionButton onClick={handleAdminAuth} primary loading={loading}>
-                      {loading ? 'Authenticating...' : 'Sign In & Configure'}
+                    <ActionButton onClick={handleVerifyJoinCode} primary loading={loading}>
+                      {loading ? 'Verifying...' : 'Verify Join Code'}
                     </ActionButton>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Authenticated Steps */}
-            {authData.isAuthenticated && (
-              <>
-                {/* Step 2: School Information Display */}
-                {currentStep === 2 && (
-                  <div>
-                    <h2 style={{
-                      fontSize: 'clamp(1.5rem, 5vw, 2rem)',
-                      fontWeight: 'bold',
-                      color: '#223848',
-                      marginBottom: '1rem',
-                      fontFamily: 'Georgia, serif'
-                    }}>
-                      ✅ School Information Confirmed
-                    </h2>
-                    <p style={{ 
-                      color: '#A1E5DB', 
-                      marginBottom: '2rem',
-                      fontSize: 'clamp(0.875rem, 3vw, 1rem)'
-                    }}>
-                      Your school information has been loaded from the diocese configuration.
-                    </p>
-                    
-                    <div style={{
-                      background: 'linear-gradient(135deg, #FFFCF5, #C3E0DE)',
-                      borderRadius: '0.75rem',
-                      padding: '1.5rem',
-                      marginBottom: '2rem',
-                      border: '1px solid rgba(195, 224, 222, 0.4)'
-                    }}>
-                      <h3 style={{ 
-                        color: '#223848', 
-                        marginBottom: '1rem', 
-                        fontFamily: 'Georgia, serif',
-                        fontSize: 'clamp(1rem, 4vw, 1.25rem)'
-                      }}>
-                        🏫 Your School Details:
-                      </h3>
-                      <div style={{ fontSize: '0.875rem', color: '#374151', lineHeight: '1.6' }}>
-                        <p style={{ margin: '0 0 0.5rem 0' }}>
-                          <strong>School:</strong> {schoolData.name}
-                        </p>
-                        <p style={{ margin: '0 0 0.5rem 0' }}>
-                          <strong>Location:</strong> {schoolData.city}, {schoolData.state}
-                        </p>
-                        <p style={{ margin: '0 0 0.5rem 0' }}>
-                          <strong>Student Access Code:</strong> {schoolData.studentAccessCode}
-                        </p>
-                        <p style={{ margin: 0 }}>
-                          <strong>Parent Quiz Code:</strong> {schoolData.parentQuizCode}
-                        </p>
-                      </div>
-                    </div>
+            {/* STEP 1: Account Creation */}
+            {currentStep === 1 && schoolData && (
+              <div style={{ textAlign: 'center' }}>
+                <h2 style={{
+                  fontSize: 'clamp(1.5rem, 5vw, 2rem)',
+                  fontWeight: '300',
+                  color: '#223848',
+                  marginBottom: '1rem',
+                  fontFamily: 'Didot, Georgia, serif',
+                  letterSpacing: '1.2px'
+                }}>
+                  Create Your Teacher Account
+                </h2>
 
-                    <div style={{
-                      background: 'rgba(16, 185, 129, 0.1)',
-                      border: '1px solid rgba(16, 185, 129, 0.3)',
-                      borderRadius: '0.5rem',
-                      padding: '1rem'
-                    }}>
-                      <p style={{
+                {/* School confirmation */}
+                <div style={{
+                  background: 'linear-gradient(135deg, #FFFCF5, #C3E0DE)',
+                  borderRadius: '0.75rem',
+                  padding: '1.5rem',
+                  marginBottom: '2rem',
+                  border: '1px solid rgba(195, 224, 222, 0.4)',
+                  textAlign: 'center'
+                }}>
+                  <h3 style={{ 
+                    color: '#223848', 
+                    marginBottom: '0.5rem', 
+                    fontFamily: 'Didot, Georgia, serif',
+                    fontSize: 'clamp(1rem, 4vw, 1.25rem)',
+                    letterSpacing: '1.2px'
+                  }}>
+                    ✅ Joining {schoolData.name}
+                  </h3>
+                  <p style={{ color: '#374151', margin: 0 }}>
+                    {schoolData.city}, {schoolData.state}
+                  </p>
+                </div>
+
+                {/* Account form */}
+                <div style={{ 
+                  maxWidth: '500px', 
+                  margin: '0 auto',
+                  textAlign: 'left'
+                }}>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '1rem',
+                    marginBottom: '1rem'
+                  }}>
+                    <div>
+                      <label style={{
+                        display: 'block',
                         fontSize: '0.875rem',
-                        color: '#065f46',
-                        margin: 0,
-                        lineHeight: '1.4'
+                        fontWeight: '600',
+                        color: '#374151',
+                        marginBottom: '0.5rem'
                       }}>
-                        <strong>🎯 Next:</strong> Configure your book selection and achievement rewards for your students!
-                      </p>
+                        First Name *
+                      </label>
+                      <input
+                        type="text"
+                        value={accountData.firstName}
+                        onChange={(e) => setAccountData(prev => ({ 
+                          ...prev, 
+                          firstName: e.target.value 
+                        }))}
+                        placeholder="Jane"
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '0.5rem',
+                          fontSize: '1rem',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{
+                        display: 'block',
+                        fontSize: '0.875rem',
+                        fontWeight: '600',
+                        color: '#374151',
+                        marginBottom: '0.5rem'
+                      }}>
+                        Last Name *
+                      </label>
+                      <input
+                        type="text"
+                        value={accountData.lastName}
+                        onChange={(e) => setAccountData(prev => ({ 
+                          ...prev, 
+                          lastName: e.target.value 
+                        }))}
+                        placeholder="Smith"
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '0.5rem',
+                          fontSize: '1rem',
+                          boxSizing: 'border-box'
+                        }}
+                      />
                     </div>
                   </div>
-                )}
 
-                {/* Step 3: Nominee Selection */}
-                {currentStep === 3 && (
-                  <div>
-                    <h2 style={{
-                      fontSize: 'clamp(1.5rem, 5vw, 2rem)',
-                      fontWeight: 'bold',
-                      color: '#223848',
-                      marginBottom: '1rem',
-                      fontFamily: 'Georgia, serif'
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{
+                      display: 'block',
+                      fontSize: '0.875rem',
+                      fontWeight: '600',
+                      color: '#374151',
+                      marginBottom: '0.5rem'
                     }}>
-                      📚 Select Your Nominees
-                    </h2>
-                    <p style={{ 
-                      color: '#ADD4EA', 
-                      marginBottom: '1rem',
-                      fontSize: 'clamp(0.875rem, 3vw, 1rem)'
-                    }}>
-                      Choose which books from the 2025-26 master list your students can read.
-                    </p>
-                    
-                    {/* Dynamic Achievement Preview */}
-                    <div style={{
-                      background: 'linear-gradient(135deg, #FFFCF5, #ADD4EA)',
-                      borderRadius: '0.75rem',
-                      padding: '1rem',
-                      marginBottom: '1rem',
-                      border: '1px solid #ADD4EA'
-                    }}>
-                      <p style={{ 
-                        color: '#223848', 
-                        fontSize: 'clamp(0.875rem, 3vw, 1rem)', 
-                        margin: '0 0 0.5rem 0',
-                        fontWeight: '600'
+                      Email Address *
+                    </label>
+                    <input
+                      type="email"
+                      value={accountData.email}
+                      onChange={(e) => setAccountData(prev => ({ 
+                        ...prev, 
+                        email: e.target.value 
+                      }))}
+                      placeholder="jane.smith@school.edu"
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '0.5rem',
+                        fontSize: '1rem',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '1rem',
+                    marginBottom: '1.5rem'
+                  }}>
+                    <div>
+                      <label style={{
+                        display: 'block',
+                        fontSize: '0.875rem',
+                        fontWeight: '600',
+                        color: '#374151',
+                        marginBottom: '0.5rem'
                       }}>
-                        📊 Selected: {schoolData.selectedNominees.length} of {nominees.length} books
-                      </p>
-                      {schoolData.selectedNominees.length > 0 && (
-                        <p style={{ 
-                          color: '#223848', 
-                          fontSize: 'clamp(0.75rem, 2.5vw, 0.875rem)', 
-                          margin: 0,
-                          fontStyle: 'italic'
-                        }}>
-                          🎯 Achievement tiers will be: {
-                            calculateAchievementTiers(schoolData.selectedNominees.length)
-                              .filter(tier => tier.type !== 'lifetime')
-                              .map(tier => tier.books)
-                              .join(', ')
-                          } books
-                        </p>
-                      )}
+                        Password *
+                      </label>
+                      <input
+                        type="password"
+                        value={accountData.password}
+                        onChange={(e) => setAccountData(prev => ({ 
+                          ...prev, 
+                          password: e.target.value 
+                        }))}
+                        placeholder="Create password"
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '0.5rem',
+                          fontSize: '1rem',
+                          boxSizing: 'border-box'
+                        }}
+                      />
                     </div>
-                    
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))',
-                      gap: '0.75rem',
-                      maxHeight: '50vh',
-                      overflowY: 'auto',
-                      padding: '1rem',
-                      background: '#f9fafb',
-                      borderRadius: '0.5rem'
-                    }}>
-                      {nominees.map(book => (
-                        <BookCard 
-                          key={book.id}
-                          book={book}
-                          isSelected={schoolData.selectedNominees.includes(book.id)}
-                          onToggle={() => toggleNominee(book.id)}
-                        />
-                      ))}
+                    <div>
+                      <label style={{
+                        display: 'block',
+                        fontSize: '0.875rem',
+                        fontWeight: '600',
+                        color: '#374151',
+                        marginBottom: '0.5rem'
+                      }}>
+                        Confirm Password *
+                      </label>
+                      <input
+                        type="password"
+                        value={accountData.confirmPassword}
+                        onChange={(e) => setAccountData(prev => ({ 
+                          ...prev, 
+                          confirmPassword: e.target.value 
+                        }))}
+                        placeholder="Confirm password"
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '0.5rem',
+                          fontSize: '1rem',
+                          boxSizing: 'border-box'
+                        }}
+                      />
                     </div>
                   </div>
-                )}
 
-                {/* Steps 4-6: Keep existing implementation */}
-                {currentStep === 4 && (
-                  <div>
-                    <h2 style={{
-                      fontSize: 'clamp(1.5rem, 5vw, 2rem)',
-                      fontWeight: 'bold',
-                      color: '#223848',
-                      marginBottom: '1rem',
-                      fontFamily: 'Georgia, serif'
-                    }}>
-                      🏆 Dynamic Achievement Rewards
-                    </h2>
-                    <p style={{ 
-                      color: '#ADD4EA', 
-                      marginBottom: '1rem',
-                      fontSize: 'clamp(0.875rem, 3vw, 1rem)'
-                    }}>
-                      Achievement tiers automatically calculated based on your {schoolData.selectedNominees.length} selected books.
-                    </p>
-                    
-                    <div style={{ marginBottom: '2rem' }}>
-                      {schoolData.achievementTiers.map((tier, index) => (
-                        <AchievementTierCard 
-                          key={index}
-                          tier={tier}
-                          index={index}
-                          onUpdate={(field, value) => updateAchievementTier(index, field, value)}
-                        />
-                      ))}
-                    </div>
-                    
+                  <div style={{ 
+                    textAlign: 'center',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    width: '100%'
+                  }}>
+                    <ActionButton onClick={handleCreateAccount} primary loading={loading}>
+                      {loading ? 'Creating Account...' : 'Create Teacher Account'}
+                    </ActionButton>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 2: Welcome & Codes Display */}
+            {currentStep === 2 && (
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 'clamp(2rem, 8vw, 4rem)', marginBottom: '1rem' }}>🎉</div>
+                <h2 style={{
+                  fontSize: 'clamp(1.5rem, 5vw, 2rem)',
+                  fontWeight: '300',
+                  color: '#223848',
+                  marginBottom: '1rem',
+                  fontFamily: 'Didot, Georgia, serif',
+                  letterSpacing: '1.2px'
+                }}>
+                  Welcome, {accountData.firstName || createdProfile?.firstName}!
+                </h2>
+                <p style={{ 
+                  color: '#ADD4EA', 
+                  marginBottom: '2rem',
+                  fontSize: 'clamp(0.875rem, 3vw, 1rem)',
+                  fontFamily: 'Avenir'
+                }}>
+                  Your account has been created! Here are your unique student and parent codes.
+                </p>
+                
+                {/* Display generated codes */}
+                <div style={{
+                  background: 'linear-gradient(135deg, #a855f7, #ec4899)',
+                  borderRadius: '0.75rem',
+                  padding: '1.5rem',
+                  marginBottom: '2rem',
+                  color: 'white',
+                  textAlign: 'center'
+                }}>
+                  <h3 style={{ 
+                    color: 'white', 
+                    marginBottom: '1rem', 
+                    fontFamily: 'Avenir',
+                    fontSize: 'clamp(1rem, 4vw, 1.125rem)',
+                    letterSpacing: '1.2px'
+                  }}>
+                    🔑 Your Student & Parent Codes
+                  </h3>
+                  
+                  <div style={{ 
+                    display: 'grid', 
+                    gap: '1rem',
+                    maxWidth: '600px',
+                    margin: '0 auto'
+                  }}>
                     <div style={{
-                      background: 'linear-gradient(135deg, #FFFCF5, #ADD4EA)',
-                      borderRadius: '0.75rem',
+                      background: 'rgba(255, 255, 255, 0.2)',
+                      borderRadius: '0.5rem',
                       padding: '1rem',
-                      border: '1px solid #ADD4EA'
+                      textAlign: 'center'
                     }}>
-                      <h4 style={{ 
-                        color: '#223848', 
-                        marginBottom: '0.5rem',
-                        fontSize: 'clamp(1rem, 3vw, 1.125rem)'
+                      <div style={{ 
+                        fontSize: '0.875rem', 
+                        marginBottom: '0.5rem', 
+                        fontFamily: 'Avenir' 
                       }}>
-                        🔐 Access Codes (Auto-Generated)
-                      </h4>
-                      <div style={{ fontSize: '0.875rem', color: '#374151', lineHeight: '1.6' }}>
-                        <p style={{ margin: '0 0 0.5rem 0' }}>
-                          <strong>Student Access Code:</strong> {schoolData.studentAccessCode}
-                        </p>
-                        <p style={{ margin: 0 }}>
-                          <strong>Parent Quiz Code:</strong> {schoolData.parentQuizCode}
-                        </p>
+                        Student Join Code:
+                      </div>
+                      <div style={{
+                        fontSize: '1.125rem',
+                        fontWeight: 'bold',
+                        letterSpacing: '0.1em',
+                        fontFamily: 'Avenir',
+                        wordBreak: 'break-all'
+                      }}>
+                        {teacherCodes.studentCode || 'GENERATING...'}
+                      </div>
+                    </div>
+
+                    <div style={{
+                      background: 'rgba(255, 255, 255, 0.2)',
+                      borderRadius: '0.5rem',
+                      padding: '1rem',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{ 
+                        fontSize: '0.875rem', 
+                        marginBottom: '0.5rem', 
+                        fontFamily: 'Avenir' 
+                      }}>
+                        Parent Quiz Code:
+                      </div>
+                      <div style={{
+                        fontSize: '1.125rem',
+                        fontWeight: 'bold',
+                        letterSpacing: '0.1em',
+                        fontFamily: 'Avenir',
+                        wordBreak: 'break-all'
+                      }}>
+                        {teacherCodes.parentCode || 'GENERATING...'}
                       </div>
                     </div>
                   </div>
-                )}
+                </div>
 
-                {/* Step 5: Submission Options */}
-                {currentStep === 5 && (
-                  <div>
-                    <h2 style={{
-                      fontSize: 'clamp(1.5rem, 5vw, 2rem)',
-                      fontWeight: 'bold',
-                      color: '#223848',
-                      marginBottom: '1rem',
-                      fontFamily: 'Georgia, serif'
-                    }}>
-                      📝 Book Completion Options
-                    </h2>
-                    <p style={{ 
-                      color: '#ADD4EA', 
-                      marginBottom: '2rem',
-                      fontSize: 'clamp(0.875rem, 3vw, 1rem)'
-                    }}>
-                      When students finish a book, what options should they have? Quizzes are always available.
-                    </p>
-                    
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-                      gap: '1rem',
-                      marginBottom: '2rem'
-                    }}>
-                      {[
-                        { key: 'quiz', label: '📝 Take Quiz', description: 'Parent code required, auto-graded', disabled: true },
-                        { key: 'presentToTeacher', label: '🗣️ Present to Teacher', description: 'Oral presentation or discussion' },
-                        { key: 'submitReview', label: '✍️ Submit Written Review', description: 'Written book review or summary' },
-                        { key: 'createStoryboard', label: '🎨 Create Storyboard', description: 'Visual art or comic strip' },
-                        { key: 'bookReport', label: '📚 Traditional Book Report', description: 'Formal written report' },
-                        { key: 'discussWithLibrarian', label: '💬 Discussion with Librarian', description: 'One-on-one book discussion' },
-                        { key: 'actOutScene', label: '🎭 Act Out Scene', description: 'Performance or dramatic reading' }
-                      ].map(option => (
-                        <SubmissionOptionCard 
-                          key={option.key}
-                          option={option}
-                          isChecked={schoolData.submissionOptions[option.key]}
-                          onChange={(checked) => setSchoolData(prev => ({
-                            ...prev,
-                            submissionOptions: {
-                              ...prev.submissionOptions,
-                              [option.key]: checked
-                            }
-                          }))}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
+                <div style={{
+                  background: 'rgba(16, 185, 129, 0.1)',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  borderRadius: '0.5rem',
+                  padding: '1rem',
+                  textAlign: 'center'
+                }}>
+                  <p style={{
+                    fontSize: '0.875rem',
+                    color: '#065f46',
+                    margin: 0,
+                    lineHeight: '1.4',
+                    fontFamily: 'Avenir'
+                  }}>
+                    <strong>🎯 Next:</strong> Let's configure your book selection and achievement rewards!
+                  </p>
+                </div>
+              </div>
+            )}
 
-                {/* Step 6: Review */}
-                {currentStep === 6 && (
-                  <div>
-                    <h2 style={{
-                      fontSize: 'clamp(1.5rem, 5vw, 2rem)',
-                      fontWeight: 'bold',
-                      color: '#223848',
-                      marginBottom: '1rem',
-                      fontFamily: 'Georgia, serif'
-                    }}>
-                      ✅ Review & Launch
-                    </h2>
-                    <p style={{ 
-                      color: '#ADD4EA', 
-                      marginBottom: '2rem',
-                      fontSize: 'clamp(0.875rem, 3vw, 1rem)'
-                    }}>
-                      Everything looks great! Review your configuration and launch your program.
-                    </p>
-                    
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-                      gap: '1.5rem'
-                    }}>
-                      <ReviewCard
-                        title="🏫 School Details"
-                        items={[
-                          `Name: ${schoolData.name}`,
-                          `Location: ${schoolData.city}, ${schoolData.state}`,
-                          `Student Code: ${schoolData.studentAccessCode}`,
-                          `Parent Code: ${schoolData.parentQuizCode}`
-                        ]}
-                      />
-                      <ReviewCard
-                        title="📚 Book Selection"
-                        items={[
-                          `${schoolData.selectedNominees.length} of ${nominees.length} nominees selected`,
-                          'Students can read any selected book',
-                          'Progress tracked automatically'
-                        ]}
-                      />
-                      <ReviewCard
-                        title="🏆 Achievement Tiers"
-                        items={[
-                          ...schoolData.achievementTiers
-                            .filter(tier => tier.type !== 'lifetime')
-                            .map(tier => `${tier.books} books: ${tier.reward}`),
-                          `🌟 Lifetime (${schoolData.achievementTiers.find(t => t.type === 'lifetime')?.books} books): Jesus Unlock!`
-                        ]}
-                      />
-                    </div>
-                    
-                    <div style={{
-                      background: 'linear-gradient(135deg, #FFFCF5, #C3E0DE)',
-                      borderRadius: '0.75rem',
-                      padding: '1.5rem',
-                      marginTop: '2rem',
-                      textAlign: 'center',
-                      border: '1px solid #C3E0DE'
-                    }}>
-                      <h3 style={{ 
-                        color: '#223848', 
-                        marginBottom: '1rem',
-                        fontSize: 'clamp(1.25rem, 4vw, 1.5rem)'
-                      }}>
-                        🎉 Ready to Launch {schoolData.name}?
-                      </h3>
-                      <p style={{ 
-                        color: '#223848', 
-                        marginBottom: '1.5rem',
-                        fontSize: 'clamp(0.875rem, 3vw, 1rem)'
-                      }}>
-                        Your students can now join using code: <strong>{schoolData.studentAccessCode}</strong>
-                      </p>
-                      <ActionButton onClick={handleSubmit} primary loading={loading}>
-                        {loading ? '🚀 Saving Configuration...' : '🎊 Launch Program!'}
-                      </ActionButton>
-                    </div>
-                  </div>
-                )}
-              </>
+            {/* STEP 3: Book Selection */}
+            {currentStep === 3 && (
+              <NomineeSelectionStep 
+                nominees={nominees}
+                selectedNominees={onboardingData.selectedNominees}
+                onToggleNominee={toggleNominee}
+                calculateAchievementTiers={calculateAchievementTiers}
+              />
+            )}
+
+            {/* STEP 4: Achievement Tiers */}
+            {currentStep === 4 && (
+              <AchievementTiersStep 
+                achievementTiers={onboardingData.achievementTiers}
+                selectedCount={onboardingData.selectedNominees.length}
+                onUpdateTier={updateAchievementTier}
+                studentJoinCode={teacherCodes.studentCode}
+                parentTestCode={teacherCodes.parentCode}
+              />
+            )}
+
+            {/* STEP 5: Submission Options */}
+            {currentStep === 5 && (
+              <SubmissionOptionsStep 
+                submissionOptions={onboardingData.submissionOptions}
+                onUpdateOption={(key, value) => 
+                  setOnboardingData(prev => ({
+                    ...prev,
+                    submissionOptions: { ...prev.submissionOptions, [key]: value }
+                  }))
+                }
+                onComplete={handleCompleteOnboarding}
+                loading={loading}
+                schoolName={schoolData?.name}
+                teacherName={`${accountData.firstName || createdProfile?.firstName} ${accountData.lastName || createdProfile?.lastName}`}
+              />
             )}
 
             {/* Error Message */}
@@ -868,52 +1026,321 @@ export default function SchoolAdminOnboarding() {
                 <p style={{
                   color: '#dc2626',
                   fontSize: '0.875rem',
-                  margin: 0
+                  margin: 0,
+                  fontFamily: 'Avenir'
                 }}>
                   {error}
                 </p>
               </div>
             )}
 
-            {/* Navigation - Only show for authenticated users */}
-            {authData.isAuthenticated && (
+            {/* Navigation */}
+            {currentStep > 0 && currentStep < 5 && (
               <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
+                alignItems: 'center',
                 marginTop: '2rem',
                 paddingTop: '1.5rem',
                 borderTop: '1px solid #e5e7eb',
                 gap: '1rem',
                 flexWrap: 'wrap'
               }}>
-                <ActionButton 
-                  onClick={handleBack} 
-                  disabled={currentStep === 2}
-                  secondary
-                >
-                  ← Back
-                </ActionButton>
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'flex-start',
+                  alignItems: 'center'
+                }}>
+                  <ActionButton
+                    onClick={handleBack}
+                    disabled={currentStep === 0}
+                    secondary
+                  >
+                    ← Back
+                  </ActionButton>
+                </div>
                 
-                {currentStep < 6 && (
-                  <ActionButton 
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'flex-end',
+                  alignItems: 'center'
+                }}>
+                  <ActionButton
                     onClick={handleNext}
-                    disabled={
-                      (currentStep === 3 && schoolData.selectedNominees.length === 0)
-                    }
+                    disabled={currentStep === 3 && onboardingData.selectedNominees.length === 0}
                     primary
                   >
                     Continue →
                   </ActionButton>
-                )}
+                </div>
               </div>
             )}
           </div>
         </div>
       </div>
+
+      <style jsx>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </>
   )
 }
 
+// Supporting Components (same as before)
+function NomineeSelectionStep({ nominees, selectedNominees, onToggleNominee, calculateAchievementTiers }) {
+  return (
+    <div>
+      <h2 style={{
+        fontSize: 'clamp(1.5rem, 5vw, 2rem)',
+        fontWeight: 'bold',
+        color: '#223848',
+        marginBottom: '1rem',
+        fontFamily: 'Georgia, serif'
+      }}>
+        📚 Select Your Nominees
+      </h2>
+      <p style={{ 
+        color: '#ADD4EA', 
+        marginBottom: '1rem',
+        fontSize: 'clamp(0.875rem, 3vw, 1rem)'
+      }}>
+        Choose which books from the 2025-26 master list your students can read.
+      </p>
+      
+      {/* Dynamic Achievement Preview */}
+      <div style={{
+        background: 'linear-gradient(135deg, #FFFCF5, #ADD4EA)',
+        borderRadius: '0.75rem',
+        padding: '1rem',
+        marginBottom: '1rem',
+        border: '1px solid #ADD4EA'
+      }}>
+        <p style={{ 
+          color: '#223848', 
+          fontSize: 'clamp(0.875rem, 3vw, 1rem)', 
+          margin: '0 0 0.5rem 0',
+          fontWeight: '600'
+        }}>
+          📊 Selected: {selectedNominees.length} of {nominees.length} books
+        </p>
+        {selectedNominees.length > 0 && (
+          <p style={{ 
+            color: '#223848', 
+            fontSize: 'clamp(0.75rem, 2.5vw, 0.875rem)', 
+            margin: 0,
+            fontStyle: 'italic'
+          }}>
+            🎯 Achievement tiers will be: {
+              calculateAchievementTiers(selectedNominees.length)
+                .filter(tier => tier.type !== 'lifetime')
+                .map(tier => tier.books)
+                .join(', ')
+            } books
+          </p>
+        )}
+      </div>
+      
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))',
+        gap: '0.75rem',
+        maxHeight: '50vh',
+        overflowY: 'auto',
+        padding: '1rem',
+        background: '#f9fafb',
+        borderRadius: '0.5rem'
+      }}>
+        {nominees.map(book => (
+          <BookCard 
+            key={book.id}
+            book={book}
+            isSelected={selectedNominees.includes(book.id)}
+            onToggle={() => onToggleNominee(book.id)}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function AchievementTiersStep({ achievementTiers, selectedCount, onUpdateTier, studentJoinCode, parentTestCode }) {
+  return (
+    <div>
+      <h2 style={{
+        fontSize: 'clamp(1.5rem, 5vw, 2rem)',
+        fontWeight: 'bold',
+        color: '#223848',
+        marginBottom: '1rem',
+        fontFamily: 'Georgia, serif'
+      }}>
+        🏆 Dynamic Achievement Rewards
+      </h2>
+      <p style={{ 
+        color: '#ADD4EA', 
+        marginBottom: '1rem',
+        fontSize: 'clamp(0.875rem, 3vw, 1rem)'
+      }}>
+        Achievement tiers automatically calculated based on your {selectedCount} selected books.
+      </p>
+      
+      <div style={{ marginBottom: '2rem' }}>
+        {achievementTiers.map((tier, index) => (
+          <AchievementTierCard 
+            key={index}
+            tier={tier}
+            index={index}
+            onUpdate={(field, value) => onUpdateTier(index, field, value)}
+          />
+        ))}
+      </div>
+      
+      <div style={{
+        background: 'linear-gradient(135deg, #FFFCF5, #ADD4EA)',
+        borderRadius: '0.75rem',
+        padding: '1rem',
+        border: '1px solid #ADD4EA',
+        textAlign: 'center'
+      }}>
+        <h4 style={{ 
+          color: '#223848', 
+          marginBottom: '0.5rem',
+          fontSize: 'clamp(1rem, 3vw, 1.125rem)'
+        }}>
+          🔐 Your Access Codes
+        </h4>
+        <div style={{ 
+          fontSize: '0.875rem', 
+          color: '#374151', 
+          lineHeight: '1.6',
+          maxWidth: '500px',
+          margin: '0 auto'
+        }}>
+          <p style={{ margin: '0 0 0.5rem 0' }}>
+            <strong>Student Access Code:</strong><br />
+            <span style={{ 
+              fontFamily: 'monospace', 
+              background: 'rgba(255,255,255,0.7)', 
+              padding: '0.25rem 0.5rem', 
+              borderRadius: '0.25rem',
+              fontSize: '0.8rem',
+              wordBreak: 'break-all'
+            }}>
+              {studentJoinCode || 'LOADING...'}
+            </span>
+          </p>
+          <p style={{ margin: 0 }}>
+            <strong>Parent Quiz Code:</strong><br />
+            <span style={{ 
+              fontFamily: 'monospace', 
+              background: 'rgba(255,255,255,0.7)', 
+              padding: '0.25rem 0.5rem', 
+              borderRadius: '0.25rem',
+              fontSize: '0.8rem',
+              wordBreak: 'break-all'
+            }}>
+              {parentTestCode || 'LOADING...'}
+            </span>
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function SubmissionOptionsStep({ submissionOptions, onUpdateOption, onComplete, loading, schoolName, teacherName }) {
+  const options = [
+    { key: 'quiz', label: '📝 Take Quiz', description: 'Parent code required, auto-graded', disabled: true },
+    { key: 'presentToTeacher', label: '🗣️ Present to Teacher', description: 'Oral presentation or discussion' },
+    { key: 'submitReview', label: '✍️ Submit Written Review', description: 'Written book review or summary' },
+    { key: 'createStoryboard', label: '🎨 Create Storyboard', description: 'Visual art or comic strip' },
+    { key: 'bookReport', label: '📚 Traditional Book Report', description: 'Formal written report' },
+    { key: 'discussWithLibrarian', label: '💬 Discussion with Librarian', description: 'One-on-one book discussion' },
+    { key: 'actOutScene', label: '🎭 Act Out Scene', description: 'Performance or dramatic reading' }
+  ]
+
+  return (
+    <div>
+      <h2 style={{
+        fontSize: 'clamp(1.5rem, 5vw, 2rem)',
+        fontWeight: 'bold',
+        color: '#223848',
+        marginBottom: '1rem',
+        fontFamily: 'Georgia, serif'
+      }}>
+        📝 Book Completion Options
+      </h2>
+      <p style={{ 
+        color: '#ADD4EA', 
+        marginBottom: '2rem',
+        fontSize: 'clamp(0.875rem, 3vw, 1rem)'
+      }}>
+        When students finish a book, what options should they have? Quizzes are always available.
+      </p>
+      
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+        gap: '1rem',
+        marginBottom: '2rem'
+      }}>
+        {options.map(option => (
+          <SubmissionOptionCard 
+            key={option.key}
+            option={option}
+            isChecked={submissionOptions[option.key] || false}
+            onChange={(checked) => onUpdateOption(option.key, checked)}
+          />
+        ))}
+      </div>
+
+      {/* Complete Setup */}
+      <div style={{
+        background: 'linear-gradient(135deg, #FFFCF5, #C3E0DE)',
+        borderRadius: '0.75rem',
+        padding: '1.5rem',
+        textAlign: 'center',
+        border: '1px solid #C3E0DE',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <h3 style={{ 
+          color: '#223848', 
+          marginBottom: '1rem',
+          fontSize: 'clamp(1.25rem, 4vw, 1.5rem)',
+          textAlign: 'center'
+        }}>
+          🎉 Ready to Launch {schoolName}?
+        </h3>
+        <p style={{ 
+          color: '#223848', 
+          marginBottom: '1.5rem',
+          fontSize: 'clamp(0.875rem, 3vw, 1rem)',
+          textAlign: 'center',
+          maxWidth: '500px'
+        }}>
+          Complete setup by {teacherName} is ready to go!
+        </p>
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center',
+          width: '100%' 
+        }}>
+          <ActionButton onClick={onComplete} primary loading={loading}>
+            {loading ? '🚀 Saving Configuration...' : '🎊 Launch Program!'}
+          </ActionButton>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Helper Components
 function BookCard({ book, isSelected, onToggle }) {
   return (
     <div
@@ -946,7 +1373,6 @@ function BookCard({ book, isSelected, onToggle }) {
           {isSelected ? '✓' : ''}
         </div>
         
-        {/* Cover Image */}
         {book.coverImageUrl && (
           <img 
             src={book.coverImageUrl}
@@ -983,7 +1409,6 @@ function BookCard({ book, isSelected, onToggle }) {
           }}>
             by {book.authors}
           </p>
-          {/* Genres */}
           {book.genres && (
             <p style={{
               fontSize: 'clamp(0.625rem, 2vw, 0.75rem)',
@@ -1083,6 +1508,24 @@ function AchievementTierCard({ tier, index, onUpdate }) {
 }
 
 function SubmissionOptionCard({ option, isChecked, onChange }) {
+  const handleChange = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!option.disabled) {
+      onChange(e.target.checked)
+    }
+  }
+
+  const handleLabelClick = (e) => {
+    if (e.target.type === 'checkbox') {
+      return
+    }
+    
+    if (!option.disabled) {
+      onChange(!isChecked)
+    }
+  }
+
   return (
     <div style={{
       padding: '1rem',
@@ -1091,75 +1534,48 @@ function SubmissionOptionCard({ option, isChecked, onChange }) {
       background: option.disabled ? '#f9fafb' : 'white',
       opacity: option.disabled ? 0.7 : 1
     }}>
-      <label style={{
-        display: 'flex',
-        alignItems: 'flex-start',
-        gap: '0.75rem',
-        cursor: option.disabled ? 'not-allowed' : 'pointer'
-      }}>
+      <label 
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '0.75rem',
+          cursor: option.disabled ? 'not-allowed' : 'pointer'
+        }}
+        onClick={handleLabelClick}
+      >
         <input
           type="checkbox"
           checked={isChecked}
           disabled={option.disabled}
-          onChange={(e) => onChange(e.target.checked)}
+          onChange={handleChange}
+          onClick={(e) => e.stopPropagation()}
           style={{
             marginTop: '0.25rem',
-            cursor: option.disabled ? 'not-allowed' : 'pointer'
+            cursor: option.disabled ? 'not-allowed' : 'pointer',
+            minWidth: '16px',
+            minHeight: '16px'
           }}
         />
-        <div>
+        <div style={{ flex: 1 }}>
           <div style={{
             fontSize: 'clamp(0.75rem, 2.5vw, 0.875rem)',
             fontWeight: '600',
             color: '#223848',
-            marginBottom: '0.25rem'
+            marginBottom: '0.25rem',
+            userSelect: 'none'
           }}>
             {option.label} {option.disabled && '(Always Available)'}
           </div>
           <div style={{
             fontSize: 'clamp(0.625rem, 2vw, 0.75rem)',
             color: '#6b7280',
-            lineHeight: '1.3'
+            lineHeight: '1.3',
+            userSelect: 'none'
           }}>
             {option.description}
           </div>
         </div>
       </label>
-    </div>
-  )
-}
-
-function ReviewCard({ title, items }) {
-  return (
-    <div style={{
-      background: '#f9fafb',
-      borderRadius: '0.5rem',
-      padding: '1rem',
-      border: '1px solid #e5e7eb'
-    }}>
-      <h4 style={{
-        fontSize: 'clamp(1rem, 3vw, 1.125rem)',
-        fontWeight: 'bold',
-        color: '#1f2937',
-        marginBottom: '0.75rem'
-      }}>
-        {title}
-      </h4>
-      <ul style={{
-        listStyle: 'none',
-        padding: 0,
-        margin: 0
-      }}>
-        {items.map((item, index) => (
-          <li key={index} style={{
-            fontSize: 'clamp(0.75rem, 2.5vw, 0.875rem)',
-            color: '#6b7280',
-            marginBottom: '0.25rem'
-          }}>
-            • {item}
-          </li>
-        ))}
-      </ul>
     </div>
   )
 }
@@ -1175,13 +1591,19 @@ function ActionButton({ children, onClick, primary, secondary, disabled, loading
     transition: 'all 0.2s',
     opacity: disabled ? 0.5 : 1,
     minWidth: 'fit-content',
-    whiteSpace: 'nowrap'
+    whiteSpace: 'nowrap',
+    fontFamily: 'Avenir, system-ui, -apple-system, sans-serif',
+    letterSpacing: '1.2px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '0.5rem'
   }
 
   const primaryStyle = {
     ...baseStyle,
     background: 'linear-gradient(135deg, #C3E0DE, #A1E5DB)',
-    color: 'white'
+    color: '#223848'
   }
 
   const secondaryStyle = {
@@ -1197,6 +1619,16 @@ function ActionButton({ children, onClick, primary, secondary, disabled, loading
       disabled={disabled || loading}
       style={primary ? primaryStyle : secondaryStyle}
     >
+      {loading && (
+        <div style={{
+          width: '1rem',
+          height: '1rem',
+          border: '2px solid currentColor',
+          borderTop: '2px solid transparent',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite'
+        }}></div>
+      )}
       {children}
     </button>
   )

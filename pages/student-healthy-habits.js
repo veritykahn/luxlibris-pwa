@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
-import { getStudentData, updateStudentData } from '../lib/firebase';
+import { getStudentDataEntities, updateStudentDataEntities } from '../lib/firebase';
 import { collection, addDoc, query, where, getDocs, orderBy, limit, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import Head from 'next/head';
@@ -245,7 +245,7 @@ export default function StudentHealthyHabits() {
       const fourWeeksAgo = new Date();
       fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 27); // 28 days total including today
       
-      const sessionsRef = collection(db, `dioceses/${studentData.dioceseId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
+      const sessionsRef = collection(db, `entities/${studentData.entityId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
       
       // Get all sessions from last 4 weeks
       const recentQuery = query(
@@ -348,7 +348,7 @@ export default function StudentHealthyHabits() {
       const fourteenDaysAgo = new Date();
       fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
       
-      const sessionsRef = collection(db, `dioceses/${studentData.dioceseId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
+      const sessionsRef = collection(db, `entities/${studentData.entityId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
       const recentQuery = query(
         sessionsRef,
         where('date', '>=', getLocalDateString(fourteenDaysAgo))
@@ -440,7 +440,7 @@ export default function StudentHealthyHabits() {
       }
       
       // Update student record with new level data
-      const studentRef = doc(db, `dioceses/${studentData.dioceseId}/schools/${studentData.schoolId}/students`, studentData.id);
+      const studentRef = doc(db, `entities/${studentData.entityId}/schools/${studentData.schoolId}/students`, studentData.id);
       await updateDoc(studentRef, {
         currentReadingLevel: newLevel,
         daysAtCurrentLevel: newDaysAtLevel,
@@ -466,7 +466,7 @@ export default function StudentHealthyHabits() {
       const today = getLocalDateString(new Date());
       console.log(`🔍 Loading reading data for today: ${today}`);
       
-      const sessionsRef = collection(db, `dioceses/${studentData.dioceseId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
+      const sessionsRef = collection(db, `entities/${studentData.entityId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
       
       // Get only today's sessions with explicit date matching
       const todayQuery = query(
@@ -545,7 +545,7 @@ export default function StudentHealthyHabits() {
       
       console.log(`💾 Saving reading session for ${today}: ${duration} minutes, completed: ${completed}`);
       
-      const sessionsRef = collection(db, `dioceses/${studentData.dioceseId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
+      const sessionsRef = collection(db, `entities/${studentData.entityId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
       const docRef = await addDoc(sessionsRef, sessionData);
       
       console.log(`✅ Session saved with ID: ${docRef.id}`);
@@ -579,7 +579,7 @@ export default function StudentHealthyHabits() {
 
   const loadHealthyHabitsData = useCallback(async () => {
     try {
-      const firebaseStudentData = await getStudentData(user.uid);
+      const firebaseStudentData = await getStudentDataEntities(user.uid);
       if (!firebaseStudentData) {
         router.push('/student-onboarding');
         return;

@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
-import { getStudentData, updateStudentData, getSchoolNominees } from '../lib/firebase';
+import { getStudentDataEntities, updateStudentDataEntities, getSchoolNomineesEntities } from '../lib/firebase';
 import { createParentInviteCode } from '../lib/parentLinking';
 import Head from 'next/head'
 
@@ -128,8 +128,8 @@ export default function StudentSettings() {
 
       console.log('🔍 Loading student data for UID:', user.uid);
       
-      // Get real data from Firebase diocese structure
-      const realStudentData = await getStudentData(user.uid);
+      // Get real data from Firebase entity structure
+      const realStudentData = await getStudentDataEntities(user.uid);
       if (!realStudentData) {
         console.error('❌ Student data not found');
         router.push('/student-account-creation');
@@ -146,10 +146,10 @@ export default function StudentSettings() {
       setTimerDuration(realStudentData.readingSettings?.defaultTimerDuration || 20);
       
       // Load nominees to get the reading goal cap (max 100 per year)
-      if (realStudentData.dioceseId && realStudentData.schoolId) {
+      if (realStudentData.entityId && realStudentData.schoolId) {
         try {
-          const schoolNominees = await getSchoolNominees(
-            realStudentData.dioceseId, 
+          const schoolNominees = await getSchoolNomineesEntities(
+            realStudentData.entityId, 
             realStudentData.schoolId
           );
           const availableBooks = Math.min(schoolNominees.length || 100, 100); // Cap at 100 max
@@ -178,7 +178,7 @@ export default function StudentSettings() {
     setIsSaving(true);
     try {
       // Update Firebase
-      await updateStudentData(studentData.id, studentData.dioceseId, studentData.schoolId, {
+      await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
         selectedTheme: selectedThemePreview
       });
       
@@ -204,7 +204,7 @@ export default function StudentSettings() {
     setIsSaving(true);
     try {
       // Update Firebase
-      await updateStudentData(studentData.id, studentData.dioceseId, studentData.schoolId, {
+      await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
         personalGoal: newGoal
       });
       
@@ -233,7 +233,7 @@ export default function StudentSettings() {
         defaultTimerDuration: timerDuration
       };
       
-      await updateStudentData(studentData.id, studentData.dioceseId, studentData.schoolId, {
+      await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
         readingSettings: updatedReadingSettings
       });
       
@@ -259,7 +259,7 @@ export default function StudentSettings() {
     try {
       const inviteCode = await createParentInviteCode(
         studentData.id,
-        studentData.dioceseId, 
+        studentData.entityId,
         studentData.schoolId,
         studentData.firstName,
         studentData.lastInitial,

@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
-import { getStudentData, getSchoolNominees, addBookToBookshelf, removeBookFromBookshelf } from '../lib/firebase';
+import { getStudentDataEntities, getSchoolNomineesEntities, addBookToBookshelfEntities, removeBookFromBookshelfEntities } from '../lib/firebase';
 import Head from 'next/head';
 
 export default function StudentNominees() {
@@ -194,7 +194,7 @@ export default function StudentNominees() {
     try {
       console.log('📚 Loading nominees data...');
       
-      const firebaseStudentData = await getStudentData(user.uid);
+      const firebaseStudentData = await getStudentDataEntities(user.uid);
       if (!firebaseStudentData) {
         router.push('/student-onboarding');
         return;
@@ -205,10 +205,10 @@ export default function StudentNominees() {
       const selectedTheme = firebaseStudentData.selectedTheme || 'classic_lux';
       setCurrentTheme(themes[selectedTheme]);
       
-      if (firebaseStudentData.dioceseId && firebaseStudentData.schoolId) {
-        const schoolNominees = await getSchoolNominees(
-          firebaseStudentData.dioceseId, 
-          firebaseStudentData.schoolId
+      if (firebaseStudentData.entityId && firebaseStudentData.schoolId) {
+        const schoolNominees = await getSchoolNomineesEntities(
+  firebaseStudentData.entityId, 
+  firebaseStudentData.schoolId
         );
         
         // NEW: Sort the nominees before setting them
@@ -286,9 +286,9 @@ export default function StudentNominees() {
     try {
       console.log('📖 Adding book to bookshelf:', book.title, format);
       
-      const newBookProgress = await addBookToBookshelf(
+      const newBookProgress = await addBookToBookshelfEntities(
         studentData.id,
-        studentData.dioceseId,
+        studentData.entityId,
         studentData.schoolId,
         book.id,
         format
@@ -333,18 +333,18 @@ export default function StudentNominees() {
       
       try {
         // Remove old format
-        await removeBookFromBookshelf(
+        await removeBookFromBookshelfEntities(
           studentData.id,
-          studentData.dioceseId,
+          studentData.entityId,
           studentData.schoolId,
           book.id,
           existingFormat
         );
         
         // Add new format
-        const newBookProgress = await addBookToBookshelf(
+        const newBookProgress = await addBookToBookshelfEntities(
           studentData.id,
-          studentData.dioceseId,
+          studentData.entityId,
           studentData.schoolId,
           book.id,
           newFormat

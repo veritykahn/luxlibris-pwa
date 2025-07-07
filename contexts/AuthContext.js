@@ -1,7 +1,9 @@
+// contexts/AuthContext.js - UPDATED for Entities Structure Only
 import { createContext, useContext, useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
-import { authHelpers, dbHelpers, db } from '../lib/firebase'
-import { collection, getDoc, doc } from 'firebase/firestore'
+import { auth, db } from '../lib/firebase'
+import { onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth'
+import { collection, getDocs, doc, getDoc, query, where } from 'firebase/firestore'
 
 const AuthContext = createContext({})
 
@@ -42,12 +44,11 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  // Update last activity on meaningful user interactions (reduced events)
+  // Update last activity on meaningful user interactions
   useEffect(() => {
     const updateActivity = () => updateLastActivity()
     
     if (typeof window !== 'undefined') {
-      // Only track meaningful interactions, not mouse movements
       const events = ['click', 'keypress', 'touchstart']
       events.forEach(event => 
         document.addEventListener(event, updateActivity, true)
@@ -87,61 +88,344 @@ export const AuthProvider = ({ children }) => {
     return timeSinceActivity > ADMIN_TIMEOUT
   }
 
-  useEffect(() => {
-    // Listen for authentication state changes
-    const unsubscribe = authHelpers.onAuthStateChange(async (firebaseUser) => {
-      if (firebaseUser) {
-        // User is signed in
-        setUser(firebaseUser)
-        
-        // Get user profile from database
+  // UPDATED: Complete entities-only getUserProfile
+  const getUserProfile = async (uid) => {
+    try {
+      console.log('🔍 Looking for user profile with UID:', uid)
+      
+      // Search in entities structure for teachers, admins, AND students
+      const entitiesRef = collection(db, 'entities')
+      const entitiesSnapshot = await getDocs(entitiesRef)
+      
+      for (const entityDoc of entitiesSnapshot.docs) {
         try {
-          const profile = await dbHelpers.getUserProfile(firebaseUser.uid)
-          setUserProfile(profile)
+          const schoolsRef = collection(db, `entities/${entityDoc.id}/schools`)
+          const schoolsSnapshot = await getDocs(schoolsRef)
           
-          // Check session expiry immediately after loading profile
-          if (profile?.accountType === 'admin') {
-            // Initialize activity tracking for admin
-            updateLastActivity()
+          for (const schoolDoc of schoolsSnapshot.docs) {
+            // Check teachers collection
+            const teachersRef = collection(db, `entities/${entityDoc.id}/schools/${schoolDoc.id}/teachers`)
+            const teacherQuery = query(teachersRef, where('uid', '==', uid))
+            const teacherSnapshot = await getDocs(teacherQuery)
             
-            // Check if session is expired
-            if (isSessionExpired()) {
-              console.log('⏰ Admin session expired on page load')
-              await signOut({ redirectTo: '/sign-in?reason=session-expired' })
-              return
+            if (!teacherSnapshot.empty) {
+              const teacherDoc = teacherSnapshot.docs[0]
+              const profile = {
+                id: teacherDoc.id,
+                entityId: entityDoc.id,
+                schoolId: schoolDoc.id,
+                ...teacherDoc.data()
+              }
+              console.log('✅ Found teacher profile in entities structure')
+              return profile
             }
-          } else {
-            // For students, just update activity
-            updateLastActivity()
+            
+            // Check admins collection  
+            const adminsRef = collection(db, `entities/${entityDoc.id}/schools/${schoolDoc.id}/admins`)
+            const adminQuery = query(adminsRef, where('uid', '==', uid))
+            const adminSnapshot = await getDocs(adminQuery)
+            
+            if (!adminSnapshot.empty) {
+              const adminDoc = adminSnapshot.docs[0]
+              const profile = {
+                id: adminDoc.id,
+                entityId: entityDoc.id,
+                schoolId: schoolDoc.id,
+                ...adminDoc.data()
+              }
+              console.log('✅ Found admin profile in entities structure')
+              return profile
+            }
+
+            // NEW: Check students collection in entities structure
+            const studentsRef = collection(db, `entities/${entityDoc.id}/schools/${schoolDoc.id}/students`)
+            const studentQuery = query(studentsRef, where('uid', '==', uid))
+            const studentSnapshot = await getDocs(studentQuery)
+            
+            if (!studentSnapshot.empty) {
+              const studentDoc = studentSnapshot.docs[0]
+              const profile = {
+                id: studentDoc.id,
+                entityId: entityDoc.id,
+                schoolId: schoolDoc.id,
+                ...studentDoc.data()
+              }
+              console.log('✅ Found student profile in entities structure')
+              return profile
+            }
           }
         } catch (error) {
-          console.error('Error fetching user profile:', error)
-          setUserProfile(null)
+          console.log(`No schools in entity ${entityDoc.id}`)
         }
+      }
+      
+      // REMOVED: No more fallback to users collection - entities structure only!
+      console.log('❌ User profile not found in entities structure')
+      return null
+      
+    } catch (error) {
+      console.error('❌ Error fetching user profile:', error)
+      return null
+    }
+  }
+
+  // Helper function to get teacher profile from entities structure
+  const getTeacherProfile = async (uid) => {
+    try {
+      // Search for teacher in entities structure
+      const entitiesRef = collection(db, 'entities')
+      const entitiesSnapshot = await getDocs(entitiesRef)
+      
+      for (const entityDoc of entitiesSnapshot.docs) {
+        const schoolsRef = collection(db, `entities/${entityDoc.id}/schools`)
+        const schoolsSnapshot = await getDocs(schoolsRef)
+        
+        for (const schoolDoc of schoolsSnapshot.docs) {
+          const teachersRef = collection(db, `entities/${entityDoc.id}/schools/${schoolDoc.id}/teachers`)
+          const teacherQuery = query(teachersRef, where('uid', '==', uid))
+          const teacherSnapshot = await getDocs(teacherQuery)
+          
+          if (!teacherSnapshot.empty) {
+            const teacherDoc = teacherSnapshot.docs[0]
+            return {
+              id: teacherDoc.id,
+              entityId: entityDoc.id,
+              schoolId: schoolDoc.id,
+              ...teacherDoc.data()
+            }
+          }
+        }
+      }
+      return null
+    } catch (error) {
+      console.error('Error getting teacher profile:', error)
+      return null
+    }
+  }
+
+  // Helper function to get school data
+  const getSchoolData = async (entityId, schoolId) => {
+    try {
+      const schoolRef = doc(db, `entities/${entityId}/schools`, schoolId)
+      const schoolDoc = await getDoc(schoolRef)
+      return schoolDoc.exists() ? schoolDoc.data() : null
+    } catch (error) {
+      console.error('Error getting school data:', error)
+      return null
+    }
+  }
+
+  // Check teacher onboarding status
+  const checkTeacherOnboardingStatus = async (userProfile) => {
+    if (!userProfile || userProfile.accountType !== 'teacher') {
+      return { needsOnboarding: false, onboardingCompleted: true }
+    }
+
+    try {
+      // Check if teacher completed onboarding by looking at school data
+      if (userProfile.entityId && userProfile.schoolId) {
+        const schoolData = await getSchoolData(userProfile.entityId, userProfile.schoolId)
+        
+        if (schoolData) {
+          return {
+            needsOnboarding: !schoolData.onboardingCompleted,
+            onboardingCompleted: schoolData.onboardingCompleted || false,
+            onboardingCompletedBy: schoolData.onboardingCompletedBy,
+            hasSelectedNominees: schoolData.selectedNominees?.length > 0,
+            hasAchievementTiers: schoolData.achievementTiers?.length > 0
+          }
+        }
+      }
+      
+      return { needsOnboarding: true, onboardingCompleted: false }
+    } catch (error) {
+      console.error('Error checking teacher onboarding status:', error)
+      return { needsOnboarding: true, onboardingCompleted: false }
+    }
+  }
+
+  // Find school by student access code (entities structure only)
+  const findSchoolByStudentAccessCode = async (studentAccessCode) => {
+    try {
+      // Search entities structure only
+      const entitiesRef = collection(db, 'entities')
+      const entitiesSnapshot = await getDocs(entitiesRef)
+      
+      for (const entityDoc of entitiesSnapshot.docs) {
+        try {
+          const schoolsRef = collection(db, `entities/${entityDoc.id}/schools`)
+          const schoolsSnapshot = await getDocs(schoolsRef)
+          
+          for (const schoolDoc of schoolsSnapshot.docs) {
+            const schoolData = schoolDoc.data()
+            if (schoolData.studentAccessCode === studentAccessCode || 
+                schoolData.accessCode === studentAccessCode) {
+              return {
+                id: schoolDoc.id,
+                entityId: entityDoc.id,
+                ...schoolData
+              }
+            }
+          }
+        } catch (error) {
+          console.log(`No schools in entity ${entityDoc.id}`)
+        }
+      }
+      
+      return null
+    } catch (error) {
+      console.error('Error finding school:', error)
+      return null
+    }
+  }
+
+  // Get appropriate dashboard URL based on user type
+const getDashboardUrl = () => {
+  if (!userProfile) {
+    console.log('❌ No user profile, redirecting to role selector')
+    return '/role-selector'
+  }
+  
+  console.log('🎯 Determining dashboard URL for:', {
+    accountType: userProfile.accountType,
+    email: userProfile.email
+  })
+
+  try {
+    switch (userProfile.accountType) {
+      case 'student':
+        const studentComplete = userProfile.onboardingCompleted === true
+        console.log('🧑‍🎓 Student onboarding status:', studentComplete)
+        return studentComplete ? '/student-dashboard' : '/student-onboarding'
+        
+      case 'teacher':
+        console.log('👩‍🏫 Using cached teacher onboarding status...')
+        const teacherComplete = userProfile.onboardingCompleted === true
+        console.log('📊 Teacher onboarding status:', teacherComplete)
+        
+        if (teacherComplete) {
+          console.log('✅ Teacher onboarding complete → dashboard')
+          return '/admin/school-dashboard'
+        } else {
+          console.log('⚠️ Teacher onboarding incomplete → onboarding')
+          return '/admin/school-onboarding'
+        }
+        
+      case 'admin':
+        const adminComplete = userProfile.schoolSetupCompleted === true
+        console.log('👑 Admin setup status:', adminComplete)
+        return adminComplete ? '/admin/school-dashboard' : '/admin/school-onboarding'
+        
+      case 'parent':
+        console.log('👨‍👩‍👧‍👦 Parent → dashboard')
+        return '/parent-dashboard'
+        
+      default:
+        console.log('❓ Unknown account type, redirecting to role selector')
+        return '/role-selector'
+    }
+  } catch (error) {
+    console.error('❌ Error determining dashboard URL:', error)
+    // On error, send to role selector to be safe
+    return '/role-selector'
+  }
+}
+
+  // Helper function to prevent redirect loops
+  const shouldRedirectToOnboarding = async () => {
+    if (!userProfile) return false
+    
+    try {
+      if (userProfile.accountType === 'teacher') {
+        const status = await checkTeacherOnboardingStatus(userProfile)
+        return !status.onboardingCompleted
+      }
+      
+      if (userProfile.accountType === 'admin') {
+        return !userProfile.schoolSetupCompleted
+      }
+      
+      if (userProfile.accountType === 'student') {
+        return !userProfile.onboardingCompleted
+      }
+      
+      return false
+    } catch (error) {
+      console.error('Error checking onboarding status:', error)
+      return false
+    }
+  }
+
+  // Initialize auth state listener with increased timeout
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        console.log('👤 Firebase user signed in:', firebaseUser.email)
+        setUser(firebaseUser)
+        
+        // Give Firebase more time to finish writing data
+        setTimeout(async () => {
+          try {
+            const profile = await getUserProfile(firebaseUser.uid)
+            setUserProfile(profile)
+            
+            if (profile) {
+              console.log('✅ User profile loaded:', {
+                accountType: profile.accountType,
+                email: profile.email,
+                name: profile.firstName || profile.name
+              })
+              
+              // Check session expiry immediately after loading profile
+              if (profile?.accountType === 'admin') {
+                updateLastActivity()
+                
+                if (isSessionExpired()) {
+                  console.log('⏰ Admin session expired on page load')
+                  await signOut({ redirectTo: '/sign-in?reason=session-expired' })
+                  return
+                }
+              } else {
+                updateLastActivity()
+              }
+            } else {
+              console.log('❌ No user profile found for UID:', firebaseUser.uid)
+            }
+          } catch (error) {
+            console.error('❌ Error loading user profile:', error)
+            setUserProfile(null)
+          }
+          
+          if (!initialized) {
+            setInitialized(true)
+          }
+          setLoading(false)
+        }, 2000) // Give it 2 seconds for database writes to complete
+        
       } else {
-        // User is signed out
+        console.log('👤 User signed out')
         setUser(null)
         setUserProfile(null)
+        
         // Clear activity tracking
         if (typeof window !== 'undefined') {
           localStorage.removeItem('luxlibris_last_activity')
         }
+        
+        if (!initialized) {
+          setInitialized(true)
+        }
+        setLoading(false)
       }
-      
-      if (!initialized) {
-        setInitialized(true)
-      }
-      setLoading(false)
     })
 
-    // Cleanup subscription on unmount
     return () => unsubscribe()
   }, [initialized])
 
   // Enhanced sign out with redirect options
   const signOut = async (options = {}) => {
     try {
-      await authHelpers.signOut()
+      await firebaseSignOut(auth)
       setUser(null)
       setUserProfile(null)
       
@@ -151,6 +435,9 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('luxlibris_account_created')
         localStorage.removeItem('luxlibris_onboarding_complete')
         localStorage.removeItem('luxlibris_last_activity')
+        // Clear teacher onboarding data
+        localStorage.removeItem('teacherProgramSelection')
+        localStorage.removeItem('tempTeacherCodes')
       }
       
       // Handle redirects
@@ -163,10 +450,11 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+  // Refresh profile function
   const refreshProfile = async () => {
     if (user) {
       try {
-        const profile = await dbHelpers.getUserProfile(user.uid)
+        const profile = await getUserProfile(user.uid)
         setUserProfile(profile)
         return profile
       } catch (error) {
@@ -178,11 +466,16 @@ export const AuthProvider = ({ children }) => {
   }
 
   // Check if user has completed onboarding
-  const hasCompletedOnboarding = () => {
+  const hasCompletedOnboarding = async () => {
     if (!userProfile) return false
     
     if (userProfile.accountType === 'student') {
       return userProfile.onboardingCompleted === true
+    }
+    
+    if (userProfile.accountType === 'teacher') {
+      const status = await checkTeacherOnboardingStatus(userProfile)
+      return status.onboardingCompleted
     }
     
     if (userProfile.accountType === 'admin') {
@@ -190,22 +483,6 @@ export const AuthProvider = ({ children }) => {
     }
     
     return true
-  }
-
-  // Get appropriate dashboard URL based on user type
-  const getDashboardUrl = () => {
-    if (!userProfile) return '/role-selector'
-    
-    switch (userProfile.accountType) {
-      case 'student':
-        return hasCompletedOnboarding() ? '/student-dashboard' : '/student-onboarding'
-      case 'admin':
-        return hasCompletedOnboarding() ? '/admin/school-dashboard' : '/admin/school-onboarding'
-      case 'parent':
-        return '/parent-dashboard'
-      default:
-        return '/role-selector'
-    }
   }
 
   // Check if user belongs to a specific school
@@ -246,16 +523,25 @@ export const AuthProvider = ({ children }) => {
     refreshProfile,
     hasCompletedOnboarding,
     getDashboardUrl,
+    shouldRedirectToOnboarding,
     belongsToSchool,
     getUserSchool,
     isSessionExpired,
     updateLastActivity,
+    
+    // Onboarding-related functions
+    checkTeacherOnboardingStatus,
+    getTeacherProfile,
+    getSchoolData,
+    findSchoolByStudentAccessCode,
+    getUserProfile,
     
     // Computed values
     isAuthenticated: !!user,
     isStudent: userProfile?.accountType === 'student',
     isParent: userProfile?.accountType === 'parent',
     isAdmin: userProfile?.accountType === 'admin',
+    isTeacher: userProfile?.accountType === 'teacher',
     
     // Quick access to user data
     firstName: userProfile?.firstName || userProfile?.name?.split(' ')[0] || '',
@@ -270,13 +556,14 @@ export const AuthProvider = ({ children }) => {
   )
 }
 
-// Updated Higher-order component for protected routes with session checking
-export const withAuth = (WrappedComponent, allowedAccountTypes = ['student', 'parent', 'admin']) => {
+// Higher-order component for protected routes with session checking
+export const withAuth = (WrappedComponent, allowedAccountTypes = ['student', 'parent', 'admin', 'teacher']) => {
   const AuthenticatedComponent = (props) => {
     const { 
       user, 
       userProfile, 
       loading, 
+      initialized,
       isAuthenticated, 
       getDashboardUrl, 
       hasCompletedOnboarding,
@@ -287,7 +574,7 @@ export const withAuth = (WrappedComponent, allowedAccountTypes = ['student', 'pa
 
     useEffect(() => {
       const checkAuth = async () => {
-        if (!loading) {
+        if (!loading && initialized) {
           if (!isAuthenticated) {
             // User not authenticated, redirect to role selector
             router.push('/role-selector')
@@ -303,20 +590,26 @@ export const withAuth = (WrappedComponent, allowedAccountTypes = ['student', 'pa
 
           if (userProfile && !allowedAccountTypes.includes(userProfile.accountType)) {
             // User doesn't have permission for this page
-            router.push(getDashboardUrl())
+            const dashboardUrl = await getDashboardUrl()
+            router.push(dashboardUrl)
             return
           }
 
-          if (userProfile && !hasCompletedOnboarding()) {
-            // User needs to complete onboarding
-            router.push(getDashboardUrl())
-            return
+          // Check onboarding status
+          if (userProfile) {
+            const completed = await hasCompletedOnboarding()
+            if (!completed) {
+              // User needs to complete onboarding
+              const dashboardUrl = await getDashboardUrl()
+              router.push(dashboardUrl)
+              return
+            }
           }
         }
       }
 
       checkAuth()
-    }, [loading, isAuthenticated, userProfile, router])
+    }, [loading, initialized, isAuthenticated, userProfile, router])
 
     // Show loading while checking authentication
     if (loading || !isAuthenticated || !userProfile) {
@@ -363,6 +656,7 @@ export const useAuthStatus = () => {
     isAuthenticated,
     isStudent: userProfile?.accountType === 'student',
     isParent: userProfile?.accountType === 'parent',
-    isAdmin: userProfile?.accountType === 'admin'
+    isAdmin: userProfile?.accountType === 'admin',
+    isTeacher: userProfile?.accountType === 'teacher'
   }
 }

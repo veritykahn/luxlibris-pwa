@@ -1,7 +1,7 @@
-// pages/student-onboarding.js - FIXED for Diocese Structure
+// pages/student-onboarding.js - FIXED: No Users Collection
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { db, authHelpers, dbHelpers } from '../lib/firebase';
+import { db, authHelpers } from '../lib/firebase';
 import { collection, addDoc, getDocs, query, where, doc, getDoc, setDoc } from 'firebase/firestore';
 import Head from 'next/head'
 
@@ -18,139 +18,154 @@ export default function StudentOnboarding() {
     firstName: '',
     lastInitial: '',
     grade: 4,
+    teacherId: '',
+    entityId: '',
     schoolId: '',
-    dioceseId: '',
     schoolName: '',
     schoolCity: '',
     schoolState: '',
-    studentAccessCode: '',
+    teacherName: '',
+    teacherJoinCode: '',
     currentYearGoal: 10,
     selectedTheme: 'classic_lux'
   });
 
-  // Theme definitions
+  // Theme definitions (same as before)
   const themes = [
-  {
-    name: 'Lux Libris Classic',
-    assetPrefix: 'classic_lux',
-    primary: '#ADD4EA',
-    secondary: '#C3E0DE',
-    accent: '#A1E5DB',
-    background: '#FFFCF5',
-    surface: '#FFFFFF',
-    textPrimary: '#223848'
-  },
-  {
-    name: 'Athletic Champion',
-    assetPrefix: 'darkwood_sports',
-    primary: '#2F5F5F',
-    secondary: '#8B2635',
-    accent: '#F5DEB3',
-    background: '#F5F5DC',
-    surface: '#FFF8DC',
-    textPrimary: '#2F1B14'
-  },
-  {
-    name: 'Cosmic Explorer',
-    assetPrefix: 'lavender_space',
-    primary: '#9C88C4',
-    secondary: '#B19CD9',
-    accent: '#E1D5F7',
-    background: '#2A1B3D',
-    surface: '#3D2B54',
-    textPrimary: '#E1D5F7'
-  },
-  {
-    name: 'Musical Harmony',
-    assetPrefix: 'mint_music',
-    primary: '#B8E6B8',
-    secondary: '#FFB3BA',
-    accent: '#FFCCCB',
-    background: '#FEFEFE',
-    surface: '#F8FDF8',
-    textPrimary: '#2E4739'
-  },
-  {
-    name: 'Kawaii Dreams',
-    assetPrefix: 'pink_plushies',
-    primary: '#FFB6C1',
-    secondary: '#FFC0CB',
-    accent: '#FFE4E1',
-    background: '#FFF0F5',
-    surface: '#FFE4E6',
-    textPrimary: '#4A2C2A'
-  },
-  {
-    name: 'Otaku Paradise',
-    assetPrefix: 'teal_anime',
-    primary: '#20B2AA',
-    secondary: '#48D1CC',
-    accent: '#7FFFD4',
-    background: '#E0FFFF',
-    surface: '#AFEEEE',
-    textPrimary: '#2F4F4F'
-  },
-  {
-    name: 'Pure Serenity',
-    assetPrefix: 'white_nature',
-    primary: '#6B8E6B',
-    secondary: '#D2B48C',
-    accent: '#F5F5DC',
-    background: '#FFFEF8',
-    surface: '#FFFFFF',
-    textPrimary: '#2F4F2F'
-  },
-  {
-    name: 'Luxlings™',
-    assetPrefix: 'little_luminaries',
-   primary: '#666666', // Medium grey (for buttons/elements)
- secondary: '#000000', // Black (for striking accents)
- accent: '#E8E8E8', // Light grey accent
- background: '#FFFFFF', // Pure white background
- surface: '#FAFAFA', // Very light grey surface
- textPrimary: '#B8860B', // Deep rich gold (readable on light backgrounds)
-  }
+    {
+      name: 'Lux Libris Classic',
+      assetPrefix: 'classic_lux',
+      primary: '#ADD4EA',
+      secondary: '#C3E0DE',
+      accent: '#A1E5DB',
+      background: '#FFFCF5',
+      surface: '#FFFFFF',
+      textPrimary: '#223848'
+    },
+    {
+      name: 'Athletic Champion',
+      assetPrefix: 'darkwood_sports',
+      primary: '#2F5F5F',
+      secondary: '#8B2635',
+      accent: '#F5DEB3',
+      background: '#F5F5DC',
+      surface: '#FFF8DC',
+      textPrimary: '#2F1B14'
+    },
+    {
+      name: 'Cosmic Explorer',
+      assetPrefix: 'lavender_space',
+      primary: '#9C88C4',
+      secondary: '#B19CD9',
+      accent: '#E1D5F7',
+      background: '#2A1B3D',
+      surface: '#3D2B54',
+      textPrimary: '#E1D5F7'
+    },
+    {
+      name: 'Musical Harmony',
+      assetPrefix: 'mint_music',
+      primary: '#B8E6B8',
+      secondary: '#FFB3BA',
+      accent: '#FFCCCB',
+      background: '#FEFEFE',
+      surface: '#F8FDF8',
+      textPrimary: '#2E4739'
+    },
+    {
+      name: 'Kawaii Dreams',
+      assetPrefix: 'pink_plushies',
+      primary: '#FFB6C1',
+      secondary: '#FFC0CB',
+      accent: '#FFE4E1',
+      background: '#FFF0F5',
+      surface: '#FFE4E6',
+      textPrimary: '#4A2C2A'
+    },
+    {
+      name: 'Otaku Paradise',
+      assetPrefix: 'teal_anime',
+      primary: '#20B2AA',
+      secondary: '#48D1CC',
+      accent: '#7FFFD4',
+      background: '#E0FFFF',
+      surface: '#AFEEEE',
+      textPrimary: '#2F4F4F'
+    },
+    {
+      name: 'Pure Serenity',
+      assetPrefix: 'white_nature',
+      primary: '#6B8E6B',
+      secondary: '#D2B48C',
+      accent: '#F5F5DC',
+      background: '#FFFEF8',
+      surface: '#FFFFFF',
+      textPrimary: '#2F4F2F'
+    },
+    {
+      name: 'Luxlings™',
+      assetPrefix: 'little_luminaries',
+      primary: '#666666',
+      secondary: '#000000',
+      accent: '#E8E8E8',
+      background: '#FFFFFF',
+      surface: '#FAFAFA',
+      textPrimary: '#B8860B',
+    }
   ];
 
   const grades = [4, 5, 6, 7, 8];
   const bookGoals = Array.from({length: 20}, (_, i) => i + 1);
 
   useEffect(() => {
-    loadSchoolDataFromStorage();
+    loadTeacherDataFromStorage();
   }, []);
 
-  const loadSchoolDataFromStorage = () => {
-    // Load school data from student account creation flow
-    const tempSchoolData = localStorage.getItem('tempSchoolData');
+  const loadTeacherDataFromStorage = () => {
+    // Load teacher data from student account creation flow
+    const tempTeacherData = localStorage.getItem('tempTeacherData');
     
-    if (tempSchoolData) {
-      const parsed = JSON.parse(tempSchoolData);
-      console.log('📚 Loading school data from account creation:', parsed);
+    if (tempTeacherData) {
+      const parsed = JSON.parse(tempTeacherData);
+      console.log('👩‍🏫 Loading teacher data from account creation:', parsed);
       
       setFormData(prev => ({
         ...prev,
+        teacherId: parsed.teacherId || '',
+        entityId: parsed.entityId || '',
         schoolId: parsed.schoolId || '',
-        dioceseId: parsed.dioceseId || '',
         schoolName: parsed.schoolName || '',
         schoolCity: parsed.schoolCity || '',
         schoolState: parsed.schoolState || '',
-        studentAccessCode: parsed.schoolJoinCode || ''
+        teacherName: parsed.teacherName || '',
+        teacherJoinCode: parsed.teacherJoinCode || ''
       }));
     } else {
-      console.warn('⚠️ No temp school data found - student may have accessed onboarding directly');
+      console.warn('⚠️ No temp teacher data found - student may have accessed onboarding directly');
       setError('Please start from the account creation page');
     }
   };
 
-  const generateUsername = async (firstName, lastInitial, grade, schoolData) => {
+  // Generate username with teacher name logic and duplicate handling
+  const generateUsername = async (firstName, lastInitial, grade, teacherData, entityId, schoolId) => {
     try {
       console.log('🔄 Generating username for:', firstName, lastInitial, grade);
+      console.log('👩‍🏫 Teacher info:', teacherData);
       
-      // Create base username: EmmaK4
-      const baseUsername = `${firstName}${lastInitial}${grade}`;
+      // Extract teacher's last name for username generation
+      const teacherFullName = teacherData.teacherName || '';
+      const teacherLastName = teacherFullName.split(' ').pop() || 'TCHR';
+      
+      // Get first 4 letters of teacher's last name (uppercase)
+      const teacherCode = teacherLastName.toUpperCase().substring(0, 4).padEnd(4, 'X');
+      
+      // Create base username: EmmaK4SMIT
+      const baseUsername = `${firstName}${lastInitial}${grade}${teacherCode}`;
+      
+      console.log('🎯 Base username:', baseUsername);
       
       // Check for existing usernames in this school's students subcollection
-      const studentsCollection = collection(db, `dioceses/${schoolData.dioceseId}/schools/${schoolData.id}/students`);
+      const studentsCollection = collection(db, `entities/${entityId}/schools/${schoolId}/students`);
       const querySnapshot = await getDocs(studentsCollection);
       
       // Get all existing usernames for this school
@@ -164,12 +179,12 @@ export default function StudentOnboarding() {
       
       console.log('📋 Existing usernames in school:', existingUsernames);
       
-      // Check if base username exists, if so add number
-      let finalUsername = baseUsername; // EmmaK4
-      let counter = 2; // Start with 2 for first duplicate (EmmaK42)
+      // Check if base username exists, if so add number (2, 3, 4, etc.)
+      let finalUsername = baseUsername; // EmmaK4SMIT
+      let counter = 2; // Start with 2 for first duplicate (EmmaK4SMIT2)
       
       while (existingUsernames.includes(finalUsername)) {
-        finalUsername = `${baseUsername}${counter}`; // EmmaK42, EmmaK43, etc.
+        finalUsername = `${baseUsername}${counter}`; // EmmaK4SMIT2, EmmaK4SMIT3, etc.
         counter++;
       }
       
@@ -203,59 +218,76 @@ export default function StudentOnboarding() {
       console.log('🚀 Starting account creation process...');
       
       // Validate required data
-      if (!formData.firstName || !formData.lastInitial || !formData.schoolId || !formData.dioceseId) {
+      if (!formData.firstName || !formData.lastInitial || !formData.teacherId || !formData.entityId || !formData.schoolId) {
         throw new Error('Missing required information');
       }
 
-      // Get school data from Firebase to verify it exists
-      const schoolRef = doc(db, `dioceses/${formData.dioceseId}/schools`, formData.schoolId);
-      const schoolDoc = await getDoc(schoolRef);
+      // Get teacher data to verify it exists and get configuration
+      const teacherRef = doc(db, `entities/${formData.entityId}/schools/${formData.schoolId}/teachers`, formData.teacherId);
+      const teacherDoc = await getDoc(teacherRef);
       
-      if (!schoolDoc.exists()) {
-        throw new Error('School not found in database');
+      if (!teacherDoc.exists()) {
+        throw new Error('Teacher not found in database');
       }
       
-      const schoolData = {
-        id: formData.schoolId,
-        dioceseId: formData.dioceseId,
-        ...schoolDoc.data()
+      const teacherData = {
+        id: formData.teacherId,
+        ...teacherDoc.data()
       };
       
-      console.log('✅ School data verified:', schoolData.name);
+      console.log('✅ Teacher data verified:', teacherData.firstName, teacherData.lastName);
       
-      // Generate unique username
+      // Generate unique username with teacher code
       const displayUsername = await generateUsername(
         formData.firstName, 
         formData.lastInitial, 
         formData.grade, 
-        schoolData
+        { teacherName: formData.teacherName },
+        formData.entityId,
+        formData.schoolId
       );
       
       setGeneratedUsername(displayUsername);
 
-      // 🔥 CREATE FIREBASE AUTH ACCOUNT using new system
+      // 🔥 CREATE FIREBASE AUTH ACCOUNT using teacher system
       console.log('🔐 Creating Firebase Auth account...');
-      const authResult = await authHelpers.createStudentAccount(
+      
+      // Create email format: emmak4smit@teacher-code.luxlibris.app
+      const studentEmail = `${displayUsername.toLowerCase()}@${formData.teacherJoinCode.toLowerCase().replace(/[^a-z0-9]/g, '-')}.luxlibris.app`;
+      const studentPassword = formData.teacherJoinCode; // Teacher code IS the password
+      
+      console.log('📧 Student email:', studentEmail);
+      console.log('🔑 Student password (teacher code):', studentPassword);
+      
+      const authResult = await authHelpers.createStudentAccountWithTeacherCode(
         formData.firstName,
         formData.lastInitial,
         formData.grade,
-        schoolData
+        {
+          email: studentEmail,
+          password: studentPassword,
+          displayUsername: displayUsername
+        }
       );
 
       console.log('✅ Firebase Auth account created with UID:', authResult.uid);
 
-      // Create student document in proper diocese structure
+      // Create student document in entities structure ONLY
       const studentData = {
         // Authentication fields
         uid: authResult.uid,
-        authEmail: authResult.email,
+        authEmail: studentEmail,
         firstName: formData.firstName,
         lastInitial: formData.lastInitial,
         displayUsername: displayUsername,
         
-        // School linking
+        // Teacher & School linking
+        currentTeacherId: formData.teacherId,
+        teacherHistory: [formData.teacherId], // Track teacher changes
+        createdByTeacherId: formData.teacherId, // Original teacher
+        
+        entityId: formData.entityId,
         schoolId: formData.schoolId,
-        dioceseId: formData.dioceseId,
         schoolName: formData.schoolName,
         
         // Academic info
@@ -268,6 +300,8 @@ export default function StudentOnboarding() {
         // Progress tracking
         thisYearBooks: 0,
         lifetimeBooks: 0,
+        booksSubmittedThisYear: 0,
+        lifetimeBooksSubmitted: 0,
         saintUnlocks: [],
         
         // Reading habits
@@ -277,8 +311,14 @@ export default function StudentOnboarding() {
           lastReadingDate: null 
         },
         
+        // Bookshelf
+        bookshelf: [],
+        
         // Historical data for retroactive credit
         historicalBooksSubmitted: {},
+        
+        // Authentication info for sign-in
+        signInCode: formData.teacherJoinCode,
         
         // Metadata
         accountCreated: new Date(),
@@ -286,41 +326,21 @@ export default function StudentOnboarding() {
         accountType: 'student'
       };
 
-      // 🎯 SAVE TO PROPER DIOCESE STRUCTURE
-      console.log('💾 Saving student to diocese structure...');
+      // 🎯 SAVE TO ENTITIES STRUCTURE ONLY (No dual storage!)
+      console.log('💾 Saving student to entities structure...');
       const studentDocRef = await addDoc(
-        collection(db, `dioceses/${formData.dioceseId}/schools/${formData.schoolId}/students`), 
+        collection(db, `entities/${formData.entityId}/schools/${formData.schoolId}/students`), 
         studentData
       );
       
-      console.log('✅ Student saved to diocese structure with ID:', studentDocRef.id);
-      
-      // 🔥 ALSO CREATE GLOBAL USER PROFILE (for AuthContext compatibility)
-      const globalUserProfile = {
-        uid: authResult.uid,
-        firstName: formData.firstName,
-        lastInitial: formData.lastInitial,
-        displayUsername: displayUsername,
-        schoolId: formData.schoolId,
-        dioceseId: formData.dioceseId,
-        schoolName: formData.schoolName,
-        accountType: 'student',
-        onboardingCompleted: true,
-        accountCreated: new Date(),
-        // Reference to the actual student record
-        studentDocId: studentDocRef.id,
-        studentDocPath: `dioceses/${formData.dioceseId}/schools/${formData.schoolId}/students/${studentDocRef.id}`
-      };
-      
-      await addDoc(collection(db, 'users'), globalUserProfile);
-      console.log('✅ Global user profile created');
+      console.log('✅ Student saved to entities structure with ID:', studentDocRef.id);
       
       // Store in localStorage for app usage
       localStorage.setItem('studentId', studentDocRef.id);
       localStorage.setItem('studentData', JSON.stringify(studentData));
       
       // Clean up temp data
-      localStorage.removeItem('tempSchoolData');
+      localStorage.removeItem('tempTeacherData');
       localStorage.removeItem('luxlibris_account_flow');
       
       console.log('🎉 Account creation completed successfully!');
@@ -336,126 +356,270 @@ export default function StudentOnboarding() {
   };
 
   const handleSuccessPopupClose = () => {
-    setShowSuccessPopup(false);
-    setIsLoading(false);
-    // Redirect to student dashboard (user is already signed in)
-    router.push('/student-dashboard');
-  };
+  setShowSuccessPopup(false);
+  setIsLoading(false);
+  
+  // Set flags for dashboard loading splash to know this is a new account
+  localStorage.setItem('luxlibris_account_created', 'true');
+  localStorage.setItem('studentData', JSON.stringify({
+  ...formData,
+  displayUsername: generatedUsername,
+  uid: createdUserUid // Store the UID for reference
+}));
+  
+  console.log('🚀 Redirecting to dashboard with new account flags set');
+  
+  // Redirect to dashboard - the dashboard splash screen will handle the profile loading timing
+  router.push('/student-dashboard');
+};
 
   const selectedTheme = themes.find(theme => theme.assetPrefix === formData.selectedTheme);
 
   return (
-  <>
-    <Head>
-      <title>Welcome to Lux Libris - Student Setup</title>
-      <meta name="description" content="Set up your reading profile and join your school's program" />
-      <link rel="icon" href="/images/lux_libris_logo.png" />
-    </Head>
-    
-    <div style={{ 
-      backgroundColor: selectedTheme.background, 
-      minHeight: '100vh',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
-      position: 'relative'
-    }}>
-      {/* Success Popup */}
-      {showSuccessPopup && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '20px'
-        }}>
+    <>
+      <Head>
+        <title>Welcome to Lux Libris - Student Setup</title>
+        <meta name="description" content="Set up your reading profile and join your teacher's program" />
+        <link rel="icon" href="/images/lux_libris_logo.png" />
+      </Head>
+      
+      <div style={{ 
+        backgroundColor: selectedTheme.background, 
+        minHeight: '100vh',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        position: 'relative'
+      }}>
+        {/* Success Popup */}
+        {showSuccessPopup && (
           <div style={{
-            backgroundColor: selectedTheme.surface,
-            borderRadius: '16px',
-            padding: '32px',
-            maxWidth: '400px',
-            width: '100%',
-            textAlign: 'center',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px'
           }}>
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>🎉</div>
-            <h2 style={{
-              fontSize: '24px',
-              fontWeight: 'bold',
-              color: selectedTheme.textPrimary,
-              marginBottom: '16px'
-            }}>
-              Welcome to Lux Libris!
-            </h2>
-            <p style={{
-              fontSize: '16px',
-              color: `${selectedTheme.textPrimary}CC`,
-              marginBottom: '24px'
-            }}>
-              Your account has been created successfully!
-            </p>
             <div style={{
-              backgroundColor: `${selectedTheme.primary}20`,
-              border: `1px solid ${selectedTheme.primary}50`,
-              borderRadius: '12px',
-              padding: '16px',
-              marginBottom: '24px'
+              backgroundColor: selectedTheme.surface,
+              borderRadius: '16px',
+              padding: '32px',
+              maxWidth: '400px',
+              width: '100%',
+              textAlign: 'center',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
             }}>
-              <p style={{
-                fontSize: '14px',
-                fontWeight: '600',
-                color: selectedTheme.textPrimary,
-                marginBottom: '8px'
-              }}>
-                Your Lux Libris Username:
-              </p>
-              <p style={{
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>🎉</div>
+              <h2 style={{
                 fontSize: '24px',
                 fontWeight: 'bold',
-                color: selectedTheme.primary,
-                fontFamily: 'monospace',
-                marginBottom: '8px'
+                color: selectedTheme.textPrimary,
+                marginBottom: '16px'
               }}>
-                {generatedUsername}
-              </p>
+                Welcome to Lux Libris!
+              </h2>
               <p style={{
-                fontSize: '12px',
+                fontSize: '16px',
                 color: `${selectedTheme.textPrimary}CC`,
-                fontStyle: 'italic'
+                marginBottom: '24px'
               }}>
-                Remember this! You&apos;ll use it with your school code to sign in.
+                Your account has been created successfully!
               </p>
+              <div style={{
+                backgroundColor: `${selectedTheme.primary}20`,
+                border: `1px solid ${selectedTheme.primary}50`,
+                borderRadius: '12px',
+                padding: '16px',
+                marginBottom: '24px'
+              }}>
+                <p style={{
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: selectedTheme.textPrimary,
+                  marginBottom: '8px'
+                }}>
+                  Your Lux Libris Username:
+                </p>
+                <p style={{
+                  fontSize: '24px',
+                  fontWeight: 'bold',
+                  color: selectedTheme.primary,
+                  fontFamily: 'monospace',
+                  marginBottom: '8px'
+                }}>
+                  {generatedUsername}
+                </p>
+                <p style={{
+                  fontSize: '12px',
+                  color: `${selectedTheme.textPrimary}CC`,
+                  fontStyle: 'italic'
+                }}>
+                  Remember this! You&apos;ll use it with your teacher code to sign in.
+                </p>
+              </div>
+              <div style={{
+                backgroundColor: `${selectedTheme.accent}20`,
+                border: `1px solid ${selectedTheme.accent}50`,
+                borderRadius: '12px',
+                padding: '16px',
+                marginBottom: '24px'
+              }}>
+                <p style={{
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: selectedTheme.textPrimary,
+                  marginBottom: '8px'
+                }}>
+                  Your Teacher Code (Password):
+                </p>
+                <p style={{
+                  fontSize: '18px',
+                  fontWeight: 'bold',
+                  color: selectedTheme.primary,
+                  fontFamily: 'monospace'
+                }}>
+                  {formData.teacherJoinCode}
+                </p>
+              </div>
+              <button
+                onClick={handleSuccessPopupClose}
+                style={{
+                  backgroundColor: selectedTheme.primary,
+                  color: selectedTheme.textPrimary,
+                  border: 'none',
+                  padding: '12px 32px',
+                  borderRadius: '12px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                }}
+              >
+                Start My Reading Journey!
+              </button>
             </div>
+          </div>
+        )}
+
+        {/* Header */}
+        <div style={{
+          backgroundColor: selectedTheme.secondary,
+          padding: '16px 24px',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+        }}>
+          <h1 style={{
+            fontFamily: 'Didot, serif',
+            fontSize: '20px',
+            color: selectedTheme.textPrimary,
+            margin: 0,
+            textAlign: 'center'
+          }}>
+            Welcome to Lux Libris!
+          </h1>
+        </div>
+
+        {/* Progress Indicator */}
+        <div style={{ padding: '16px 24px' }}>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {[0, 1, 2, 3].map(step => (
+              <div
+                key={step}
+                style={{
+                  flex: 1,
+                  height: '4px',
+                  backgroundColor: step <= currentStep ? selectedTheme.primary : `${selectedTheme.accent}50`,
+                  borderRadius: '2px',
+                  transition: 'all 0.3s ease'
+                }}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Page Content */}
+        <div style={{ 
+          padding: '24px',
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: 'calc(100vh - 160px)'
+        }}>
+          
+          {/* Error Message */}
+          {error && (
             <div style={{
-              backgroundColor: `${selectedTheme.accent}20`,
-              border: `1px solid ${selectedTheme.accent}50`,
-              borderRadius: '12px',
-              padding: '16px',
-              marginBottom: '24px'
+              background: '#fef2f2',
+              border: '1px solid #fca5a5',
+              borderRadius: '0.5rem',
+              padding: '0.75rem',
+              marginBottom: '1.5rem'
             }}>
               <p style={{
-                fontSize: '14px',
-                fontWeight: '600',
-                color: selectedTheme.textPrimary,
-                marginBottom: '8px'
+                color: '#dc2626',
+                fontSize: '0.875rem',
+                margin: 0
               }}>
-                Your School Code (Password):
-              </p>
-              <p style={{
-                fontSize: '18px',
-                fontWeight: 'bold',
-                color: selectedTheme.primary,
-                fontFamily: 'monospace'
-              }}>
-                {formData.studentAccessCode}
+                {error}
               </p>
             </div>
+          )}
+          
+          <div style={{ flex: 1 }}>
+            {currentStep === 0 && <WelcomePage selectedTheme={selectedTheme} />}
+            {currentStep === 1 && (
+              <InfoPage 
+                formData={formData} 
+                setFormData={setFormData} 
+                selectedTheme={selectedTheme} 
+                grades={grades} 
+              />
+            )}
+            {currentStep === 2 && (
+              <GoalPage 
+                formData={formData} 
+                setFormData={setFormData} 
+                selectedTheme={selectedTheme} 
+                bookGoals={bookGoals} 
+              />
+            )}
+            {currentStep === 3 && (
+              <ThemePage 
+                formData={formData} 
+                setFormData={setFormData} 
+                themes={themes} 
+              />
+            )}
+          </div>
+
+          {/* Navigation Buttons */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginTop: '24px'
+          }}>
             <button
-              onClick={handleSuccessPopupClose}
+              onClick={handleBack}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: selectedTheme.textPrimary,
+                fontSize: '16px',
+                cursor: 'pointer',
+                padding: '12px 16px',
+                opacity: currentStep > 0 ? 1 : 0,
+                pointerEvents: currentStep > 0 ? 'auto' : 'none'
+              }}
+            >
+              Back
+            </button>
+
+            <button
+              onClick={handleNext}
+              disabled={isLoading || (currentStep === 1 && (!formData.firstName || !formData.lastInitial))}
               style={{
                 backgroundColor: selectedTheme.primary,
                 color: selectedTheme.textPrimary,
@@ -465,153 +629,20 @@ export default function StudentOnboarding() {
                 fontSize: '16px',
                 fontWeight: '600',
                 cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                opacity: (isLoading || (currentStep === 1 && (!formData.firstName || !formData.lastInitial))) ? 0.7 : 1
               }}
             >
-              Start My Reading Journey!
+              {isLoading ? 'Creating Account...' : currentStep < 3 ? 'Next' : 'Create Account!'}
             </button>
           </div>
         </div>
-      )}
-
-      {/* Header */}
-      <div style={{
-        backgroundColor: selectedTheme.secondary,
-        padding: '16px 24px',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-      }}>
-        <h1 style={{
-          fontFamily: 'Didot, serif',
-          fontSize: '20px',
-          color: selectedTheme.textPrimary,
-          margin: 0,
-          textAlign: 'center'
-        }}>
-          Welcome to Lux Libris!
-        </h1>
       </div>
-
-      {/* Progress Indicator */}
-      <div style={{ padding: '16px 24px' }}>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          {[0, 1, 2, 3].map(step => (
-            <div
-              key={step}
-              style={{
-                flex: 1,
-                height: '4px',
-                backgroundColor: step <= currentStep ? selectedTheme.primary : `${selectedTheme.accent}50`,
-                borderRadius: '2px',
-                transition: 'all 0.3s ease'
-              }}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Page Content */}
-      <div style={{ 
-        padding: '24px',
-        display: 'flex',
-        flexDirection: 'column',
-        minHeight: 'calc(100vh - 160px)'
-      }}>
-        
-        {/* Error Message */}
-        {error && (
-          <div style={{
-            background: '#fef2f2',
-            border: '1px solid #fca5a5',
-            borderRadius: '0.5rem',
-            padding: '0.75rem',
-            marginBottom: '1.5rem'
-          }}>
-            <p style={{
-              color: '#dc2626',
-              fontSize: '0.875rem',
-              margin: 0
-            }}>
-              {error}
-            </p>
-          </div>
-        )}
-        
-        <div style={{ flex: 1 }}>
-          {currentStep === 0 && <WelcomePage selectedTheme={selectedTheme} />}
-          {currentStep === 1 && (
-            <InfoPage 
-              formData={formData} 
-              setFormData={setFormData} 
-              selectedTheme={selectedTheme} 
-              grades={grades} 
-            />
-          )}
-          {currentStep === 2 && (
-            <GoalPage 
-              formData={formData} 
-              setFormData={setFormData} 
-              selectedTheme={selectedTheme} 
-              bookGoals={bookGoals} 
-            />
-          )}
-          {currentStep === 3 && (
-            <ThemePage 
-              formData={formData} 
-              setFormData={setFormData} 
-              themes={themes} 
-            />
-          )}
-        </div>
-
-        {/* Navigation Buttons */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginTop: '24px'
-        }}>
-          <button
-            onClick={handleBack}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: selectedTheme.textPrimary,
-              fontSize: '16px',
-              cursor: 'pointer',
-              padding: '12px 16px',
-              opacity: currentStep > 0 ? 1 : 0,
-              pointerEvents: currentStep > 0 ? 'auto' : 'none'
-            }}
-          >
-            Back
-          </button>
-
-          <button
-            onClick={handleNext}
-            disabled={isLoading || (currentStep === 1 && (!formData.firstName || !formData.lastInitial))}
-            style={{
-              backgroundColor: selectedTheme.primary,
-              color: selectedTheme.textPrimary,
-              border: 'none',
-              padding: '12px 32px',
-              borderRadius: '12px',
-              fontSize: '16px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              opacity: (isLoading || (currentStep === 1 && (!formData.firstName || !formData.lastInitial))) ? 0.7 : 1
-            }}
-          >
-            {isLoading ? 'Creating Account...' : currentStep < 3 ? 'Next' : 'Create Account!'}
-          </button>
-        </div>
-      </div>
-    </div>
-  </>
-);
+    </>
+  );
 }
 
-// Component pages (simplified for diocese structure)
+// Component pages (same as before but with teacher context)
 function WelcomePage({ selectedTheme }) {
   return (
     <div style={{
@@ -672,7 +703,7 @@ function InfoPage({ formData, setFormData, selectedTheme, grades }) {
         Tell us about yourself!
       </h2>
 
-      {/* School Display - Pre-filled from account creation */}
+      {/* Teacher & School Display - Pre-filled from account creation */}
       <div style={{ marginBottom: '20px' }}>
         <label style={{
           fontSize: '16px',
@@ -681,7 +712,7 @@ function InfoPage({ formData, setFormData, selectedTheme, grades }) {
           display: 'block',
           marginBottom: '8px'
         }}>
-          Your School
+          Your Teacher & School
         </label>
         <div style={{
           width: '100%',
@@ -690,9 +721,15 @@ function InfoPage({ formData, setFormData, selectedTheme, grades }) {
           border: 'none',
           backgroundColor: `${selectedTheme.surface}50`,
           color: `${selectedTheme.textPrimary}80`,
-          fontSize: '16px'
+          fontSize: '14px',
+          lineHeight: '1.4'
         }}>
-          {formData.schoolName ? `${formData.schoolName} - ${formData.schoolCity}, ${formData.schoolState}` : 'Loading school...'}
+          <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+            👩‍🏫 {formData.teacherName || 'Loading teacher...'}
+          </div>
+          <div>
+            🏫 {formData.schoolName ? `${formData.schoolName} - ${formData.schoolCity}, ${formData.schoolState}` : 'Loading school...'}
+          </div>
         </div>
         <p style={{
           fontSize: '12px',

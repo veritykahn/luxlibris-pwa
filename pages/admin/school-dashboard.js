@@ -1,14 +1,14 @@
+// pages/admin/teacher-dashboard.js - Overview Dashboard with Navigation
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
-import { useAuth } from '../../contexts/AuthContext' // ADDED: Authentication
+import { useAuth } from '../../contexts/AuthContext'
 import { db } from '../../lib/firebase'
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where } from 'firebase/firestore'
+import { collection, getDocs, query, where, orderBy, limit } from 'firebase/firestore'
 
-export default function SchoolAdminDashboard() {
+export default function TeacherDashboard() {
   const router = useRouter()
   
-  // ADDED: Authentication with session timeout checking
   const { 
     user, 
     userProfile, 
@@ -16,92 +16,81 @@ export default function SchoolAdminDashboard() {
     isAuthenticated, 
     isSessionExpired, 
     signOut,
-    updateLastActivity // Update activity on interactions
+    updateLastActivity
   } = useAuth()
 
-  const [activeTab, setActiveTab] = useState('students')
   const [loading, setLoading] = useState(true)
-  const [school, setSchool] = useState(null)
-  const [students, setStudents] = useState([])
-  const [pendingSubmissions, setPendingSubmissions] = useState([])
-  const [showAddStudent, setShowAddStudent] = useState(false)
-  const [newStudent, setNewStudent] = useState({
-    firstName: '',
-    lastInitial: '',
-    grade: '4th Grade',
-    goal: 10,
-    historicalBooks: {}
+  const [dashboardData, setDashboardData] = useState({
+    totalStudents: 0,
+    totalAppStudents: 0,
+    totalManualStudents: 0,
+    totalBooksRead: 0,
+    pendingSubmissions: 0,
+    schoolProgress: 0,
+    activeStreaks: 0
   })
-
-  // ADDED: Session timeout warning state
+  
+  const [recentActivity, setRecentActivity] = useState([])
+  const [topReaders, setTopReaders] = useState([])
+  const [urgentActions, setUrgentActions] = useState([])
+  const [quickStats, setQuickStats] = useState({})
   const [showTimeoutWarning, setShowTimeoutWarning] = useState(false)
 
-  // ADDED: Authentication and session checking
+  // Authentication check
   useEffect(() => {
-    const checkAuthAndSession = async () => {
-      if (authLoading) return // Wait for auth to load
+    const checkAuth = async () => {
+      if (authLoading) return
 
-      // Check if user is authenticated
       if (!isAuthenticated) {
-        console.log('❌ Admin not authenticated, redirecting to sign-in')
         router.push('/sign-in')
         return
       }
 
-      // Check if user is admin
-      if (userProfile && userProfile.accountType !== 'admin') {
-        console.log('❌ User is not admin, redirecting to appropriate dashboard')
+      if (userProfile && !['teacher', 'admin'].includes(userProfile.accountType)) {
         router.push('/role-selector')
         return
       }
 
-      // Check session expiry for admins
-      if (userProfile?.accountType === 'admin' && isSessionExpired()) {
-        console.log('⏰ Admin session expired, signing out')
+      if (userProfile?.accountType && ['teacher', 'admin'].includes(userProfile.accountType) && isSessionExpired()) {
         await signOut({ redirectTo: '/sign-in?reason=session-expired' })
         return
       }
 
-      // If we get here, admin is authenticated and session is valid
       if (userProfile) {
-        loadSchoolData()
+        loadDashboardData()
       }
     }
 
-    checkAuthAndSession()
+    checkAuth()
   }, [authLoading, isAuthenticated, userProfile, router, isSessionExpired, signOut])
 
-  // ADDED: Periodic session checking while on page
+  // Session timeout checking
   useEffect(() => {
-    if (!userProfile?.accountType === 'admin') return
+    if (!userProfile?.accountType || !['teacher', 'admin'].includes(userProfile.accountType)) return
 
     const sessionCheckInterval = setInterval(() => {
       if (isSessionExpired()) {
-        console.log('⏰ Admin session expired during use, signing out')
         signOut({ redirectTo: '/sign-in?reason=session-expired' })
       } else {
-        // Check if close to expiry (55 minutes = 55 * 60 * 1000)
         const warningTime = 55 * 60 * 1000
         const timeLeft = warningTime - (Date.now() - (parseInt(localStorage.getItem('luxlibris_last_activity')) || Date.now()))
         
-        if (timeLeft <= 0 && timeLeft > -60000) { // Show warning in last 5 minutes
+        if (timeLeft <= 0 && timeLeft > -60000) {
           setShowTimeoutWarning(true)
         }
       }
-    }, 60000) // Check every minute
+    }, 60000)
 
     return () => clearInterval(sessionCheckInterval)
   }, [userProfile, isSessionExpired, signOut])
 
-  // ADDED: Update activity on user interactions
+  // Activity tracking
   const handleUserActivity = () => {
     updateLastActivity()
-    setShowTimeoutWarning(false) // Hide warning if user is active
+    setShowTimeoutWarning(false)
   }
 
-  // ADDED: Set up activity tracking for this page
   useEffect(() => {
-    // Add click listeners to update activity
     document.addEventListener('click', handleUserActivity)
     document.addEventListener('keypress', handleUserActivity)
 
@@ -111,151 +100,192 @@ export default function SchoolAdminDashboard() {
     }
   }, [])
 
-  const loadSchoolData = async () => {
+  // Load dashboard overview data
+  const loadDashboardData = async () => {
     try {
-      // TODO: Get school ID from auth/session - for now using Holy Family
-      const schoolId = 'holy-family-austin'
+      console.log('📊 Loading teacher dashboard overview...')
       
-      // Load school info
-      const schoolsRef = collection(db, 'schools')
-      const schoolSnapshot = await getDocs(schoolsRef)
-      
-      // Find Holy Family or use first school
-      let schoolData = null
-      schoolSnapshot.forEach((doc) => {
-        const data = doc.data()
-        if (data.name?.includes('Holy Family') || !schoolData) {
-          schoolData = { id: doc.id, ...data }
-        }
-      })
-      
-      if (schoolData) {
-        setSchool(schoolData)
+      if (!userProfile?.entityId || !userProfile?.schoolId) {
+        console.error('❌ Missing entity or school ID')
+        setLoading(false)
+        return
       }
 
-      // Load students (mock data for now since we don't have real students yet)
-      const mockStudents = [
-        {
-          id: 'student1',
-          firstName: 'Emma',
-          lastInitial: 'K',
-          grade: '5th Grade',
-          goal: 15,
-          booksReadThisYear: 6,
-          totalBooksRead: 41,
-          saintCount: 8,
-          readingStreak: 7,
-          schoolId: schoolId,
-          achievements: ['5-book-milestone', 'first-saint'],
-          currentBooks: ['Wonder', 'Hatchet']
-        },
-        {
-          id: 'student2', 
-          firstName: 'Jack',
-          lastInitial: 'M',
-          grade: '4th Grade',
-          goal: 10,
-          booksReadThisYear: 3,
-          totalBooksRead: 23,
-          saintCount: 4,
-          readingStreak: 2,
-          schoolId: schoolId,
-          achievements: ['first-book'],
-          currentBooks: ['The Wild Robot']
-        },
-        {
-          id: 'student3',
-          firstName: 'Sophia',
-          lastInitial: 'L',
-          grade: '6th Grade', 
-          goal: 20,
-          booksReadThisYear: 12,
-          totalBooksRead: 67,
-          saintCount: 15,
-          readingStreak: 14,
-          schoolId: schoolId,
-          achievements: ['10-book-milestone', 'reading-streak-10'],
-          currentBooks: ['The Giver', 'Bridge to Terabithia']
-        }
-      ]
-      setStudents(mockStudents)
+      // Load app students
+      const appStudentsRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/students`)
+      const appStudentsSnapshot = await getDocs(appStudentsRef)
+      
+      // Load manual students  
+      const manualStudentsRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers/${userProfile.uid}/manualStudents`)
+      let manualStudentsSnapshot = { size: 0, docs: [] }
+      try {
+        manualStudentsSnapshot = await getDocs(manualStudentsRef)
+      } catch (error) {
+        console.log('No manual students collection yet')
+      }
 
-      // Load pending submissions
-      setPendingSubmissions([
-        { 
-          id: 1, 
-          studentId: 'student1',
-          studentName: 'Emma K.', 
-          book: 'Wonder', 
-          submittedAt: '2 hours ago',
-          status: 'pending'
-        },
-        { 
-          id: 2, 
-          studentId: 'student2',
-          studentName: 'Jack M.', 
-          book: 'Hatchet', 
-          submittedAt: '1 day ago',
-          status: 'pending'  
-        },
-      ])
+      let totalBooksRead = 0
+      let pendingSubmissions = 0
+      let activeStreaks = 0
+      let schoolGoalTotal = 0
+      const recentActivities = []
+      const topReadersList = []
+
+      // Process app students
+      for (const studentDoc of appStudentsSnapshot.docs) {
+        const studentData = { id: studentDoc.id, ...studentDoc.data() }
+        
+        const booksThisYear = studentData.booksSubmittedThisYear || 0
+        totalBooksRead += booksThisYear
+        schoolGoalTotal += (studentData.personalGoal || 10)
+        
+        if (studentData.readingStreaks?.current > 0) {
+          activeStreaks++
+        }
+
+        // Check for pending submissions in bookshelf
+        if (studentData.bookshelf) {
+          const pending = studentData.bookshelf.filter(book => 
+            book.status === 'pending_approval' || book.status === 'pending_admin_approval'
+          ).length
+          pendingSubmissions += pending
+        }
+
+        // Add to top readers if they have books
+        if (booksThisYear > 0) {
+          topReadersList.push({
+            id: studentData.id,
+            name: `${studentData.firstName} ${studentData.lastInitial}.`,
+            books: booksThisYear,
+            type: 'app'
+          })
+        }
+
+        // Add recent activity
+        if (studentData.lastModified) {
+          const lastActivity = studentData.lastModified.toDate ? studentData.lastModified.toDate() : new Date(studentData.lastModified)
+          if (Date.now() - lastActivity.getTime() < 7 * 24 * 60 * 60 * 1000) { // Last 7 days
+            recentActivities.push({
+              id: `${studentData.id}-activity`,
+              type: 'student_activity',
+              studentName: `${studentData.firstName} ${studentData.lastInitial}.`,
+              action: 'Updated progress',
+              timestamp: lastActivity,
+              studentType: 'app'
+            })
+          }
+        }
+      }
+
+      // Process manual students
+      for (const studentDoc of manualStudentsSnapshot.docs) {
+        const studentData = { id: studentDoc.id, ...studentDoc.data() }
+        
+        const booksThisYear = studentData.booksCompleted || 0
+        totalBooksRead += booksThisYear
+        schoolGoalTotal += (studentData.personalGoal || 10)
+
+        // Add to top readers
+        if (booksThisYear > 0) {
+          topReadersList.push({
+            id: studentData.id,
+            name: `${studentData.firstName} ${studentData.lastInitial}.`,
+            books: booksThisYear,
+            type: 'manual'
+          })
+        }
+      }
+
+      // Sort top readers
+      topReadersList.sort((a, b) => b.books - a.books)
+
+      // Sort recent activity by timestamp
+      recentActivities.sort((a, b) => b.timestamp - a.timestamp)
+
+      // Generate urgent actions
+      const urgent = []
+      if (pendingSubmissions > 0) {
+        urgent.push({
+          id: 'pending-submissions',
+          type: 'submissions',
+          title: `${pendingSubmissions} book${pendingSubmissions !== 1 ? 's' : ''} awaiting approval`,
+          action: 'Review submissions',
+          priority: 'high'
+        })
+      }
+
+      const studentsWithoutGoals = (appStudentsSnapshot.size + manualStudentsSnapshot.size) - Math.floor(schoolGoalTotal / 10)
+      if (studentsWithoutGoals > 0) {
+        urgent.push({
+          id: 'missing-goals',
+          type: 'students',
+          title: `${studentsWithoutGoals} student${studentsWithoutGoals !== 1 ? 's' : ''} need reading goals`,
+          action: 'Set goals',
+          priority: 'medium'
+        })
+      }
+
+      // Calculate school progress
+      const schoolProgress = schoolGoalTotal > 0 ? Math.round((totalBooksRead / schoolGoalTotal) * 100) : 0
+
+      setDashboardData({
+        totalStudents: appStudentsSnapshot.size + manualStudentsSnapshot.size,
+        totalAppStudents: appStudentsSnapshot.size,
+        totalManualStudents: manualStudentsSnapshot.size,
+        totalBooksRead,
+        pendingSubmissions,
+        schoolProgress,
+        activeStreaks
+      })
+
+      setRecentActivity(recentActivities.slice(0, 5))
+      setTopReaders(topReadersList.slice(0, 5))
+      setUrgentActions(urgent)
+
+      console.log(`✅ Dashboard loaded: ${appStudentsSnapshot.size + manualStudentsSnapshot.size} students, ${totalBooksRead} books`)
 
     } catch (error) {
-      console.error('Error loading school data:', error)
+      console.error('❌ Error loading dashboard:', error)
     } finally {
       setLoading(false)
     }
   }
 
-  const addStudent = async () => {
-    if (!newStudent.firstName || !newStudent.lastInitial) return
-    
-    try {
-      const studentId = `${newStudent.firstName.toLowerCase()}-${newStudent.lastInitial.toLowerCase()}-${Date.now()}`
-      const studentData = {
-        id: studentId,
-        ...newStudent,
-        schoolId: school?.id || 'holy-family-austin',
-        createdAt: new Date(),
-        booksReadThisYear: 0,
-        totalBooksRead: Object.values(newStudent.historicalBooks).reduce((sum, books) => sum + books, 0),
-        saintCount: 0,
-        readingStreak: 0,
-        achievements: [],
-        currentBooks: []
-      }
-      
-      // Add to local state immediately for demo
-      setStudents(prev => [...prev, studentData])
-      
-      // TODO: Add to Firebase when students collection is set up
-      // await addDoc(collection(db, 'students'), studentData)
-      
-      setNewStudent({ firstName: '', lastInitial: '', grade: '4th Grade', goal: 10, historicalBooks: {} })
-      setShowAddStudent(false)
-    } catch (error) {
-      console.error('Error adding student:', error)
+  // Navigation handlers
+  const handleNavigation = (page) => {
+    switch (page) {
+      case 'dashboard':
+        // Already here
+        break
+      case 'students':
+        router.push('/admin/teacher-students')
+        break
+      case 'submissions':
+        router.push('/admin/teacher-submissions')
+        break
+      case 'achievements':
+        router.push('/admin/teacher-achievements')
+        break
+      case 'settings':
+        router.push('/admin/teacher-settings')
+        break
+      default:
+        console.log(`Navigation to ${page} not implemented yet`)
     }
   }
 
-  const approveSubmission = async (submissionId) => {
-    setPendingSubmissions(prev => prev.filter(s => s.id !== submissionId))
-    // TODO: Update in Firebase and award saint achievement
-  }
-
-  // ADDED: Handle session extension
+  // Session extension
   const extendSession = () => {
     updateLastActivity()
     setShowTimeoutWarning(false)
   }
 
-  // ADDED: Handle sign out from timeout warning
   const handleTimeoutSignOut = async () => {
     await signOut({ redirectTo: '/sign-in?reason=session-expired' })
   }
 
-  // Show loading while checking authentication OR loading data
-  if (authLoading || (isAuthenticated && !userProfile) || loading) {
+  // Show loading
+  if (authLoading || loading || !userProfile) {
     return (
       <div style={{
         minHeight: '100vh',
@@ -275,32 +305,32 @@ export default function SchoolAdminDashboard() {
             margin: '0 auto 1rem'
           }}></div>
           <p style={{ color: '#223848', fontSize: '1.1rem' }}>
-            {authLoading ? 'Checking authentication...' : 'Loading your dashboard...'}
+            Loading dashboard...
           </p>
         </div>
       </div>
     )
   }
 
-  // Don't render if not authenticated (will redirect)
-  if (!isAuthenticated || !userProfile || userProfile.accountType !== 'admin') {
+  if (!isAuthenticated || !userProfile || !['teacher', 'admin'].includes(userProfile.accountType)) {
     return null
   }
 
   return (
     <>
       <Head>
-        <title>School Admin Dashboard - Lux Libris</title>
+        <title>Teacher Dashboard - Lux Libris</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       </Head>
       
       <div style={{
         minHeight: '100vh',
         background: 'linear-gradient(135deg, #FFFCF5 0%, #C3E0DE 50%, #A1E5DB 100%)',
-        fontFamily: 'system-ui, -apple-system, sans-serif'
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        paddingBottom: '80px'
       }}>
         
-        {/* ADDED: Session Timeout Warning Modal */}
+        {/* Session Timeout Warning Modal */}
         {showTimeoutWarning && (
           <div style={{
             position: 'fixed',
@@ -338,7 +368,7 @@ export default function SchoolAdminDashboard() {
                 marginBottom: '1.5rem',
                 lineHeight: '1.4'
               }}>
-                Your admin session will expire in a few minutes for security. Would you like to continue working?
+                Your session will expire in a few minutes for security. Continue working?
               </p>
               <div style={{
                 display: 'flex',
@@ -378,8 +408,8 @@ export default function SchoolAdminDashboard() {
             </div>
           </div>
         )}
-        
-        {/* Header - Mobile Optimized */}
+
+        {/* Header */}
         <header style={{
           background: 'rgba(255, 255, 255, 0.95)',
           backdropFilter: 'blur(10px)',
@@ -392,59 +422,61 @@ export default function SchoolAdminDashboard() {
           <div style={{
             maxWidth: '80rem',
             margin: '0 auto',
-            padding: '0 1rem', // Reduced for mobile
+            padding: '0 1rem',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: '0.5rem'
+            justifyContent: 'space-between'
           }}>
             <div style={{ 
               display: 'flex', 
               alignItems: 'center', 
-              gap: '0.75rem',
-              minWidth: 0, // Allow shrinking
-              flex: 1
+              gap: '0.75rem'
             }}>
               <div style={{
-                width: '2.5rem', // Smaller on mobile
+                width: '2.5rem',
                 height: '2.5rem',
                 background: 'linear-gradient(135deg, #C3E0DE, #A1E5DB)',
                 borderRadius: '50%',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '1.25rem',
-                flexShrink: 0
+                fontSize: '1.25rem'
               }}>
-                🏫
+                👩‍🏫
               </div>
-              <div style={{ minWidth: 0 }}>
+              <div>
                 <h1 style={{
-                  fontSize: 'clamp(1.1rem, 4vw, 1.5rem)', // Responsive font
+                  fontSize: '1.5rem',
                   fontWeight: 'bold',
                   color: '#223848',
                   margin: 0,
-                  fontFamily: 'Georgia, serif',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis'
+                  fontFamily: 'Georgia, serif'
                 }}>
-                  {school?.name || 'School Admin'}
+                  {userProfile?.schoolName || 'Reading Program'}
                 </h1>
                 <p style={{
                   color: '#6b7280',
-                  fontSize: '0.75rem',
-                  margin: 0,
-                  display: window.innerWidth > 480 ? 'block' : 'none' // Hide subtitle on very small screens
+                  fontSize: '0.875rem',
+                  margin: 0
                 }}>
-                  Manage your Lux Libris reading program
+                  Teacher Dashboard
                 </p>
               </div>
             </div>
             
-            {/* ADDED: Sign out button */}
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.5rem',
+                background: 'rgba(173, 212, 234, 0.1)',
+                borderRadius: '0.5rem',
+                fontSize: '0.75rem',
+                color: '#223848'
+              }}>
+                <span>{userProfile.firstName || 'Teacher'}</span>
+              </div>
               <button 
                 onClick={() => signOut()}
                 style={{
@@ -455,32 +487,10 @@ export default function SchoolAdminDashboard() {
                   fontSize: '0.75rem',
                   fontWeight: '600',
                   border: 'none',
-                  cursor: 'pointer',
-                  flexShrink: 0,
-                  minHeight: '36px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.25rem'
+                  cursor: 'pointer'
                 }}
               >
                 🚪 Sign Out
-              </button>
-              <button style={{
-                padding: '0.5rem 0.75rem',
-                background: 'linear-gradient(135deg, #C3E0DE, #A1E5DB)',
-                color: '#223848',
-                borderRadius: '0.5rem',
-                fontSize: '0.75rem',
-                fontWeight: '600',
-                border: 'none',
-                cursor: 'pointer',
-                flexShrink: 0,
-                minHeight: '36px', // Touch target
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.25rem'
-              }}>
-                ⚙️ Settings
               </button>
             </div>
           </div>
@@ -490,604 +500,452 @@ export default function SchoolAdminDashboard() {
         <div style={{
           maxWidth: '80rem',
           margin: '0 auto',
-          padding: '1rem' // Reduced padding for mobile
+          padding: '1rem'
         }}>
           
-          {/* Quick Stats - Mobile Optimized Grid */}
+          {/* Welcome Section */}
+          <div style={{
+            background: 'white',
+            borderRadius: '1rem',
+            padding: '1.5rem',
+            marginBottom: '1.5rem',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)'
+          }}>
+            <h2 style={{
+              fontSize: '1.5rem',
+              fontWeight: 'bold',
+              color: '#223848',
+              margin: '0 0 0.5rem 0',
+              fontFamily: 'Georgia, serif'
+            }}>
+              Welcome back, {userProfile.firstName}! 👋
+            </h2>
+            <p style={{
+              color: '#6b7280',
+              fontSize: '1rem',
+              margin: 0
+            }}>
+              Here's what's happening with your reading program today.
+            </p>
+          </div>
+
+          {/* Quick Stats Grid */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', // Smaller minimum for mobile
-            gap: '0.75rem', // Reduced gap
+            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+            gap: '1rem',
             marginBottom: '1.5rem'
           }}>
-            <StatCard
-              icon="🧑‍🎓"
-              title="Students"
-              value={students.length}
-              subtitle="Active readers"
+            <QuickStatCard
+              icon="👥"
+              title="Total Students"
+              value={dashboardData.totalStudents}
+              subtitle={`${dashboardData.totalAppStudents} app + ${dashboardData.totalManualStudents} manual`}
               color="#ADD4EA"
             />
-            <StatCard
+            <QuickStatCard
               icon="📚"
               title="Books Read"
-              value={students.reduce((sum, s) => sum + (s.booksReadThisYear || 0), 0)}
-              subtitle="This year"
+              value={dashboardData.totalBooksRead}
+              subtitle="This school year"
               color="#C3E0DE"
             />
-            <StatCard
-              icon="⏳"
+            <QuickStatCard
+              icon="📋"
               title="Pending"
-              value={pendingSubmissions.length}
-              subtitle="Need approval"
+              value={dashboardData.pendingSubmissions}
+              subtitle="Need your review"
               color="#A1E5DB"
+              alert={dashboardData.pendingSubmissions > 0}
             />
-            <StatCard
-              icon="🏆"
+            <QuickStatCard
+              icon="🎯"
               title="Progress"
-              value={`${Math.round((students.reduce((sum, s) => sum + (s.booksReadThisYear || 0), 0) / students.reduce((sum, s) => sum + (s.goal || 10), 0)) * 100)}%`}
-              subtitle="School avg"
+              value={`${dashboardData.schoolProgress}%`}
+              subtitle="Toward goals"
               color="#B6DFEB"
+            />
+            <QuickStatCard
+              icon="🔥"
+              title="Active Streaks"
+              value={dashboardData.activeStreaks}
+              subtitle="Students reading daily"
+              color="#FFB366"
             />
           </div>
 
-          {/* Navigation Tabs - Mobile Optimized */}
-          <div style={{
-            background: 'white',
-            borderRadius: '1rem 1rem 0 0',
-            padding: '0',
-            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
-            overflow: 'hidden'
-          }}>
+          {/* Urgent Actions */}
+          {urgentActions.length > 0 && (
             <div style={{
-              display: 'flex',
-              borderBottom: '1px solid #e5e7eb',
-              overflowX: 'auto', // Allow horizontal scroll on mobile
-              scrollbarWidth: 'none', // Firefox
-              msOverflowStyle: 'none' // IE
+              background: 'white',
+              borderRadius: '1rem',
+              padding: '1.5rem',
+              marginBottom: '1.5rem',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+              border: '2px solid #FEF3C7'
             }}>
-              {[
-                { id: 'students', label: '👥 Students', shortLabel: 'Students', count: students.length },
-                { id: 'submissions', label: '📋 Submissions', shortLabel: 'Pending', count: pendingSubmissions.length },
-                { id: 'reports', label: '📊 Reports', shortLabel: 'Reports', count: null },
-                { id: 'settings', label: '⚙️ Settings', shortLabel: 'Settings', count: null }
-              ].map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  style={{
-                    padding: '0.75rem 1rem',
-                    border: 'none',
-                    background: activeTab === tab.id ? '#ADD4EA' : 'transparent',
-                    color: activeTab === tab.id ? '#223848' : '#6b7280',
-                    fontWeight: activeTab === tab.id ? '600' : '500',
-                    borderRadius: activeTab === tab.id ? '0.5rem 0.5rem 0 0' : '0',
-                    cursor: 'pointer',
-                    fontSize: '0.75rem',
+              <h3 style={{
+                fontSize: '1.25rem',
+                fontWeight: 'bold',
+                color: '#92400e',
+                margin: '0 0 1rem 0',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}>
+                ⚡ Action Required
+              </h3>
+              <div style={{ display: 'grid', gap: '0.75rem' }}>
+                {urgentActions.map(action => (
+                  <div key={action.id} style={{
+                    padding: '1rem',
+                    background: '#FEF3C7',
+                    borderRadius: '0.5rem',
                     display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.25rem',
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0,
-                    minHeight: '44px' // Touch target
-                  }}
-                >
-                  {/* Show short label on small screens */}
-                  <span style={{ display: window.innerWidth > 480 ? 'inline' : 'none' }}>
-                    {tab.label}
-                  </span>
-                  <span style={{ display: window.innerWidth <= 480 ? 'inline' : 'none' }}>
-                    {tab.shortLabel}
-                  </span>
-                  {tab.count !== null && (
-                    <span style={{
-                      background: activeTab === tab.id ? '#223848' : '#C3E0DE',
-                      color: activeTab === tab.id ? 'white' : '#223848',
-                      borderRadius: '50%',
-                      width: '1.125rem',
-                      height: '1.125rem',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <div>
+                      <div style={{
+                        fontSize: '0.875rem',
+                        fontWeight: '600',
+                        color: '#92400e'
+                      }}>
+                        {action.title}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleNavigation(action.type)}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        background: '#D97706',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '0.5rem',
+                        fontSize: '0.75rem',
+                        fontWeight: '600',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {action.action}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Top Readers & Recent Activity */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '1.5rem',
+            marginBottom: '1.5rem'
+          }}>
+            {/* Top Readers */}
+            <div style={{
+              background: 'white',
+              borderRadius: '1rem',
+              padding: '1.5rem',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)'
+            }}>
+              <h3 style={{
+                fontSize: '1.25rem',
+                fontWeight: 'bold',
+                color: '#223848',
+                margin: '0 0 1rem 0',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}>
+                🏆 Top Readers
+              </h3>
+              {topReaders.length === 0 ? (
+                <p style={{ color: '#6b7280', fontStyle: 'italic' }}>
+                  No books completed yet this year.
+                </p>
+              ) : (
+                <div style={{ display: 'grid', gap: '0.5rem' }}>
+                  {topReaders.map((reader, index) => (
+                    <div key={reader.id} style={{
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '0.625rem',
-                      fontWeight: 'bold'
+                      gap: '0.75rem',
+                      padding: '0.5rem',
+                      borderRadius: '0.5rem',
+                      background: index === 0 ? '#FEF3C7' : '#f8fafc'
                     }}>
-                      {tab.count}
-                    </span>
-                  )}
-                </button>
-              ))}
+                      <span style={{
+                        fontSize: '1.25rem'
+                      }}>
+                        {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '📖'}
+                      </span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{
+                          fontSize: '0.875rem',
+                          fontWeight: '600',
+                          color: '#223848'
+                        }}>
+                          {reader.name}
+                        </div>
+                        <div style={{
+                          fontSize: '0.75rem',
+                          color: '#6b7280'
+                        }}>
+                          {reader.books} book{reader.books !== 1 ? 's' : ''} • {reader.type === 'app' ? 'App' : 'Manual'}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Recent Activity */}
+            <div style={{
+              background: 'white',
+              borderRadius: '1rem',
+              padding: '1.5rem',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)'
+            }}>
+              <h3 style={{
+                fontSize: '1.25rem',
+                fontWeight: 'bold',
+                color: '#223848',
+                margin: '0 0 1rem 0',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}>
+                📈 Recent Activity
+              </h3>
+              {recentActivity.length === 0 ? (
+                <p style={{ color: '#6b7280', fontStyle: 'italic' }}>
+                  No recent activity to show.
+                </p>
+              ) : (
+                <div style={{ display: 'grid', gap: '0.5rem' }}>
+                  {recentActivity.map(activity => (
+                    <div key={activity.id} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                      padding: '0.5rem',
+                      borderRadius: '0.5rem',
+                      background: '#f8fafc'
+                    }}>
+                      <span style={{ fontSize: '1rem' }}>
+                        {activity.studentType === 'app' ? '📱' : '📝'}
+                      </span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{
+                          fontSize: '0.875rem',
+                          color: '#223848'
+                        }}>
+                          {activity.studentName} {activity.action}
+                        </div>
+                        <div style={{
+                          fontSize: '0.75rem',
+                          color: '#6b7280'
+                        }}>
+                          {activity.timestamp.toLocaleDateString()}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Tab Content - REST STAYS THE SAME */}
+          {/* Quick Actions */}
           <div style={{
             background: 'white',
-            borderRadius: '0 0 1rem 1rem',
-            padding: 'clamp(1rem, 4vw, 2rem)', // Responsive padding
-            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
-            minHeight: '20rem' // Reduced for mobile
+            borderRadius: '1rem',
+            padding: '1.5rem',
+            marginBottom: '6rem',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)'
           }}>
-            
-            {/* Students Tab */}
-            {activeTab === 'students' && (
-              <div>
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'flex-start',
-                  marginBottom: '1.5rem',
-                  flexWrap: 'wrap',
-                  gap: '1rem'
-                }}>
-                  <h2 style={{
-                    fontSize: 'clamp(1.25rem, 5vw, 1.5rem)',
-                    fontWeight: 'bold',
-                    color: '#223848',
-                    margin: 0,
-                    fontFamily: 'Georgia, serif'
-                  }}>
-                    Student Management
-                  </h2>
-                  <button
-                    onClick={() => setShowAddStudent(true)}
-                    style={{
-                      padding: '0.75rem 1rem',
-                      background: 'linear-gradient(135deg, #ADD4EA, #C3E0DE)',
-                      color: '#223848',
-                      border: 'none',
-                      borderRadius: '0.5rem',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      fontSize: '0.875rem',
-                      minHeight: '44px', // Touch target
-                      flexShrink: 0
-                    }}
-                  >
-                    ➕ Add Student
-                  </button>
-                </div>
-
-                {/* Add Student Modal - Mobile Optimized */}
-                {showAddStudent && (
-                  <div style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    background: 'rgba(0, 0, 0, 0.5)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 1000,
-                    padding: '1rem' // Add padding for mobile
-                  }}>
-                    <div style={{
-                      background: 'white',
-                      borderRadius: '1rem',
-                      padding: 'clamp(1rem, 4vw, 2rem)',
-                      maxWidth: '28rem',
-                      width: '100%',
-                      maxHeight: '90vh', // More space on mobile
-                      overflowY: 'auto'
-                    }}>
-                      <h3 style={{
-                        fontSize: '1.25rem',
-                        fontWeight: 'bold',
-                        color: '#223848',
-                        marginBottom: '1rem'
-                      }}>
-                        Add New Student
-                      </h3>
-                      
-                      <div style={{ marginBottom: '1rem' }}>
-                        <label style={{
-                          display: 'block',
-                          fontSize: '0.875rem',
-                          fontWeight: '600',
-                          color: '#374151',
-                          marginBottom: '0.5rem'
-                        }}>
-                          First Name
-                        </label>
-                        <input
-                          type="text"
-                          value={newStudent.firstName}
-                          onChange={(e) => setNewStudent(prev => ({ ...prev, firstName: e.target.value }))}
-                          style={{
-                            width: '100%',
-                            padding: '0.75rem',
-                            border: '1px solid #d1d5db',
-                            borderRadius: '0.5rem',
-                            fontSize: '1rem',
-                            boxSizing: 'border-box',
-                            minHeight: '44px' // Touch target
-                          }}
-                          placeholder="Emma"
-                        />
-                      </div>
-
-                      <div style={{ marginBottom: '1rem' }}>
-                        <label style={{
-                          display: 'block',
-                          fontSize: '0.875rem',
-                          fontWeight: '600',
-                          color: '#374151',
-                          marginBottom: '0.5rem'
-                        }}>
-                          Last Initial
-                        </label>
-                        <input
-                          type="text"
-                          maxLength="1"
-                          value={newStudent.lastInitial}
-                          onChange={(e) => setNewStudent(prev => ({ ...prev, lastInitial: e.target.value.toUpperCase() }))}
-                          style={{
-                            width: '100%',
-                            padding: '0.75rem',
-                            border: '1px solid #d1d5db',
-                            borderRadius: '0.5rem',
-                            fontSize: '1rem',
-                            boxSizing: 'border-box',
-                            minHeight: '44px'
-                          }}
-                          placeholder="K"
-                        />
-                      </div>
-
-                      <div style={{ marginBottom: '1rem' }}>
-                        <label style={{
-                          display: 'block',
-                          fontSize: '0.875rem',
-                          fontWeight: '600',
-                          color: '#374151',
-                          marginBottom: '0.5rem'
-                        }}>
-                          Grade
-                        </label>
-                        <select
-                          value={newStudent.grade}
-                          onChange={(e) => setNewStudent(prev => ({ ...prev, grade: e.target.value }))}
-                          style={{
-                            width: '100%',
-                            padding: '0.75rem',
-                            border: '1px solid #d1d5db',
-                            borderRadius: '0.5rem',
-                            fontSize: '1rem',
-                            boxSizing: 'border-box',
-                            minHeight: '44px'
-                          }}
-                        >
-                          <option>4th Grade</option>
-                          <option>5th Grade</option>
-                          <option>6th Grade</option>
-                          <option>7th Grade</option>
-                          <option>8th Grade</option>
-                        </select>
-                      </div>
-
-                      <div style={{ marginBottom: '1.5rem' }}>
-                        <label style={{
-                          display: 'block',
-                          fontSize: '0.875rem',
-                          fontWeight: '600',
-                          color: '#374151',
-                          marginBottom: '0.5rem'
-                        }}>
-                          Reading Goal (1-20 books)
-                        </label>
-                        <input
-                          type="number"
-                          min="1"
-                          max="20"
-                          value={newStudent.goal}
-                          onChange={(e) => setNewStudent(prev => ({ ...prev, goal: parseInt(e.target.value) || 10 }))}
-                          style={{
-                            width: '100%',
-                            padding: '0.75rem',
-                            border: '1px solid #d1d5db',
-                            borderRadius: '0.5rem',
-                            fontSize: '1rem',
-                            boxSizing: 'border-box',
-                            minHeight: '44px'
-                          }}
-                        />
-                      </div>
-
-                      <div style={{
-                        display: 'flex',
-                        gap: '0.75rem',
-                        justifyContent: 'flex-end',
-                        flexWrap: 'wrap'
-                      }}>
-                        <button
-                          onClick={() => setShowAddStudent(false)}
-                          style={{
-                            padding: '0.75rem 1.25rem',
-                            background: '#f3f4f6',
-                            color: '#374151',
-                            border: 'none',
-                            borderRadius: '0.5rem',
-                            fontWeight: '600',
-                            cursor: 'pointer',
-                            minHeight: '44px',
-                            flex: '1',
-                            minWidth: '100px'
-                          }}
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={addStudent}
-                          disabled={!newStudent.firstName || !newStudent.lastInitial}
-                          style={{
-                            padding: '0.75rem 1.25rem',
-                            background: newStudent.firstName && newStudent.lastInitial 
-                              ? 'linear-gradient(135deg, #ADD4EA, #C3E0DE)' 
-                              : '#d1d5db',
-                            color: '#223848',
-                            border: 'none',
-                            borderRadius: '0.5rem',
-                            fontWeight: '600',
-                            cursor: newStudent.firstName && newStudent.lastInitial ? 'pointer' : 'not-allowed',
-                            minHeight: '44px',
-                            flex: '1',
-                            minWidth: '120px'
-                          }}
-                        >
-                          Add Student
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Students List - Mobile Optimized */}
-                <div style={{
-                  display: 'grid',
-                  gap: '1rem'
-                }}>
-                  {students.length === 0 ? (
-                    <div style={{
-                      textAlign: 'center',
-                      padding: '2rem 1rem',
-                      color: '#6b7280'
-                    }}>
-                      <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>👥</div>
-                      <h3 style={{ color: '#223848', marginBottom: '0.5rem' }}>No students yet</h3>
-                      <p>Add your first student to get started!</p>
-                    </div>
-                  ) : (
-                    students.map(student => (
-                      <StudentCard key={student.id} student={student} />
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Submissions Tab */}
-            {activeTab === 'submissions' && (
-              <div>
-                <h2 style={{
-                  fontSize: 'clamp(1.25rem, 5vw, 1.5rem)',
-                  fontWeight: 'bold',
-                  color: '#223848',
-                  marginBottom: '1.5rem',
-                  fontFamily: 'Georgia, serif'
-                }}>
-                  Pending Book Submissions
-                </h2>
-
-                {pendingSubmissions.length === 0 ? (
-                  <div style={{
-                    textAlign: 'center',
-                    padding: '2rem 1rem',
-                    color: '#6b7280'
-                  }}>
-                    <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>📋</div>
-                    <h3 style={{ color: '#223848', marginBottom: '0.5rem' }}>All caught up!</h3>
-                    <p>No pending submissions to review.</p>
-                  </div>
-                ) : (
-                  <div style={{ display: 'grid', gap: '1rem' }}>
-                    {pendingSubmissions.map(submission => (
-                      <div key={submission.id} style={{
-                        padding: '1.25rem',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '0.75rem',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'flex-start',
-                        flexWrap: 'wrap',
-                        gap: '1rem'
-                      }}>
-                        <div style={{ flex: 1, minWidth: '200px' }}>
-                          <h4 style={{
-                            fontSize: '1rem',
-                            fontWeight: '600',
-                            color: '#223848',
-                            margin: '0 0 0.25rem 0',
-                            lineHeight: '1.3'
-                          }}>
-                            {submission.studentName} completed &quot;{submission.book}&quot;
-                          </h4>
-                          <p style={{
-                            color: '#6b7280',
-                            fontSize: '0.875rem',
-                            margin: 0
-                          }}>
-                            Submitted {submission.submittedAt}
-                          </p>
-                        </div>
-                        <div style={{ 
-                          display: 'flex', 
-                          gap: '0.5rem',
-                          flexWrap: 'wrap',
-                          justifyContent: 'flex-end'
-                        }}>
-                          <button
-                            onClick={() => approveSubmission(submission.id)}
-                            style={{
-                              padding: '0.5rem 0.75rem',
-                              background: 'linear-gradient(135deg, #34d399, #10b981)',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '0.5rem',
-                              fontWeight: '600',
-                              cursor: 'pointer',
-                              fontSize: '0.75rem',
-                              minHeight: '36px'
-                            }}
-                          >
-                            ✅ Approve
-                          </button>
-                          <button style={{
-                            padding: '0.5rem 0.75rem',
-                            background: '#f3f4f6',
-                            color: '#374151',
-                            border: 'none',
-                            borderRadius: '0.5rem',
-                            fontWeight: '600',
-                            cursor: 'pointer',
-                            fontSize: '0.75rem',
-                            minHeight: '36px'
-                          }}>
-                            👁️ Review
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Reports Tab */}
-            {activeTab === 'reports' && (
-              <div>
-                <h2 style={{
-                  fontSize: 'clamp(1.25rem, 5vw, 1.5rem)',
-                  fontWeight: 'bold',
-                  color: '#223848',
-                  marginBottom: '1.5rem',
-                  fontFamily: 'Georgia, serif'
-                }}>
-                  School Reports & Analytics
-                </h2>
-                
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-                  gap: '1rem',
-                  marginBottom: '2rem'
-                }}>
-                  <ReportCard
-                    title="📊 Reading Progress Report"
-                    description="Detailed breakdown of student progress, goals, and achievements"
-                    buttonText="Generate Report"
-                    comingSoon={true}
-                  />
-                  <ReportCard
-                    title="🏆 Achievement Summary"
-                    description="Saints earned, milestones reached, and celebration planning"
-                    buttonText="View Achievements"
-                    comingSoon={true}
-                  />
-                  <ReportCard
-                    title="📈 Class Analytics"
-                    description="Grade-level insights and reading trends across your school"
-                    buttonText="View Analytics"
-                    comingSoon={true}
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Settings Tab */}
-            {activeTab === 'settings' && (
-              <div>
-                <h2 style={{
-                  fontSize: 'clamp(1.25rem, 5vw, 1.5rem)',
-                  fontWeight: 'bold',
-                  color: '#223848',
-                  marginBottom: '1.5rem',
-                  fontFamily: 'Georgia, serif'
-                }}>
-                  School Settings
-                </h2>
-                
-                <div style={{
-                  display: 'grid',
-                  gap: '1rem'
-                }}>
-                  <SettingsCard
-                    title="🏫 School Information"
-                    description="Update school name, contact info, and program details"
-                    buttonText="Edit School Info"
-                    comingSoon={true}
-                  />
-                  <SettingsCard
-                    title="📚 Book Selection"
-                    description="Modify your selected nominees and achievement tiers"
-                    buttonText="Manage Books"
-                    comingSoon={true}
-                  />
-                  <SettingsCard
-                    title="🔐 Parent Access Codes"
-                    description="Update quiz codes and parent permissions"
-                    buttonText="Manage Access"
-                    comingSoon={true}
-                  />
-                </div>
-              </div>
-            )}
+            <h3 style={{
+              fontSize: '1.25rem',
+              fontWeight: 'bold',
+              color: '#223848',
+              margin: '0 0 1rem 0'
+            }}>
+              🚀 Quick Actions
+            </h3>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: '1rem'
+            }}>
+              <QuickActionButton
+                icon="👥"
+                title="Add Student"
+                description="Add new app or manual student"
+                onClick={() => handleNavigation('students')}
+              />
+              <QuickActionButton
+                icon="📋"
+                title="Review Submissions"
+                description="Approve pending book completions"
+                onClick={() => handleNavigation('submissions')}
+                badge={dashboardData.pendingSubmissions > 0 ? dashboardData.pendingSubmissions : null}
+              />
+              <QuickActionButton
+                icon="🏆"
+                title="View Achievements"
+                description="See who earned rewards"
+                onClick={() => handleNavigation('achievements')}
+              />
+              <QuickActionButton
+                icon="⚙️"
+                title="Settings"
+                description="Manage school configuration"
+                onClick={() => handleNavigation('settings')}
+              />
+            </div>
           </div>
         </div>
-      </div>
 
-      <style jsx>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        
-        /* Hide scrollbar for tab navigation */
-        .tab-container::-webkit-scrollbar {
-          display: none;
-        }
-      `}</style>
+        {/* Bottom Navigation */}
+        <div style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          backgroundColor: 'white',
+          borderTop: '1px solid #e5e7eb',
+          padding: '8px 0',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(5, 1fr)',
+          gap: '4px',
+          boxShadow: '0 -2px 10px rgba(0,0,0,0.1)',
+          zIndex: 1000
+        }}>
+          {[
+            { id: 'dashboard', icon: '📊', label: 'Dashboard', active: true },
+            { id: 'students', icon: '👥', label: 'Students', active: false },
+            { id: 'submissions', icon: '📋', label: 'Submissions', active: false, badge: dashboardData.pendingSubmissions },
+            { id: 'achievements', icon: '🏆', label: 'Achievements', active: false },
+            { id: 'settings', icon: '⚙️', label: 'Settings', active: false }
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => handleNavigation(tab.id)}
+              style={{
+                background: tab.active 
+                  ? `linear-gradient(135deg, #ADD4EA15, #ADD4EA25)`
+                  : 'none',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '8px 4px',
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '2px',
+                color: tab.active ? '#ADD4EA' : '#6b7280',
+                transition: 'all 0.2s ease',
+                position: 'relative'
+              }}
+            >
+              <span style={{ 
+                fontSize: '20px',
+                filter: tab.active ? 'none' : 'opacity(0.7)'
+              }}>
+                {tab.icon}
+              </span>
+              <span style={{ 
+                fontSize: '10px', 
+                fontWeight: tab.active ? '600' : '500'
+              }}>
+                {tab.label}
+              </span>
+              {tab.badge && tab.badge > 0 && (
+                <div style={{
+                  position: 'absolute',
+                  top: '2px',
+                  right: '8px',
+                  backgroundColor: '#EF4444',
+                  color: 'white',
+                  borderRadius: '50%',
+                  width: '16px',
+                  height: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '8px',
+                  fontWeight: 'bold'
+                }}>
+                  {tab.badge > 9 ? '9+' : tab.badge}
+                </div>
+              )}
+              {tab.active && (
+                <div style={{
+                  position: 'absolute',
+                  bottom: '0',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: '4px',
+                  height: '4px',
+                  backgroundColor: '#ADD4EA',
+                  borderRadius: '50%'
+                }} />
+              )}
+            </button>
+          ))}
+        </div>
+
+        <style jsx>{`
+          @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+          
+          @media (max-width: 768px) {
+            .grid-responsive {
+              grid-template-columns: 1fr !important;
+            }
+          }
+        `}</style>
+      </div>
     </>
   )
 }
 
-function StatCard({ icon, title, value, subtitle, color }) {
+// Supporting Components
+function QuickStatCard({ icon, title, value, subtitle, color, alert = false }) {
   return (
     <div style={{
       background: 'white',
       borderRadius: '0.75rem',
-      padding: 'clamp(0.75rem, 3vw, 1.25rem)',
+      padding: '1.25rem',
       boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
-      border: `1px solid ${color}20`,
-      minHeight: '100px' // Ensure consistent height
+      border: alert ? '2px solid #FEF3C7' : `1px solid ${color}20`,
+      position: 'relative'
     }}>
+      {alert && (
+        <div style={{
+          position: 'absolute',
+          top: '8px',
+          right: '8px',
+          width: '8px',
+          height: '8px',
+          backgroundColor: '#EF4444',
+          borderRadius: '50%'
+        }} />
+      )}
       <div style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         marginBottom: '0.5rem'
       }}>
-        <span style={{ 
-          fontSize: 'clamp(1rem, 3vw, 1.25rem)' 
-        }}>
-          {icon}
-        </span>
+        <span style={{ fontSize: '1.5rem' }}>{icon}</span>
         <div style={{
-          width: 'clamp(2rem, 6vw, 2.5rem)',
-          height: 'clamp(2rem, 6vw, 2.5rem)',
+          width: '2rem',
+          height: '2rem',
           background: `${color}15`,
           borderRadius: '50%',
           display: 'flex',
@@ -1103,16 +961,15 @@ function StatCard({ icon, title, value, subtitle, color }) {
         </div>
       </div>
       <h3 style={{
-        fontSize: 'clamp(1.25rem, 4vw, 1.5rem)',
+        fontSize: '1.5rem',
         fontWeight: 'bold',
         color: '#223848',
-        margin: '0 0 0.125rem 0',
-        lineHeight: '1.1'
+        margin: '0 0 0.25rem 0'
       }}>
         {value}
       </h3>
       <p style={{
-        fontSize: 'clamp(0.6rem, 2.5vw, 0.75rem)',
+        fontSize: '0.75rem',
         color: '#6b7280',
         margin: 0,
         fontWeight: '600'
@@ -1120,7 +977,7 @@ function StatCard({ icon, title, value, subtitle, color }) {
         {title}
       </p>
       <p style={{
-        fontSize: 'clamp(0.55rem, 2vw, 0.65rem)',
+        fontSize: '0.65rem',
         color: '#9ca3af',
         margin: '0.125rem 0 0 0'
       }}>
@@ -1130,265 +987,70 @@ function StatCard({ icon, title, value, subtitle, color }) {
   )
 }
 
-function StudentCard({ student }) {
-  const progressPercent = student.goal ? Math.round((student.booksReadThisYear / student.goal) * 100) : 0
-
+function QuickActionButton({ icon, title, description, onClick, badge = null }) {
   return (
-    <div style={{
-      padding: 'clamp(1rem, 3vw, 1.5rem)',
-      border: '1px solid #e5e7eb',
-      borderRadius: '0.75rem',
-      display: 'grid',
-      gridTemplateColumns: '1fr auto',
-      gap: 'clamp(0.75rem, 3vw, 1.5rem)',
-      alignItems: 'center',
-      '@media (max-width: 640px)': {
-        gridTemplateColumns: '1fr',
-        gap: '1rem'
-      }
-    }}>
-      <div>
+    <button
+      onClick={onClick}
+      style={{
+        background: 'linear-gradient(135deg, #f8fafc, #f1f5f9)',
+        border: '1px solid #e2e8f0',
+        borderRadius: '0.75rem',
+        padding: '1rem',
+        cursor: 'pointer',
+        textAlign: 'left',
+        transition: 'all 0.2s ease',
+        position: 'relative'
+      }}
+      onMouseOver={(e) => {
+        e.currentTarget.style.background = 'linear-gradient(135deg, #ADD4EA20, #C3E0DE20)'
+        e.currentTarget.style.transform = 'translateY(-1px)'
+      }}
+      onMouseOut={(e) => {
+        e.currentTarget.style.background = 'linear-gradient(135deg, #f8fafc, #f1f5f9)'
+        e.currentTarget.style.transform = 'translateY(0)'
+      }}
+    >
+      {badge && (
         <div style={{
+          position: 'absolute',
+          top: '8px',
+          right: '8px',
+          backgroundColor: '#EF4444',
+          color: 'white',
+          borderRadius: '50%',
+          width: '20px',
+          height: '20px',
           display: 'flex',
           alignItems: 'center',
-          gap: '0.75rem',
-          marginBottom: '0.75rem',
-          flexWrap: 'wrap'
+          justifyContent: 'center',
+          fontSize: '10px',
+          fontWeight: 'bold'
         }}>
-          <div style={{
-            width: '2.25rem',
-            height: '2.25rem',
-            background: 'linear-gradient(135deg, #ADD4EA, #C3E0DE)',
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '1.125rem',
-            flexShrink: 0
-          }}>
-            👤
-          </div>
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <h4 style={{
-              fontSize: 'clamp(0.9rem, 3vw, 1.1rem)',
-              fontWeight: '600',
-              color: '#223848',
-              margin: '0 0 0.125rem 0'
-            }}>
-              {student.firstName} {student.lastInitial}.
-            </h4>
-            <p style={{
-              fontSize: 'clamp(0.7rem, 2.5vw, 0.875rem)',
-              color: '#6b7280',
-              margin: 0
-            }}>
-              {student.grade} • Goal: {student.goal} books
-            </p>
-          </div>
+          {badge > 9 ? '9+' : badge}
         </div>
-        
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '1rem',
-          flexWrap: 'wrap'
-        }}>
-          <div style={{ flex: 1, minWidth: '120px' }}>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '0.25rem'
-            }}>
-              <span style={{
-                fontSize: '0.625rem',
-                color: '#6b7280'
-              }}>
-                Progress
-              </span>
-              <span style={{
-                fontSize: '0.625rem',
-                fontWeight: '600',
-                color: '#223848'
-              }}>
-                {student.booksReadThisYear || 0} / {student.goal}
-              </span>
-            </div>
-            <div style={{
-              width: '100%',
-              height: '0.5rem',
-              background: '#e5e7eb',
-              borderRadius: '0.25rem',
-              overflow: 'hidden'
-            }}>
-              <div style={{
-                width: `${Math.min(progressPercent, 100)}%`,
-                height: '100%',
-                background: progressPercent >= 100 
-                  ? 'linear-gradient(90deg, #10b981, #34d399)'
-                  : 'linear-gradient(90deg, #ADD4EA, #C3E0DE)',
-                transition: 'width 0.3s ease'
-              }}></div>
-            </div>
-          </div>
-          
-          <div style={{
-            display: 'flex',
-            gap: '0.75rem',
-            fontSize: '0.625rem',
-            color: '#6b7280'
-          }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ 
-                fontWeight: '600', 
-                color: '#223848',
-                fontSize: '0.75rem'
-              }}>
-                {student.saintCount || 0}
-              </div>
-              <div>Saints</div>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ 
-                fontWeight: '600', 
-                color: '#223848',
-                fontSize: '0.75rem'
-              }}>
-                {student.readingStreak || 0}
-              </div>
-              <div>Streak</div>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <div style={{ 
-        display: 'flex', 
-        gap: '0.375rem',
-        flexWrap: 'wrap',
-        justifyContent: 'flex-end'
+      )}
+      <div style={{
+        fontSize: '2rem',
+        marginBottom: '0.5rem'
       }}>
-        <button style={{
-          padding: '0.5rem 0.75rem',
-          background: '#f3f4f6',
-          color: '#374151',
-          border: 'none',
-          borderRadius: '0.5rem',
-          fontSize: '0.75rem',
-          fontWeight: '600',
-          cursor: 'pointer',
-          minHeight: '36px'
-        }}>
-          📊 View
-        </button>
-        <button style={{
-          padding: '0.5rem 0.75rem',
-          background: 'linear-gradient(135deg, #ADD4EA, #C3E0DE)',
-          color: '#223848',
-          border: 'none',
-          borderRadius: '0.5rem',
-          fontSize: '0.75rem',
-          fontWeight: '600',
-          cursor: 'pointer',
-          minHeight: '36px'
-        }}>
-          ✏️ Edit
-        </button>
+        {icon}
       </div>
-    </div>
-  )
-}
-
-function ReportCard({ title, description, buttonText, comingSoon }) {
-  return (
-    <div style={{
-      padding: 'clamp(1rem, 3vw, 1.5rem)',
-      border: '1px solid #e5e7eb',
-      borderRadius: '0.75rem',
-      background: 'white'
-    }}>
-      <h3 style={{
-        fontSize: 'clamp(0.9rem, 3vw, 1.1rem)',
+      <h4 style={{
+        fontSize: '1rem',
         fontWeight: '600',
         color: '#223848',
-        margin: '0 0 0.5rem 0'
+        margin: '0 0 0.25rem 0'
       }}>
         {title}
-      </h3>
+      </h4>
       <p style={{
+        fontSize: '0.75rem',
         color: '#6b7280',
-        fontSize: 'clamp(0.75rem, 2.5vw, 0.875rem)',
-        margin: '0 0 1rem 0',
+        margin: 0,
         lineHeight: '1.4'
       }}>
         {description}
       </p>
-      <button style={{
-        padding: '0.5rem 1rem',
-        background: comingSoon ? '#f3f4f6' : 'linear-gradient(135deg, #ADD4EA, #C3E0DE)',
-        color: comingSoon ? '#9ca3af' : '#223848',
-        border: 'none',
-        borderRadius: '0.5rem',
-        fontSize: '0.75rem',
-        fontWeight: '600',
-        cursor: comingSoon ? 'not-allowed' : 'pointer',
-        minHeight: '36px'
-      }}>
-        {comingSoon ? 'Coming Soon' : buttonText}
-      </button>
-    </div>
-  )
-}
-
-function SettingsCard({ title, description, buttonText, comingSoon }) {
-  return (
-    <div style={{
-      padding: 'clamp(1rem, 3vw, 1.5rem)',
-      border: '1px solid #e5e7eb',
-      borderRadius: '0.75rem',
-      background: 'white',
-      display: 'grid',
-      gridTemplateColumns: '1fr auto',
-      gap: '1rem',
-      alignItems: 'center',
-      '@media (max-width: 640px)': {
-        gridTemplateColumns: '1fr',
-        gap: '0.75rem'
-      }
-    }}>
-      <div>
-        <h3 style={{
-          fontSize: 'clamp(0.9rem, 3vw, 1.1rem)',
-          fontWeight: '600',
-          color: '#223848',
-          margin: '0 0 0.5rem 0'
-        }}>
-          {title}
-        </h3>
-        <p style={{
-          color: '#6b7280',
-          fontSize: 'clamp(0.75rem, 2.5vw, 0.875rem)',
-          margin: 0,
-          lineHeight: '1.4'
-        }}>
-          {description}
-        </p>
-      </div>
-      <button style={{
-        padding: '0.5rem 1rem',
-        background: comingSoon ? '#f3f4f6' : 'linear-gradient(135deg, #ADD4EA, #C3E0DE)',
-        color: comingSoon ? '#9ca3af' : '#223848',
-        border: 'none',
-        borderRadius: '0.5rem',
-        fontSize: '0.75rem',
-        fontWeight: '600',
-        cursor: comingSoon ? 'not-allowed' : 'pointer',
-        whiteSpace: 'nowrap',
-        minHeight: '36px',
-        justifySelf: 'end'
-      }}>
-        {comingSoon ? 'Coming Soon' : buttonText}
-      </button>
-    </div>
+    </button>
   )
 }
