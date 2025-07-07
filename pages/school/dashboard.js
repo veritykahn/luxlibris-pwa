@@ -884,7 +884,7 @@ Continue?`)
                 lineHeight: '1.4',
                 fontFamily: 'Avenir'
               }}>
-                🏫 <strong>School Access:</strong> Use your school access code and individual admin credentials to manage your school's reading program.
+                🏫 <strong>School Access:</strong> Use your school access code and individual admin credentials to manage your school&apos;s reading program.
               </p>
             </div>
           </div>
