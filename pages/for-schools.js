@@ -1,8 +1,8 @@
 // pages/for-schools.js - FOR SCHOOLS LANDING PAGE
 import Head from 'next/head'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useState } from 'react'
-import Image from 'next/image';
 
 export default function ForSchools() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
