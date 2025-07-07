@@ -1,10 +1,10 @@
-// pages/admin/teacher-dashboard.js - Overview Dashboard with Navigation
+// pages/admin/school-dashboard.js - Teacher Dashboard with Join Codes
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
 import { db } from '../../lib/firebase'
-import { collection, getDocs, query, where, orderBy, limit } from 'firebase/firestore'
+import { collection, getDocs, query, where, orderBy, limit, doc, updateDoc, getDoc } from 'firebase/firestore'
 
 export default function TeacherDashboard() {
   const router = useRouter()
@@ -35,6 +35,12 @@ export default function TeacherDashboard() {
   const [urgentActions, setUrgentActions] = useState([])
   const [quickStats, setQuickStats] = useState({})
   const [showTimeoutWarning, setShowTimeoutWarning] = useState(false)
+  
+  // New state for join codes
+  const [studentJoinCode, setStudentJoinCode] = useState('')
+  const [parentQuizCode, setParentQuizCode] = useState('')
+  const [codesLoading, setCodesLoading] = useState(true)
+  const [copySuccess, setCopySuccess] = useState('')
 
   // Authentication check
   useEffect(() => {
@@ -58,6 +64,7 @@ export default function TeacherDashboard() {
 
       if (userProfile) {
         loadDashboardData()
+        loadJoinCodes()
       }
     }
 
@@ -99,6 +106,107 @@ export default function TeacherDashboard() {
       document.removeEventListener('keypress', handleUserActivity)
     }
   }, [])
+
+  // Generate parent quiz code
+  const generateParentQuizCode = () => {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+    let result = ''
+    for (let i = 0; i < 8; i++) {
+      result += characters.charAt(Math.floor(Math.random() * characters.length))
+    }
+    return result
+  }
+
+  // Load join codes from teacher profile
+  const loadJoinCodes = async () => {
+    try {
+      console.log('🔑 Loading join codes...')
+      
+      if (!userProfile?.entityId || !userProfile?.schoolId || !userProfile?.uid) {
+        console.error('❌ Missing entity, school, or teacher ID')
+        setCodesLoading(false)
+        return
+      }
+
+      // Get teacher document
+      const teacherRef = doc(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers`, userProfile.uid)
+      const teacherDoc = await getDoc(teacherRef)
+      
+      if (!teacherDoc.exists()) {
+        console.error('❌ Teacher document not found')
+        setCodesLoading(false)
+        return
+      }
+
+      const teacherData = teacherDoc.data()
+      
+      // Get student join code (should already exist)
+      const studentCode = teacherData.studentJoinCode || ''
+      setStudentJoinCode(studentCode)
+      
+      // Get or generate parent quiz code
+      let parentCode = teacherData.parentQuizCode || ''
+      let needsUpdate = false
+      
+      // Check if parent quiz code exists and is still valid (within 1 year)
+      if (!parentCode || !teacherData.parentQuizCodeCreated) {
+        // Generate new parent quiz code
+        parentCode = generateParentQuizCode()
+        needsUpdate = true
+        console.log('✨ Generated new parent quiz code:', parentCode)
+      } else {
+        // Check if code is older than 1 year
+        const codeAge = Date.now() - teacherData.parentQuizCodeCreated.toDate().getTime()
+        const oneYear = 365 * 24 * 60 * 60 * 1000
+        
+        if (codeAge > oneYear) {
+          // Generate new code as old one expired
+          parentCode = generateParentQuizCode()
+          needsUpdate = true
+          console.log('🔄 Parent quiz code expired, generated new one:', parentCode)
+        }
+      }
+      
+      setParentQuizCode(parentCode)
+      
+      // Update teacher document if needed
+      if (needsUpdate) {
+        await updateDoc(teacherRef, {
+          parentQuizCode: parentCode,
+          parentQuizCodeCreated: new Date(),
+          lastModified: new Date()
+        })
+        console.log('💾 Saved parent quiz code to Firebase')
+      }
+      
+      console.log('✅ Join codes loaded successfully')
+      
+    } catch (error) {
+      console.error('❌ Error loading join codes:', error)
+    } finally {
+      setCodesLoading(false)
+    }
+  }
+
+  // Copy to clipboard function
+  const copyToClipboard = async (text, type) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopySuccess(type)
+      setTimeout(() => setCopySuccess(''), 2000)
+    } catch (err) {
+      console.error('Failed to copy:', err)
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea')
+      textArea.value = text
+      document.body.appendChild(textArea)
+      textArea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textArea)
+      setCopySuccess(type)
+      setTimeout(() => setCopySuccess(''), 2000)
+    }
+  }
 
   // Load dashboard overview data
   const loadDashboardData = async () => {
@@ -258,16 +366,16 @@ export default function TeacherDashboard() {
         // Already here
         break
       case 'students':
-        router.push('/admin/teacher-students')
+        router.push('/teacher/students')
         break
       case 'submissions':
-        router.push('/admin/teacher-submissions')
+        router.push('/teacher/submissions')
         break
       case 'achievements':
-        router.push('/admin/teacher-achievements')
+        router.push('/teacher/achievements')
         break
       case 'settings':
-        router.push('/admin/teacher-settings')
+        router.push('/teacher/settings')
         break
       default:
         console.log(`Navigation to ${page} not implemented yet`)
@@ -529,6 +637,199 @@ export default function TeacherDashboard() {
             </p>
           </div>
 
+          {/* Join Codes Section */}
+          <div style={{
+            background: 'white',
+            borderRadius: '1rem',
+            padding: '1.5rem',
+            marginBottom: '1.5rem',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+            border: '2px solid #C3E0DE'
+          }}>
+            <h3 style={{
+              fontSize: '1.25rem',
+              fontWeight: 'bold',
+              color: '#223848',
+              margin: '0 0 1rem 0',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}>
+              🔑 Access Codes
+            </h3>
+            
+            {codesLoading ? (
+              <div style={{ textAlign: 'center', padding: '2rem' }}>
+                <div style={{
+                  width: '2rem',
+                  height: '2rem',
+                  border: '3px solid #C3E0DE',
+                  borderTop: '3px solid #223848',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite',
+                  margin: '0 auto 1rem'
+                }}></div>
+                <p style={{ color: '#6b7280' }}>Loading codes...</p>
+              </div>
+            ) : (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                gap: '1rem'
+              }}>
+                {/* Student Join Code */}
+                <div style={{
+                  background: 'linear-gradient(135deg, #ADD4EA15, #ADD4EA25)',
+                  borderRadius: '0.75rem',
+                  padding: '1.25rem',
+                  border: '1px solid #ADD4EA'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    marginBottom: '0.75rem'
+                  }}>
+                    <span style={{ fontSize: '1.25rem' }}>👥</span>
+                    <h4 style={{
+                      fontSize: '1rem',
+                      fontWeight: '600',
+                      color: '#223848',
+                      margin: 0
+                    }}>
+                      Student Join Code
+                    </h4>
+                  </div>
+                  <p style={{
+                    fontSize: '0.75rem',
+                    color: '#6b7280',
+                    margin: '0 0 0.75rem 0',
+                    lineHeight: '1.4'
+                  }}>
+                    Students use this code to join your class in the app
+                  </p>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}>
+                    <div style={{
+                      background: 'white',
+                      border: '2px solid #ADD4EA',
+                      borderRadius: '0.5rem',
+                      padding: '0.75rem 1rem',
+                      fontSize: '1.25rem',
+                      fontWeight: 'bold',
+                      color: '#223848',
+                      fontFamily: 'monospace',
+                      letterSpacing: '0.1em',
+                      flex: 1,
+                      textAlign: 'center'
+                    }}>
+                      {studentJoinCode || 'Not Available'}
+                    </div>
+                    <button
+                      onClick={() => copyToClipboard(studentJoinCode, 'student')}
+                      disabled={!studentJoinCode}
+                      style={{
+                        padding: '0.75rem',
+                        background: copySuccess === 'student' 
+                          ? 'linear-gradient(135deg, #10B981, #059669)' 
+                          : 'linear-gradient(135deg, #ADD4EA, #C3E0DE)',
+                        color: copySuccess === 'student' ? 'white' : '#223848',
+                        border: 'none',
+                        borderRadius: '0.5rem',
+                        cursor: studentJoinCode ? 'pointer' : 'not-allowed',
+                        fontSize: '0.875rem',
+                        fontWeight: '600',
+                        opacity: studentJoinCode ? 1 : 0.5,
+                        minWidth: '80px',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      {copySuccess === 'student' ? '✓ Copied!' : '📋 Copy'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Parent Quiz Code */}
+                <div style={{
+                  background: 'linear-gradient(135deg, #C3E0DE15, #C3E0DE25)',
+                  borderRadius: '0.75rem',
+                  padding: '1.25rem',
+                  border: '1px solid #C3E0DE'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    marginBottom: '0.75rem'
+                  }}>
+                    <span style={{ fontSize: '1.25rem' }}>👨‍👩‍👧‍👦</span>
+                    <h4 style={{
+                      fontSize: '1rem',
+                      fontWeight: '600',
+                      color: '#223848',
+                      margin: 0
+                    }}>
+                      Parent Quiz Code
+                    </h4>
+                  </div>
+                  <p style={{
+                    fontSize: '0.75rem',
+                    color: '#6b7280',
+                    margin: '0 0 0.75rem 0',
+                    lineHeight: '1.4'
+                  }}>
+                    Share with parents for book quiz access
+                  </p>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}>
+                    <div style={{
+                      background: 'white',
+                      border: '2px solid #C3E0DE',
+                      borderRadius: '0.5rem',
+                      padding: '0.75rem 1rem',
+                      fontSize: '1.25rem',
+                      fontWeight: 'bold',
+                      color: '#223848',
+                      fontFamily: 'monospace',
+                      letterSpacing: '0.1em',
+                      flex: 1,
+                      textAlign: 'center'
+                    }}>
+                      {parentQuizCode || 'Generating...'}
+                    </div>
+                    <button
+                      onClick={() => copyToClipboard(parentQuizCode, 'parent')}
+                      disabled={!parentQuizCode}
+                      style={{
+                        padding: '0.75rem',
+                        background: copySuccess === 'parent' 
+                          ? 'linear-gradient(135deg, #10B981, #059669)' 
+                          : 'linear-gradient(135deg, #C3E0DE, #A1E5DB)',
+                        color: copySuccess === 'parent' ? 'white' : '#223848',
+                        border: 'none',
+                        borderRadius: '0.5rem',
+                        cursor: parentQuizCode ? 'pointer' : 'not-allowed',
+                        fontSize: '0.875rem',
+                        fontWeight: '600',
+                        opacity: parentQuizCode ? 1 : 0.5,
+                        minWidth: '80px',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      {copySuccess === 'parent' ? '✓ Copied!' : '📋 Copy'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Quick Stats Grid */}
           <div style={{
             display: 'grid',
@@ -638,7 +939,7 @@ export default function TeacherDashboard() {
           {/* Top Readers & Recent Activity */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
+            gridTemplateColumns: window.innerWidth < 768 ? '1fr' : '1fr 1fr',
             gap: '1.5rem',
             marginBottom: '1.5rem'
           }}>
