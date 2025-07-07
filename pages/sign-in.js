@@ -37,10 +37,10 @@ export default function SignIn() {
     },
     {
       type: 'educator',
-      title: 'Educator',
+      title: 'Teacher/Librarian',
       icon: '👨‍💼',
       description: 'Manage your school&apos;s reading program',
-      buttonText: 'Educator Sign In'
+      buttonText: 'Teacher/Librarian Sign In'
     },
     {
       type: 'parent',
@@ -441,7 +441,7 @@ export default function SignIn() {
                     marginBottom: '1.5rem',
                     lineHeight: '1.4'
                   }}>
-                    Sign in with your teacher account credentials
+                    Sign in with your teacher/librarian account credentials
                   </p>
 
                   <div style={{ marginBottom: '1rem' }}>
@@ -573,7 +573,7 @@ export default function SignIn() {
                       margin: 0,
                       lineHeight: '1.4'
                     }}>
-                      👩‍🏫 <strong>Teacher Access:</strong> Use the same teacher join code you used when you created your account.
+                      👩‍🏫 <strong>Teacher/Librarian Access:</strong> Use the same teacher join code you used when you created your account.
                     </p>
                   </div>
                 </div>
@@ -702,7 +702,7 @@ export default function SignIn() {
               margin: '0 0 0.5rem 0',
               lineHeight: '1.4'
             }}>
-              Need help signing in? Contact your teacher or educator.
+              Need help signing in? Contact your teacher, librarian or school administrator.
             </p>
             <button
               onClick={() => router.push('/role-selector')}
