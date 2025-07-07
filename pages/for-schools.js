@@ -1,7 +1,6 @@
 // pages/for-schools.js - FOR SCHOOLS LANDING PAGE
 import Head from 'next/head'
 import Link from 'next/link'
-import Image from 'next/image'
 import { useState } from 'react'
 
 export default function ForSchools() {
@@ -21,7 +20,7 @@ export default function ForSchools() {
         <header className="bg-white/90 backdrop-blur-sm shadow-sm">
           <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
             <Link href="/" className="flex items-center space-x-3">
-              <Image
+              <img
   src="/images/lux_libris_logo.png"
   alt="Lux Libris"
   width={50}
