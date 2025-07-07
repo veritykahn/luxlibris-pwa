@@ -440,12 +440,12 @@ export default function StudentHealthyHabits() {
       }
       
       // Update student record with new level data
-      const studentRef = doc(db, `entities/${studentData.entityId}/schools/${studentData.schoolId}/students`, studentData.id);
-      await updateDoc(studentRef, {
-        currentReadingLevel: newLevel,
-        daysAtCurrentLevel: newDaysAtLevel,
-        daysBelowThresholdCount: newDaysBelowCount
-      });
+      // ✅ CONSISTENT: Use your helper function
+await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
+  currentReadingLevel: newLevel,
+  daysAtCurrentLevel: newDaysAtLevel,
+  daysBelowThresholdCount: newDaysBelowCount
+});
       
       // Set reading level display
       const levelData = levels[newLevel];

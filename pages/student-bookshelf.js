@@ -304,14 +304,6 @@ export default function StudentBookshelf() {
           firebaseStudentData.schoolId
         );
         setNominees(schoolNominees);
-        
-        const schoolDoc = await getDoc(doc(db, `dioceses/${firebaseStudentData.entityId}/schools`, firebaseStudentData.schoolId));
-        if (schoolDoc.exists()) {
-          const schoolData = schoolDoc.data();
-          firebaseStudentData.schoolSubmissionOptions = schoolData.submissionOptions || {};
-          firebaseStudentData.parentQuizCode = schoolData.parentQuizCode || '';
-          setStudentData(firebaseStudentData);
-        }
       }
       
     } catch (error) {
@@ -1998,7 +1990,7 @@ export default function StudentBookshelf() {
                         backgroundColor: '#FFFFFF',
                         marginBottom: '12px'
                       }}
-                      maxLength={20}
+                      maxLength={8}
                       autoComplete="off"
                       autoCorrect="off"
                       autoCapitalize="characters"
