@@ -1,4 +1,4 @@
-// pages/sign-in.js - UPDATED for Teacher Code System
+// pages/sign-in.js - FIXED for Teacher Join Code System
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
@@ -17,7 +17,7 @@ export default function SignIn() {
     teacherCode: '',
     email: '',
     password: '',
-    schoolCode: ''
+    teacherJoinCode: '' // Changed from schoolCode to teacherJoinCode
   });
 
   // Check for session expired message
@@ -39,14 +39,14 @@ export default function SignIn() {
       type: 'educator',
       title: 'Educator',
       icon: '👨‍💼',
-      description: 'Manage your school\'s reading program',
+      description: 'Manage your school&apos;s reading program',
       buttonText: 'Educator Sign In'
     },
     {
       type: 'parent',
       title: 'Parent/Guardian',
       icon: '👨‍👩‍👧‍👦',
-      description: 'Coming soon! Track your child\'s reading progress',
+      description: 'Coming soon! Track your child&apos;s reading progress',
       buttonText: 'Parent Sign In (Coming Soon)',
       disabled: true
     }
@@ -86,19 +86,20 @@ export default function SignIn() {
         router.push('/student-dashboard');
         
       } else if (formData.accountType === 'educator') {
-        if (!formData.email || !formData.password || !formData.schoolCode) {
-          setError('Please enter email, password, and school code');
+        if (!formData.email || !formData.password || !formData.teacherJoinCode) {
+          setError('Please enter email, password, and teacher join code');
           setLoading(false);
           return;
         }
 
         console.log('🔐 Attempting educator sign-in...');
         console.log('📧 Email:', formData.email);
-        console.log('🏫 School Code:', formData.schoolCode);
+        console.log('🏫 Teacher Join Code:', formData.teacherJoinCode);
 
-        const adminAccess = await dbHelpers.verifyAdminAccess(formData.email, formData.schoolCode.toUpperCase());
-        if (!adminAccess.valid) {
-          setError(adminAccess.error);
+        // FIXED: Use the new teacher verification function
+        const teacherAccess = await dbHelpers.verifyTeacherAccess(formData.email, formData.teacherJoinCode.toUpperCase());
+        if (!teacherAccess.valid) {
+          setError(teacherAccess.error);
           setLoading(false);
           return;
         }
@@ -430,7 +431,7 @@ export default function SignIn() {
                 </div>
               )}
 
-              {/* Educator Sign In */}
+              {/* Educator Sign In - UPDATED */}
               {formData.accountType === 'educator' && (
                 <div>
                   <p style={{
@@ -440,7 +441,7 @@ export default function SignIn() {
                     marginBottom: '1.5rem',
                     lineHeight: '1.4'
                   }}>
-                    Sign in with your educator credentials
+                    Sign in with your teacher account credentials
                   </p>
 
                   <div style={{ marginBottom: '1rem' }}>
@@ -460,7 +461,7 @@ export default function SignIn() {
                         ...prev, 
                         email: e.target.value 
                       }))}
-                      placeholder="admin@testschool.edu"
+                      placeholder="teacher@school.edu"
                       style={{
                         width: '100%',
                         padding: '0.875rem',
@@ -521,16 +522,16 @@ export default function SignIn() {
                       color: '#374151',
                       marginBottom: '0.5rem'
                     }}>
-                      School Code
+                      Teacher Join Code
                     </label>
                     <input
                       type="text"
-                      value={formData.schoolCode}
+                      value={formData.teacherJoinCode}
                       onChange={(e) => setFormData(prev => ({ 
                         ...prev, 
-                        schoolCode: e.target.value.toUpperCase() 
+                        teacherJoinCode: e.target.value.toUpperCase() 
                       }))}
-                      placeholder="DEMO-STUDENT-2025"
+                      placeholder="TXTEST-DEMO-TEACHER-2025"
                       style={{
                         width: '100%',
                         padding: '0.875rem',
@@ -555,7 +556,7 @@ export default function SignIn() {
                       margin: '0.5rem 0 0 0',
                       textAlign: 'center'
                     }}>
-                      The student access code for your school
+                      The code you used when joining or given by your school administrator
                     </p>
                   </div>
 
@@ -572,7 +573,7 @@ export default function SignIn() {
                       margin: 0,
                       lineHeight: '1.4'
                     }}>
-                      👑 <strong>Educator Access:</strong> Your email and password were set when your school was created in God Mode.
+                      👩‍🏫 <strong>Teacher Access:</strong> Use the same teacher join code you used when you created your account.
                     </p>
                   </div>
                 </div>
