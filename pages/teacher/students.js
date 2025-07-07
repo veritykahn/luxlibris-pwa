@@ -150,8 +150,8 @@ export default function TeacherStudents() {
       const appStudentsRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/students`)
       const appStudentsQuery = query(
         appStudentsRef, 
-        where('currentTeacherId', '==', teacherId),
-        orderBy('firstName')
+        where('currentTeacherId', '==', teacherId)
+        // Note: Removed orderBy to avoid composite index requirement - will sort in JavaScript
       )
       const appStudentsSnapshot = await getDocs(appStudentsQuery)
       
@@ -162,12 +162,16 @@ export default function TeacherStudents() {
           appStudentsData.push(studentData)
         }
       })
+      
+      // Sort by firstName in JavaScript (avoids composite index requirement)
+      appStudentsData.sort((a, b) => a.firstName.localeCompare(b.firstName))
 
       // Load manual students
       const manualStudentsRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers/${teacherId}/manualStudents`)
       let manualStudentsSnapshot = { docs: [] }
       try {
-        manualStudentsSnapshot = await getDocs(query(manualStudentsRef, orderBy('firstName')))
+        // Note: Removed orderBy to avoid index requirement - will sort in JavaScript
+        manualStudentsSnapshot = await getDocs(manualStudentsRef)
       } catch (error) {
         console.log('No manual students collection yet')
       }
@@ -176,6 +180,9 @@ export default function TeacherStudents() {
       manualStudentsSnapshot.forEach(doc => {
         manualStudentsData.push({ id: doc.id, ...doc.data() })
       })
+      
+      // Sort by firstName in JavaScript
+      manualStudentsData.sort((a, b) => a.firstName.localeCompare(b.firstName))
 
       // Calculate stats
       const totalBooks = appStudentsData.reduce((sum, student) => 
@@ -1372,7 +1379,7 @@ function ManualStudentsSection({ students, onAddStudent, onEditStudent, onDelete
           color: '#6b7280'
         }}>
           <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>📝</div>
-          <p>No manual students yet. Add students who don&apost use the app!</p>
+          <p>No manual students yet. Add students who don't use the app!</p>
         </div>
       ) : (
         <div style={{

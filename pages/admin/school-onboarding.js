@@ -1,4 +1,4 @@
-// pages/admin/school-onboarding.js - FIXED VERSION - No Race Conditions
+// pages/admin/school-onboarding.js - UPDATED VERSION - Parent Code Removed
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
@@ -31,8 +31,10 @@ export default function TeacherOnboarding() {
 
   // School and program data
   const [schoolData, setSchoolData] = useState(null)
+  // CHANGE 1: Removed parentCode from teacherCodes state
   const [teacherCodes, setTeacherCodes] = useState({
     studentCode: ''
+    // parentCode removed
   })
 
   // Onboarding data
@@ -120,7 +122,7 @@ export default function TeacherOnboarding() {
     }
   }
 
-  // Generate teacher codes
+  // Generate teacher codes (only student code now)
   const generateTeacherCodes = (school, teacherInfo) => {
     const schoolIdentifier = school.schoolAccessCode ? 
       school.schoolAccessCode.split('-').slice(0, 2).join('-') : 
@@ -133,6 +135,7 @@ export default function TeacherOnboarding() {
     
     const codes = {
       studentCode: `${schoolIdentifier}-${teacherLastName}${suffix}-STUDENT`
+      // parentCode removed
     }
     
     console.log('✅ Generated codes:', codes)
@@ -183,7 +186,7 @@ export default function TeacherOnboarding() {
     }
   }
 
-  // STEP 1: Create Teacher Account - FIXED
+  // STEP 1: Create Teacher Account
   const handleCreateAccount = async () => {
     // Validation
     if (!accountData.email || !accountData.password || !accountData.firstName || !accountData.lastName) {
@@ -218,7 +221,7 @@ export default function TeacherOnboarding() {
       // Create Firebase Auth account
       const authResult = await createUserWithEmailAndPassword(auth, accountData.email, accountData.password)
       
-      // Generate unique teacher codes
+      // Generate unique teacher codes (only student code)
       const codes = generateTeacherCodes(schoolData, accountData)
       setTeacherCodes(codes)
       
@@ -264,14 +267,14 @@ export default function TeacherOnboarding() {
       
       console.log('✅ Teacher account created successfully')
       
-      // FIXED: Store created user data separately to avoid race conditions
+      // Store created user data separately to avoid race conditions
       setCreatedUser(authResult.user)
       setCreatedProfile({ id: teacherDocRef.id, ...teacherProfile })
       
       // Sign in the new teacher (this will trigger auth context updates)
       await signInWithEmailAndPassword(auth, accountData.email, accountData.password)
       
-      // FIXED: Move to step 2 immediately, don't wait for auth context
+      // Move to step 2 immediately, don't wait for auth context
       setCurrentStep(2)
       
     } catch (error) {
@@ -354,13 +357,13 @@ export default function TeacherOnboarding() {
     }))
   }
 
-  // FIXED: Complete onboarding - Use only stored data, no hook calls in event handler
+  // Complete onboarding
   const handleCompleteOnboarding = async () => {
     setLoading(true)
     setError('')
     
     try {
-      // FIXED: Use only createdProfile data - no hook calls in event handler
+      // Use only createdProfile data - no hook calls in event handler
       if (!createdUser || !createdProfile) {
         setError('Session expired. Please refresh and try again.')
         setLoading(false)
@@ -958,7 +961,7 @@ export default function TeacherOnboarding() {
               />
             )}
 
-            {/* STEP 4: Achievement Tiers */}
+            {/* STEP 4: Achievement Tiers - CHANGE 2: Removed parentTestCode parameter */}
             {currentStep === 4 && (
               <AchievementTiersStep 
                 achievementTiers={onboardingData.achievementTiers}
@@ -1060,7 +1063,7 @@ export default function TeacherOnboarding() {
   )
 }
 
-// Supporting Components (same as before)
+// Supporting Components
 function NomineeSelectionStep({ nominees, selectedNominees, onToggleNominee, calculateAchievementTiers }) {
   return (
     <div>
@@ -1137,6 +1140,7 @@ function NomineeSelectionStep({ nominees, selectedNominees, onToggleNominee, cal
   )
 }
 
+// CHANGE 2: Removed parentTestCode parameter from AchievementTiersStep
 function AchievementTiersStep({ achievementTiers, selectedCount, onUpdateTier, studentJoinCode }) {
   return (
     <div>
@@ -1189,6 +1193,7 @@ function AchievementTiersStep({ achievementTiers, selectedCount, onUpdateTier, s
           maxWidth: '500px',
           margin: '0 auto'
         }}>
+          {/* CHANGE 3: Removed parent code display from JSX */}
           <p style={{ margin: 0 }}>
             <strong>Student Access Code:</strong><br />
             <span style={{ 
@@ -1333,16 +1338,16 @@ function BookCard({ book, isSelected, onToggle }) {
         
         {book.coverImageUrl && (
           <Image
-  src={book.coverImageUrl}
-  alt={`Cover of ${book.title}`}
-  width={40}
-  height={60}
-  style={{
-    objectFit: 'cover',
-    borderRadius: '0.25rem',
-    flexShrink: 0
-  }}
-/>
+            src={book.coverImageUrl}
+            alt={`Cover of ${book.title}`}
+            width={40}
+            height={60}
+            style={{
+              objectFit: 'cover',
+              borderRadius: '0.25rem',
+              flexShrink: 0
+            }}
+          />
         )}
         
         <div style={{ flex: 1, minWidth: 0 }}>
