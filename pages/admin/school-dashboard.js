@@ -525,7 +525,7 @@ export default function TeacherDashboard() {
               fontSize: '1rem',
               margin: 0
             }}>
-              Here's what's happening with your reading program today.
+              Here&apos;s what&apos;s happening with your reading program today.
             </p>
           </div>
 
