@@ -32,8 +32,7 @@ export default function TeacherOnboarding() {
   // School and program data
   const [schoolData, setSchoolData] = useState(null)
   const [teacherCodes, setTeacherCodes] = useState({
-    studentCode: '',
-    parentCode: ''
+    studentCode: ''
   })
 
   // Onboarding data
@@ -133,8 +132,7 @@ export default function TeacherOnboarding() {
     const suffix = Date.now().toString().slice(-2)
     
     const codes = {
-      studentCode: `${schoolIdentifier}-${teacherLastName}${suffix}-STUDENT`,
-      parentCode: `${schoolIdentifier}-${teacherLastName}${suffix}-PARENT`
+      studentCode: `${schoolIdentifier}-${teacherLastName}${suffix}-STUDENT`
     }
     
     console.log('✅ Generated codes:', codes)
@@ -238,7 +236,6 @@ export default function TeacherOnboarding() {
         joinedWithCode: accountData.teacherJoinCode,
         managementType: 'school_reading_program',
         studentJoinCode: codes.studentCode,
-        parentTestCode: codes.parentCode,
         status: 'active',
         createdAt: new Date(),
         lastModified: new Date(),
@@ -879,10 +876,10 @@ export default function TeacherOnboarding() {
                   fontSize: 'clamp(0.875rem, 3vw, 1rem)',
                   fontFamily: 'Avenir'
                 }}>
-                  Your account has been created! Here are your unique student and parent codes.
+                  Your account has been created! Here is your unique student code.
                 </p>
                 
-                {/* Display generated codes */}
+                {/* Display generated code */}
                 <div style={{
                   background: 'linear-gradient(135deg, #a855f7, #ec4899)',
                   borderRadius: '0.75rem',
@@ -898,12 +895,10 @@ export default function TeacherOnboarding() {
                     fontSize: 'clamp(1rem, 4vw, 1.125rem)',
                     letterSpacing: '1.2px'
                   }}>
-                    🔑 Your Student & Parent Codes
+                    🔑 Your Student Code
                   </h3>
                   
                   <div style={{ 
-                    display: 'grid', 
-                    gap: '1rem',
                     maxWidth: '600px',
                     margin: '0 auto'
                   }}>
@@ -928,30 +923,6 @@ export default function TeacherOnboarding() {
                         wordBreak: 'break-all'
                       }}>
                         {teacherCodes.studentCode || 'GENERATING...'}
-                      </div>
-                    </div>
-
-                    <div style={{
-                      background: 'rgba(255, 255, 255, 0.2)',
-                      borderRadius: '0.5rem',
-                      padding: '1rem',
-                      textAlign: 'center'
-                    }}>
-                      <div style={{ 
-                        fontSize: '0.875rem', 
-                        marginBottom: '0.5rem', 
-                        fontFamily: 'Avenir' 
-                      }}>
-                        Parent Quiz Code:
-                      </div>
-                      <div style={{
-                        fontSize: '1.125rem',
-                        fontWeight: 'bold',
-                        letterSpacing: '0.1em',
-                        fontFamily: 'Avenir',
-                        wordBreak: 'break-all'
-                      }}>
-                        {teacherCodes.parentCode || 'GENERATING...'}
                       </div>
                     </div>
                   </div>
@@ -994,7 +965,6 @@ export default function TeacherOnboarding() {
                 selectedCount={onboardingData.selectedNominees.length}
                 onUpdateTier={updateAchievementTier}
                 studentJoinCode={teacherCodes.studentCode}
-                parentTestCode={teacherCodes.parentCode}
               />
             )}
 
@@ -1167,7 +1137,7 @@ function NomineeSelectionStep({ nominees, selectedNominees, onToggleNominee, cal
   )
 }
 
-function AchievementTiersStep({ achievementTiers, selectedCount, onUpdateTier, studentJoinCode, parentTestCode }) {
+function AchievementTiersStep({ achievementTiers, selectedCount, onUpdateTier, studentJoinCode }) {
   return (
     <div>
       <h2 style={{
@@ -1210,7 +1180,7 @@ function AchievementTiersStep({ achievementTiers, selectedCount, onUpdateTier, s
           marginBottom: '0.5rem',
           fontSize: 'clamp(1rem, 3vw, 1.125rem)'
         }}>
-          🔐 Your Access Codes
+          🔐 Your Access Code
         </h4>
         <div style={{ 
           fontSize: '0.875rem', 
@@ -1219,7 +1189,7 @@ function AchievementTiersStep({ achievementTiers, selectedCount, onUpdateTier, s
           maxWidth: '500px',
           margin: '0 auto'
         }}>
-          <p style={{ margin: '0 0 0.5rem 0' }}>
+          <p style={{ margin: 0 }}>
             <strong>Student Access Code:</strong><br />
             <span style={{ 
               fontFamily: 'monospace', 
@@ -1230,19 +1200,6 @@ function AchievementTiersStep({ achievementTiers, selectedCount, onUpdateTier, s
               wordBreak: 'break-all'
             }}>
               {studentJoinCode || 'LOADING...'}
-            </span>
-          </p>
-          <p style={{ margin: 0 }}>
-            <strong>Parent Quiz Code:</strong><br />
-            <span style={{ 
-              fontFamily: 'monospace', 
-              background: 'rgba(255,255,255,0.7)', 
-              padding: '0.25rem 0.5rem', 
-              borderRadius: '0.25rem',
-              fontSize: '0.8rem',
-              wordBreak: 'break-all'
-            }}>
-              {parentTestCode || 'LOADING...'}
             </span>
           </p>
         </div>
