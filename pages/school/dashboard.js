@@ -73,7 +73,7 @@ export default function SchoolDashboard() {
   if (schoolData) {
     loadProgramData()
   }
-}, [schoolData, parentEntity, loadProgramData])
+}, [schoolData, parentEntity])
 
   // FIXED: Load program data with comprehensive fallbacks and error handling
   const loadProgramData = async () => {
