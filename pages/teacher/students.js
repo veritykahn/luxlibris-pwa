@@ -1372,7 +1372,7 @@ function ManualStudentsSection({ students, onAddStudent, onEditStudent, onDelete
           color: '#6b7280'
         }}>
           <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>📝</div>
-          <p>No manual students yet. Add students who don't use the app!</p>
+          <p>No manual students yet. Add students who don&apost use the app!</p>
         </div>
       ) : (
         <div style={{
