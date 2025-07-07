@@ -121,24 +121,45 @@ export default function TeacherDashboard() {
   const loadJoinCodes = async () => {
     try {
       console.log('🔑 Loading join codes...')
+      console.log('🔍 UserProfile:', {
+        entityId: userProfile?.entityId,
+        schoolId: userProfile?.schoolId,
+        uid: userProfile?.uid,
+        accountType: userProfile?.accountType
+      })
       
       if (!userProfile?.entityId || !userProfile?.schoolId || !userProfile?.uid) {
-        console.error('❌ Missing entity, school, or teacher ID')
+        console.error('❌ Missing entity, school, or teacher ID', {
+          entityId: userProfile?.entityId,
+          schoolId: userProfile?.schoolId,
+          uid: userProfile?.uid
+        })
         setCodesLoading(false)
         return
       }
 
-      // Get teacher document
-      const teacherRef = doc(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers`, userProfile.uid)
-      const teacherDoc = await getDoc(teacherRef)
+      // Query for teacher document by UID (since teachers use auto-generated document IDs)
+      const teachersRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers`)
+      const teacherQuery = query(teachersRef, where('uid', '==', userProfile.uid))
+      const teacherSnapshot = await getDocs(teacherQuery)
       
-      if (!teacherDoc.exists()) {
-        console.error('❌ Teacher document not found')
+      console.log('📄 Teacher query path:', `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers`)
+      console.log('🔍 Querying for UID:', userProfile.uid)
+      
+      if (teacherSnapshot.empty) {
+        console.error('❌ Teacher document not found for UID:', userProfile.uid)
         setCodesLoading(false)
         return
       }
 
+      const teacherDoc = teacherSnapshot.docs[0]
       const teacherData = teacherDoc.data()
+      console.log('📋 Teacher data loaded:', {
+        documentId: teacherDoc.id,
+        studentJoinCode: teacherData.studentJoinCode,
+        parentQuizCode: teacherData.parentQuizCode,
+        parentQuizCodeCreated: teacherData.parentQuizCodeCreated
+      })
       
       // Get student join code (should already exist)
       const studentCode = teacherData.studentJoinCode || ''
@@ -171,19 +192,25 @@ export default function TeacherDashboard() {
       
       // Update teacher document if needed
       if (needsUpdate) {
-        await updateDoc(teacherRef, {
+        await updateDoc(teacherDoc.ref, {
           parentQuizCode: parentCode,
           parentQuizCodeCreated: new Date(),
           lastModified: new Date()
         })
-        console.log('💾 Saved parent quiz code to Firebase')
+        console.log('💾 Saved parent quiz code to teacher document:', teacherDoc.id)
       }
       
       console.log('✅ Join codes loaded successfully')
       
     } catch (error) {
       console.error('❌ Error loading join codes:', error)
+      console.error('❌ Error details:', {
+        message: error.message,
+        code: error.code,
+        stack: error.stack
+      })
     } finally {
+      console.log('🏁 Setting codesLoading to false')
       setCodesLoading(false)
     }
   }
@@ -637,7 +664,7 @@ export default function TeacherDashboard() {
             </p>
           </div>
 
-          {/* Join Codes Section */}
+          {/* Join Codes Section - DEBUG VERSION */}
           <div style={{
             background: 'white',
             borderRadius: '1rem',
