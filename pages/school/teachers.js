@@ -1,35 +1,88 @@
-// pages/school/teachers.js - DEDICATED TEACHER MANAGEMENT PAGE
+// pages/school/teachers.js - DEDICATED TEACHER MANAGEMENT PAGE (FIXED)
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
-import { useAuth } from '../../contexts/AuthContext'
+import { useRouter } from 'next/router'
 import { db } from '../../lib/firebase'
 import { collection, getDocs, deleteDoc, doc, getDoc } from 'firebase/firestore'
 
 export default function SchoolTeachers() {
-  const { userProfile, updateLastActivity } = useAuth()
+  const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const [teachers, setTeachers] = useState([])
-  const [students, setStudents] = useState([])
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [lastActivity, setLastActivity] = useState(Date.now())
+  
+  // Auth and School Data (matching dashboard pattern)
+  const [authData, setAuthData] = useState({
+    schoolCode: '',
+    email: '',
+    isAuthenticated: false
+  })
   const [schoolData, setSchoolData] = useState(null)
   const [parentEntity, setParentEntity] = useState(null)
+  
+  // Teacher Management Data
+  const [teachers, setTeachers] = useState([])
+  const [students, setStudents] = useState([])
   
   // Search and Filter State
   const [teacherSearchTerm, setTeacherSearchTerm] = useState('')
   const [teacherFilterStatus, setTeacherFilterStatus] = useState('all')
 
-  // Load school data and teachers
-  useEffect(() => {
-    if (userProfile && userProfile.accountType === 'admin') {
-      loadSchoolData()
-    }
-  }, [userProfile])
+  // Session timeout (2 hours = 7200000 ms)
+  const SESSION_TIMEOUT = 2 * 60 * 60 * 1000
 
-  // Update activity on interactions
+  // Load session data on mount (matching dashboard pattern)
   useEffect(() => {
-    const updateActivity = () => updateLastActivity()
-    const events = ['click', 'keypress', 'scroll', 'mousemove']
+    const savedSession = localStorage.getItem('schoolSession')
+    if (savedSession) {
+      try {
+        const sessionData = JSON.parse(savedSession)
+        const now = Date.now()
+        const timePassed = now - sessionData.lastActivity
+        
+        if (timePassed < SESSION_TIMEOUT && sessionData.schoolData) {
+          setAuthData({ 
+            schoolCode: sessionData.schoolCode || '',
+            email: sessionData.email || '',
+            isAuthenticated: true 
+          })
+          setSchoolData(sessionData.schoolData)
+          setLastActivity(sessionData.lastActivity)
+          setIsAuthenticated(true)
+          loadSchoolData(sessionData.schoolData)
+        } else {
+          localStorage.removeItem('schoolSession')
+          router.push('/school/dashboard')
+        }
+      } catch (error) {
+        console.error('Error loading session:', error)
+        router.push('/school/dashboard')
+      }
+    } else {
+      router.push('/school/dashboard')
+    }
+  }, [router, SESSION_TIMEOUT])
+
+  // Update activity tracking (matching dashboard pattern)
+  useEffect(() => {
+    if (!isAuthenticated) return
+
+    const updateActivity = () => {
+      const newActivity = Date.now()
+      setLastActivity(newActivity)
+      if (schoolData) {
+        localStorage.setItem('schoolSession', JSON.stringify({
+          authenticated: true,
+          schoolCode: authData.schoolCode,
+          email: authData.email,
+          schoolData: schoolData,
+          lastActivity: newActivity
+        }))
+      }
+    }
     
+    const events = ['click', 'keypress', 'scroll', 'mousemove']
     events.forEach(event => 
       document.addEventListener(event, updateActivity, true)
     )
@@ -39,36 +92,44 @@ export default function SchoolTeachers() {
         document.removeEventListener(event, updateActivity, true)
       )
     }
-  }, [updateLastActivity])
+  }, [isAuthenticated, schoolData, authData.email, authData.schoolCode])
 
-  const loadSchoolData = async () => {
+  // Load school data
+  const loadSchoolData = async (school) => {
     try {
       setLoading(true)
       console.log('📊 Loading school data for teacher management...')
       
-      const dioceseId = userProfile.dioceseId
-      const schoolId = userProfile.schoolId
+      const dioceseId = school.dioceseId || school.parentEntityId
+      const schoolId = school.id
       
       if (!dioceseId || !schoolId) {
-        console.error('Missing dioceseId or schoolId in user profile')
+        console.error('Missing dioceseId or schoolId in school data')
         return
       }
 
-      // Load school document
-      const schoolRef = doc(db, `entities/${dioceseId}/schools`, schoolId)
-      const schoolDoc = await getDoc(schoolRef)
-      
-      if (schoolDoc.exists()) {
-        setSchoolData({ id: schoolDoc.id, ...schoolDoc.data() })
+      // Load parent entity data
+      if (dioceseId) {
+        try {
+          const parentEntityRef = doc(db, 'entities', dioceseId)
+          const parentEntityDoc = await getDoc(parentEntityRef)
+          
+          if (parentEntityDoc.exists()) {
+            setParentEntity({ id: parentEntityDoc.id, ...parentEntityDoc.data() })
+          }
+        } catch (parentError) {
+          console.log('Could not load parent entity:', parentError)
+        }
       }
 
-      // Load parent entity data
-      const parentEntityRef = doc(db, 'entities', dioceseId)
-      const parentEntityDoc = await getDoc(parentEntityRef)
-      
-      if (parentEntityDoc.exists()) {
-        setParentEntity({ id: parentEntityDoc.id, ...parentEntityDoc.data() })
-      }
+      // Load students first (needed for teacher student counts)
+      const studentsRef = collection(db, `entities/${dioceseId}/schools/${schoolId}/students`)
+      const studentsSnapshot = await getDocs(studentsRef)
+      const studentsData = []
+      studentsSnapshot.forEach((doc) => {
+        studentsData.push({ id: doc.id, ...doc.data() })
+      })
+      setStudents(studentsData)
 
       // Load teachers
       const teachersRef = collection(db, `entities/${dioceseId}/schools/${schoolId}/teachers`)
@@ -77,17 +138,24 @@ export default function SchoolTeachers() {
       teachersSnapshot.forEach((doc) => {
         teachersData.push({ id: doc.id, ...doc.data() })
       })
-      setTeachers(teachersData)
-      console.log('📚 Loaded teachers:', teachersData.length)
       
-      // Load students
-      const studentsRef = collection(db, `entities/${dioceseId}/schools/${schoolId}/students`)
-      const studentsSnapshot = await getDocs(studentsRef)
-      const studentsData = []
-      studentsSnapshot.forEach((doc) => {
-        studentsData.push({ id: doc.id, ...doc.data() })
+      // Calculate student counts for each teacher
+      const teachersWithStudentCounts = teachersData.map((teacher) => {
+        // Count students where currentTeacherId matches this teacher's ID
+        const studentCount = studentsData.filter(student => 
+          student.currentTeacherId === teacher.id
+        ).length
+        
+        return {
+          ...teacher,
+          studentCount,
+          // Set grade to "All Grades" for reading program teachers
+          grade: teacher.grade || 'All Grades'
+        }
       })
-      setStudents(studentsData)
+      
+      setTeachers(teachersWithStudentCounts)
+      console.log('📚 Loaded teachers with student counts:', teachersWithStudentCounts.length)
       
       console.log('✅ School data loaded successfully')
       
@@ -113,8 +181,8 @@ Continue?`)
       try {
         setLoading(true)
         
-        const dioceseId = userProfile.dioceseId
-        const schoolId = userProfile.schoolId
+        const dioceseId = schoolData.dioceseId || schoolData.parentEntityId
+        const schoolId = schoolData.id
         
         await deleteDoc(doc(db, `entities/${dioceseId}/schools/${schoolId}/teachers`, teacherId))
         
@@ -122,7 +190,7 @@ Continue?`)
         alert(`Teacher "${teacherName}" has been removed.`)
         
         // Reload school data
-        await loadSchoolData()
+        await loadSchoolData(schoolData)
       } catch (error) {
         console.error('❌ Error removing teacher:', error)
         alert('Error removing teacher: ' + error.message)
@@ -144,8 +212,8 @@ Continue?`)
     return matchesSearch && matchesStatus
   })
 
-  // Show loading if no user profile yet
-  if (!userProfile) {
+  // Show loading if not authenticated yet
+  if (!isAuthenticated || !schoolData) {
     return (
       <div style={{
         minHeight: '100vh',
@@ -307,7 +375,7 @@ Continue?`)
             <StatCard 
               title="Recent Joins" 
               value={teachers.filter(t => {
-                if (!t.createdAt) return false
+                if (!t.createdAt || !t.createdAt.seconds) return false
                 const weekAgo = new Date()
                 weekAgo.setDate(weekAgo.getDate() - 7)
                 return new Date(t.createdAt.seconds * 1000) > weekAgo
@@ -416,7 +484,7 @@ Continue?`)
                   🔄 Reset
                 </button>
                 <button
-                  onClick={loadSchoolData}
+                  onClick={() => loadSchoolData(schoolData)}
                   disabled={loading}
                   style={{
                     padding: '0.75rem 1rem',
@@ -703,15 +771,17 @@ function TeacherCard({ teacher, onRemove }) {
               📧 {teacher.email}
             </p>
             <p style={{ margin: '0 0 0.25rem 0' }}>
-              🎓 Grade: {teacher.grade || 'Not specified'}
+              🎓 Grade: {teacher.grade}
             </p>
             <p style={{ margin: '0 0 0.25rem 0' }}>
-              👥 Students: {teacher.studentCount || 0}
+              👥 Students: {teacher.studentCount}
             </p>
             <p style={{ margin: '0 0 0.25rem 0' }}>
-              📅 Joined: {teacher.createdAt ? new Date(teacher.createdAt.seconds * 1000).toLocaleDateString() : 'Recently'}
+              📅 Joined: {teacher.createdAt && teacher.createdAt.seconds 
+                ? new Date(teacher.createdAt.seconds * 1000).toLocaleDateString() 
+                : 'Recently'}
             </p>
-            {teacher.lastLogin && (
+            {teacher.lastLogin && teacher.lastLogin.seconds && (
               <p style={{ margin: '0 0 0.25rem 0' }}>
                 🔄 Last Login: {new Date(teacher.lastLogin.seconds * 1000).toLocaleDateString()}
               </p>

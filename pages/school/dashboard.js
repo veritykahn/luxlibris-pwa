@@ -1,6 +1,7 @@
 // pages/school/dashboard.js - FIXED SCHOOL DASHBOARD WITH PROGRAM INTEGRATION & GREEN PALETTE
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
+import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { db, authHelpers } from '../../lib/firebase'
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, getDoc, query, where } from 'firebase/firestore'
@@ -553,7 +554,7 @@ export default function SchoolDashboard() {
       const adminAuth = await authHelpers.createAdminAccount(
         newAdmin.email,
         tempPassword,
-        { name: `${newAdmin.firstName} ${newAdmin.lastName}` }
+        schoolData
       )
       
       // Create admin document
@@ -1218,16 +1219,35 @@ Continue?`)
               flexWrap: 'wrap',
               gap: '1rem'
             }}>
-              <h2 style={{
-                fontSize: '1.5rem',
-                fontWeight: '300',
-                color: '#065F46',
-                margin: 0,
-                fontFamily: 'Didot, Georgia, serif',
-                letterSpacing: '1.2px'
-              }}>
-                School Administrators ({admins.length})
-              </h2>
+              <div>
+                <h2 style={{
+                  fontSize: '1.5rem',
+                  fontWeight: '300',
+                  color: '#065F46',
+                  margin: '0 0 0.5rem 0',
+                  fontFamily: 'Didot, Georgia, serif',
+                  letterSpacing: '1.2px'
+                }}>
+                  School Administrators ({admins.length})
+                </h2>
+                {/* ADDED: School Access Code Display */}
+                <div style={{
+                  background: '#A1E5DB',
+                  padding: '0.5rem 1rem',
+                  borderRadius: '0.375rem',
+                  display: 'inline-block',
+                  marginTop: '0.5rem'
+                }}>
+                  <span style={{
+                    fontSize: '0.875rem',
+                    color: '#065F46',
+                    fontFamily: 'Avenir',
+                    fontWeight: '600'
+                  }}>
+                    🔑 School Code: <strong>{authData.schoolCode}</strong>
+                  </span>
+                </div>
+              </div>
               
               <button
                 onClick={() => setShowAddAdmin(!showAddAdmin)}
@@ -1599,10 +1619,10 @@ ${schoolData?.name} Administration`)
               />
               
               <QuickActionCard
-                title="View Teachers"
-                description="Manage teacher accounts and permissions"
+                title="Manage Teachers"
+                description="View and manage teacher accounts"
                 icon="👨‍🏫"
-                action={() => alert('Teacher management coming soon!')}
+                action={() => router.push('/school/teachers')}
                 color="#A1E5DB"
               />
               
