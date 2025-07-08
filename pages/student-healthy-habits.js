@@ -130,28 +130,48 @@ export default function StudentHealthyHabits() {
     }
   }), []);
 
-  // FIXED: Utility function to get local date string with better timezone handling
+  // Utility function to get local date string with consistent timezone handling
   const getLocalDateString = (date = new Date()) => {
-    // Ensure we're working with a proper Date object
     const d = new Date(date);
-    
-    // Use local timezone consistently
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
-    const localDate = `${year}-${month}-${day}`;
-    
-    console.log(`📅 Local date string for ${d.toLocaleDateString()}: ${localDate}`);
-    return localDate;
+    return `${year}-${month}-${day}`;
   };
 
-  // Utility function to get start of week (Sunday)
-  const getStartOfWeek = (date) => {
-    const d = new Date(date);
-    const day = d.getDay();
-    const diff = d.getDate() - day;
-    return new Date(d.setDate(diff));
-  };
+  // Smart streak calculation - counts from today OR yesterday
+  const calculateSmartStreak = useCallback((completedSessionsByDate, todayStr) => {
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    const yesterdayStr = getLocalDateString(yesterday);
+    
+    let streakCount = 0;
+    let checkDate;
+    
+    // Start from today if completed, otherwise start from yesterday
+    if (completedSessionsByDate[todayStr]) {
+      checkDate = new Date(today);
+    } else if (completedSessionsByDate[yesterdayStr]) {
+      checkDate = new Date(yesterday);
+    } else {
+      return 0;
+    }
+    
+    // Count consecutive days backwards
+    while (streakCount < 365) {
+      const dateStr = getLocalDateString(checkDate);
+      
+      if (completedSessionsByDate[dateStr]) {
+        streakCount++;
+        checkDate.setDate(checkDate.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+    
+    return streakCount;
+  }, []);
 
   // Notification functions
   const requestWakeLock = async () => {
@@ -159,15 +179,13 @@ export default function StudentHealthyHabits() {
       if ('wakeLock' in navigator) {
         const lock = await navigator.wakeLock.request('screen');
         setWakeLock(lock);
-        console.log('✅ Screen will stay on during reading');
         
         lock.addEventListener('release', () => {
-          console.log('📱 Screen wake lock released');
           setWakeLock(null);
         });
       }
     } catch (err) {
-      console.log('⚠️ Wake lock not supported on this device');
+      console.log('Wake lock not supported on this device');
     }
   };
 
@@ -202,7 +220,7 @@ export default function StudentHealthyHabits() {
       createTone(800, audioContext.currentTime + 0.5, 0.4);
       
     } catch (err) {
-      console.log('⚠️ Audio notification not supported');
+      console.log('Audio notification not supported');
     }
   };
 
@@ -212,7 +230,7 @@ export default function StudentHealthyHabits() {
         navigator.vibrate([200, 100, 200, 100, 300]);
       }
     } catch (err) {
-      console.log('⚠️ Vibration not supported');
+      console.log('Vibration not supported');
     }
   };
 
@@ -227,33 +245,26 @@ export default function StudentHealthyHabits() {
         });
       }
     } catch (err) {
-      console.log('⚠️ Browser notifications not supported');
+      console.log('Browser notifications not supported');
     }
   };
 
   // Request notification permission on mount
   useEffect(() => {
     if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission().then(permission => {
-        if (permission === 'granted') {
-          console.log('✅ Notification permission granted');
-        }
-      });
+      Notification.requestPermission();
     }
   }, []);
 
-  // FIXED: Load streak data with proper consecutive day calculation and better calendar
+  // Load streak data with smart calculation and timeline calendar
   const loadStreakData = useCallback(async (studentData) => {
     try {
-      console.log('🔥 Loading streak data...');
-      
-      // Get sessions from a wider range to ensure we capture the full streak
+      // Get sessions from last 6 weeks for thorough streak calculation
       const sixWeeksAgo = new Date();
-      sixWeeksAgo.setDate(sixWeeksAgo.getDate() - 42); // 6 weeks = 42 days
+      sixWeeksAgo.setDate(sixWeeksAgo.getDate() - 42);
       
       const sessionsRef = collection(db, `entities/${studentData.entityId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
       
-      // Get all sessions from last 6 weeks for thorough streak calculation
       const recentQuery = query(
         sessionsRef,
         where('date', '>=', getLocalDateString(sixWeeksAgo))
@@ -265,107 +276,57 @@ export default function StudentHealthyHabits() {
       // Only count COMPLETED sessions (20+ min) for streaks
       recentSnapshot.forEach(doc => {
         const session = doc.data();
-        console.log(`📖 Session found: ${session.date}, duration: ${session.duration}, completed: ${session.completed}`);
         if (session.completed === true) {
           completedSessionsByDate[session.date] = true;
-          console.log(`✅ Completed session on ${session.date}`);
         }
       });
       
-      console.log('📊 All completed sessions by date:', completedSessionsByDate);
-      
-      // FIXED: Calculate current streak - consecutive days from today backwards
       const today = new Date();
       const todayStr = getLocalDateString(today);
-      let streakCount = 0;
-      let checkDate = new Date(today);
       
-      console.log(`🔥 Starting streak calculation from today: ${todayStr}`);
+      // Calculate smart streak
+      const streakCount = calculateSmartStreak(completedSessionsByDate, todayStr);
       
-      // Count consecutive days backwards from today
-      while (true) {
-        const dateStr = getLocalDateString(checkDate);
-        console.log(`🔍 Checking ${dateStr} for completed session...`);
-        
-        if (completedSessionsByDate[dateStr]) {
-          streakCount++;
-          console.log(`✅ Day ${streakCount}: ${dateStr} has completed session`);
-          // Move to previous day
-          checkDate.setDate(checkDate.getDate() - 1);
-        } else {
-          console.log(`❌ Streak ends at ${dateStr} (no completed session)`);
-          break;
-        }
-        
-        // Safety break to prevent infinite loops
-        if (streakCount > 365) {
-          console.log('⚠️ Streak safety break at 365 days');
-          break;
-        }
-      }
-      
-      // FIXED: Build calendar with current day at top, future days at bottom
-      const calendar = [];
-      
-      // Calculate how many days to show (4 weeks = 28 days)
-      const daysToShow = 28;
+      // Build timeline calendar (21 days: 2 weeks past + today + 1 week future)
+      const timelineCalendar = [];
       const startDate = new Date(today);
-      startDate.setDate(startDate.getDate() - (daysToShow - 1)); // Start 27 days ago
+      startDate.setDate(today.getDate() - 14); // Start 2 weeks ago
       
-      // Group days into weeks
-      let currentWeek = [];
-      
-      for (let i = 0; i < daysToShow; i++) {
+      for (let i = 0; i < 21; i++) {
         const date = new Date(startDate);
-        date.setDate(date.getDate() + i);
+        date.setDate(startDate.getDate() + i);
         const dateStr = getLocalDateString(date);
-        const dayOfWeek = date.getDay(); // 0 = Sunday, 6 = Saturday
-        const dayName = ['S', 'M', 'T', 'W', 'T', 'F', 'S'][dayOfWeek];
         
-        const dayData = {
+        timelineCalendar.push({
           date: dateStr,
           hasReading: !!completedSessionsByDate[dateStr],
-          dayName,
+          dayName: ['S', 'M', 'T', 'W', 'T', 'F', 'S'][date.getDay()],
+          dayNumber: date.getDate(),
           isToday: dateStr === todayStr,
-          isFuture: date > today
-        };
-        
-        currentWeek.push(dayData);
-        
-        // If we've completed a week (7 days) or reached the end
-        if (currentWeek.length === 7 || i === daysToShow - 1) {
-          // Pad incomplete weeks with empty cells if needed
-          while (currentWeek.length < 7) {
-            currentWeek.push(null);
-          }
-          calendar.push([...currentWeek]);
-          currentWeek = [];
-        }
+          isFuture: date > today,
+          isRecent: Math.abs(date - today) <= 7 * 24 * 60 * 60 * 1000
+        });
       }
       
-      // Calculate weeks and months from total completed days
+      // Calculate stats
       const totalCompletedDays = Object.keys(completedSessionsByDate).length;
       const weeksCompleted = Math.floor(totalCompletedDays / 7);
       const monthsCompleted = Math.floor(totalCompletedDays / 30);
       
-      setStreakCalendar(calendar);
+      setStreakCalendar(timelineCalendar);
       setCurrentStreak(streakCount);
       setStreakStats({ weeks: weeksCompleted, months: monthsCompleted });
       
-      console.log(`🔥 Final streak: ${streakCount} consecutive days`);
-      console.log(`📊 Total stats: ${totalCompletedDays} total days, ${weeksCompleted} weeks, ${monthsCompleted} months`);
-      
     } catch (error) {
-      console.error('❌ Error loading streak data:', error);
+      console.error('Error loading streak data:', error);
       setCurrentStreak(0);
       setStreakStats({ weeks: 0, months: 0 });
     }
-  }, []);
+  }, [calculateSmartStreak]);
 
-  // FIXED: Progressive reading level calculation with 7-day earning and 4-day demotion
+  // Progressive reading level calculation
   const calculateReadingLevel = useCallback(async (studentData) => {
     try {
-      // Get last 14 days to properly track level progression
       const fourteenDaysAgo = new Date();
       fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
       
@@ -378,7 +339,6 @@ export default function StudentHealthyHabits() {
       const recentSnapshot = await getDocs(recentQuery);
       const dailyMinutes = {};
       
-      // Calculate total minutes per day for last 14 days
       recentSnapshot.forEach(doc => {
         const session = doc.data();
         if (!dailyMinutes[session.date]) {
@@ -387,7 +347,6 @@ export default function StudentHealthyHabits() {
         dailyMinutes[session.date] += session.duration;
       });
       
-      // Get current level data from student record
       const currentLevel = studentData.currentReadingLevel || 'faithful_flame';
       const daysAtCurrentLevel = studentData.daysAtCurrentLevel || 0;
       const daysBelowThresholdCount = studentData.daysBelowThresholdCount || 0;
@@ -403,7 +362,6 @@ export default function StudentHealthyHabits() {
       
       const averageMinutesPerDay = lastSevenDays.reduce((sum, minutes) => sum + minutes, 0) / 7;
       
-      // Define level thresholds
       const levels = {
         faithful_flame: { min: 0, max: 20, name: 'Faithful Flame', emoji: '🕯️', color: '#D84315', textColor: '#FFFFFF' },
         bright_beacon: { min: 21, max: 35, name: 'Bright Beacon', emoji: '⭐', color: '#FFF8E1', textColor: '#D84315' },
@@ -411,13 +369,11 @@ export default function StudentHealthyHabits() {
         luminous_legend: { min: 51, max: Infinity, name: 'Luminous Legend', emoji: '✨', color: '#E3F2FD', textColor: '#0D47A1' }
       };
       
-      // Determine target level based on average minutes
       let targetLevel = 'faithful_flame';
       if (averageMinutesPerDay >= 51) targetLevel = 'luminous_legend';
       else if (averageMinutesPerDay >= 36) targetLevel = 'radiant_reader';
       else if (averageMinutesPerDay >= 21) targetLevel = 'bright_beacon';
       
-      // Progressive level logic
       let newLevel = currentLevel;
       let newDaysAtLevel = daysAtCurrentLevel + 1;
       let newDaysBelowCount = daysBelowThresholdCount;
@@ -425,28 +381,21 @@ export default function StudentHealthyHabits() {
       const currentLevelData = levels[currentLevel];
       const todayMinutes = dailyMinutes[getLocalDateString(new Date())] || 0;
       
-      // Check if today's minutes are within current level threshold
       if (todayMinutes >= currentLevelData.min && todayMinutes <= currentLevelData.max) {
-        // Within threshold, reset below count
         newDaysBelowCount = 0;
       } else if (todayMinutes < currentLevelData.min) {
-        // Below threshold, increment count
         newDaysBelowCount++;
         
-        // Demote after 4 days below threshold (but not below faithful_flame)
         if (newDaysBelowCount >= 4 && currentLevel !== 'faithful_flame') {
           const levelOrder = ['faithful_flame', 'bright_beacon', 'radiant_reader', 'luminous_legend'];
           const currentIndex = levelOrder.indexOf(currentLevel);
           newLevel = levelOrder[currentIndex - 1];
           newDaysAtLevel = 1;
           newDaysBelowCount = 0;
-          console.log(`⬇️ Demoted to ${newLevel} after 4 days below threshold`);
         }
       } else {
-        // Above threshold, check for promotion eligibility
         newDaysBelowCount = 0;
         
-        // Can only promote after 7 days at current level AND must progress sequentially
         if (newDaysAtLevel >= 7) {
           const levelOrder = ['faithful_flame', 'bright_beacon', 'radiant_reader', 'luminous_legend'];
           const currentIndex = levelOrder.indexOf(currentLevel);
@@ -455,40 +404,31 @@ export default function StudentHealthyHabits() {
           if (nextLevel && targetLevel === nextLevel) {
             newLevel = nextLevel;
             newDaysAtLevel = 1;
-            console.log(`⬆️ Promoted to ${newLevel} after 7 days at current level`);
           }
         }
       }
       
-      // Update student record with new level data
       await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
         currentReadingLevel: newLevel,
         daysAtCurrentLevel: newDaysAtLevel,
         daysBelowThresholdCount: newDaysBelowCount
       });
       
-      // Set reading level display
-      const levelData = levels[newLevel];
-      setReadingLevel(levelData);
-      
-      console.log(`📚 Reading level: ${levelData.name} (${averageMinutesPerDay.toFixed(1)} min/day average, ${newDaysAtLevel} days at level)`);
+      setReadingLevel(levels[newLevel]);
       
     } catch (error) {
-      console.error('❌ Error calculating reading level:', error);
-      // Fallback to default
+      console.error('Error calculating reading level:', error);
       setReadingLevel({ name: 'Faithful Flame', emoji: '🕯️', color: '#D84315', textColor: '#FFFFFF' });
     }
   }, []);
 
-  // FIXED: Load reading data with proper today's minutes calculation
+  // Load reading data for today
   const loadReadingData = useCallback(async (studentData) => {
     try {
       const today = getLocalDateString(new Date());
-      console.log(`🔍 Loading reading data for today: ${today}`);
       
       const sessionsRef = collection(db, `entities/${studentData.entityId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
       
-      // Get only today's sessions with explicit date matching
       const todayQuery = query(
         sessionsRef,
         where('date', '==', today)
@@ -498,36 +438,24 @@ export default function StudentHealthyHabits() {
       const sessions = [];
       let minutesToday = 0;
       
-      console.log(`📊 Found ${todaySnapshot.size} sessions for ${today}`);
-      
-      // Process today's sessions
       const sessionData = [];
       todaySnapshot.forEach(doc => {
         const data = doc.data();
-        console.log(`📖 Session: ${data.date}, duration: ${data.duration}, completed: ${data.completed}`);
         sessionData.push({ id: doc.id, ...data });
       });
       
-      // Sort by startTime manually
       sessionData.sort((a, b) => {
         const timeA = a.startTime?.toDate?.() || new Date(a.startTime);
         const timeB = b.startTime?.toDate?.() || new Date(b.startTime);
         return timeB - timeA;
       });
       
-      // FIXED: Only count today's minutes, verify date match
       sessionData.forEach(session => {
         sessions.push(session);
-        // Double-check date match and only count today's minutes
         if (session.date === today) {
           minutesToday += session.duration;
-          console.log(`➕ Adding ${session.duration} minutes to today's total (session date: ${session.date})`);
-        } else {
-          console.log(`⚠️ Session date ${session.date} doesn't match today ${today} - not counting minutes`);
         }
       });
-      
-      console.log(`📊 Final today's total: ${minutesToday} minutes from ${sessions.length} sessions`);
       
       setTodaysSessions(sessions);
       setTodaysMinutes(minutesToday);
@@ -536,7 +464,7 @@ export default function StudentHealthyHabits() {
       await calculateReadingLevel(studentData);
       
     } catch (error) {
-      console.error('❌ Error loading reading data:', error);
+      console.error('Error loading reading data:', error);
     }
   }, [loadStreakData, calculateReadingLevel]);
 
@@ -546,7 +474,7 @@ export default function StudentHealthyHabits() {
         await loadStreakData(studentData);
       }
     } catch (error) {
-      console.error('❌ Error updating streak:', error);
+      console.error('Error updating streak:', error);
     }
   }, [studentData, loadStreakData]);
 
@@ -564,26 +492,15 @@ export default function StudentHealthyHabits() {
         bookId: currentBookId || null
       };
       
-      console.log(`💾 Saving reading session for ${today}: ${duration} minutes, completed: ${completed}`);
-      
       const sessionsRef = collection(db, `entities/${studentData.entityId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
       const docRef = await addDoc(sessionsRef, sessionData);
-      
-      console.log(`✅ Session saved with ID: ${docRef.id}`);
       
       const newSession = { id: docRef.id, ...sessionData };
       setTodaysSessions(prev => [newSession, ...prev]);
       
-      // Update today's minutes immediately
-      setTodaysMinutes(prev => {
-        const newMinutes = prev + duration;
-        console.log(`📈 Updated today's minutes: ${prev} + ${duration} = ${newMinutes}`);
-        return newMinutes;
-      });
+      setTodaysMinutes(prev => prev + duration);
       
-      // Update streak and level if this was the first completed session today
       if (completed && todaysSessions.filter(s => s.completed && s.date === today).length === 0) {
-        console.log(`🔥 First completed session today - updating streak and level`);
         await updateStreakData();
         await calculateReadingLevel(studentData);
       }
@@ -592,7 +509,7 @@ export default function StudentHealthyHabits() {
       setTimeout(() => setShowSuccess(''), 3000);
       
     } catch (error) {
-      console.error('❌ Error saving reading session:', error);
+      console.error('Error saving reading session:', error);
       setShowSuccess('❌ Error saving session. Please try again.');
       setTimeout(() => setShowSuccess(''), 3000);
     }
@@ -619,7 +536,7 @@ export default function StudentHealthyHabits() {
       await loadReadingData(firebaseStudentData);
       
     } catch (error) {
-      console.error('❌ Error loading healthy habits data:', error);
+      console.error('Error loading healthy habits data:', error);
       router.push('/student-dashboard');
     }
     
@@ -671,18 +588,12 @@ export default function StudentHealthyHabits() {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden && isTimerActive && !isTimerPaused) {
-        console.log('📱 Page hidden - pausing timer');
         setIsTimerPaused(true);
-      } else if (!document.hidden && isTimerActive && isTimerPaused && timeRemaining > 0) {
-        console.log('📱 Page visible again - timer remains paused');
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [isTimerActive, isTimerPaused, timeRemaining]);
 
   // Timer effect
@@ -729,13 +640,6 @@ export default function StudentHealthyHabits() {
     requestWakeLock();
   };
 
-  const handleStopTimer = () => {
-    setIsTimerActive(false);
-    setIsTimerPaused(false);
-    setTimeRemaining(timerDuration);
-    releaseWakeLock();
-  };
-
   const handleBankSession = async () => {
     const minutesRead = Math.floor((timerDuration - timeRemaining) / 60);
     
@@ -775,7 +679,6 @@ export default function StudentHealthyHabits() {
     return ((timerDuration - timeRemaining) / timerDuration) * 100;
   };
 
-  // Calculate responsive SVG size
   const getSvgSize = () => {
     if (typeof window !== 'undefined') {
       const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
@@ -909,7 +812,7 @@ export default function StudentHealthyHabits() {
             boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
             textAlign: 'center'
           }}>
-            {/* Circular Timer with proper SVG sizing */}
+            {/* Circular Timer */}
             <div style={{ position: 'relative', display: 'inline-block', marginBottom: '20px' }}>
               <svg 
                 width={svgSize}
@@ -1169,7 +1072,7 @@ export default function StudentHealthyHabits() {
             </div>
           </div>
 
-          {/* STREAK CALENDAR */}
+          {/* STREAK CALENDAR - Timeline Style */}
           <div style={{
             backgroundColor: currentTheme.surface,
             borderRadius: '16px',
@@ -1193,7 +1096,7 @@ export default function StudentHealthyHabits() {
               </h3>
             </div>
 
-            {/* FIXED: Weeks and months completed display - compact single line */}
+            {/* Stats */}
             <div style={{
               display: 'flex',
               justifyContent: 'space-between',
@@ -1206,63 +1109,74 @@ export default function StudentHealthyHabits() {
               <div style={{
                 fontSize: '13px',
                 color: currentTheme.textPrimary,
-                fontWeight: '500',
-                whiteSpace: 'nowrap'
+                fontWeight: '500'
               }}>
                 📅 {streakStats.weeks} weeks
               </div>
               <div style={{
                 fontSize: '13px',
                 color: currentTheme.textPrimary,
-                fontWeight: '500',
-                whiteSpace: 'nowrap'
+                fontWeight: '500'
               }}>
                 🗓️ {streakStats.months} months
               </div>
             </div>
 
-            {/* FIXED: 4-Week Calendar Grid with current day at top, future days below */}
-            <div style={{ marginBottom: '12px' }}>
-              {streakCalendar.map((week, weekIndex) => (
-                <div 
-                  key={weekIndex}
+            {/* Timeline Calendar */}
+            <div style={{
+              display: 'flex',
+              gap: '6px',
+              overflowX: 'auto',
+              padding: '8px 4px',
+              marginBottom: '12px',
+              scrollSnapType: 'x mandatory'
+            }}>
+              {streakCalendar.map((day, index) => (
+                <div
+                  key={index}
                   style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(7, 1fr)',
-                    gap: 'clamp(2px, 1vw, 4px)',
-                    marginBottom: weekIndex < streakCalendar.length - 1 ? '6px' : '0',
-                    justifyItems: 'center'
+                    minWidth: '32px',
+                    height: '48px',
+                    borderRadius: '10px',
+                    backgroundColor: day.isFuture ? 
+                      `${currentTheme.primary}10` : 
+                      day.hasReading ? currentTheme.primary : `${currentTheme.primary}20`,
+                    border: day.isToday ? `3px solid ${currentTheme.primary}` : 
+                           day.isRecent ? `1px solid ${currentTheme.primary}60` : 'none',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '2px',
+                    opacity: day.isFuture ? 0.4 : 1,
+                    transform: day.isToday ? 'scale(1.1)' : 'scale(1)',
+                    transition: 'all 0.2s ease',
+                    scrollSnapAlign: 'center',
+                    boxShadow: day.isToday ? `0 4px 12px ${currentTheme.primary}40` : 'none'
                   }}
                 >
-                  {week.map((day, dayIndex) => {
-                    if (!day) return <div key={dayIndex} />; // Empty cell for padding
-                    
-                    return (
-                      <div
-                        key={`${weekIndex}-${dayIndex}`}
-                        style={{
-                          width: 'clamp(24px, 6vw, 28px)',
-                          height: 'clamp(24px, 6vw, 28px)',
-                          borderRadius: '6px',
-                          backgroundColor: day.isFuture ? 
-                            `${currentTheme.primary}10` : 
-                            day.hasReading ? currentTheme.primary : `${currentTheme.primary}20`,
-                          border: day.isToday ? `2px solid ${currentTheme.primary}` : 'none',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: 'clamp(8px, 2vw, 10px)',
-                          fontWeight: '600',
-                          color: day.isFuture ? 
-                            `${currentTheme.textSecondary}50` :
-                            day.hasReading ? 'white' : currentTheme.textSecondary,
-                          opacity: day.isFuture ? 0.5 : 1
-                        }}
-                      >
-                        {day.dayName}
-                      </div>
-                    );
-                  })}
+                  <div style={{
+                    fontSize: '8px',
+                    fontWeight: '600',
+                    color: day.hasReading && !day.isFuture ? 'white' : currentTheme.textSecondary
+                  }}>
+                    {day.dayName}
+                  </div>
+                  <div style={{
+                    fontSize: '11px',
+                    fontWeight: 'bold',
+                    color: day.hasReading && !day.isFuture ? 'white' : currentTheme.textPrimary
+                  }}>
+                    {day.dayNumber}
+                  </div>
+                  {day.hasReading && (
+                    <div style={{
+                      width: '3px',
+                      height: '3px',
+                      borderRadius: '50%',
+                      backgroundColor: 'white'
+                    }} />
+                  )}
                 </div>
               ))}
             </div>
@@ -1276,6 +1190,7 @@ export default function StudentHealthyHabits() {
             }}>
               {currentStreak >= 30 ? "🏆 30-day streak! Rare saints unlocked!" : 
                currentStreak >= 7 ? "Amazing! Keep the fire burning! 🔥" : 
+               currentStreak >= 1 ? `Great start! ${currentStreak} day${currentStreak > 1 ? 's' : ''} strong! 💪` :
                "Read every day to build a healthy habit!"}
             </p>
           </div>
@@ -1348,10 +1263,7 @@ export default function StudentHealthyHabits() {
               textAlign: 'center',
               maxWidth: '90vw',
               width: '100%',
-              maxWidth: '350px',
-              minHeight: 'auto',
-              maxHeight: '80vh',
-              overflow: 'auto'
+              maxWidth: '350px'
             }}>
               <div style={{ fontSize: 'clamp(40px, 12vw, 48px)', marginBottom: '16px' }}>📖</div>
               <h2 style={{
@@ -1483,12 +1395,6 @@ export default function StudentHealthyHabits() {
             body {
               -webkit-text-size-adjust: 100%;
               -ms-text-size-adjust: 100%;
-            }
-          }
-          
-          @media (max-width: 375px) {
-            .timer-container {
-              padding: 20px 15px;
             }
           }
         `}</style>
