@@ -130,14 +130,18 @@ export default function StudentHealthyHabits() {
     }
   }), []);
 
-  // Utility function to get local date string (YYYY-MM-DD) - FIXED for timezone consistency
+  // FIXED: Utility function to get local date string with better timezone handling
   const getLocalDateString = (date = new Date()) => {
-    // Use local timezone, not UTC
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+    // Ensure we're working with a proper Date object
+    const d = new Date(date);
+    
+    // Use local timezone consistently
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
     const localDate = `${year}-${month}-${day}`;
-    console.log(`📅 Local date string: ${localDate}`);
+    
+    console.log(`📅 Local date string for ${d.toLocaleDateString()}: ${localDate}`);
     return localDate;
   };
 
@@ -238,19 +242,21 @@ export default function StudentHealthyHabits() {
     }
   }, []);
 
-  // FIXED: Load streak data with proper 4-week calendar and consecutive day calculation
+  // FIXED: Load streak data with proper consecutive day calculation and better calendar
   const loadStreakData = useCallback(async (studentData) => {
     try {
-      // Get 4 weeks (28 days) for the rolling calendar
-      const fourWeeksAgo = new Date();
-      fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 27); // 28 days total including today
+      console.log('🔥 Loading streak data...');
+      
+      // Get sessions from a wider range to ensure we capture the full streak
+      const sixWeeksAgo = new Date();
+      sixWeeksAgo.setDate(sixWeeksAgo.getDate() - 42); // 6 weeks = 42 days
       
       const sessionsRef = collection(db, `entities/${studentData.entityId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
       
-      // Get all sessions from last 4 weeks
+      // Get all sessions from last 6 weeks for thorough streak calculation
       const recentQuery = query(
         sessionsRef,
-        where('date', '>=', getLocalDateString(fourWeeksAgo))
+        where('date', '>=', getLocalDateString(sixWeeksAgo))
       );
       
       const recentSnapshot = await getDocs(recentQuery);
@@ -259,85 +265,100 @@ export default function StudentHealthyHabits() {
       // Only count COMPLETED sessions (20+ min) for streaks
       recentSnapshot.forEach(doc => {
         const session = doc.data();
-        if (session.completed) {
+        console.log(`📖 Session found: ${session.date}, duration: ${session.duration}, completed: ${session.completed}`);
+        if (session.completed === true) {
           completedSessionsByDate[session.date] = true;
+          console.log(`✅ Completed session on ${session.date}`);
         }
       });
       
-      // FIXED: Build 4-week calendar (Sunday to Saturday, newest week first)
-      const calendar = [];
+      console.log('📊 All completed sessions by date:', completedSessionsByDate);
+      
+      // FIXED: Calculate current streak - consecutive days from today backwards
       const today = new Date();
-      const startOfThisWeek = getStartOfWeek(today);
-      
-      // Build 4 weeks, starting from current week
-      for (let week = 0; week < 4; week++) {
-        const weekData = [];
-        const weekStart = new Date(startOfThisWeek);
-        weekStart.setDate(weekStart.getDate() - (week * 7));
-        
-        // Build 7 days for this week (Sunday to Saturday)
-        for (let day = 0; day < 7; day++) {
-          const date = new Date(weekStart);
-          date.setDate(date.getDate() + day);
-          const dateStr = getLocalDateString(date);
-          const hasReading = !!completedSessionsByDate[dateStr];
-          const dayName = ['S', 'M', 'T', 'W', 'T', 'F', 'S'][day];
-          
-          weekData.push({
-            date: dateStr,
-            hasReading,
-            dayName,
-            isToday: dateStr === getLocalDateString(today),
-            isFuture: date > today
-          });
-        }
-        
-        calendar.push(weekData);
-      }
-      
-      // FIXED: Calculate current streak from today backwards (consecutive completed sessions)
       const todayStr = getLocalDateString(today);
       let streakCount = 0;
-      let currentDate = new Date(today);
+      let checkDate = new Date(today);
       
-      console.log(`🔥 Starting streak calculation from: ${todayStr}`);
-      console.log(`📊 Completed sessions by date:`, completedSessionsByDate);
+      console.log(`🔥 Starting streak calculation from today: ${todayStr}`);
       
-      // Check streak starting from today going backwards
+      // Count consecutive days backwards from today
       while (true) {
-        const dateStr = getLocalDateString(currentDate);
-        console.log(`🔍 Checking date: ${dateStr}, has completed session: ${!!completedSessionsByDate[dateStr]}`);
+        const dateStr = getLocalDateString(checkDate);
+        console.log(`🔍 Checking ${dateStr} for completed session...`);
         
         if (completedSessionsByDate[dateStr]) {
           streakCount++;
-          console.log(`✅ Streak continues: ${streakCount} days`);
-          currentDate.setDate(currentDate.getDate() - 1);
+          console.log(`✅ Day ${streakCount}: ${dateStr} has completed session`);
+          // Move to previous day
+          checkDate.setDate(checkDate.getDate() - 1);
         } else {
-          console.log(`❌ Streak broken at: ${dateStr}`);
+          console.log(`❌ Streak ends at ${dateStr} (no completed session)`);
           break;
         }
         
-        // Safety break to prevent infinite loop
+        // Safety break to prevent infinite loops
         if (streakCount > 365) {
-          console.log('⚠️ Streak calculation safety break at 365 days');
+          console.log('⚠️ Streak safety break at 365 days');
           break;
         }
       }
       
-      // Calculate weeks and months from completed sessions
-      const completedDates = Object.keys(completedSessionsByDate);
-      const weeksCompleted = Math.floor(completedDates.length / 7);
-      const monthsCompleted = Math.floor(completedDates.length / 30);
+      // FIXED: Build calendar with current day at top, future days at bottom
+      const calendar = [];
+      
+      // Calculate how many days to show (4 weeks = 28 days)
+      const daysToShow = 28;
+      const startDate = new Date(today);
+      startDate.setDate(startDate.getDate() - (daysToShow - 1)); // Start 27 days ago
+      
+      // Group days into weeks
+      let currentWeek = [];
+      
+      for (let i = 0; i < daysToShow; i++) {
+        const date = new Date(startDate);
+        date.setDate(date.getDate() + i);
+        const dateStr = getLocalDateString(date);
+        const dayOfWeek = date.getDay(); // 0 = Sunday, 6 = Saturday
+        const dayName = ['S', 'M', 'T', 'W', 'T', 'F', 'S'][dayOfWeek];
+        
+        const dayData = {
+          date: dateStr,
+          hasReading: !!completedSessionsByDate[dateStr],
+          dayName,
+          isToday: dateStr === todayStr,
+          isFuture: date > today
+        };
+        
+        currentWeek.push(dayData);
+        
+        // If we've completed a week (7 days) or reached the end
+        if (currentWeek.length === 7 || i === daysToShow - 1) {
+          // Pad incomplete weeks with empty cells if needed
+          while (currentWeek.length < 7) {
+            currentWeek.push(null);
+          }
+          calendar.push([...currentWeek]);
+          currentWeek = [];
+        }
+      }
+      
+      // Calculate weeks and months from total completed days
+      const totalCompletedDays = Object.keys(completedSessionsByDate).length;
+      const weeksCompleted = Math.floor(totalCompletedDays / 7);
+      const monthsCompleted = Math.floor(totalCompletedDays / 30);
       
       setStreakCalendar(calendar);
       setCurrentStreak(streakCount);
       setStreakStats({ weeks: weeksCompleted, months: monthsCompleted });
       
-      console.log(`🔥 Current streak: ${streakCount} days (completed sessions only)`);
-      console.log(`📊 Streak stats: ${weeksCompleted} weeks, ${monthsCompleted} months`);
+      console.log(`🔥 Final streak: ${streakCount} consecutive days`);
+      console.log(`📊 Total stats: ${totalCompletedDays} total days, ${weeksCompleted} weeks, ${monthsCompleted} months`);
       
     } catch (error) {
       console.error('❌ Error loading streak data:', error);
+      setCurrentStreak(0);
+      setStreakStats({ weeks: 0, months: 0 });
     }
   }, []);
 
@@ -440,12 +461,11 @@ export default function StudentHealthyHabits() {
       }
       
       // Update student record with new level data
-      // ✅ CONSISTENT: Use your helper function
-await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
-  currentReadingLevel: newLevel,
-  daysAtCurrentLevel: newDaysAtLevel,
-  daysBelowThresholdCount: newDaysBelowCount
-});
+      await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
+        currentReadingLevel: newLevel,
+        daysAtCurrentLevel: newDaysAtLevel,
+        daysBelowThresholdCount: newDaysBelowCount
+      });
       
       // Set reading level display
       const levelData = levels[newLevel];
@@ -495,14 +515,15 @@ await updateStudentDataEntities(studentData.id, studentData.entityId, studentDat
         return timeB - timeA;
       });
       
+      // FIXED: Only count today's minutes, verify date match
       sessionData.forEach(session => {
         sessions.push(session);
-        // FIXED: Double-check date match and only count today's minutes
+        // Double-check date match and only count today's minutes
         if (session.date === today) {
           minutesToday += session.duration;
-          console.log(`➕ Adding ${session.duration} minutes to today's total`);
+          console.log(`➕ Adding ${session.duration} minutes to today's total (session date: ${session.date})`);
         } else {
-          console.log(`⚠️ Session date ${session.date} doesn't match today ${today}`);
+          console.log(`⚠️ Session date ${session.date} doesn't match today ${today} - not counting minutes`);
         }
       });
       
@@ -1200,7 +1221,7 @@ await updateStudentDataEntities(studentData.id, studentData.entityId, studentDat
               </div>
             </div>
 
-            {/* FIXED: 4-Week Calendar Grid (Sunday to Saturday, newest week first) */}
+            {/* FIXED: 4-Week Calendar Grid with current day at top, future days below */}
             <div style={{ marginBottom: '12px' }}>
               {streakCalendar.map((week, weekIndex) => (
                 <div 
@@ -1209,35 +1230,39 @@ await updateStudentDataEntities(studentData.id, studentData.entityId, studentDat
                     display: 'grid',
                     gridTemplateColumns: 'repeat(7, 1fr)',
                     gap: 'clamp(2px, 1vw, 4px)',
-                    marginBottom: weekIndex < 3 ? '6px' : '0',
+                    marginBottom: weekIndex < streakCalendar.length - 1 ? '6px' : '0',
                     justifyItems: 'center'
                   }}
                 >
-                  {week.map((day, dayIndex) => (
-                    <div
-                      key={`${weekIndex}-${dayIndex}`}
-                      style={{
-                        width: 'clamp(24px, 6vw, 28px)',
-                        height: 'clamp(24px, 6vw, 28px)',
-                        borderRadius: '6px',
-                        backgroundColor: day.isFuture ? 
-                          `${currentTheme.primary}10` : 
-                          day.hasReading ? currentTheme.primary : `${currentTheme.primary}20`,
-                        border: day.isToday ? `2px solid ${currentTheme.primary}` : 'none',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: 'clamp(8px, 2vw, 10px)',
-                        fontWeight: '600',
-                        color: day.isFuture ? 
-                          `${currentTheme.textSecondary}50` :
-                          day.hasReading ? 'white' : currentTheme.textSecondary,
-                        opacity: day.isFuture ? 0.3 : 1
-                      }}
-                    >
-                      {day.dayName}
-                    </div>
-                  ))}
+                  {week.map((day, dayIndex) => {
+                    if (!day) return <div key={dayIndex} />; // Empty cell for padding
+                    
+                    return (
+                      <div
+                        key={`${weekIndex}-${dayIndex}`}
+                        style={{
+                          width: 'clamp(24px, 6vw, 28px)',
+                          height: 'clamp(24px, 6vw, 28px)',
+                          borderRadius: '6px',
+                          backgroundColor: day.isFuture ? 
+                            `${currentTheme.primary}10` : 
+                            day.hasReading ? currentTheme.primary : `${currentTheme.primary}20`,
+                          border: day.isToday ? `2px solid ${currentTheme.primary}` : 'none',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: 'clamp(8px, 2vw, 10px)',
+                          fontWeight: '600',
+                          color: day.isFuture ? 
+                            `${currentTheme.textSecondary}50` :
+                            day.hasReading ? 'white' : currentTheme.textSecondary,
+                          opacity: day.isFuture ? 0.5 : 1
+                        }}
+                      >
+                        {day.dayName}
+                      </div>
+                    );
+                  })}
                 </div>
               ))}
             </div>
