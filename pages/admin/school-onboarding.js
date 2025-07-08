@@ -132,7 +132,7 @@ export default function TeacherOnboarding() {
             if (schoolData.teacherJoinCode === joinCode) {
               return {
                 id: schoolDoc.id,
-                dioceseId: entityDoc.id,
+                entityId: entityDoc.id,  // Fixed: should be entityId not dioceseId
                 ...schoolData
               }
             }
@@ -201,7 +201,7 @@ export default function TeacherOnboarding() {
   // Check if teacher email already exists
   const checkExistingTeacher = async (school, email) => {
     try {
-      const teachersRef = collection(db, `entities/${school.dioceseId}/schools/${school.id}/teachers`)
+      const teachersRef = collection(db, `entities/${school.entityId}/schools/${school.id}/teachers`)
       const teacherQuery = query(teachersRef, where('email', '==', email))
       const teacherSnapshot = await getDocs(teacherQuery)
       
@@ -261,7 +261,7 @@ export default function TeacherOnboarding() {
         accountType: 'teacher',
         schoolId: schoolData.id,
         schoolName: schoolData.name,
-        dioceseId: schoolData.dioceseId,
+        entityId: schoolData.entityId,  // Fixed: changed from dioceseId to entityId
         joinedWithCode: accountData.teacherJoinCode,
         managementType: 'school_reading_program',
         studentJoinCode: codes.studentCode,
@@ -287,7 +287,7 @@ export default function TeacherOnboarding() {
       
       // Save to nested teachers collection
       const teacherDocRef = await addDoc(
-        collection(db, `entities/${schoolData.dioceseId}/schools/${schoolData.id}/teachers`), 
+        collection(db, `entities/${schoolData.entityId}/schools/${schoolData.id}/teachers`), 
         teacherProfile
       )
       
@@ -368,7 +368,7 @@ export default function TeacherOnboarding() {
       }
 
       // Find the teacher document to update using stored profile data
-      const teachersRef = collection(db, `entities/${createdProfile.dioceseId}/schools/${createdProfile.schoolId}/teachers`)
+      const teachersRef = collection(db, `entities/${createdProfile.entityId}/schools/${createdProfile.schoolId}/teachers`)
       const teacherQuery = query(teachersRef, where('uid', '==', createdUser.uid))
       const teacherSnapshot = await getDocs(teacherQuery)
       
