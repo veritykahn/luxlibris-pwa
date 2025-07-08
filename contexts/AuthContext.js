@@ -364,43 +364,43 @@ const getDashboardUrl = () => {
         setUser(firebaseUser)
         
         // Give Firebase more time to finish writing data
-setTimeout(async () => {
-  // try {
-  //   const profile = await getUserProfile(firebaseUser.uid)
-  //   setUserProfile(profile)
-  //   
-  //   if (profile) {
-  //     console.log('✅ User profile loaded:', {
-  //       accountType: profile.accountType,
-  //       email: profile.email,
-  //       name: profile.firstName || profile.name
-  //     })
-  //     
-  //     // Check session expiry immediately after loading profile
-  //     if (profile?.accountType === 'admin') {
-  //       updateLastActivity()
-  //       
-  //       if (isSessionExpired()) {
-  //         console.log('⏰ Admin session expired on page load')
-  //         await signOut({ redirectTo: '/sign-in?reason=session-expired' })
-  //         return
-  //       }
-  //     } else {
-  //       updateLastActivity()
-  //     }
-  //   } else {
-  //     console.log('❌ No user profile found for UID:', firebaseUser.uid)
-  //   }
-  // } catch (error) {
-  //   console.error('❌ Error loading user profile:', error)
-  //   setUserProfile(null)
-  // }
-  
-  if (!initialized) {
-    setInitialized(true)
-  }
-  setLoading(false)
-}, 2000) // Give it 2 seconds for database writes to complete
+        setTimeout(async () => {
+          try {
+            const profile = await getUserProfile(firebaseUser.uid)
+            setUserProfile(profile)
+            
+            if (profile) {
+              console.log('✅ User profile loaded:', {
+                accountType: profile.accountType,
+                email: profile.email,
+                name: profile.firstName || profile.name
+              })
+              
+              // Check session expiry immediately after loading profile
+              if (profile?.accountType === 'admin') {
+                updateLastActivity()
+                
+                if (isSessionExpired()) {
+                  console.log('⏰ Admin session expired on page load')
+                  await signOut({ redirectTo: '/sign-in?reason=session-expired' })
+                  return
+                }
+              } else {
+                updateLastActivity()
+              }
+            } else {
+              console.log('❌ No user profile found for UID:', firebaseUser.uid)
+            }
+          } catch (error) {
+            console.error('❌ Error loading user profile:', error)
+            setUserProfile(null)
+          }
+          
+          if (!initialized) {
+            setInitialized(true)
+          }
+          setLoading(false)
+        }, 2000) // Give it 2 seconds for database writes to complete
         
       } else {
         console.log('👤 User signed out')
