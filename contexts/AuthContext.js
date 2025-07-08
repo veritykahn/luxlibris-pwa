@@ -575,11 +575,12 @@ export const withAuth = (WrappedComponent, allowedAccountTypes = ['student', 'pa
     useEffect(() => {
       const checkAuth = async () => {
         if (!loading && initialized) {
-          if (!isAuthenticated) {
-            // User not authenticated, redirect to role selector
-            router.push('/role-selector')
-            return
-          }
+          // CORRECT - should redirect to homepage instead
+if (!isAuthenticated) {
+  // User not authenticated, redirect to homepage
+  router.push('/')  // ✅ This is correct!
+  return
+}
 
           // Check session expiry for admins
           if (userProfile?.accountType === 'admin' && isSessionExpired()) {

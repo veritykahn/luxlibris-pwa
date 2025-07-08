@@ -1,4 +1,4 @@
-// pages/student-settings.js - INTEGRATED WITH TIMER
+// pages/student-settings.js - FIXED SIGN OUT REDIRECT
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
@@ -290,12 +290,12 @@ export default function StudentSettings() {
     setTimeout(() => setShowSuccess(''), 2000);
   };
 
+  // FIXED: Use AuthContext's built-in redirect functionality
   const handleSignOut = async () => {
     try {
       setIsSaving(true);
-      await signOut();
-      // Force redirect to homepage
-      window.location.href = '/';
+      // Use AuthContext's redirect option to go to homepage
+      await signOut({ redirectTo: '/' });
     } catch (error) {
       console.error('Error signing out:', error);
       setShowSuccess('❌ Error signing out. Please try again.');
