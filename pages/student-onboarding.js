@@ -1,8 +1,8 @@
-// pages/student-onboarding.js - FIXED: No Users Collection
+// pages/student-onboarding.js - Clean Production Version
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { db, authHelpers } from '../lib/firebase';
-import { collection, addDoc, getDocs, query, where, doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import { collection, addDoc, getDocs, doc, getDoc } from 'firebase/firestore';
 import Head from 'next/head'
 
 export default function StudentOnboarding() {
@@ -30,7 +30,7 @@ export default function StudentOnboarding() {
     selectedTheme: 'classic_lux'
   });
 
-  // Theme definitions (same as before)
+  // Theme definitions
   const themes = [
     {
       name: 'Lux Libris Classic',
@@ -122,12 +122,11 @@ export default function StudentOnboarding() {
   }, []);
 
   const loadTeacherDataFromStorage = () => {
-    // Load teacher data from student account creation flow
     const tempTeacherData = localStorage.getItem('tempTeacherData');
     
     if (tempTeacherData) {
       const parsed = JSON.parse(tempTeacherData);
-      console.log('👩‍🏫 Loading teacher data from account creation:', parsed);
+      console.log('Loading teacher data from account creation:', parsed.teacherName);
       
       setFormData(prev => ({
         ...prev,
@@ -141,34 +140,21 @@ export default function StudentOnboarding() {
         teacherJoinCode: parsed.teacherJoinCode || ''
       }));
     } else {
-      console.warn('⚠️ No temp teacher data found - student may have accessed onboarding directly');
+      console.warn('No teacher data found - student may have accessed onboarding directly');
       setError('Please start from the account creation page');
     }
   };
 
-  // Generate username with teacher name logic and duplicate handling
   const generateUsername = async (firstName, lastInitial, grade, teacherData, entityId, schoolId) => {
     try {
-      console.log('🔄 Generating username for:', firstName, lastInitial, grade);
-      console.log('👩‍🏫 Teacher info:', teacherData);
-      
-      // Extract teacher's last name for username generation
       const teacherFullName = teacherData.teacherName || '';
       const teacherLastName = teacherFullName.split(' ').pop() || 'TCHR';
-      
-      // Get first 4 letters of teacher's last name (uppercase)
       const teacherCode = teacherLastName.toUpperCase().substring(0, 4).padEnd(4, 'X');
-      
-      // Create base username: EmmaK4SMIT
       const baseUsername = `${firstName}${lastInitial}${grade}${teacherCode}`;
       
-      console.log('🎯 Base username:', baseUsername);
-      
-      // Check for existing usernames in this school's students subcollection
       const studentsCollection = collection(db, `entities/${entityId}/schools/${schoolId}/students`);
       const querySnapshot = await getDocs(studentsCollection);
       
-      // Get all existing usernames for this school
       const existingUsernames = [];
       querySnapshot.forEach((doc) => {
         const studentData = doc.data();
@@ -177,21 +163,18 @@ export default function StudentOnboarding() {
         }
       });
       
-      console.log('📋 Existing usernames in school:', existingUsernames);
-      
-      // Check if base username exists, if so add number (2, 3, 4, etc.)
-      let finalUsername = baseUsername; // EmmaK4SMIT
-      let counter = 2; // Start with 2 for first duplicate (EmmaK4SMIT2)
+      let finalUsername = baseUsername;
+      let counter = 2;
       
       while (existingUsernames.includes(finalUsername)) {
-        finalUsername = `${baseUsername}${counter}`; // EmmaK4SMIT2, EmmaK4SMIT3, etc.
+        finalUsername = `${baseUsername}${counter}`;
         counter++;
       }
       
       console.log('✅ Generated unique username:', finalUsername);
       return finalUsername;
     } catch (error) {
-      console.error('❌ Error generating username:', error);
+      console.error('Error generating username:', error);
       throw error;
     }
   };
@@ -215,14 +198,12 @@ export default function StudentOnboarding() {
     setError('');
     
     try {
-      console.log('🚀 Starting account creation process...');
-      
       // Validate required data
       if (!formData.firstName || !formData.lastInitial || !formData.teacherId || !formData.entityId || !formData.schoolId) {
         throw new Error('Missing required information');
       }
 
-      // Get teacher data to verify it exists and get configuration
+      // Verify teacher exists
       const teacherRef = doc(db, `entities/${formData.entityId}/schools/${formData.schoolId}/teachers`, formData.teacherId);
       const teacherDoc = await getDoc(teacherRef);
       
@@ -230,14 +211,10 @@ export default function StudentOnboarding() {
         throw new Error('Teacher not found in database');
       }
       
-      const teacherData = {
-        id: formData.teacherId,
-        ...teacherDoc.data()
-      };
+      const teacherData = { id: formData.teacherId, ...teacherDoc.data() };
+      console.log('✅ Teacher verified:', teacherData.firstName, teacherData.lastName);
       
-      console.log('✅ Teacher data verified:', teacherData.firstName, teacherData.lastName);
-      
-      // Generate unique username with teacher code
+      // Generate unique username
       const displayUsername = await generateUsername(
         formData.firstName, 
         formData.lastInitial, 
@@ -249,42 +226,24 @@ export default function StudentOnboarding() {
       
       setGeneratedUsername(displayUsername);
 
-      // 🔥 CREATE FIREBASE AUTH ACCOUNT using teacher system
-      console.log('🔐 Creating Firebase Auth account...');
-      
-      // Create email format: emmak4smit@teacher-code.luxlibris.app
+      // Create sign-in credentials
       const studentEmail = `${displayUsername.toLowerCase()}@${formData.teacherJoinCode.toLowerCase().replace(/[^a-z0-9]/g, '-')}.luxlibris.app`;
-      const studentPassword = formData.teacherJoinCode; // Teacher code IS the password
       
-      console.log('📧 Student email:', studentEmail);
-      console.log('🔑 Student password (teacher code):', studentPassword);
-      
-      const authResult = await authHelpers.createStudentAccountWithTeacherCode(
-        formData.firstName,
-        formData.lastInitial,
-        formData.grade,
-        {
-          email: studentEmail,
-          password: studentPassword,
-          displayUsername: displayUsername
-        }
-      );
-
-      console.log('✅ Firebase Auth account created with UID:', authResult.uid);
-
-      // Create student document in entities structure ONLY
+      // Create student database record
       const studentData = {
-        // Authentication fields
-        uid: authResult.uid,
+        // Authentication fields for future sign-in
         authEmail: studentEmail,
+        displayUsername: displayUsername,
+        signInCode: formData.teacherJoinCode,
+        
+        // Personal info
         firstName: formData.firstName,
         lastInitial: formData.lastInitial,
-        displayUsername: displayUsername,
         
         // Teacher & School linking
         currentTeacherId: formData.teacherId,
-        teacherHistory: [formData.teacherId], // Track teacher changes
-        createdByTeacherId: formData.teacherId, // Original teacher
+        teacherHistory: [formData.teacherId],
+        createdByTeacherId: formData.teacherId,
         
         entityId: formData.entityId,
         schoolId: formData.schoolId,
@@ -314,64 +273,46 @@ export default function StudentOnboarding() {
         // Bookshelf
         bookshelf: [],
         
-        // Historical data for retroactive credit
+        // Historical data
         historicalBooksSubmitted: {},
-        
-        // Authentication info for sign-in
-        signInCode: formData.teacherJoinCode,
         
         // Metadata
         accountCreated: new Date(),
         onboardingCompleted: true,
-        accountType: 'student'
+        accountType: 'student',
+        needsFirstSignIn: true
       };
 
-      // 🎯 SAVE TO ENTITIES STRUCTURE ONLY (No dual storage!)
-      console.log('💾 Saving student to entities structure...');
       const studentDocRef = await addDoc(
         collection(db, `entities/${formData.entityId}/schools/${formData.schoolId}/students`), 
         studentData
       );
       
-      console.log('✅ Student saved to entities structure with ID:', studentDocRef.id);
-      
-      // Store in localStorage for app usage
-      localStorage.setItem('studentId', studentDocRef.id);
-      localStorage.setItem('studentData', JSON.stringify(studentData));
+      console.log('✅ Student profile created with ID:', studentDocRef.id);
       
       // Clean up temp data
       localStorage.removeItem('tempTeacherData');
       localStorage.removeItem('luxlibris_account_flow');
       
-      console.log('🎉 Account creation completed successfully!');
-      
       // Show success popup
       setShowSuccessPopup(true);
       
     } catch (error) {
-      console.error('❌ Error completing onboarding:', error);
-      setError(`Account creation failed: ${error.message}`);
+      console.error('Error creating student profile:', error);
+      setError(`Profile creation failed: ${error.message}`);
       setIsLoading(false);
     }
   };
 
   const handleSuccessPopupClose = () => {
-  setShowSuccessPopup(false);
-  setIsLoading(false);
-  
-  // Set flags for dashboard loading splash to know this is a new account
-  localStorage.setItem('luxlibris_account_created', 'true');
-  localStorage.setItem('studentData', JSON.stringify({
-  ...formData,
-  displayUsername: generatedUsername,
-  uid: createdUserUid // Store the UID for reference
-}));
-  
-  console.log('🚀 Redirecting to dashboard with new account flags set');
-  
-  // Redirect to dashboard - the dashboard splash screen will handle the profile loading timing
-  router.push('/student-dashboard');
-};
+    const params = new URLSearchParams({
+      username: generatedUsername,
+      teacherCode: formData.teacherJoinCode,
+      newAccount: 'true'
+    });
+    
+    router.push(`/student-sign-in?${params.toString()}`);
+  };
 
   const selectedTheme = themes.find(theme => theme.assetPrefix === formData.selectedTheme);
 
@@ -420,21 +361,23 @@ export default function StudentOnboarding() {
                 color: selectedTheme.textPrimary,
                 marginBottom: '16px'
               }}>
-                Welcome to Lux Libris!
+                Profile Created!
               </h2>
               <p style={{
                 fontSize: '16px',
                 color: `${selectedTheme.textPrimary}CC`,
                 marginBottom: '24px'
               }}>
-                Your account has been created successfully!
+                Your reading profile is ready! Now let&apos;s sign you in.
               </p>
+              
+              {/* Username Display */}
               <div style={{
                 backgroundColor: `${selectedTheme.primary}20`,
                 border: `1px solid ${selectedTheme.primary}50`,
                 borderRadius: '12px',
                 padding: '16px',
-                marginBottom: '24px'
+                marginBottom: '16px'
               }}>
                 <p style={{
                   fontSize: '14px',
@@ -442,7 +385,7 @@ export default function StudentOnboarding() {
                   color: selectedTheme.textPrimary,
                   marginBottom: '8px'
                 }}>
-                  Your Lux Libris Username:
+                  Your Username:
                 </p>
                 <p style={{
                   fontSize: '24px',
@@ -453,14 +396,9 @@ export default function StudentOnboarding() {
                 }}>
                   {generatedUsername}
                 </p>
-                <p style={{
-                  fontSize: '12px',
-                  color: `${selectedTheme.textPrimary}CC`,
-                  fontStyle: 'italic'
-                }}>
-                  Remember this! You&apos;ll use it with your teacher code to sign in.
-                </p>
               </div>
+              
+              {/* Teacher Code Display */}
               <div style={{
                 backgroundColor: `${selectedTheme.accent}20`,
                 border: `1px solid ${selectedTheme.accent}50`,
@@ -474,7 +412,7 @@ export default function StudentOnboarding() {
                   color: selectedTheme.textPrimary,
                   marginBottom: '8px'
                 }}>
-                  Your Teacher Code (Password):
+                  Your Password (Teacher Code):
                 </p>
                 <p style={{
                   fontSize: '18px',
@@ -485,6 +423,16 @@ export default function StudentOnboarding() {
                   {formData.teacherJoinCode}
                 </p>
               </div>
+              
+              <p style={{
+                fontSize: '14px',
+                color: `${selectedTheme.textPrimary}CC`,
+                marginBottom: '24px',
+                fontStyle: 'italic'
+              }}>
+                Write these down! You&apos;ll need them to sign in.
+              </p>
+              
               <button
                 onClick={handleSuccessPopupClose}
                 style={{
@@ -499,7 +447,7 @@ export default function StudentOnboarding() {
                   boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                 }}
               >
-                Start My Reading Journey!
+                Sign In Now →
               </button>
             </div>
           </div>
@@ -633,7 +581,7 @@ export default function StudentOnboarding() {
                 opacity: (isLoading || (currentStep === 1 && (!formData.firstName || !formData.lastInitial))) ? 0.7 : 1
               }}
             >
-              {isLoading ? 'Creating Account...' : currentStep < 3 ? 'Next' : 'Create Account!'}
+              {isLoading ? 'Creating Profile...' : currentStep < 3 ? 'Next' : 'Create Profile!'}
             </button>
           </div>
         </div>
@@ -642,7 +590,7 @@ export default function StudentOnboarding() {
   );
 }
 
-// Component pages (same as before but with teacher context)
+// Component pages
 function WelcomePage({ selectedTheme }) {
   return (
     <div style={{
@@ -703,7 +651,7 @@ function InfoPage({ formData, setFormData, selectedTheme, grades }) {
         Tell us about yourself!
       </h2>
 
-      {/* Teacher & School Display - Pre-filled from account creation */}
+      {/* Teacher & School Display */}
       <div style={{ marginBottom: '20px' }}>
         <label style={{
           fontSize: '16px',
@@ -731,14 +679,6 @@ function InfoPage({ formData, setFormData, selectedTheme, grades }) {
             🏫 {formData.schoolName ? `${formData.schoolName} - ${formData.schoolCity}, ${formData.schoolState}` : 'Loading school...'}
           </div>
         </div>
-        <p style={{
-          fontSize: '12px',
-          color: `${selectedTheme.textPrimary}60`,
-          margin: '4px 0 0 0',
-          fontStyle: 'italic'
-        }}>
-          Confirmed from account creation
-        </p>
       </div>
 
       {/* First Name */}
@@ -833,7 +773,7 @@ function InfoPage({ formData, setFormData, selectedTheme, grades }) {
                 transition: 'all 0.2s ease'
               }}
             >
-              {grade}{grade === 4 ? 'th' : grade === 5 ? 'th' : grade === 6 ? 'th' : grade === 7 ? 'th' : 'th'} Grade
+              {grade}th Grade
             </button>
           ))}
         </div>
@@ -874,7 +814,6 @@ function GoalPage({ formData, setFormData, selectedTheme, bookGoals }) {
           Your Reading Goal
         </h3>
 
-        {/* Goal Picker */}
         <div style={{
           backgroundColor: selectedTheme.surface,
           borderRadius: '12px',
@@ -928,7 +867,6 @@ function GoalPage({ formData, setFormData, selectedTheme, bookGoals }) {
         </div>
       </div>
 
-      {/* Pro Tip */}
       <div style={{
         backgroundColor: `${selectedTheme.accent}20`,
         border: `1px solid ${selectedTheme.accent}50`,
@@ -997,7 +935,6 @@ function ThemePage({ formData, setFormData, themes }) {
                 minWidth: 0
               }}
             >
-              {/* Theme Name */}
               <div style={{
                 fontSize: 'clamp(11px, 2.5vw, 13px)',
                 fontWeight: '600',
@@ -1009,7 +946,6 @@ function ThemePage({ formData, setFormData, themes }) {
                 {theme.name}
               </div>
               
-              {/* Theme Preview Images */}
               <div style={{
                 display: 'flex',
                 flexDirection: 'column',
@@ -1017,7 +953,6 @@ function ThemePage({ formData, setFormData, themes }) {
                 alignItems: 'center',
                 marginBottom: 'clamp(2px, 1vw, 4px)'
               }}>
-                {/* Bookshelf Preview */}
                 <img 
                   src={`/bookshelves/${theme.assetPrefix}.jpg`}
                   alt={`${theme.name} bookshelf`}
@@ -1029,7 +964,6 @@ function ThemePage({ formData, setFormData, themes }) {
                     border: `1px solid ${theme.primary}30`
                   }}
                 />
-                {/* Trophy Case Preview */}
                 <img 
                   src={`/trophy_cases/${theme.assetPrefix}.jpg`}
                   alt={`${theme.name} trophy case`}
@@ -1043,7 +977,6 @@ function ThemePage({ formData, setFormData, themes }) {
                 />
               </div>
               
-              {/* Selected Indicator */}
               {isSelected && (
                 <div style={{
                   position: 'absolute',
@@ -1069,7 +1002,6 @@ function ThemePage({ formData, setFormData, themes }) {
         })}
       </div>
       
-      {/* Selected Theme Info */}
       <div style={{
         marginTop: '20px',
         padding: '16px',
