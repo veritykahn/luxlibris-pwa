@@ -1,4 +1,4 @@
-// pages/student-dashboard.js - COMPLETE VERSION with loading splash integrated
+// pages/student-dashboard.js - COMPLETE VERSION without loading splash
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
@@ -22,11 +22,6 @@ export default function StudentDashboard() {
   const [currentTheme, setCurrentTheme] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showComingSoon, setShowComingSoon] = useState('');
-  
-  // Loading splash state variables
-  const [showLoadingSplash, setShowLoadingSplash] = useState(true);
-  const [loadingMessage, setLoadingMessage] = useState('Loading your dashboard...');
-  const [minLoadingTime, setMinLoadingTime] = useState(false);
   
   // Enhanced dashboard data
   const [gradeStats, setGradeStats] = useState(null);
@@ -138,42 +133,6 @@ export default function StudentDashboard() {
       textSecondary: '#AAAAAA'
     }
   };
-
-  // Loading splash useEffect hooks
-  useEffect(() => {
-    // Check if this is a newly created account
-    const isNewAccount = localStorage.getItem('luxlibris_account_created') === 'true' ||
-                         localStorage.getItem('studentData') ||
-                         localStorage.getItem('luxlibris_account_flow') === 'student';
-
-    if (isNewAccount) {
-      setLoadingMessage('Setting up your reading adventure...');
-      console.log('🎉 New account detected - showing extended loading screen');
-    } else {
-      setLoadingMessage('Loading your dashboard...');
-      console.log('🔄 Returning user - showing quick loading screen');
-    }
-
-    const minTime = isNewAccount ? 3000 : 500;
-    
-    const timer = setTimeout(() => {
-      setMinLoadingTime(true);
-      if (isNewAccount) {
-        localStorage.removeItem('luxlibris_account_created');
-        localStorage.removeItem('luxlibris_account_flow');
-      }
-    }, minTime);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    if (!authLoading && userProfile && minLoadingTime) {
-      setTimeout(() => {
-        setShowLoadingSplash(false);
-      }, 500);
-    }
-  }, [authLoading, userProfile, minLoadingTime]);
 
   // INTEGRATED HELPER FUNCTIONS
   
@@ -481,6 +440,12 @@ export default function StudentDashboard() {
     }
   }, [authLoading, isAuthenticated, user]);
 
+  useEffect(() => {
+    // Clean up any leftover localStorage flags from previous splash implementation
+    localStorage.removeItem('luxlibris_account_created');
+    localStorage.removeItem('luxlibris_account_flow');
+  }, []);
+
   const loadEnhancedDashboardData = async () => {
     try {
       console.log('📚 Loading enhanced dashboard data...');
@@ -762,13 +727,8 @@ export default function StudentDashboard() {
 
   const getDaysUntilEnd = getDaysUntilCompetitionEnd();
 
-  // Show loading splash when needed
-  if (showLoadingSplash || authLoading || !userProfile) {
-    return <StudentLoadingSplash message={loadingMessage} />;
-  }
-
-  // Show loading for data loading
-  if (isLoading || !studentData || !currentTheme) {
+  // Show loading while data loads
+  if (authLoading || isLoading || !studentData || !currentTheme) {
     return (
       <div style={{
         backgroundColor: '#FFFCF5',
@@ -787,7 +747,7 @@ export default function StudentDashboard() {
             animation: 'spin 1s linear infinite',
             margin: '0 auto 16px'
           }} />
-          <p style={{ color: '#223848' }}>Loading your enhanced dashboard...</p>
+          <p style={{ color: '#223848' }}>Loading your dashboard...</p>
         </div>
       </div>
     );
@@ -1599,105 +1559,9 @@ export default function StudentDashboard() {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.7; }
           }
-          @keyframes breathe {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-          }
         `}</style>
       </div>
     </>
-  );
-}
-
-// Loading Splash Component
-function StudentLoadingSplash({ message }) {
-  const [dots, setDots] = useState('');
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setDots(prev => prev.length >= 3 ? '' : prev + '.');
-    }, 500);
-    return () => clearInterval(interval);
-  }, []);
-
-  return (
-    <div style={{
-      backgroundColor: '#FFFCF5',
-      minHeight: '100vh',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontFamily: 'system-ui, -apple-system, sans-serif'
-    }}>
-      <div style={{
-        width: '120px',
-        height: '120px',
-        background: 'linear-gradient(135deg, #ADD4EA, #C3E0DE)',
-        borderRadius: '60px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: '60px',
-        marginBottom: '32px',
-        animation: 'breathe 3s ease-in-out infinite'
-      }}>
-        📚
-      </div>
-
-      <h1 style={{
-        fontFamily: 'Didot, serif',
-        fontSize: '32px',
-        color: '#223848',
-        margin: '0 0 16px 0',
-        letterSpacing: '2px',
-        textAlign: 'center'
-      }}>
-        Lux Libris
-      </h1>
-
-      <p style={{
-        color: '#556B7A',
-        fontSize: '18px',
-        margin: '0 0 32px 0',
-        letterSpacing: '1px',
-        textAlign: 'center'
-      }}>
-        {message}{dots}
-      </p>
-
-      <div style={{
-        width: '40px',
-        height: '40px',
-        border: '3px solid rgba(173, 212, 234, 0.3)',
-        borderTop: '3px solid #ADD4EA',
-        borderRadius: '50%',
-        animation: 'spin 1s linear infinite'
-      }} />
-
-      <p style={{
-        color: '#556B7A',
-        fontSize: '14px',
-        margin: '24px 0 0 0',
-        opacity: 0.7,
-        textAlign: 'center',
-        maxWidth: '300px'
-      }}>
-        Preparing your personalized reading experience...
-      </p>
-
-      <style jsx>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-        
-        @keyframes breathe {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.05); }
-        }
-      `}</style>
-    </div>
   );
 }
 
