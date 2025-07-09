@@ -2307,7 +2307,7 @@ Visit luxlibris.org to learn more about our reading program.
                   color: currentTheme.textPrimary,
                   fontStyle: 'italic'
                 }}>
-                  You're {Math.round((personalStats.booksThisYear / personalStats.nextTier.books) * 100)}% there!
+                  You&aposre {Math.round((personalStats.booksThisYear / personalStats.nextTier.books) * 100)}% there!
                 </div>
               </div>
             </div>
@@ -2659,7 +2659,7 @@ Visit luxlibris.org to learn more about our reading program.
                           fontSize: 'clamp(11px, 3vw, 12px)',
                           color: currentTheme.textSecondary
                         }}>
-                          Find your literary twin! Are you a mystery like "Wonder" or an adventure like "Hatchet"?
+                          Find your literary twin! Are you a mystery like &quotWonder&quot or an adventure like &quotHatchet&quot?
                         </div>
                       </div>
                       <div style={{
