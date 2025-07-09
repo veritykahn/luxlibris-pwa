@@ -1079,10 +1079,9 @@ export default function StudentDashboard() {
               )}
             </div>
           </div>
-        </div>
 
-        {/* WELCOME SECTION - Fixed spacing */}
-<div style={{ padding: '10px 20px 20px' }}>
+        {/* WELCOME SECTION - Updated styling to match other pages */}
+        <div style={{ padding: '20px' }}>
           {/* Welcome Card with Competition Countdown */}
           <div style={{
             background: `linear-gradient(135deg, ${currentTheme.primary}, ${currentTheme.primary}CC)`,
@@ -1806,26 +1805,6 @@ export default function StudentDashboard() {
           ))}
         </div>
 
-        {/* Success/Coming Soon Message */}
-        {showComingSoon && (
-          <div style={{
-            position: 'fixed',
-            bottom: '120px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            backgroundColor: currentTheme.primary,
-            color: currentTheme.textPrimary,
-            padding: '12px 24px',
-            borderRadius: '24px',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-            zIndex: 1000,
-            fontSize: '14px',
-            fontWeight: '600'
-          }}>
-            {showComingSoon}
-          </div>
-        )}
-
         <style jsx>{`
           @keyframes spin {
             from { transform: rotate(0deg); }
@@ -1836,6 +1815,7 @@ export default function StudentDashboard() {
             50% { opacity: 0.7; }
           }
         `}</style>
+      </div>
     </>
   );
 }
