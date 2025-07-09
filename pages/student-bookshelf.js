@@ -42,13 +42,13 @@ export default function StudentBookshelf() {
 
   // 🍔 NAVIGATION MENU ITEMS (Bookshelf page is current)
   const navMenuItems = useMemo(() => [
-    { name: 'Saints', path: '/student-saints', icon: '♔', current: false },
-    { name: 'Bookshelf', path: '/student-bookshelf', icon: '⚏', current: true }, // Set to true for this page
-    { name: 'Healthy Habits', path: '/student-healthy-habits', icon: '○', current: false },
-    { name: 'Nominees', path: '/student-nominees', icon: '□', current: false },
-    { name: 'Stats', path: '/student-stats', icon: '△', current: false },
-    { name: 'Settings', path: '/student-settings', icon: '⚙', current: false }
-  ], []);
+  { name: 'Nominees', path: '/student-nominees', icon: '□' },
+  { name: 'Bookshelf', path: '/student-bookshelf', icon: '⚏', current: true },
+  { name: 'Healthy Habits', path: '/student-healthy-habits', icon: '○' },
+  { name: 'Saints', path: '/student-saints', icon: '♔' },
+  { name: 'Stats', path: '/student-stats', icon: '△' },
+  { name: 'Settings', path: '/student-settings', icon: '⚙' }
+], []);
 
   // 🍔 NOTIFICATION FUNCTIONS
   const requestNotificationPermission = useCallback(async () => {
@@ -1189,7 +1189,7 @@ export default function StudentBookshelf() {
                 overflow: 'hidden',
                 zIndex: 9999
               }}>
-                {navMenuItems.map((item, index) => (
+                {navMenuItems.filter(item => !item.current).map((item, index) => (
                   <button
                     key={item.path}
                     onClick={(e) => {

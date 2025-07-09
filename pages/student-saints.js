@@ -120,13 +120,13 @@ export default function StudentSaints() {
 
   // Navigation menu items
   const navMenuItems = useMemo(() => [
-    { name: 'Saints', path: '/student-saints', icon: '♔', current: true },
-    { name: 'Bookshelf', path: '/student-bookshelf', icon: '⚏' },
-    { name: 'Healthy Habits', path: '/student-healthy-habits', icon: '○' },
-    { name: 'Nominees', path: '/student-nominees', icon: '□' },
-    { name: 'Stats', path: '/student-stats', icon: '△' },
-    { name: 'Settings', path: '/student-settings', icon: '⚙' }
-  ], []);
+  { name: 'Nominees', path: '/student-nominees', icon: '□' },
+  { name: 'Bookshelf', path: '/student-bookshelf', icon: '⚏' },
+  { name: 'Healthy Habits', path: '/student-healthy-habits', icon: '○' },
+  { name: 'Saints', path: '/student-saints', icon: '♔', current: true },
+  { name: 'Stats', path: '/student-stats', icon: '△' },
+  { name: 'Settings', path: '/student-settings', icon: '⚙' }
+], []);
 
   // 🔔 Notification functions
   const requestNotificationPermission = useCallback(async () => {
@@ -771,7 +771,7 @@ export default function StudentSaints() {
             textAlign: 'center',
             flex: 1
           }}>
-            Saints Collection
+            Saints
           </h1>
 
           {/* 🍔 Hamburger Menu */}
@@ -817,7 +817,7 @@ export default function StudentSaints() {
                 overflow: 'hidden',
                 zIndex: 9999
               }}>
-                {navMenuItems.map((item, index) => (
+                {navMenuItems.filter(item => !item.current).map((item, index) => (
                   <button
                     key={item.path}
                     onClick={(e) => {

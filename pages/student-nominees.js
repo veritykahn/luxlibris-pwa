@@ -24,13 +24,13 @@ export default function StudentNominees() {
 
   // 🍔 NAVIGATION MENU ITEMS (Nominees page is current)
   const navMenuItems = useMemo(() => [
-    { name: 'Saints Collection', path: '/student-saints', icon: '♔', current: false },
-    { name: 'Bookshelf', path: '/student-bookshelf', icon: '⚏', current: false },
-    { name: 'Healthy Habits', path: '/student-healthy-habits', icon: '○', current: false },
-    { name: 'Nominees', path: '/student-nominees', icon: '□', current: true }, // Set to true for this page
-    { name: 'Stats', path: '/student-stats', icon: '△', current: false },
-    { name: 'Settings', path: '/student-settings', icon: '⚙', current: false }
-  ], []);
+ { name: 'Nominees', path: '/student-nominees', icon: '□', current: true }, // ✅ Correct
+ { name: 'Bookshelf', path: '/student-bookshelf', icon: '⚏' },
+ { name: 'Healthy Habits', path: '/student-healthy-habits', icon: '○' },
+ { name: 'Saints', path: '/student-saints', icon: '♔' },
+ { name: 'Stats', path: '/student-stats', icon: '△' },
+ { name: 'Settings', path: '/student-settings', icon: '⚙' }
+], []);
 
   // 🍔 NOTIFICATION FUNCTIONS
   const requestNotificationPermission = useCallback(async () => {
@@ -641,7 +641,7 @@ export default function StudentNominees() {
                   overflow: 'hidden',
                   zIndex: 9999
                 }}>
-                  {navMenuItems.map((item, index) => (
+                  {navMenuItems.filter(item => !item.current).map((item, index) => (
                     <button
                       key={item.path}
                       onClick={(e) => {
@@ -907,7 +907,7 @@ export default function StudentNominees() {
                 overflow: 'hidden',
                 zIndex: 9999
               }}>
-                {navMenuItems.map((item, index) => (
+                {navMenuItems.filter(item => !item.current).map((item, index) => (
                   <button
                     key={item.path}
                     onClick={(e) => {
