@@ -784,20 +784,21 @@ export default function StudentDashboard() {
   };
 
   const handleTabClick = (tabName) => {
-    if (tabName === 'Dashboard') {
-      setShowComingSoon('You\'re already here! 📍');
-      setTimeout(() => setShowComingSoon(''), 1500);
-    } else if (tabName === 'Nominees') {
-      router.push('/student-nominees');
-    } else if (tabName === 'Bookshelf') {
-      router.push('/student-bookshelf');
-    } else if (tabName === 'Habits') {
-      router.push('/student-healthy-habits');
-    } else {
-      setShowComingSoon(`${tabName} coming soon! 🚀`);
-      setTimeout(() => setShowComingSoon(''), 3000);
-    }
-  };
+  if (tabName === 'Dashboard') {
+    setShowComingSoon('You\'re already here! 📍');
+    setTimeout(() => setShowComingSoon(''), 1500);
+  } else if (tabName === 'Nominees') {
+    router.push('/student-nominees');
+  } else if (tabName === 'Bookshelf') {
+    router.push('/student-bookshelf');
+  } else if (tabName === 'Habits') {
+    router.push('/student-healthy-habits');
+  } else if (tabName === 'Saints') {
+    router.push('/student-saints');
+  } else if (tabName === 'Stats') {
+    router.push('/student-stats');
+  }
+};
 
   const handleActionItemClick = (action) => {
     switch (action.type) {
@@ -885,50 +886,45 @@ export default function StudentDashboard() {
           alignItems: 'center',
           justifyContent: 'space-between'
         }}>
-          {/* NO BACK ARROW - Dashboard is the main hub */}
-          <div style={{ width: '44px' }}></div>
+          {/* Settings Button - moved to left side */}
+<button
+  onClick={() => router.push('/student-settings')}
+  style={{
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    border: 'none',
+    borderRadius: '50%',
+    width: '44px',
+    height: '44px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '18px',
+    cursor: 'pointer',
+    color: currentTheme.textPrimary,
+    backdropFilter: 'blur(10px)',
+    flexShrink: 0,
+    touchAction: 'manipulation',
+    WebkitTapHighlightColor: 'transparent'
+  }}
+>
+  ⚙️
+</button>
 
-          <h1 style={{
-            fontSize: '24px',
-            fontWeight: '400',
-            color: currentTheme.textPrimary,
-            margin: '0',
-            letterSpacing: '1px',
-            fontFamily: 'Didot, "Times New Roman", serif',
-            textAlign: 'center',
-            flex: 1
-          }}>
-            Dashboard
-          </h1>
+<h1 style={{
+  fontSize: '24px',
+  fontWeight: '400',
+  color: currentTheme.textPrimary,
+  margin: '0',
+  letterSpacing: '1px',
+  fontFamily: 'Didot, "Times New Roman", serif',
+  textAlign: 'center',
+  flex: 1
+}}>
+  Dashboard
+</h1>
 
-          {/* Settings & Hamburger Container */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {/* Settings Button */}
-            <button
-              onClick={() => router.push('/student-settings')}
-              style={{
-                backgroundColor: 'rgba(255,255,255,0.3)',
-                border: 'none',
-                borderRadius: '50%',
-                width: '44px',
-                height: '44px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '18px',
-                cursor: 'pointer',
-                color: currentTheme.textPrimary,
-                backdropFilter: 'blur(10px)',
-                flexShrink: 0,
-                touchAction: 'manipulation',
-                WebkitTapHighlightColor: 'transparent'
-              }}
-            >
-              ⚙️
-            </button>
-
-            {/* 🍔 Hamburger Menu */}
-            <div className="nav-menu-container" style={{ position: 'relative' }}>
+{/* 🍔 Hamburger Menu - now alone on the right */}
+<div className="nav-menu-container" style={{ position: 'relative' }}>
               <button
                 onClick={() => {
                   console.log('Hamburger clicked, current state:', showNavMenu);
@@ -1840,7 +1836,6 @@ export default function StudentDashboard() {
             50% { opacity: 0.7; }
           }
         `}</style>
-      </div>
     </>
   );
 }
