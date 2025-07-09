@@ -121,6 +121,7 @@ export default function StudentSettings() {
 
   // 🍔 NAVIGATION MENU ITEMS (Settings page is current)
   const navMenuItems = useMemo(() => [
+    { name: 'Dashboard', path: '/student-dashboard', icon: '⌂' },
   { name: 'Nominees', path: '/student-nominees', icon: '□' },
   { name: 'Bookshelf', path: '/student-bookshelf', icon: '⚏' },
   { name: 'Healthy Habits', path: '/student-healthy-habits', icon: '○' },

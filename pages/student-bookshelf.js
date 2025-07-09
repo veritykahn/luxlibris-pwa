@@ -42,6 +42,7 @@ export default function StudentBookshelf() {
 
   // 🍔 NAVIGATION MENU ITEMS (Bookshelf page is current)
   const navMenuItems = useMemo(() => [
+  { name: 'Dashboard', path: '/student-dashboard', icon: '⌂' },
   { name: 'Nominees', path: '/student-nominees', icon: '□' },
   { name: 'Bookshelf', path: '/student-bookshelf', icon: '⚏', current: true },
   { name: 'Healthy Habits', path: '/student-healthy-habits', icon: '○' },
@@ -1109,9 +1110,9 @@ export default function StudentBookshelf() {
         }}>
           <button
             onClick={() => {
-              console.log('Back button clicked, going to dashboard');
-              router.push('/student-dashboard');
-            }}
+  console.log('Back button clicked, going back');
+  router.back();
+}}
             style={{
               backgroundColor: 'rgba(255,255,255,0.3)',
               border: 'none',
