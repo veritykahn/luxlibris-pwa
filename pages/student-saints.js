@@ -424,7 +424,7 @@ export default function StudentSaints() {
         textColor: currentTheme?.textPrimary || '#223848',
         glow: getGlow(14),
         capacity: 5,
-        label: '🎓 Grade Saint 🎓'
+        label: '🎓 Grade Saints 🎓'
       },
       { 
         type: 'seasonal', 
