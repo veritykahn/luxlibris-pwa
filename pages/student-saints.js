@@ -120,7 +120,7 @@ export default function StudentSaints() {
 
   // Navigation menu items
   const navMenuItems = useMemo(() => [
-    { name: 'Saints Collection', path: '/student-saints', icon: '♔', current: true },
+    { name: 'Saints', path: '/student-saints', icon: '♔', current: true },
     { name: 'Bookshelf', path: '/student-bookshelf', icon: '⚏' },
     { name: 'Healthy Habits', path: '/student-healthy-habits', icon: '○' },
     { name: 'Nominees', path: '/student-nominees', icon: '□' },
@@ -692,7 +692,7 @@ export default function StudentSaints() {
   return (
     <>
       <Head>
-        <title>Saints Collection - Lux Libris</title>
+        <title>Saints - Lux Libris</title>
         <meta name="description" content="Discover and unlock Catholic saints through your reading journey" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
         <link rel="icon" href="/images/lux_libris_logo.png" />

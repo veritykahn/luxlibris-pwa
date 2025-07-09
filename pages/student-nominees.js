@@ -1,5 +1,5 @@
 // pages/student-nominees.js - COMPLETE UPDATED version with circular navigation and category sorting
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
 import { getStudentDataEntities, getSchoolNomineesEntities, addBookToBookshelfEntities, removeBookFromBookshelfEntities } from '../lib/firebase';
@@ -16,6 +16,88 @@ export default function StudentNominees() {
   const [showAddMessage, setShowAddMessage] = useState('');
   const [isAddingBook, setIsAddingBook] = useState(false);
   const [showFormatSwitchDialog, setShowFormatSwitchDialog] = useState(null);
+
+  // 🍔 HAMBURGER MENU STATE VARIABLES
+  const [showNavMenu, setShowNavMenu] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [notificationProcessing, setNotificationProcessing] = useState(false);
+
+  // 🍔 NAVIGATION MENU ITEMS (Nominees page is current)
+  const navMenuItems = useMemo(() => [
+    { name: 'Saints Collection', path: '/student-saints', icon: '♔', current: false },
+    { name: 'Bookshelf', path: '/student-bookshelf', icon: '⚏', current: false },
+    { name: 'Healthy Habits', path: '/student-healthy-habits', icon: '○', current: false },
+    { name: 'Nominees', path: '/student-nominees', icon: '□', current: true }, // Set to true for this page
+    { name: 'Stats', path: '/student-stats', icon: '△', current: false },
+    { name: 'Settings', path: '/student-settings', icon: '⚙', current: false }
+  ], []);
+
+  // 🍔 NOTIFICATION FUNCTIONS
+  const requestNotificationPermission = useCallback(async () => {
+    console.log('Starting notification permission request...');
+    
+    if (!('Notification' in window)) {
+      console.log('This browser does not support notifications');
+      alert('This browser does not support notifications');
+      return false;
+    }
+
+    console.log('Current permission:', Notification.permission);
+
+    if (Notification.permission === 'granted') {
+      console.log('Permission already granted');
+      setNotificationsEnabled(true);
+      return true;
+    }
+
+    if (Notification.permission === 'denied') {
+      console.log('Permission was denied');
+      alert('Notifications were blocked. Please enable them in your browser settings.');
+      return false;
+    }
+
+    try {
+      console.log('Requesting permission...');
+      const permission = await Notification.requestPermission();
+      console.log('Permission result:', permission);
+      
+      const enabled = permission === 'granted';
+      setNotificationsEnabled(enabled);
+      
+      if (enabled) {
+        // Test notification
+        new Notification('🎉 Notifications Enabled!', {
+          body: 'You\'ll now get notified when you unlock new saints!',
+          icon: '/images/lux_libris_logo.png'
+        });
+      } else {
+        alert('Notifications were not enabled. You can enable them later in your browser settings.');
+      }
+      
+      return enabled;
+    } catch (error) {
+      console.error('Notification permission error:', error);
+      alert('Error requesting notification permission: ' + error.message);
+      return false;
+    }
+  }, []);
+
+  const sendSaintUnlockNotification = useCallback((saintName) => {
+    if (!notificationsEnabled || Notification.permission !== 'granted') return;
+
+    try {
+      new Notification('🎉 New Saint Unlocked!', {
+        body: `You've unlocked ${saintName}! Check your collection.`,
+        icon: '/images/lux_libris_logo.png',
+        badge: '/images/lux_libris_logo.png',
+        tag: 'saint-unlock',
+        requireInteraction: false,
+        silent: false
+      });
+    } catch (error) {
+      console.log('Notification failed:', error);
+    }
+  }, [notificationsEnabled]);
 
   // Theme definitions (same as before)
   const themes = {
@@ -114,51 +196,82 @@ export default function StudentNominees() {
     // Define category priority order based on exact Firebase displayCategory values
     const categoryPriority = {
       '📖 Chapter Books that Stick With You': 1,
-      '🖼️ Picture Books with Heart': 2, 
+      '🖼️ Picture Books with Heart': 2,
       '🎨 Graphic Novels with a Twist': 3,
       '🗝️ Hidden Treasure': 4,
       '✝️ Our Catholic Pick': 5,
       '🏛️ Our Classic': 6
     };
-    
+
     return nominees.sort((a, b) => {
       // Get categories from displayCategory field
       const getCategoryKey = (book) => {
         const category = book.displayCategory || book.internalCategory || '';
-        
         // Check for exact matches first
         for (const key of Object.keys(categoryPriority)) {
           if (category === key) {
             return key;
           }
         }
-        
         // Fallback to partial matching if exact match fails
         for (const key of Object.keys(categoryPriority)) {
           if (category.toLowerCase().includes(key.toLowerCase().replace(/[📖🖼️🎨🗝️✝️🏛️]/g, '').trim())) {
             return key;
           }
         }
-        
         return 'Other'; // Fallback for unmatched categories
       };
-      
+
       const categoryA = getCategoryKey(a);
       const categoryB = getCategoryKey(b);
-      
+
       // Get priority (lower number = higher priority)
       const priorityA = categoryPriority[categoryA] || 999;
       const priorityB = categoryPriority[categoryB] || 999;
-      
+
       // First sort by category priority
       if (priorityA !== priorityB) {
         return priorityA - priorityB;
       }
-      
+
       // Then sort alphabetically by title
       return (a.title || '').localeCompare(b.title || '');
     });
   };
+
+  // 🍔 useEFFECTS for hamburger menu
+  // Check notification permission on load
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      setNotificationsEnabled(true);
+    }
+  }, []);
+
+  // Close nav menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showNavMenu && !event.target.closest('.nav-menu-container')) {
+        console.log('Clicking outside menu, closing...');
+        setShowNavMenu(false);
+      }
+    };
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape' && showNavMenu) {
+        setShowNavMenu(false);
+      }
+    };
+
+    if (showNavMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscape);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [showNavMenu]);
 
   useEffect(() => {
     if (!loading && isAuthenticated && user) {
@@ -193,36 +306,32 @@ export default function StudentNominees() {
   const loadNomineesData = async () => {
     try {
       console.log('📚 Loading nominees data...');
-      
       const firebaseStudentData = await getStudentDataEntities(user.uid);
       if (!firebaseStudentData) {
         router.push('/student-onboarding');
         return;
       }
-      
+
       setStudentData(firebaseStudentData);
-      
       const selectedTheme = firebaseStudentData.selectedTheme || 'classic_lux';
       setCurrentTheme(themes[selectedTheme]);
-      
+
       if (firebaseStudentData.entityId && firebaseStudentData.schoolId) {
         const schoolNominees = await getSchoolNomineesEntities(
-  firebaseStudentData.entityId, 
-  firebaseStudentData.schoolId
+          firebaseStudentData.entityId,
+          firebaseStudentData.schoolId
         );
-        
+
         // NEW: Sort the nominees before setting them
         const sortedNominees = sortNominees(schoolNominees);
         setNominees(sortedNominees);
-        
         console.log('✅ Loaded', sortedNominees.length, 'nominee books (sorted by category & title)');
       }
-      
     } catch (error) {
       console.error('❌ Error loading nominees:', error);
       router.push('/student-dashboard');
     }
-    
+
     setIsLoading(false);
   };
 
@@ -235,7 +344,7 @@ export default function StudentNominees() {
   // Check if specific format is in bookshelf
   const isBookFormatInBookshelf = useCallback((bookId, format) => {
     if (!studentData?.bookshelf) return false;
-    return studentData.bookshelf.some(book => 
+    return studentData.bookshelf.some(book =>
       book.bookId === bookId && book.format === format
     );
   }, [studentData?.bookshelf]);
@@ -243,25 +352,24 @@ export default function StudentNominees() {
   // Smart format switching logic
   const handleAddToBookshelf = useCallback(async (format) => {
     if (isAddingBook || !nominees.length) return;
-    
+
     const currentBook = nominees[currentCardIndex];
     if (!currentBook) return;
-    
+
     console.log('📖 Current card index:', currentCardIndex);
     console.log('📖 Current book:', currentBook.title);
     console.log('📖 Adding format:', format);
-    
+
     // Check if this exact format is already in bookshelf
     if (isBookFormatInBookshelf(currentBook.id, format)) {
-      const message = format === 'audiobook' 
+      const message = format === 'audiobook'
         ? `🎧 ${currentBook.title} is already in your bookshelf as an audiobook!`
         : `📖 ${currentBook.title} is already in your bookshelf!`;
-      
       setShowAddMessage(message);
       setTimeout(() => setShowAddMessage(''), 3000);
       return;
     }
-    
+
     // Check if book exists in any other format
     const existingBookEntry = getBookInBookshelf(currentBook.id);
     if (existingBookEntry && existingBookEntry.format !== format) {
@@ -273,19 +381,16 @@ export default function StudentNominees() {
       });
       return;
     }
-    
+
     // No conflicts, add the book
     await addBookToBookshelfInternal(currentBook, format);
-    
   }, [nominees, currentCardIndex, studentData, isAddingBook, isBookFormatInBookshelf, getBookInBookshelf]);
 
   // Internal function to actually add book
   const addBookToBookshelfInternal = async (book, format) => {
     setIsAddingBook(true);
-    
     try {
       console.log('📖 Adding book to bookshelf:', book.title, format);
-      
       const newBookProgress = await addBookToBookshelfEntities(
         studentData.id,
         studentData.entityId,
@@ -293,44 +398,39 @@ export default function StudentNominees() {
         book.id,
         format
       );
-      
+
       // Update local state to reflect the addition
       setStudentData(prev => ({
         ...prev,
         bookshelf: [...(prev.bookshelf || []), newBookProgress]
       }));
-      
-      const message = format === 'audiobook' 
+
+      const message = format === 'audiobook'
         ? `🎧 ${book.title} added as audiobook!`
         : `📖 ${book.title} added to bookshelf!`;
-      
       setShowAddMessage(message);
       setTimeout(() => setShowAddMessage(''), 3000);
-      
+
     } catch (error) {
       console.error('❌ Error adding book:', error);
-      
       let errorMessage = '❌ Error adding book. Please try again.';
       if (error.message && error.message.includes('already in your bookshelf')) {
         errorMessage = `📚 ${book.title} is already in your bookshelf!`;
       }
-      
       setShowAddMessage(errorMessage);
       setTimeout(() => setShowAddMessage(''), 3000);
     }
-    
     setIsAddingBook(false);
   };
 
   // Handle format switching confirmation
   const handleFormatSwitch = async (confirm) => {
     if (!showFormatSwitchDialog) return;
-    
+
     const { book, existingFormat, newFormat } = showFormatSwitchDialog;
-    
+
     if (confirm) {
       setIsAddingBook(true);
-      
       try {
         // Remove old format
         await removeBookFromBookshelfEntities(
@@ -340,7 +440,7 @@ export default function StudentNominees() {
           book.id,
           existingFormat
         );
-        
+
         // Add new format
         const newBookProgress = await addBookToBookshelfEntities(
           studentData.id,
@@ -349,10 +449,10 @@ export default function StudentNominees() {
           book.id,
           newFormat
         );
-        
+
         // Update local state
         setStudentData(prev => {
-          const updatedBookshelf = prev.bookshelf.filter(b => 
+          const updatedBookshelf = prev.bookshelf.filter(b =>
             !(b.bookId === book.id && b.format === existingFormat)
           );
           return {
@@ -360,23 +460,21 @@ export default function StudentNominees() {
             bookshelf: [...updatedBookshelf, newBookProgress]
           };
         });
-        
-        const message = newFormat === 'audiobook' 
+
+        const message = newFormat === 'audiobook'
           ? `🔄 Switched to audiobook version of ${book.title}!`
           : `🔄 Switched to book version of ${book.title}!`;
-        
         setShowAddMessage(message);
         setTimeout(() => setShowAddMessage(''), 3000);
-        
+
       } catch (error) {
         console.error('❌ Error switching format:', error);
         setShowAddMessage('❌ Error switching format. Please try again.');
         setTimeout(() => setShowAddMessage(''), 3000);
       }
-      
       setIsAddingBook(false);
     }
-    
+
     setShowFormatSwitchDialog(null);
   };
 
@@ -440,7 +538,6 @@ export default function StudentNominees() {
           <meta name="description" content="Browse and select books from your school's curated reading collection" />
           <link rel="icon" href="/images/lux_libris_logo.png" />
         </Head>
-        
         <div style={{
           backgroundColor: currentTheme.background,
           minHeight: '100vh',
@@ -449,7 +546,7 @@ export default function StudentNominees() {
           overflowX: 'hidden',
           fontFamily: 'system-ui, -apple-system, sans-serif'
         }}>
-          {/* BOOKSHELF-STYLE HEADER */}
+          {/* 🍔 HEADER WITH HAMBURGER MENU */}
           <div style={{
             background: `linear-gradient(135deg, ${currentTheme.primary}F0, ${currentTheme.secondary}F0)`,
             backdropFilter: 'blur(20px)',
@@ -457,34 +554,37 @@ export default function StudentNominees() {
             position: 'relative',
             borderRadius: '0 0 25px 25px',
             boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-            zIndex: 10,
+            zIndex: 100,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between'
           }}>
-            {/* Back Arrow */}
             <button
-              onClick={() => router.push('/student-dashboard')}
+              onClick={() => {
+                console.log('Back button clicked, going to dashboard');
+                router.push('/student-dashboard');
+              }}
               style={{
                 backgroundColor: 'rgba(255,255,255,0.3)',
                 border: 'none',
                 borderRadius: '50%',
-                width: '36px',
-                height: '36px',
+                width: '44px',
+                height: '44px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '16px',
+                fontSize: '18px',
                 cursor: 'pointer',
                 color: currentTheme.textPrimary,
                 backdropFilter: 'blur(10px)',
-                flexShrink: 0
+                flexShrink: 0,
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent'
               }}
             >
               ←
             </button>
 
-            {/* Title */}
             <h1 style={{
               fontSize: '24px',
               fontWeight: '400',
@@ -498,29 +598,163 @@ export default function StudentNominees() {
               Nominees
             </h1>
 
-            {/* Bookshelf Arrow */}
-            <button
-              onClick={() => router.push('/student-bookshelf')}
-              style={{
-                backgroundColor: 'rgba(255,255,255,0.3)',
-                border: 'none',
-                borderRadius: '50%',
-                width: '36px',
-                height: '36px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '16px',
-                cursor: 'pointer',
-                color: currentTheme.textPrimary,
-                backdropFilter: 'blur(10px)',
-                flexShrink: 0
-              }}
-            >
-              ▥
-            </button>
+            {/* 🍔 Hamburger Menu */}
+            <div className="nav-menu-container" style={{ position: 'relative' }}>
+              <button
+                onClick={() => {
+                  console.log('Hamburger clicked, current state:', showNavMenu);
+                  setShowNavMenu(!showNavMenu);
+                }}
+                style={{
+                  backgroundColor: 'rgba(255,255,255,0.3)',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '44px',
+                  height: '44px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '18px',
+                  cursor: 'pointer',
+                  color: currentTheme.textPrimary,
+                  backdropFilter: 'blur(10px)',
+                  flexShrink: 0,
+                  touchAction: 'manipulation',
+                  WebkitTapHighlightColor: 'transparent'
+                }}
+              >
+                ☰
+              </button>
+
+              {/* Dropdown Menu */}
+              {showNavMenu && (
+                <div style={{
+                  position: 'absolute',
+                  top: '50px',
+                  right: '0',
+                  backgroundColor: currentTheme.surface,
+                  borderRadius: '12px',
+                  minWidth: '180px',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                  backdropFilter: 'blur(20px)',
+                  border: `2px solid ${currentTheme.primary}60`,
+                  overflow: 'hidden',
+                  zIndex: 9999
+                }}>
+                  {navMenuItems.map((item, index) => (
+                    <button
+                      key={item.path}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log('Clicking:', item.path, 'Current:', item.current, 'Item:', item);
+                        setShowNavMenu(false);
+                        if (!item.current) {
+                          setTimeout(() => {
+                            console.log('Navigating to:', item.path);
+                            router.push(item.path);
+                          }, 100);
+                        } else {
+                          console.log('Already on current page, not navigating');
+                        }
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        backgroundColor: item.current ? `${currentTheme.primary}30` : 'transparent',
+                        border: 'none',
+                        borderBottom: index < navMenuItems.length - 1 ? `1px solid ${currentTheme.primary}40` : 'none',
+                        cursor: item.current ? 'default' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        fontSize: '14px',
+                        color: currentTheme.textPrimary,
+                        fontWeight: item.current ? '600' : '500',
+                        textAlign: 'left',
+                        touchAction: 'manipulation',
+                        WebkitTapHighlightColor: 'transparent',
+                        transition: 'background-color 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!item.current) {
+                          e.target.style.backgroundColor = `${currentTheme.primary}20`;
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!item.current) {
+                          e.target.style.backgroundColor = 'transparent';
+                        }
+                      }}
+                    >
+                      <span style={{ fontSize: '16px' }}>{item.icon}</span>
+                      <span>{item.name}</span>
+                      {item.current && (
+                        <span style={{ marginLeft: 'auto', fontSize: '12px', color: currentTheme.primary }}>●</span>
+                      )}
+                    </button>
+                  ))}
+                  
+                  {/* 🔔 Notification Toggle */}
+                  <div style={{
+                    padding: '12px 16px',
+                    borderTop: `1px solid ${currentTheme.primary}40`,
+                    backgroundColor: `${currentTheme.primary}10`
+                  }}>
+                    <button
+                      onClick={async (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        if (notificationProcessing) return;
+                        
+                        setNotificationProcessing(true);
+                        console.log('Requesting notifications...');
+                        
+                        try {
+                          const enabled = await requestNotificationPermission();
+                          console.log('Notifications enabled:', enabled);
+                        } catch (error) {
+                          console.error('Notification error:', error);
+                        } finally {
+                          setNotificationProcessing(false);
+                          setTimeout(() => {
+                            setShowNavMenu(false);
+                          }, 1000);
+                        }
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        backgroundColor: notificationsEnabled ? `${currentTheme.primary}30` : currentTheme.surface,
+                        border: `2px solid ${notificationsEnabled ? currentTheme.primary : currentTheme.textSecondary}60`,
+                        borderRadius: '8px',
+                        cursor: notificationProcessing ? 'wait' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        fontSize: '12px',
+                        color: currentTheme.textPrimary,
+                        fontWeight: '600',
+                        touchAction: 'manipulation',
+                        WebkitTapHighlightColor: 'transparent',
+                        transition: 'all 0.2s ease',
+                        opacity: notificationProcessing ? 0.7 : 1
+                      }}
+                    >
+                      <span>
+                        {notificationProcessing ? '⏳' : (notificationsEnabled ? '🔔' : '🔕')}
+                      </span>
+                      <span>
+                        {notificationProcessing ? 'Processing...' : (notificationsEnabled ? 'Notifications On' : 'Enable Notifications')}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-          
+
           <div style={{
             padding: '40px 20px',
             textAlign: 'center'
@@ -570,7 +804,6 @@ export default function StudentNominees() {
         <meta name="description" content="Browse and select books from your school's curated reading collection" />
         <link rel="icon" href="/images/lux_libris_logo.png" />
       </Head>
-      
       <div style={{
         backgroundColor: currentTheme.background,
         minHeight: '100vh',
@@ -579,7 +812,7 @@ export default function StudentNominees() {
         overflowX: 'hidden',
         fontFamily: 'system-ui, -apple-system, sans-serif'
       }}>
-        {/* BOOKSHELF-STYLE HEADER */}
+        {/* 🍔 HEADER WITH HAMBURGER MENU */}
         <div style={{
           background: `linear-gradient(135deg, ${currentTheme.primary}F0, ${currentTheme.secondary}F0)`,
           backdropFilter: 'blur(20px)',
@@ -587,34 +820,37 @@ export default function StudentNominees() {
           position: 'relative',
           borderRadius: '0 0 25px 25px',
           boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-          zIndex: 10,
+          zIndex: 100,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between'
         }}>
-          {/* Back Arrow */}
           <button
-            onClick={() => router.push('/student-dashboard')}
+            onClick={() => {
+              console.log('Back button clicked, going to dashboard');
+              router.push('/student-dashboard');
+            }}
             style={{
               backgroundColor: 'rgba(255,255,255,0.3)',
               border: 'none',
               borderRadius: '50%',
-              width: '36px',
-              height: '36px',
+              width: '44px',
+              height: '44px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '16px',
+              fontSize: '18px',
               cursor: 'pointer',
               color: currentTheme.textPrimary,
               backdropFilter: 'blur(10px)',
-              flexShrink: 0
+              flexShrink: 0,
+              touchAction: 'manipulation',
+              WebkitTapHighlightColor: 'transparent'
             }}
           >
             ←
           </button>
 
-          {/* Title */}
           <h1 style={{
             fontSize: '24px',
             fontWeight: '400',
@@ -628,27 +864,161 @@ export default function StudentNominees() {
             Nominees
           </h1>
 
-          {/* Bookshelf Arrow */}
-          <button
-            onClick={() => router.push('/student-bookshelf')}
-            style={{
-              backgroundColor: 'rgba(255,255,255,0.3)',
-              border: 'none',
-              borderRadius: '50%',
-              width: '36px',
-              height: '36px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '16px',
-              cursor: 'pointer',
-              color: currentTheme.textPrimary,
-              backdropFilter: 'blur(10px)',
-              flexShrink: 0
-            }}
-          >
-            ▥
-          </button>
+          {/* 🍔 Hamburger Menu */}
+          <div className="nav-menu-container" style={{ position: 'relative' }}>
+            <button
+              onClick={() => {
+                console.log('Hamburger clicked, current state:', showNavMenu);
+                setShowNavMenu(!showNavMenu);
+              }}
+              style={{
+                backgroundColor: 'rgba(255,255,255,0.3)',
+                border: 'none',
+                borderRadius: '50%',
+                width: '44px',
+                height: '44px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '18px',
+                cursor: 'pointer',
+                color: currentTheme.textPrimary,
+                backdropFilter: 'blur(10px)',
+                flexShrink: 0,
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent'
+              }}
+            >
+              ☰
+            </button>
+
+            {/* Dropdown Menu */}
+            {showNavMenu && (
+              <div style={{
+                position: 'absolute',
+                top: '50px',
+                right: '0',
+                backgroundColor: currentTheme.surface,
+                borderRadius: '12px',
+                minWidth: '180px',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                backdropFilter: 'blur(20px)',
+                border: `2px solid ${currentTheme.primary}60`,
+                overflow: 'hidden',
+                zIndex: 9999
+              }}>
+                {navMenuItems.map((item, index) => (
+                  <button
+                    key={item.path}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      console.log('Clicking:', item.path, 'Current:', item.current, 'Item:', item);
+                      setShowNavMenu(false);
+                      if (!item.current) {
+                        setTimeout(() => {
+                          console.log('Navigating to:', item.path);
+                          router.push(item.path);
+                        }, 100);
+                      } else {
+                        console.log('Already on current page, not navigating');
+                      }
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      backgroundColor: item.current ? `${currentTheme.primary}30` : 'transparent',
+                      border: 'none',
+                      borderBottom: index < navMenuItems.length - 1 ? `1px solid ${currentTheme.primary}40` : 'none',
+                      cursor: item.current ? 'default' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      fontSize: '14px',
+                      color: currentTheme.textPrimary,
+                      fontWeight: item.current ? '600' : '500',
+                      textAlign: 'left',
+                      touchAction: 'manipulation',
+                      WebkitTapHighlightColor: 'transparent',
+                      transition: 'background-color 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!item.current) {
+                        e.target.style.backgroundColor = `${currentTheme.primary}20`;
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!item.current) {
+                        e.target.style.backgroundColor = 'transparent';
+                      }
+                    }}
+                  >
+                    <span style={{ fontSize: '16px' }}>{item.icon}</span>
+                    <span>{item.name}</span>
+                    {item.current && (
+                      <span style={{ marginLeft: 'auto', fontSize: '12px', color: currentTheme.primary }}>●</span>
+                    )}
+                  </button>
+                ))}
+                
+                {/* 🔔 Notification Toggle */}
+                <div style={{
+                  padding: '12px 16px',
+                  borderTop: `1px solid ${currentTheme.primary}40`,
+                  backgroundColor: `${currentTheme.primary}10`
+                }}>
+                  <button
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      
+                      if (notificationProcessing) return;
+                      
+                      setNotificationProcessing(true);
+                      console.log('Requesting notifications...');
+                      
+                      try {
+                        const enabled = await requestNotificationPermission();
+                        console.log('Notifications enabled:', enabled);
+                      } catch (error) {
+                        console.error('Notification error:', error);
+                      } finally {
+                        setNotificationProcessing(false);
+                        setTimeout(() => {
+                          setShowNavMenu(false);
+                        }, 1000);
+                      }
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      backgroundColor: notificationsEnabled ? `${currentTheme.primary}30` : currentTheme.surface,
+                      border: `2px solid ${notificationsEnabled ? currentTheme.primary : currentTheme.textSecondary}60`,
+                      borderRadius: '8px',
+                      cursor: notificationProcessing ? 'wait' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      fontSize: '12px',
+                      color: currentTheme.textPrimary,
+                      fontWeight: '600',
+                      touchAction: 'manipulation',
+                      WebkitTapHighlightColor: 'transparent',
+                      transition: 'all 0.2s ease',
+                      opacity: notificationProcessing ? 0.7 : 1
+                    }}
+                  >
+                    <span>
+                      {notificationProcessing ? '⏳' : (notificationsEnabled ? '🔔' : '🔕')}
+                    </span>
+                    <span>
+                      {notificationProcessing ? 'Processing...' : (notificationsEnabled ? 'Notifications On' : 'Enable Notifications')}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* MAIN CONTENT - NO TOUCH HANDLERS */}
@@ -727,8 +1097,8 @@ export default function StudentNominees() {
               →
             </button>
 
-            <BookCard 
-              book={currentBook} 
+            <BookCard
+              book={currentBook}
               theme={currentTheme}
               onAddBook={handleAddToBookshelf}
               isAddingBook={isAddingBook}
@@ -781,8 +1151,8 @@ export default function StudentNominees() {
                     width: '64px',
                     height: '96px',
                     borderRadius: '8px',
-                    border: index === currentCardIndex 
-                      ? `3px solid ${currentTheme.primary}` 
+                    border: index === currentCardIndex
+                      ? `3px solid ${currentTheme.primary}`
                       : `2px solid ${currentTheme.primary}40`,
                     cursor: 'pointer',
                     overflow: 'hidden',
@@ -797,8 +1167,8 @@ export default function StudentNominees() {
                   }}
                 >
                   {book.coverImageUrl ? (
-                    <img 
-                      src={book.coverImageUrl} 
+                    <img
+                      src={book.coverImageUrl}
                       alt={book.title}
                       style={{
                         width: '100%',
@@ -852,7 +1222,7 @@ export default function StudentNominees() {
                 marginBottom: '20px',
                 lineHeight: '1.4'
               }}>
-                You already have <strong>{showFormatSwitchDialog.book.title}</strong> as {showFormatSwitchDialog.existingFormat === 'audiobook' ? 'an audiobook' : 'a book'}. 
+                You already have <strong>{showFormatSwitchDialog.book.title}</strong> as {showFormatSwitchDialog.existingFormat === 'audiobook' ? 'an audiobook' : 'a book'}.
                 Switch to {showFormatSwitchDialog.newFormat === 'audiobook' ? 'audiobook' : 'book'} instead?
               </p>
               <div style={{
@@ -924,45 +1294,37 @@ export default function StudentNominees() {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
           }
-          
           ::-webkit-scrollbar {
             display: none;
           }
-          
           html, body {
             margin: 0;
             padding: 0;
             width: 100%;
             overflow-x: hidden;
           }
-          
           * {
             box-sizing: border-box;
           }
-          
           @media (max-width: 480px) {
             .cover-stats-container {
               flex-direction: column !important;
               align-items: center !important;
             }
-            
             .book-cover {
               width: 120px !important;
               height: 180px !important;
               margin-bottom: 12px;
             }
-            
             .quick-browse-item {
               width: 56px !important;
               height: 84px !important;
             }
           }
-          
           @media (max-width: 350px) {
             .action-buttons {
               flex-direction: column !important;
             }
-            
             .action-buttons button {
               width: 100% !important;
             }
@@ -975,14 +1337,13 @@ export default function StudentNominees() {
 
 // BookCard component with updated logic for smart format switching
 function BookCard({ book, theme, onAddBook, isAddingBook, getBookInBookshelf, isBookFormatInBookshelf, currentCardIndex }) {
-  
   const getCategoryColorPalette = (book) => {
     const category = book.displayCategory || book.internalCategory || '';
-    
+
     if (category.includes('Graphic')) {
       return {
         primary: '#FF6B35',
-        secondary: '#FF8C42',   
+        secondary: '#FF8C42',
         accent: '#FFB563',
         background: '#FFF4E6',
         surface: '#FFFFFF',
@@ -992,7 +1353,7 @@ function BookCard({ book, theme, onAddBook, isAddingBook, getBookInBookshelf, is
         textSecondary: '#B8491C'
       };
     }
-    
+
     if (category.includes('Chapter Books') || category.includes('Stick With You')) {
       return {
         primary: '#F4D03F',
@@ -1006,7 +1367,7 @@ function BookCard({ book, theme, onAddBook, isAddingBook, getBookInBookshelf, is
         textSecondary: '#A57C00'
       };
     }
-    
+
     if (category.includes('Picture')) {
       return {
         primary: '#48CAE4',
@@ -1020,7 +1381,7 @@ function BookCard({ book, theme, onAddBook, isAddingBook, getBookInBookshelf, is
         textSecondary: '#0077B6'
       };
     }
-    
+
     if (category.includes('Classic')) {
       return {
         primary: '#3F51B5',
@@ -1034,7 +1395,7 @@ function BookCard({ book, theme, onAddBook, isAddingBook, getBookInBookshelf, is
         textSecondary: '#283593'
       };
     }
-    
+
     if (category.includes('Catholic')) {
       return {
         primary: '#64B5F6',
@@ -1048,7 +1409,7 @@ function BookCard({ book, theme, onAddBook, isAddingBook, getBookInBookshelf, is
         textSecondary: '#1565C0'
       };
     }
-    
+
     if (category.includes('Hidden') || category.includes('Treasure')) {
       return {
         primary: '#D32F2F',
@@ -1062,7 +1423,7 @@ function BookCard({ book, theme, onAddBook, isAddingBook, getBookInBookshelf, is
         textSecondary: '#B71C1C'
       };
     }
-    
+
     return {
       primary: theme.primary,
       secondary: theme.secondary,
@@ -1086,18 +1447,17 @@ function BookCard({ book, theme, onAddBook, isAddingBook, getBookInBookshelf, is
 
   const formatAuthors = (authorsString) => {
     if (!authorsString) return 'Unknown Author';
-    
     if (Array.isArray(authorsString)) {
       if (authorsString.length === 0) return 'Unknown Author';
       if (authorsString.length === 1) return authorsString[0];
       if (authorsString.length === 2) return `${authorsString[0]} & ${authorsString[1]}`;
       return `${authorsString[0]} & ${authorsString.length - 1} more`;
     }
-    
+
     const authors = authorsString.split(';').map(author => {
       return author.replace(/\s*\([^)]*\)\s*$/, '').trim();
     }).filter(author => author.length > 0);
-    
+
     if (authors.length === 0) return 'Unknown Author';
     if (authors.length === 1) return authors[0];
     if (authors.length === 2) return `${authors[0]} & ${authors[1]}`;
@@ -1106,25 +1466,21 @@ function BookCard({ book, theme, onAddBook, isAddingBook, getBookInBookshelf, is
 
   const getGradeDisplay = (gradeLevelsString) => {
     if (!gradeLevelsString) return 'All Grades';
-    
     if (Array.isArray(gradeLevelsString)) {
       if (gradeLevelsString.length === 0) return 'All Grades';
       const gradeText = gradeLevelsString[0];
       return gradeText ? gradeText.replace('Grades ', '') : 'All Grades';
     }
-    
     return gradeLevelsString.replace('Grades ', '');
   };
 
   const getGenreDisplay = (genresString) => {
     if (!genresString) return '';
-    
     if (Array.isArray(genresString)) {
       if (genresString.length === 0) return '';
       const primaryGenre = genresString[0];
       return primaryGenre.length > 25 ? primaryGenre.substring(0, 25) + '...' : primaryGenre;
     }
-    
     const genres = genresString.split(',').map(g => g.trim());
     const primaryGenre = genres[0];
     return primaryGenre.length > 25 ? primaryGenre.substring(0, 25) + '...' : primaryGenre;
@@ -1133,7 +1489,6 @@ function BookCard({ book, theme, onAddBook, isAddingBook, getBookInBookshelf, is
   const getLengthDisplay = (book) => {
     const pages = book.pages || book.pageCount || 0;
     const minutes = book.totalMinutes || 0;
-    
     if (book.isAudiobook && minutes > 0 && pages > 0) {
       return `${pages} pages • ${minutes} min audio`;
     } else if (book.isAudiobook && minutes > 0) {
@@ -1196,7 +1551,7 @@ function BookCard({ book, theme, onAddBook, isAddingBook, getBookInBookshelf, is
         }}>
           {getShortCategory(book)}
         </div>
-        
+
         <div>
           <h2 style={{
             fontSize: 'clamp(18px, 5vw, 22px)',
@@ -1209,7 +1564,6 @@ function BookCard({ book, theme, onAddBook, isAddingBook, getBookInBookshelf, is
           }}>
             {book.title}
           </h2>
-          
           <p style={{
             fontSize: 'clamp(12px, 3.5vw, 14px)',
             margin: '0 0 10px 0',
@@ -1219,7 +1573,6 @@ function BookCard({ book, theme, onAddBook, isAddingBook, getBookInBookshelf, is
           }}>
             by {formatAuthors(book.authors)}
           </p>
-
           <div style={{
             display: 'flex',
             gap: '8px',
@@ -1271,8 +1624,8 @@ function BookCard({ book, theme, onAddBook, isAddingBook, getBookInBookshelf, is
           }}>
             {book.coverImageUrl ? (
               <>
-                <img 
-                  src={book.coverImageUrl} 
+                <img
+                  src={book.coverImageUrl}
                   alt={book.title}
                   style={{
                     width: '100%',
@@ -1313,7 +1666,6 @@ function BookCard({ book, theme, onAddBook, isAddingBook, getBookInBookshelf, is
                   📊 Book Stats
                 </div>
               </div>
-              
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: '1fr 1fr',
@@ -1414,7 +1766,7 @@ function BookCard({ book, theme, onAddBook, isAddingBook, getBookInBookshelf, is
             disabled={isAddingBook || bookFormatExists}
             style={{
               flex: 1,
-              background: bookFormatExists 
+              background: bookFormatExists
                 ? 'linear-gradient(145deg, #E0E0E0, #C0C0C0)'
                 : `linear-gradient(145deg, ${colorPalette.surface}, ${colorPalette.background})`,
               color: bookFormatExists ? '#666666' : colorPalette.textPrimary,
@@ -1443,11 +1795,11 @@ function BookCard({ book, theme, onAddBook, isAddingBook, getBookInBookshelf, is
               transform: 'translateY(-2px)'
             }}
           >
-            {bookFormatExists ? '✓ Added' : 
-             existingBookEntry && existingBookEntry.format === 'audiobook' ? '📖 Switch to Book' : 
-             '📖 Add Book'}
+            {bookFormatExists ? '✓ Added' :
+              existingBookEntry && existingBookEntry.format === 'audiobook' ? '📖 Switch to Book' :
+              '📖 Add Book'}
           </button>
-          
+
           {book.isAudiobook && (
             <button
               onClick={() => onAddBook('audiobook')}
@@ -1483,9 +1835,9 @@ function BookCard({ book, theme, onAddBook, isAddingBook, getBookInBookshelf, is
                 transform: 'translateY(-2px)'
               }}
             >
-              {audiobookFormatExists ? '✓ Added' : 
-               existingBookEntry && existingBookEntry.format === 'book' ? '🎧 Switch to Audio' : 
-               '🎧 Add Audio'}
+              {audiobookFormatExists ? '✓ Added' :
+                existingBookEntry && existingBookEntry.format === 'book' ? '🎧 Switch to Audio' :
+                '🎧 Add Audio'}
             </button>
           )}
         </div>

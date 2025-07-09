@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
 import { getStudentDataEntities, getSchoolNomineesEntities, updateStudentDataEntities } from '../lib/firebase';
@@ -21,6 +21,11 @@ export default function StudentBookshelf() {
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState('');
   
+  // 🍔 HAMBURGER MENU STATE VARIABLES
+  const [showNavMenu, setShowNavMenu] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [notificationProcessing, setNotificationProcessing] = useState(false);
+  
   // Separate states for each screen
   const [showSubmissionPopup, setShowSubmissionPopup] = useState(false);
   const [showParentPermission, setShowParentPermission] = useState(false);
@@ -34,6 +39,118 @@ export default function StudentBookshelf() {
   const [quizStartTime, setQuizStartTime] = useState(null);
   const [timeRemaining, setTimeRemaining] = useState(30 * 60); // 30 minutes in seconds
   const [timerActive, setTimerActive] = useState(false);
+
+  // 🍔 NAVIGATION MENU ITEMS (Bookshelf page is current)
+  const navMenuItems = useMemo(() => [
+    { name: 'Saints', path: '/student-saints', icon: '♔', current: false },
+    { name: 'Bookshelf', path: '/student-bookshelf', icon: '⚏', current: true }, // Set to true for this page
+    { name: 'Healthy Habits', path: '/student-healthy-habits', icon: '○', current: false },
+    { name: 'Nominees', path: '/student-nominees', icon: '□', current: false },
+    { name: 'Stats', path: '/student-stats', icon: '△', current: false },
+    { name: 'Settings', path: '/student-settings', icon: '⚙', current: false }
+  ], []);
+
+  // 🍔 NOTIFICATION FUNCTIONS
+  const requestNotificationPermission = useCallback(async () => {
+    console.log('Starting notification permission request...');
+    
+    if (!('Notification' in window)) {
+      console.log('This browser does not support notifications');
+      alert('This browser does not support notifications');
+      return false;
+    }
+
+    console.log('Current permission:', Notification.permission);
+
+    if (Notification.permission === 'granted') {
+      console.log('Permission already granted');
+      setNotificationsEnabled(true);
+      return true;
+    }
+
+    if (Notification.permission === 'denied') {
+      console.log('Permission was denied');
+      alert('Notifications were blocked. Please enable them in your browser settings.');
+      return false;
+    }
+
+    try {
+      console.log('Requesting permission...');
+      const permission = await Notification.requestPermission();
+      console.log('Permission result:', permission);
+      
+      const enabled = permission === 'granted';
+      setNotificationsEnabled(enabled);
+      
+      if (enabled) {
+        // Test notification
+        new Notification('🎉 Notifications Enabled!', {
+          body: 'You\'ll now get notified about book approvals and quiz unlocks!',
+          icon: '/images/lux_libris_logo.png'
+        });
+      } else {
+        alert('Notifications were not enabled. You can enable them later in your browser settings.');
+      }
+      
+      return enabled;
+    } catch (error) {
+      console.error('Notification permission error:', error);
+      alert('Error requesting notification permission: ' + error.message);
+      return false;
+    }
+  }, []);
+
+  const sendSaintUnlockNotification = useCallback((saintName) => {
+    if (!notificationsEnabled || Notification.permission !== 'granted') return;
+
+    try {
+      new Notification('🎉 New Saint Unlocked!', {
+        body: `You've unlocked ${saintName}! Check your collection.`,
+        icon: '/images/lux_libris_logo.png',
+        badge: '/images/lux_libris_logo.png',
+        tag: 'saint-unlock',
+        requireInteraction: false,
+        silent: false
+      });
+    } catch (error) {
+      console.log('Notification failed:', error);
+    }
+  }, [notificationsEnabled]);
+
+  // 📚 BOOKSHELF-SPECIFIC NOTIFICATIONS
+  const sendTeacherApprovalNotification = useCallback((bookTitle) => {
+    if (!notificationsEnabled || Notification.permission !== 'granted') return;
+
+    try {
+      new Notification('🎉 Book Approved!', {
+        body: `Your submission for "${bookTitle}" has been approved by your teacher!`,
+        icon: '/images/lux_libris_logo.png',
+        badge: '/images/lux_libris_logo.png',
+        tag: 'teacher-approval',
+        requireInteraction: true,
+        silent: false
+      });
+    } catch (error) {
+      console.log('Teacher approval notification failed:', error);
+    }
+  }, [notificationsEnabled]);
+
+  const sendQuizUnlockNotification = useCallback((bookTitle) => {
+    if (!notificationsEnabled || Notification.permission !== 'granted') return;
+
+    try {
+      new Notification('🔓 Quiz Unlocked!', {
+        body: `Your parent has unlocked the quiz for "${bookTitle}". You can take it now!`,
+        icon: '/images/lux_libris_logo.png',
+        badge: '/images/lux_libris_logo.png',
+        tag: 'quiz-unlock',
+        requireInteraction: true,
+        silent: false
+      });
+    } catch (error) {
+      console.log('Quiz unlock notification failed:', error);
+    }
+  }, [notificationsEnabled]);
 
   // Theme definitions
   const themes = {
@@ -146,6 +263,40 @@ export default function StudentBookshelf() {
     }
     return () => clearInterval(interval);
   }, [timerActive, timeRemaining, quizAnswers]);
+
+  // 🍔 useEFFECTS for hamburger menu
+  // Check notification permission on load
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      setNotificationsEnabled(true);
+    }
+  }, []);
+
+  // Close nav menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showNavMenu && !event.target.closest('.nav-menu-container')) {
+        console.log('Clicking outside menu, closing...');
+        setShowNavMenu(false);
+      }
+    };
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape' && showNavMenu) {
+        setShowNavMenu(false);
+      }
+    };
+
+    if (showNavMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscape);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [showNavMenu]);
 
   // Format timer display
   const formatTime = (seconds) => {
@@ -283,6 +434,51 @@ export default function StudentBookshelf() {
       handleTimerReturn();
     }
   }, [studentData, nominees, router]);
+
+  // 🔔 CHECK FOR STATUS CHANGES AND SEND NOTIFICATIONS
+  useEffect(() => {
+    const checkForStatusChanges = () => {
+      if (!studentData || !studentData.bookshelf || !notificationsEnabled) return;
+
+      // Get previous bookshelf state from localStorage
+      const previousBookshelfKey = `bookshelf_${studentData.id}`;
+      const previousBookshelfJson = localStorage.getItem(previousBookshelfKey);
+      
+      if (previousBookshelfJson) {
+        try {
+          const previousBookshelf = JSON.parse(previousBookshelfJson);
+          
+          // Check each book for status changes
+          studentData.bookshelf.forEach(currentBook => {
+            const previousBook = previousBookshelf.find(book => book.bookId === currentBook.bookId);
+            
+            if (previousBook) {
+              const bookDetails = getBookDetails(currentBook.bookId);
+              const bookTitle = bookDetails?.title || 'Unknown Book';
+              
+              // Check for teacher approval (pending_approval -> completed)
+              if (previousBook.status === 'pending_approval' && currentBook.status === 'completed') {
+                sendTeacherApprovalNotification(bookTitle);
+              }
+              
+              // Check for parent quiz unlock (pending_parent_quiz_unlock -> anything else)
+              if (previousBook.status === 'pending_parent_quiz_unlock' && 
+                  currentBook.status !== 'pending_parent_quiz_unlock') {
+                sendQuizUnlockNotification(bookTitle);
+              }
+            }
+          });
+        } catch (error) {
+          console.log('Error checking status changes:', error);
+        }
+      }
+
+      // Save current bookshelf state
+      localStorage.setItem(previousBookshelfKey, JSON.stringify(studentData.bookshelf));
+    };
+
+    checkForStatusChanges();
+  }, [studentData, notificationsEnabled, sendTeacherApprovalNotification, sendQuizUnlockNotification]);
 
   const loadBookshelfData = async () => {
     try {
@@ -898,7 +1094,7 @@ export default function StudentBookshelf() {
           zIndex: 1
         }} />
         
-        {/* HEADER */}
+        {/* 🍔 HEADER WITH HAMBURGER MENU */}
         <div style={{
           background: `linear-gradient(135deg, ${currentTheme.primary}F0, ${currentTheme.secondary}F0)`,
           backdropFilter: 'blur(20px)',
@@ -906,27 +1102,32 @@ export default function StudentBookshelf() {
           position: 'relative',
           borderRadius: '0 0 25px 25px',
           boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-          zIndex: 10,
+          zIndex: 100,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between'
         }}>
           <button
-            onClick={() => router.push('/student-dashboard')}
+            onClick={() => {
+              console.log('Back button clicked, going to dashboard');
+              router.push('/student-dashboard');
+            }}
             style={{
               backgroundColor: 'rgba(255,255,255,0.3)',
               border: 'none',
               borderRadius: '50%',
-              width: '36px',
-              height: '36px',
+              width: '44px',
+              height: '44px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '16px',
+              fontSize: '18px',
               cursor: 'pointer',
               color: currentTheme.textPrimary,
               backdropFilter: 'blur(10px)',
-              flexShrink: 0
+              flexShrink: 0,
+              touchAction: 'manipulation',
+              WebkitTapHighlightColor: 'transparent'
             }}
           >
             ←
@@ -945,26 +1146,161 @@ export default function StudentBookshelf() {
             My Bookshelf
           </h1>
 
-          <button
-            onClick={() => router.push('/student-settings')}
-            style={{
-              backgroundColor: 'rgba(255,255,255,0.3)',
-              border: 'none',
-              borderRadius: '50%',
-              width: '36px',
-              height: '36px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '16px',
-              cursor: 'pointer',
-              color: currentTheme.textPrimary,
-              backdropFilter: 'blur(10px)',
-              flexShrink: 0
-            }}
-          >
-            ⚙️
-          </button>
+          {/* 🍔 Hamburger Menu */}
+          <div className="nav-menu-container" style={{ position: 'relative' }}>
+            <button
+              onClick={() => {
+                console.log('Hamburger clicked, current state:', showNavMenu);
+                setShowNavMenu(!showNavMenu);
+              }}
+              style={{
+                backgroundColor: 'rgba(255,255,255,0.3)',
+                border: 'none',
+                borderRadius: '50%',
+                width: '44px',
+                height: '44px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '18px',
+                cursor: 'pointer',
+                color: currentTheme.textPrimary,
+                backdropFilter: 'blur(10px)',
+                flexShrink: 0,
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent'
+              }}
+            >
+              ☰
+            </button>
+
+            {/* Dropdown Menu */}
+            {showNavMenu && (
+              <div style={{
+                position: 'absolute',
+                top: '50px',
+                right: '0',
+                backgroundColor: currentTheme.surface,
+                borderRadius: '12px',
+                minWidth: '180px',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                backdropFilter: 'blur(20px)',
+                border: `2px solid ${currentTheme.primary}60`,
+                overflow: 'hidden',
+                zIndex: 9999
+              }}>
+                {navMenuItems.map((item, index) => (
+                  <button
+                    key={item.path}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      console.log('Clicking:', item.path, 'Current:', item.current, 'Item:', item);
+                      setShowNavMenu(false);
+                      if (!item.current) {
+                        setTimeout(() => {
+                          console.log('Navigating to:', item.path);
+                          router.push(item.path);
+                        }, 100);
+                      } else {
+                        console.log('Already on current page, not navigating');
+                      }
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      backgroundColor: item.current ? `${currentTheme.primary}30` : 'transparent',
+                      border: 'none',
+                      borderBottom: index < navMenuItems.length - 1 ? `1px solid ${currentTheme.primary}40` : 'none',
+                      cursor: item.current ? 'default' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      fontSize: '14px',
+                      color: currentTheme.textPrimary,
+                      fontWeight: item.current ? '600' : '500',
+                      textAlign: 'left',
+                      touchAction: 'manipulation',
+                      WebkitTapHighlightColor: 'transparent',
+                      transition: 'background-color 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!item.current) {
+                        e.target.style.backgroundColor = `${currentTheme.primary}20`;
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!item.current) {
+                        e.target.style.backgroundColor = 'transparent';
+                      }
+                    }}
+                  >
+                    <span style={{ fontSize: '16px' }}>{item.icon}</span>
+                    <span>{item.name}</span>
+                    {item.current && (
+                      <span style={{ marginLeft: 'auto', fontSize: '12px', color: currentTheme.primary }}>●</span>
+                    )}
+                  </button>
+                ))}
+                
+                {/* 🔔 Notification Toggle */}
+                <div style={{
+                  padding: '12px 16px',
+                  borderTop: `1px solid ${currentTheme.primary}40`,
+                  backgroundColor: `${currentTheme.primary}10`
+                }}>
+                  <button
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      
+                      if (notificationProcessing) return;
+                      
+                      setNotificationProcessing(true);
+                      console.log('Requesting notifications...');
+                      
+                      try {
+                        const enabled = await requestNotificationPermission();
+                        console.log('Notifications enabled:', enabled);
+                      } catch (error) {
+                        console.error('Notification error:', error);
+                      } finally {
+                        setNotificationProcessing(false);
+                        setTimeout(() => {
+                          setShowNavMenu(false);
+                        }, 1000);
+                      }
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      backgroundColor: notificationsEnabled ? `${currentTheme.primary}30` : currentTheme.surface,
+                      border: `2px solid ${notificationsEnabled ? currentTheme.primary : currentTheme.textSecondary}60`,
+                      borderRadius: '8px',
+                      cursor: notificationProcessing ? 'wait' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      fontSize: '12px',
+                      color: currentTheme.textPrimary,
+                      fontWeight: '600',
+                      touchAction: 'manipulation',
+                      WebkitTapHighlightColor: 'transparent',
+                      transition: 'all 0.2s ease',
+                      opacity: notificationProcessing ? 0.7 : 1
+                    }}
+                  >
+                    <span>
+                      {notificationProcessing ? '⏳' : (notificationsEnabled ? '🔔' : '🔕')}
+                    </span>
+                    <span>
+                      {notificationProcessing ? 'Processing...' : (notificationsEnabled ? 'Notifications On' : 'Enable Notifications')}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* MAIN CONTENT */}

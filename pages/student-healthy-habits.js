@@ -12,14 +12,19 @@ export default function StudentHealthyHabits() {
   const [studentData, setStudentData] = useState(null);
   const [currentTheme, setCurrentTheme] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  
+
+  // 🍔 HAMBURGER MENU STATE VARIABLES
+  const [showNavMenu, setShowNavMenu] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [notificationProcessing, setNotificationProcessing] = useState(false);
+
   // Timer states
   const [timerDuration, setTimerDuration] = useState(20 * 60); // seconds
   const [timeRemaining, setTimeRemaining] = useState(20 * 60);
   const [isTimerActive, setIsTimerActive] = useState(false);
   const [isTimerPaused, setIsTimerPaused] = useState(false);
   const timerRef = useRef(null);
-  
+
   // Progress states
   const [todaysSessions, setTodaysSessions] = useState([]);
   const [todaysMinutes, setTodaysMinutes] = useState(0);
@@ -27,16 +32,93 @@ export default function StudentHealthyHabits() {
   const [streakCalendar, setStreakCalendar] = useState([]);
   const [readingLevel, setReadingLevel] = useState({ name: 'Faithful Flame', emoji: '🕯️', color: '#D84315' });
   const [streakStats, setStreakStats] = useState({ weeks: 0, months: 0 });
-  
+
   // UI states
   const [showSuccess, setShowSuccess] = useState('');
   const [showCompletionCelebration, setShowCompletionCelebration] = useState(false);
   const [showBookProgressModal, setShowBookProgressModal] = useState(false);
   const [currentBookId, setCurrentBookId] = useState(null);
   const [currentBookTitle, setCurrentBookTitle] = useState('');
-  
+
   // Wake lock state
   const [wakeLock, setWakeLock] = useState(null);
+
+  // 🍔 NAVIGATION MENU ITEMS (Healthy Habits page is current)
+  const navMenuItems = useMemo(() => [
+    { name: 'Saints', path: '/student-saints', icon: '♔', current: false },
+    { name: 'Bookshelf', path: '/student-bookshelf', icon: '⚏', current: false },
+    { name: 'Healthy Habits', path: '/student-healthy-habits', icon: '○', current: true }, // Set to true for this page
+    { name: 'Nominees', path: '/student-nominees', icon: '□', current: false },
+    { name: 'Stats', path: '/student-stats', icon: '△', current: false },
+    { name: 'Settings', path: '/student-settings', icon: '⚙', current: false }
+  ], []);
+
+  // 🍔 NOTIFICATION FUNCTIONS
+  const requestNotificationPermission = useCallback(async () => {
+    console.log('Starting notification permission request...');
+    
+    if (!('Notification' in window)) {
+      console.log('This browser does not support notifications');
+      alert('This browser does not support notifications');
+      return false;
+    }
+
+    console.log('Current permission:', Notification.permission);
+
+    if (Notification.permission === 'granted') {
+      console.log('Permission already granted');
+      setNotificationsEnabled(true);
+      return true;
+    }
+
+    if (Notification.permission === 'denied') {
+      console.log('Permission was denied');
+      alert('Notifications were blocked. Please enable them in your browser settings.');
+      return false;
+    }
+
+    try {
+      console.log('Requesting permission...');
+      const permission = await Notification.requestPermission();
+      console.log('Permission result:', permission);
+      
+      const enabled = permission === 'granted';
+      setNotificationsEnabled(enabled);
+      
+      if (enabled) {
+        // Test notification
+        new Notification('🎉 Notifications Enabled!', {
+          body: 'You\'ll now get notified when you unlock new saints!',
+          icon: '/images/lux_libris_logo.png'
+        });
+      } else {
+        alert('Notifications were not enabled. You can enable them later in your browser settings.');
+      }
+      
+      return enabled;
+    } catch (error) {
+      console.error('Notification permission error:', error);
+      alert('Error requesting notification permission: ' + error.message);
+      return false;
+    }
+  }, []);
+
+  const sendSaintUnlockNotification = useCallback((saintName) => {
+    if (!notificationsEnabled || Notification.permission !== 'granted') return;
+
+    try {
+      new Notification('🎉 New Saint Unlocked!', {
+        body: `You've unlocked ${saintName}! Check your collection.`,
+        icon: '/images/lux_libris_logo.png',
+        badge: '/images/lux_libris_logo.png',
+        tag: 'saint-unlock',
+        requireInteraction: false,
+        silent: false
+      });
+    } catch (error) {
+      console.log('Notification failed:', error);
+    }
+  }, [notificationsEnabled]);
 
   // Theme definitions
   const themes = useMemo(() => ({
@@ -145,10 +227,10 @@ export default function StudentHealthyHabits() {
     const yesterday = new Date(today);
     yesterday.setDate(today.getDate() - 1);
     const yesterdayStr = getLocalDateString(yesterday);
-    
+
     let streakCount = 0;
     let checkDate;
-    
+
     // Start from today if completed, otherwise start from yesterday
     if (completedSessionsByDate[todayStr]) {
       checkDate = new Date(today);
@@ -157,11 +239,10 @@ export default function StudentHealthyHabits() {
     } else {
       return 0;
     }
-    
+
     // Count consecutive days backwards
     while (streakCount < 365) {
       const dateStr = getLocalDateString(checkDate);
-      
       if (completedSessionsByDate[dateStr]) {
         streakCount++;
         checkDate.setDate(checkDate.getDate() - 1);
@@ -169,7 +250,7 @@ export default function StudentHealthyHabits() {
         break;
       }
     }
-    
+
     return streakCount;
   }, []);
 
@@ -179,7 +260,6 @@ export default function StudentHealthyHabits() {
       if ('wakeLock' in navigator) {
         const lock = await navigator.wakeLock.request('screen');
         setWakeLock(lock);
-        
         lock.addEventListener('release', () => {
           setWakeLock(null);
         });
@@ -199,26 +279,20 @@ export default function StudentHealthyHabits() {
   const playNotificationSound = () => {
     try {
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      
       const createTone = (frequency, startTime, duration) => {
         const oscillator = audioContext.createOscillator();
         const gainNode = audioContext.createGain();
-        
         oscillator.connect(gainNode);
         gainNode.connect(audioContext.destination);
-        
         oscillator.frequency.value = frequency;
         gainNode.gain.setValueAtTime(0, startTime);
         gainNode.gain.linearRampToValueAtTime(0.3, startTime + 0.1);
         gainNode.gain.linearRampToValueAtTime(0, startTime + duration);
-        
         oscillator.start(startTime);
         oscillator.stop(startTime + duration);
       };
-      
       createTone(600, audioContext.currentTime, 0.4);
       createTone(800, audioContext.currentTime + 0.5, 0.4);
-      
     } catch (err) {
       console.log('Audio notification not supported');
     }
@@ -249,6 +323,40 @@ export default function StudentHealthyHabits() {
     }
   };
 
+  // 🍔 useEFFECTS for hamburger menu
+  // Check notification permission on load
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      setNotificationsEnabled(true);
+    }
+  }, []);
+
+  // Close nav menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showNavMenu && !event.target.closest('.nav-menu-container')) {
+        console.log('Clicking outside menu, closing...');
+        setShowNavMenu(false);
+      }
+    };
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape' && showNavMenu) {
+        setShowNavMenu(false);
+      }
+    };
+
+    if (showNavMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscape);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [showNavMenu]);
+
   // Request notification permission on mount
   useEffect(() => {
     if ('Notification' in window && Notification.permission === 'default') {
@@ -262,17 +370,14 @@ export default function StudentHealthyHabits() {
       // Get sessions from last 6 weeks for thorough streak calculation
       const sixWeeksAgo = new Date();
       sixWeeksAgo.setDate(sixWeeksAgo.getDate() - 42);
-      
       const sessionsRef = collection(db, `entities/${studentData.entityId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
-      
       const recentQuery = query(
         sessionsRef,
         where('date', '>=', getLocalDateString(sixWeeksAgo))
       );
-      
       const recentSnapshot = await getDocs(recentQuery);
       const completedSessionsByDate = {};
-      
+
       // Only count COMPLETED sessions (20+ min) for streaks
       recentSnapshot.forEach(doc => {
         const session = doc.data();
@@ -280,23 +385,22 @@ export default function StudentHealthyHabits() {
           completedSessionsByDate[session.date] = true;
         }
       });
-      
+
       const today = new Date();
       const todayStr = getLocalDateString(today);
-      
+
       // Calculate smart streak
       const streakCount = calculateSmartStreak(completedSessionsByDate, todayStr);
-      
+
       // Build timeline calendar (21 days: 2 weeks past + today + 1 week future)
       const timelineCalendar = [];
       const startDate = new Date(today);
       startDate.setDate(today.getDate() - 14); // Start 2 weeks ago
-      
+
       for (let i = 0; i < 21; i++) {
         const date = new Date(startDate);
         date.setDate(startDate.getDate() + i);
         const dateStr = getLocalDateString(date);
-        
         timelineCalendar.push({
           date: dateStr,
           hasReading: !!completedSessionsByDate[dateStr],
@@ -307,16 +411,15 @@ export default function StudentHealthyHabits() {
           isRecent: Math.abs(date - today) <= 7 * 24 * 60 * 60 * 1000
         });
       }
-      
+
       // Calculate stats
       const totalCompletedDays = Object.keys(completedSessionsByDate).length;
       const weeksCompleted = Math.floor(totalCompletedDays / 7);
       const monthsCompleted = Math.floor(totalCompletedDays / 30);
-      
+
       setStreakCalendar(timelineCalendar);
       setCurrentStreak(streakCount);
       setStreakStats({ weeks: weeksCompleted, months: monthsCompleted });
-      
     } catch (error) {
       console.error('Error loading streak data:', error);
       setCurrentStreak(0);
@@ -329,16 +432,14 @@ export default function StudentHealthyHabits() {
     try {
       const fourteenDaysAgo = new Date();
       fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
-      
       const sessionsRef = collection(db, `entities/${studentData.entityId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
       const recentQuery = query(
         sessionsRef,
         where('date', '>=', getLocalDateString(fourteenDaysAgo))
       );
-      
       const recentSnapshot = await getDocs(recentQuery);
       const dailyMinutes = {};
-      
+
       recentSnapshot.forEach(doc => {
         const session = doc.data();
         if (!dailyMinutes[session.date]) {
@@ -346,11 +447,11 @@ export default function StudentHealthyHabits() {
         }
         dailyMinutes[session.date] += session.duration;
       });
-      
+
       const currentLevel = studentData.currentReadingLevel || 'faithful_flame';
       const daysAtCurrentLevel = studentData.daysAtCurrentLevel || 0;
       const daysBelowThresholdCount = studentData.daysBelowThresholdCount || 0;
-      
+
       // Calculate average for last 7 days
       const lastSevenDays = [];
       for (let i = 0; i < 7; i++) {
@@ -359,33 +460,32 @@ export default function StudentHealthyHabits() {
         const dateStr = getLocalDateString(date);
         lastSevenDays.push(dailyMinutes[dateStr] || 0);
       }
-      
+
       const averageMinutesPerDay = lastSevenDays.reduce((sum, minutes) => sum + minutes, 0) / 7;
-      
+
       const levels = {
         faithful_flame: { min: 0, max: 20, name: 'Faithful Flame', emoji: '🕯️', color: '#D84315', textColor: '#FFFFFF' },
         bright_beacon: { min: 21, max: 35, name: 'Bright Beacon', emoji: '⭐', color: '#FFF8E1', textColor: '#D84315' },
         radiant_reader: { min: 36, max: 50, name: 'Radiant Reader', emoji: '🌟', color: '#FFF9C4', textColor: '#E65100' },
         luminous_legend: { min: 51, max: Infinity, name: 'Luminous Legend', emoji: '✨', color: '#E3F2FD', textColor: '#0D47A1' }
       };
-      
+
       let targetLevel = 'faithful_flame';
       if (averageMinutesPerDay >= 51) targetLevel = 'luminous_legend';
       else if (averageMinutesPerDay >= 36) targetLevel = 'radiant_reader';
       else if (averageMinutesPerDay >= 21) targetLevel = 'bright_beacon';
-      
+
       let newLevel = currentLevel;
       let newDaysAtLevel = daysAtCurrentLevel + 1;
       let newDaysBelowCount = daysBelowThresholdCount;
-      
+
       const currentLevelData = levels[currentLevel];
       const todayMinutes = dailyMinutes[getLocalDateString(new Date())] || 0;
-      
+
       if (todayMinutes >= currentLevelData.min && todayMinutes <= currentLevelData.max) {
         newDaysBelowCount = 0;
       } else if (todayMinutes < currentLevelData.min) {
         newDaysBelowCount++;
-        
         if (newDaysBelowCount >= 4 && currentLevel !== 'faithful_flame') {
           const levelOrder = ['faithful_flame', 'bright_beacon', 'radiant_reader', 'luminous_legend'];
           const currentIndex = levelOrder.indexOf(currentLevel);
@@ -395,27 +495,24 @@ export default function StudentHealthyHabits() {
         }
       } else {
         newDaysBelowCount = 0;
-        
         if (newDaysAtLevel >= 7) {
           const levelOrder = ['faithful_flame', 'bright_beacon', 'radiant_reader', 'luminous_legend'];
           const currentIndex = levelOrder.indexOf(currentLevel);
           const nextLevel = levelOrder[currentIndex + 1];
-          
           if (nextLevel && targetLevel === nextLevel) {
             newLevel = nextLevel;
             newDaysAtLevel = 1;
           }
         }
       }
-      
+
       await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
         currentReadingLevel: newLevel,
         daysAtCurrentLevel: newDaysAtLevel,
         daysBelowThresholdCount: newDaysBelowCount
       });
-      
+
       setReadingLevel(levels[newLevel]);
-      
     } catch (error) {
       console.error('Error calculating reading level:', error);
       setReadingLevel({ name: 'Faithful Flame', emoji: '🕯️', color: '#D84315', textColor: '#FFFFFF' });
@@ -426,43 +523,39 @@ export default function StudentHealthyHabits() {
   const loadReadingData = useCallback(async (studentData) => {
     try {
       const today = getLocalDateString(new Date());
-      
       const sessionsRef = collection(db, `entities/${studentData.entityId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
-      
       const todayQuery = query(
         sessionsRef,
         where('date', '==', today)
       );
-      
       const todaySnapshot = await getDocs(todayQuery);
       const sessions = [];
       let minutesToday = 0;
-      
       const sessionData = [];
+
       todaySnapshot.forEach(doc => {
         const data = doc.data();
         sessionData.push({ id: doc.id, ...data });
       });
-      
+
       sessionData.sort((a, b) => {
         const timeA = a.startTime?.toDate?.() || new Date(a.startTime);
         const timeB = b.startTime?.toDate?.() || new Date(b.startTime);
         return timeB - timeA;
       });
-      
+
       sessionData.forEach(session => {
         sessions.push(session);
         if (session.date === today) {
           minutesToday += session.duration;
         }
       });
-      
+
       setTodaysSessions(sessions);
       setTodaysMinutes(minutesToday);
-      
+
       await loadStreakData(studentData);
       await calculateReadingLevel(studentData);
-      
     } catch (error) {
       console.error('Error loading reading data:', error);
     }
@@ -481,7 +574,7 @@ export default function StudentHealthyHabits() {
   const saveReadingSession = useCallback(async (duration, completed) => {
     try {
       if (!studentData) return;
-      
+
       const today = getLocalDateString(new Date());
       const sessionData = {
         date: today,
@@ -491,23 +584,21 @@ export default function StudentHealthyHabits() {
         completed: completed,
         bookId: currentBookId || null
       };
-      
+
       const sessionsRef = collection(db, `entities/${studentData.entityId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
       const docRef = await addDoc(sessionsRef, sessionData);
-      
       const newSession = { id: docRef.id, ...sessionData };
+
       setTodaysSessions(prev => [newSession, ...prev]);
-      
       setTodaysMinutes(prev => prev + duration);
-      
+
       if (completed && todaysSessions.filter(s => s.completed && s.date === today).length === 0) {
         await updateStreakData();
         await calculateReadingLevel(studentData);
       }
-      
+
       setShowSuccess(completed ? '🎉 Reading session completed!' : '📖 Progress saved!');
       setTimeout(() => setShowSuccess(''), 3000);
-      
     } catch (error) {
       console.error('Error saving reading session:', error);
       setShowSuccess('❌ Error saving session. Please try again.');
@@ -522,24 +613,21 @@ export default function StudentHealthyHabits() {
         router.push('/student-onboarding');
         return;
       }
-      
+
       setStudentData(firebaseStudentData);
-      
       const selectedThemeKey = firebaseStudentData.selectedTheme || 'classic_lux';
       const selectedTheme = themes[selectedThemeKey];
       setCurrentTheme(selectedTheme);
-      
+
       const defaultDuration = firebaseStudentData.readingSettings?.defaultTimerDuration || 20;
       setTimerDuration(defaultDuration * 60);
       setTimeRemaining(defaultDuration * 60);
-      
+
       await loadReadingData(firebaseStudentData);
-      
     } catch (error) {
       console.error('Error loading healthy habits data:', error);
       router.push('/student-dashboard');
     }
-    
     setIsLoading(false);
   }, [user, router, themes, loadReadingData]);
 
@@ -549,12 +637,12 @@ export default function StudentHealthyHabits() {
       const urlParams = new URLSearchParams(window.location.search);
       const bookId = urlParams.get('bookId');
       const bookTitle = urlParams.get('bookTitle');
-      
+
       if (bookId && bookTitle) {
         setCurrentBookId(bookId);
         setCurrentBookTitle(decodeURIComponent(bookTitle));
       }
-      
+
       loadHealthyHabitsData();
     } else if (!loading && !isAuthenticated) {
       router.push('/role-selector');
@@ -564,15 +652,11 @@ export default function StudentHealthyHabits() {
   const handleTimerComplete = useCallback(async () => {
     setIsTimerActive(false);
     setIsTimerPaused(false);
-    
     releaseWakeLock();
-    
     playNotificationSound();
     vibrateNotification();
     showBrowserNotification();
-    
     await saveReadingSession(Math.floor(timerDuration / 60), true);
-    
     setShowCompletionCelebration(true);
     setTimeout(() => {
       setShowCompletionCelebration(false);
@@ -580,7 +664,6 @@ export default function StudentHealthyHabits() {
         setShowBookProgressModal(true);
       }
     }, 3000);
-    
     setTimeRemaining(timerDuration);
   }, [timerDuration, saveReadingSession, currentBookId, currentBookTitle]);
 
@@ -642,7 +725,6 @@ export default function StudentHealthyHabits() {
 
   const handleBankSession = async () => {
     const minutesRead = Math.floor((timerDuration - timeRemaining) / 60);
-    
     if (minutesRead < 1) {
       setShowSuccess('⏱️ Read for at least 1 minute to bank progress');
       setTimeout(() => setShowSuccess(''), 3000);
@@ -652,18 +734,17 @@ export default function StudentHealthyHabits() {
     setIsTimerActive(false);
     setIsTimerPaused(false);
     releaseWakeLock();
-    
+
     const isCompleted = minutesRead >= 20;
     await saveReadingSession(minutesRead, isCompleted);
-    
+
     if (currentBookId && currentBookTitle) {
       setShowBookProgressModal(true);
     }
-    
+
     setTimeRemaining(timerDuration);
-    
-    setShowSuccess(isCompleted ? 
-      '🎉 Session banked and streak earned!' : 
+    setShowSuccess(isCompleted ?
+      '🎉 Session banked and streak earned!' :
       `📖 ${minutesRead} minutes banked! Read 20+ minutes for streak credit`
     );
     setTimeout(() => setShowSuccess(''), 4000);
@@ -723,15 +804,14 @@ export default function StudentHealthyHabits() {
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
         <link rel="icon" href="/images/lux_libris_logo.png" />
       </Head>
-      
+
       <div style={{
         minHeight: '100vh',
         fontFamily: 'Avenir, system-ui, -apple-system, sans-serif',
         backgroundColor: currentTheme.background,
         paddingBottom: '100px'
       }}>
-        
-        {/* HEADER */}
+        {/* 🍔 HEADER WITH HAMBURGER MENU */}
         <div style={{
           background: `linear-gradient(135deg, ${currentTheme.primary}F0, ${currentTheme.secondary}F0)`,
           backdropFilter: 'blur(20px)',
@@ -739,27 +819,32 @@ export default function StudentHealthyHabits() {
           position: 'relative',
           borderRadius: '0 0 25px 25px',
           boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-          zIndex: 10,
+          zIndex: 100,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between'
         }}>
           <button
-            onClick={() => router.back()}
+            onClick={() => {
+              console.log('Back button clicked, going to dashboard');
+              router.push('/student-dashboard');
+            }}
             style={{
               backgroundColor: 'rgba(255,255,255,0.3)',
               border: 'none',
               borderRadius: '50%',
-              width: '36px',
-              height: '36px',
+              width: '44px',
+              height: '44px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '16px',
+              fontSize: '18px',
               cursor: 'pointer',
               color: currentTheme.textPrimary,
               backdropFilter: 'blur(10px)',
-              flexShrink: 0
+              flexShrink: 0,
+              touchAction: 'manipulation',
+              WebkitTapHighlightColor: 'transparent'
             }}
           >
             ←
@@ -778,31 +863,165 @@ export default function StudentHealthyHabits() {
             Healthy Habits
           </h1>
 
-          <button
-            onClick={() => router.push('/student-saints')}
-            style={{
-              backgroundColor: 'rgba(255,255,255,0.3)',
-              border: 'none',
-              borderRadius: '50%',
-              width: '36px',
-              height: '36px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '16px',
-              cursor: 'pointer',
-              color: currentTheme.textPrimary,
-              backdropFilter: 'blur(10px)',
-              flexShrink: 0
-            }}
-          >
-            ♔
-          </button>
+          {/* 🍔 Hamburger Menu */}
+          <div className="nav-menu-container" style={{ position: 'relative' }}>
+            <button
+              onClick={() => {
+                console.log('Hamburger clicked, current state:', showNavMenu);
+                setShowNavMenu(!showNavMenu);
+              }}
+              style={{
+                backgroundColor: 'rgba(255,255,255,0.3)',
+                border: 'none',
+                borderRadius: '50%',
+                width: '44px',
+                height: '44px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '18px',
+                cursor: 'pointer',
+                color: currentTheme.textPrimary,
+                backdropFilter: 'blur(10px)',
+                flexShrink: 0,
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent'
+              }}
+            >
+              ☰
+            </button>
+
+            {/* Dropdown Menu */}
+            {showNavMenu && (
+              <div style={{
+                position: 'absolute',
+                top: '50px',
+                right: '0',
+                backgroundColor: currentTheme.surface,
+                borderRadius: '12px',
+                minWidth: '180px',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                backdropFilter: 'blur(20px)',
+                border: `2px solid ${currentTheme.primary}60`,
+                overflow: 'hidden',
+                zIndex: 9999
+              }}>
+                {navMenuItems.map((item, index) => (
+                  <button
+                    key={item.path}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      console.log('Clicking:', item.path, 'Current:', item.current, 'Item:', item);
+                      setShowNavMenu(false);
+                      if (!item.current) {
+                        setTimeout(() => {
+                          console.log('Navigating to:', item.path);
+                          router.push(item.path);
+                        }, 100);
+                      } else {
+                        console.log('Already on current page, not navigating');
+                      }
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      backgroundColor: item.current ? `${currentTheme.primary}30` : 'transparent',
+                      border: 'none',
+                      borderBottom: index < navMenuItems.length - 1 ? `1px solid ${currentTheme.primary}40` : 'none',
+                      cursor: item.current ? 'default' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      fontSize: '14px',
+                      color: currentTheme.textPrimary,
+                      fontWeight: item.current ? '600' : '500',
+                      textAlign: 'left',
+                      touchAction: 'manipulation',
+                      WebkitTapHighlightColor: 'transparent',
+                      transition: 'background-color 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!item.current) {
+                        e.target.style.backgroundColor = `${currentTheme.primary}20`;
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!item.current) {
+                        e.target.style.backgroundColor = 'transparent';
+                      }
+                    }}
+                  >
+                    <span style={{ fontSize: '16px' }}>{item.icon}</span>
+                    <span>{item.name}</span>
+                    {item.current && (
+                      <span style={{ marginLeft: 'auto', fontSize: '12px', color: currentTheme.primary }}>●</span>
+                    )}
+                  </button>
+                ))}
+                
+                {/* 🔔 Notification Toggle */}
+                <div style={{
+                  padding: '12px 16px',
+                  borderTop: `1px solid ${currentTheme.primary}40`,
+                  backgroundColor: `${currentTheme.primary}10`
+                }}>
+                  <button
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      
+                      if (notificationProcessing) return;
+                      
+                      setNotificationProcessing(true);
+                      console.log('Requesting notifications...');
+                      
+                      try {
+                        const enabled = await requestNotificationPermission();
+                        console.log('Notifications enabled:', enabled);
+                      } catch (error) {
+                        console.error('Notification error:', error);
+                      } finally {
+                        setNotificationProcessing(false);
+                        setTimeout(() => {
+                          setShowNavMenu(false);
+                        }, 1000);
+                      }
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      backgroundColor: notificationsEnabled ? `${currentTheme.primary}30` : currentTheme.surface,
+                      border: `2px solid ${notificationsEnabled ? currentTheme.primary : currentTheme.textSecondary}60`,
+                      borderRadius: '8px',
+                      cursor: notificationProcessing ? 'wait' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      fontSize: '12px',
+                      color: currentTheme.textPrimary,
+                      fontWeight: '600',
+                      touchAction: 'manipulation',
+                      WebkitTapHighlightColor: 'transparent',
+                      transition: 'all 0.2s ease',
+                      opacity: notificationProcessing ? 0.7 : 1
+                    }}
+                  >
+                    <span>
+                      {notificationProcessing ? '⏳' : (notificationsEnabled ? '🔔' : '🔕')}
+                    </span>
+                    <span>
+                      {notificationProcessing ? 'Processing...' : (notificationsEnabled ? 'Notifications On' : 'Enable Notifications')}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* MAIN CONTENT */}
         <div style={{ padding: 'clamp(16px, 5vw, 20px)', maxWidth: '400px', margin: '0 auto' }}>
-          
           {/* TIMER SECTION */}
           <div style={{
             backgroundColor: currentTheme.surface,
@@ -814,7 +1033,7 @@ export default function StudentHealthyHabits() {
           }}>
             {/* Circular Timer */}
             <div style={{ position: 'relative', display: 'inline-block', marginBottom: '20px' }}>
-              <svg 
+              <svg
                 width={svgSize}
                 height={svgSize}
                 viewBox="0 0 200 200"
@@ -840,7 +1059,6 @@ export default function StudentHealthyHabits() {
                   style={{ transition: 'stroke-dasharray 1s ease' }}
                 />
               </svg>
-              
               {/* Timer display */}
               <div style={{
                 position: 'absolute',
@@ -879,10 +1097,10 @@ export default function StudentHealthyHabits() {
             </div>
 
             {/* Timer Controls */}
-            <div style={{ 
-              display: 'flex', 
-              gap: '12px', 
-              justifyContent: 'center', 
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              justifyContent: 'center',
               marginBottom: '16px',
               flexWrap: 'wrap'
             }}>
@@ -930,7 +1148,6 @@ export default function StudentHealthyHabits() {
                   >
                     {isTimerPaused ? '▶️ Resume' : '⏸️ Pause'}
                   </button>
-                  
                   {isTimerPaused ? (
                     <button
                       onClick={handleBankSession}
@@ -990,7 +1207,7 @@ export default function StudentHealthyHabits() {
             }}>
               📈 Today&apos;s Progress
             </h3>
-            
+
             <div style={{
               backgroundColor: readingLevel.color,
               borderRadius: '12px',
@@ -1048,7 +1265,6 @@ export default function StudentHealthyHabits() {
                   minutes today
                 </div>
               </div>
-              
               <div style={{
                 backgroundColor: `${currentTheme.primary}20`,
                 borderRadius: '12px',
@@ -1138,11 +1354,11 @@ export default function StudentHealthyHabits() {
                     minWidth: '32px',
                     height: '48px',
                     borderRadius: '10px',
-                    backgroundColor: day.isFuture ? 
-                      `${currentTheme.primary}10` : 
+                    backgroundColor: day.isFuture ?
+                      `${currentTheme.primary}10` :
                       day.hasReading ? currentTheme.primary : `${currentTheme.primary}20`,
-                    border: day.isToday ? `3px solid ${currentTheme.primary}` : 
-                           day.isRecent ? `1px solid ${currentTheme.primary}60` : 'none',
+                    border: day.isToday ? `3px solid ${currentTheme.primary}` :
+                      day.isRecent ? `1px solid ${currentTheme.primary}60` : 'none',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
@@ -1188,10 +1404,10 @@ export default function StudentHealthyHabits() {
               margin: 0,
               fontWeight: '500'
             }}>
-              {currentStreak >= 30 ? "🏆 30-day streak! Rare saints unlocked!" : 
-               currentStreak >= 7 ? "Amazing! Keep the fire burning! 🔥" : 
-               currentStreak >= 1 ? `Great start! ${currentStreak} day${currentStreak > 1 ? 's' : ''} strong! 💪` :
-               "Read every day to build a healthy habit!"}
+              {currentStreak >= 30 ? "🏆 30-day streak! Rare saints unlocked!" :
+              currentStreak >= 7 ? "Amazing! Keep the fire burning! 🔥" :
+              currentStreak >= 1 ? `Great start! ${currentStreak} day${currentStreak > 1 ? 's' : ''} strong! 💪` :
+              "Read every day to build a healthy habit!"}
             </p>
           </div>
         </div>
@@ -1280,14 +1496,13 @@ export default function StudentHealthyHabits() {
                 margin: '0 0 20px 0',
                 lineHeight: '1.4'
               }}>
-                You were reading <strong style={{ color: currentTheme.textPrimary }}>{currentBookTitle}</strong>. 
+                You were reading <strong style={{ color: currentTheme.textPrimary }}>{currentBookTitle}</strong>.
                 Would you like to mark your progress?
               </p>
-              
-              <div style={{ 
-                display: 'flex', 
-                gap: '12px', 
-                justifyContent: 'center', 
+              <div style={{
+                display: 'flex',
+                gap: '12px',
+                justifyContent: 'center',
                 flexWrap: 'wrap'
               }}>
                 <button
@@ -1311,7 +1526,6 @@ export default function StudentHealthyHabits() {
                 >
                   📝 Update Progress
                 </button>
-                
                 <button
                   onClick={() => setShowBookProgressModal(false)}
                   style={{
@@ -1362,18 +1576,16 @@ export default function StudentHealthyHabits() {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
           }
-          
           @keyframes pulse {
-            0%, 100% { 
-              opacity: 1; 
+            0%, 100% {
+              opacity: 1;
               transform: scale(1);
             }
-            50% { 
-              opacity: 0.8; 
+            50% {
+              opacity: 0.8;
               transform: scale(1.02);
             }
           }
-          
           button {
             -webkit-tap-highlight-color: transparent;
             -webkit-user-select: none;
@@ -1381,17 +1593,14 @@ export default function StudentHealthyHabits() {
             -webkit-touch-callout: none;
             touch-action: manipulation;
           }
-          
           * {
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
           }
-          
           @media screen and (max-width: 480px) {
             input, textarea, select, button {
               font-size: 16px !important;
             }
-            
             body {
               -webkit-text-size-adjust: 100%;
               -ms-text-size-adjust: 100%;
