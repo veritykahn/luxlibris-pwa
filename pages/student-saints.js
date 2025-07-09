@@ -1657,7 +1657,7 @@ export default function StudentSaints() {
                     
                     <div style={{ marginBottom: '12px', textAlign: 'center' }}>
                       <strong style={{ color: currentTheme.textPrimary }}>Sacred Circle</strong><br />
-                      <em>Jesus' chosen twelve disciples plus Mary Magdalene - the original followers who changed everything</em>
+                      <em>Jesus&apos chosen twelve disciples plus Mary Magdalene - the original followers who changed everything</em>
                     </div>
                     
                     <div style={{ marginBottom: '12px', textAlign: 'center' }}>
@@ -1677,12 +1677,12 @@ export default function StudentSaints() {
                     
                     <div style={{ marginBottom: '12px', textAlign: 'center' }}>
                       <strong style={{ color: currentTheme.textPrimary }}>Cherub Chibis</strong><br />
-                      <em>The mighty archangels - heaven's warrior messengers in adorable form</em>
+                      <em>The mighty archangels - heaven&aposs warrior messengers in adorable form</em>
                     </div>
                     
                     <div style={{ marginBottom: '12px', textAlign: 'center' }}>
                       <strong style={{ color: currentTheme.textPrimary }}>Contemplative Cuties</strong><br />
-                      <em>Mystics and visionaries who experienced God's love in extraordinary ways</em>
+                      <em>Mystics and visionaries who experienced God&aposs love in extraordinary ways</em>
                     </div>
                     
                     <div style={{ marginBottom: '12px', textAlign: 'center' }}>
@@ -1722,7 +1722,7 @@ export default function StudentSaints() {
                     
                     <div style={{ marginBottom: '12px', textAlign: 'center' }}>
                       <strong style={{ color: currentTheme.textPrimary }}>Pocket Patrons</strong><br />
-                      <em>Your everyday protectors for life's daily needs and challenges</em>
+                      <em>Your everyday protectors for life&aposs daily needs and challenges</em>
                     </div>
                     
                     <div style={{ marginBottom: '12px', textAlign: 'center' }}>
