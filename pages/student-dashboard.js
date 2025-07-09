@@ -1081,8 +1081,8 @@ export default function StudentDashboard() {
           </div>
         </div>
 
-        {/* WELCOME SECTION - Updated styling to match other pages */}
-        <div style={{ padding: '20px' }}>
+        {/* WELCOME SECTION - Fixed spacing */}
+<div style={{ padding: '0 20px 20px' }}>
           {/* Welcome Card with Competition Countdown */}
           <div style={{
             background: `linear-gradient(135deg, ${currentTheme.primary}, ${currentTheme.primary}CC)`,
