@@ -1702,7 +1702,7 @@ export default function StudentSaints() {
                     
                     <div style={{ marginBottom: '12px', textAlign: 'center' }}>
                       <strong style={{ color: currentTheme.textPrimary }}>Culture Carriers</strong><br />
-                      <em>Beloved patron saints of countries - collect your homeland's heavenly protector</em>
+                      <em>Beloved patron saints of countries - collect your homeland&aposs heavenly protector</em>
                     </div>
                     
                     <div style={{ marginBottom: '12px', textAlign: 'center' }}>
