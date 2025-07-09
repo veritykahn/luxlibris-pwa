@@ -1,5 +1,5 @@
-// pages/student-dashboard.js - COMPLETE VERSION without loading splash
-import { useState, useEffect } from 'react';
+// pages/student-dashboard.js - UPDATED with hamburger menu
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
 import { getStudentDataEntities, getSchoolNomineesEntities } from '../lib/firebase';
@@ -23,6 +23,11 @@ export default function StudentDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [showComingSoon, setShowComingSoon] = useState('');
   
+  // 🍔 HAMBURGER MENU STATE VARIABLES
+  const [showNavMenu, setShowNavMenu] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [notificationProcessing, setNotificationProcessing] = useState(false);
+
   // Enhanced dashboard data
   const [gradeStats, setGradeStats] = useState(null);
   const [schoolStats, setSchoolStats] = useState(null);
@@ -41,6 +46,67 @@ export default function StudentDashboard() {
     currentlyReading: null,
     recentlyCompleted: []
   });
+
+  // 🍔 NAVIGATION MENU ITEMS (Dashboard page is current, but we don't hide it since we have bottom nav too)
+  const navMenuItems = useMemo(() => [
+    { name: 'Dashboard', path: '/student-dashboard', icon: '⌂', current: true },
+    { name: 'Nominees', path: '/student-nominees', icon: '□' },
+    { name: 'Bookshelf', path: '/student-bookshelf', icon: '⚏' },
+    { name: 'Healthy Habits', path: '/student-healthy-habits', icon: '○' },
+    { name: 'Saints', path: '/student-saints', icon: '♔' },
+    { name: 'Stats', path: '/student-stats', icon: '△' }
+    // Note: Settings removed from hamburger menu since Dashboard has dedicated settings button
+  ], []);
+
+  // 🍔 NOTIFICATION FUNCTIONS
+  const requestNotificationPermission = useCallback(async () => {
+    console.log('Starting notification permission request...');
+    
+    if (!('Notification' in window)) {
+      console.log('This browser does not support notifications');
+      alert('This browser does not support notifications');
+      return false;
+    }
+
+    console.log('Current permission:', Notification.permission);
+
+    if (Notification.permission === 'granted') {
+      console.log('Permission already granted');
+      setNotificationsEnabled(true);
+      return true;
+    }
+
+    if (Notification.permission === 'denied') {
+      console.log('Permission was denied');
+      alert('Notifications were blocked. Please enable them in your browser settings.');
+      return false;
+    }
+
+    try {
+      console.log('Requesting permission...');
+      const permission = await Notification.requestPermission();
+      console.log('Permission result:', permission);
+      
+      const enabled = permission === 'granted';
+      setNotificationsEnabled(enabled);
+      
+      if (enabled) {
+        // Test notification
+        new Notification('🎉 Notifications Enabled!', {
+          body: 'You\'ll now get notified when you unlock new saints!',
+          icon: '/images/lux_libris_logo.png'
+        });
+      } else {
+        alert('Notifications were not enabled. You can enable them later in your browser settings.');
+      }
+      
+      return enabled;
+    } catch (error) {
+      console.error('Notification permission error:', error);
+      alert('Error requesting notification permission: ' + error.message);
+      return false;
+    }
+  }, []);
 
   // Theme definitions
   const themes = {
@@ -134,7 +200,41 @@ export default function StudentDashboard() {
     }
   };
 
-  // INTEGRATED HELPER FUNCTIONS
+  // 🍔 useEFFECTS for hamburger menu
+  // Check notification permission on load
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      setNotificationsEnabled(true);
+    }
+  }, []);
+
+  // Close nav menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showNavMenu && !event.target.closest('.nav-menu-container')) {
+        console.log('Clicking outside menu, closing...');
+        setShowNavMenu(false);
+      }
+    };
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape' && showNavMenu) {
+        setShowNavMenu(false);
+      }
+    };
+
+    if (showNavMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscape);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [showNavMenu]);
+
+  // INTEGRATED HELPER FUNCTIONS (keeping all existing functions...)
   
   // Get aggregated grade stats for social competition
   const getGradeStats = async (entityId, schoolId, grade) => {
@@ -771,42 +871,222 @@ export default function StudentDashboard() {
         fontFamily: 'system-ui, -apple-system, sans-serif',
         paddingBottom: '80px'
       }}>
-        {/* Header */}
+        
+        {/* 🍔 UPDATED HEADER WITH HAMBURGER MENU */}
         <div style={{
-          background: `linear-gradient(135deg, ${currentTheme.secondary}, ${currentTheme.secondary}CC)`,
-          padding: '20px 24px 40px',
-          borderRadius: '0 0 20px 20px',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
+          background: `linear-gradient(135deg, ${currentTheme.primary}F0, ${currentTheme.secondary}F0)`,
+          backdropFilter: 'blur(20px)',
+          padding: '30px 20px 12px',
+          position: 'relative',
+          borderRadius: '0 0 25px 25px',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+          zIndex: 100,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
         }}>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '20px'
+          {/* NO BACK ARROW - Dashboard is the main hub */}
+          <div style={{ width: '44px' }}></div>
+
+          <h1 style={{
+            fontSize: '24px',
+            fontWeight: '400',
+            color: currentTheme.textPrimary,
+            margin: '0',
+            letterSpacing: '1px',
+            fontFamily: 'Didot, "Times New Roman", serif',
+            textAlign: 'center',
+            flex: 1
           }}>
-            <h1 style={{
-              fontFamily: 'Didot, serif',
-              fontSize: '20px',
-              color: currentTheme.textPrimary,
-              margin: 0
-            }}>
-              Dashboard
-            </h1>
+            Dashboard
+          </h1>
+
+          {/* Settings & Hamburger Container */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {/* Settings Button */}
             <button
               onClick={() => router.push('/student-settings')}
               style={{
-                background: 'none',
+                backgroundColor: 'rgba(255,255,255,0.3)',
                 border: 'none',
-                color: currentTheme.textPrimary,
-                fontSize: '20px',
+                borderRadius: '50%',
+                width: '44px',
+                height: '44px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '18px',
                 cursor: 'pointer',
-                padding: '4px'
+                color: currentTheme.textPrimary,
+                backdropFilter: 'blur(10px)',
+                flexShrink: 0,
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent'
               }}
             >
               ⚙️
             </button>
-          </div>
 
+            {/* 🍔 Hamburger Menu */}
+            <div className="nav-menu-container" style={{ position: 'relative' }}>
+              <button
+                onClick={() => {
+                  console.log('Hamburger clicked, current state:', showNavMenu);
+                  setShowNavMenu(!showNavMenu);
+                }}
+                style={{
+                  backgroundColor: 'rgba(255,255,255,0.3)',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '44px',
+                  height: '44px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '18px',
+                  cursor: 'pointer',
+                  color: currentTheme.textPrimary,
+                  backdropFilter: 'blur(10px)',
+                  flexShrink: 0,
+                  touchAction: 'manipulation',
+                  WebkitTapHighlightColor: 'transparent'
+                }}
+              >
+                ☰
+              </button>
+
+              {/* Dropdown Menu */}
+              {showNavMenu && (
+                <div style={{
+                  position: 'absolute',
+                  top: '50px',
+                  right: '0',
+                  backgroundColor: currentTheme.surface,
+                  borderRadius: '12px',
+                  minWidth: '180px',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                  backdropFilter: 'blur(20px)',
+                  border: `2px solid ${currentTheme.primary}60`,
+                  overflow: 'hidden',
+                  zIndex: 9999
+                }}>
+                  {navMenuItems.map((item, index) => (
+                    <button
+                      key={item.path}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log('Clicking:', item.path, 'Current:', item.current, 'Item:', item);
+                        setShowNavMenu(false);
+                        if (!item.current) {
+                          setTimeout(() => {
+                            console.log('Navigating to:', item.path);
+                            router.push(item.path);
+                          }, 100);
+                        } else {
+                          console.log('Already on current page, not navigating');
+                        }
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        backgroundColor: item.current ? `${currentTheme.primary}30` : 'transparent',
+                        border: 'none',
+                        borderBottom: index < navMenuItems.length - 1 ? `1px solid ${currentTheme.primary}40` : 'none',
+                        cursor: item.current ? 'default' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        fontSize: '14px',
+                        color: currentTheme.textPrimary,
+                        fontWeight: item.current ? '600' : '500',
+                        textAlign: 'left',
+                        touchAction: 'manipulation',
+                        WebkitTapHighlightColor: 'transparent',
+                        transition: 'background-color 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!item.current) {
+                          e.target.style.backgroundColor = `${currentTheme.primary}20`;
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!item.current) {
+                          e.target.style.backgroundColor = 'transparent';
+                        }
+                      }}
+                    >
+                      <span style={{ fontSize: '16px' }}>{item.icon}</span>
+                      <span>{item.name}</span>
+                      {item.current && (
+                        <span style={{ marginLeft: 'auto', fontSize: '12px', color: currentTheme.primary }}>●</span>
+                      )}
+                    </button>
+                  ))}
+                  
+                  {/* 🔔 Notification Toggle */}
+                  <div style={{
+                    padding: '12px 16px',
+                    borderTop: `1px solid ${currentTheme.primary}40`,
+                    backgroundColor: `${currentTheme.primary}10`
+                  }}>
+                    <button
+                      onClick={async (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        if (notificationProcessing) return;
+                        
+                        setNotificationProcessing(true);
+                        console.log('Requesting notifications...');
+                        
+                        try {
+                          const enabled = await requestNotificationPermission();
+                          console.log('Notifications enabled:', enabled);
+                        } catch (error) {
+                          console.error('Notification error:', error);
+                        } finally {
+                          setNotificationProcessing(false);
+                          setTimeout(() => {
+                            setShowNavMenu(false);
+                          }, 1000);
+                        }
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        backgroundColor: notificationsEnabled ? `${currentTheme.primary}30` : currentTheme.surface,
+                        border: `2px solid ${notificationsEnabled ? currentTheme.primary : currentTheme.textSecondary}60`,
+                        borderRadius: '8px',
+                        cursor: notificationProcessing ? 'wait' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        fontSize: '12px',
+                        color: currentTheme.textPrimary,
+                        fontWeight: '600',
+                        touchAction: 'manipulation',
+                        WebkitTapHighlightColor: 'transparent',
+                        transition: 'all 0.2s ease',
+                        opacity: notificationProcessing ? 0.7 : 1
+                      }}
+                    >
+                      <span>
+                        {notificationProcessing ? '⏳' : (notificationsEnabled ? '🔔' : '🔕')}
+                      </span>
+                      <span>
+                        {notificationProcessing ? 'Processing...' : (notificationsEnabled ? 'Notifications On' : 'Enable Notifications')}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* WELCOME SECTION - Updated styling to match other pages */}
+        <div style={{ padding: '20px' }}>
           {/* Welcome Card with Competition Countdown */}
           <div style={{
             background: `linear-gradient(135deg, ${currentTheme.primary}, ${currentTheme.primary}CC)`,
@@ -861,8 +1141,8 @@ export default function StudentDashboard() {
           </div>
         </div>
 
-        {/* Content */}
-        <div style={{ padding: '20px' }}>
+        {/* CONTENT - keeping all existing content sections... */}
+        <div style={{ padding: '0 20px 20px' }}>
           
           {/* Action Items - What Should I Do Next? */}
           {actionItems.length > 0 && (
@@ -1460,7 +1740,7 @@ export default function StudentDashboard() {
           </div>
         </div>
 
-        {/* Bottom Navigation */}
+        {/* Bottom Navigation - KEEP AS-IS */}
         <div style={{
           position: 'fixed',
           bottom: 0,
@@ -1565,7 +1845,7 @@ export default function StudentDashboard() {
   );
 }
 
-// Progress Wheel Component
+// Progress Wheel Component - KEEP AS-IS
 function ProgressWheel({ title, current, goal, color, emoji }) {
   const progress = goal > 0 ? Math.min(current / goal, 1.0) : 0;
   const circumference = 2 * Math.PI * 35;
@@ -1639,7 +1919,7 @@ function ProgressWheel({ title, current, goal, color, emoji }) {
   );
 }
 
-// Quick Action Button Component
+// Quick Action Button Component - KEEP AS-IS
 function QuickActionButton({ emoji, label, onClick, theme }) {
   return (
     <button
@@ -1677,7 +1957,7 @@ function QuickActionButton({ emoji, label, onClick, theme }) {
   );
 }
 
-// Stat Chip Component
+// Stat Chip Component - KEEP AS-IS
 function StatChip({ emoji, value, label, color }) {
   return (
     <div style={{

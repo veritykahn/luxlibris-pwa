@@ -24,6 +24,7 @@ export default function StudentNominees() {
 
   // 🍔 NAVIGATION MENU ITEMS (Nominees page is current)
   const navMenuItems = useMemo(() => [
+{ name: 'Dashboard', path: '/student-dashboard', icon: '⌂' },
  { name: 'Nominees', path: '/student-nominees', icon: '□', current: true }, // ✅ Correct
  { name: 'Bookshelf', path: '/student-bookshelf', icon: '⚏' },
  { name: 'Healthy Habits', path: '/student-healthy-habits', icon: '○' },
@@ -561,9 +562,9 @@ export default function StudentNominees() {
           }}>
             <button
               onClick={() => {
-                console.log('Back button clicked, going to dashboard');
-                router.push('/student-dashboard');
-              }}
+  console.log('Back button clicked, going back');
+  router.back();
+}}
               style={{
                 backgroundColor: 'rgba(255,255,255,0.3)',
                 border: 'none',
@@ -827,9 +828,9 @@ export default function StudentNominees() {
         }}>
           <button
             onClick={() => {
-              console.log('Back button clicked, going to dashboard');
-              router.push('/student-dashboard');
-            }}
+  console.log('Back button clicked, going back');
+  router.back();
+}}
             style={{
               backgroundColor: 'rgba(255,255,255,0.3)',
               border: 'none',
