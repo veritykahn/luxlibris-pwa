@@ -2307,7 +2307,7 @@ Visit luxlibris.org to learn more about our reading program.
                   color: currentTheme.textPrimary,
                   fontStyle: 'italic'
                 }}>
-                  You&aposre {Math.round((personalStats.booksThisYear / personalStats.nextTier.books) * 100)}% there!
+                  You are {Math.round((personalStats.booksThisYear / personalStats.nextTier.books) * 100)}% there!
                 </div>
               </div>
             </div>

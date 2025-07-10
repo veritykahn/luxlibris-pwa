@@ -1,4 +1,4 @@
-// pages/sign-in.js - FIXED for Teacher Join Code System
+// pages/sign-in.js - Updated with Personal Password Support
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
@@ -11,13 +11,15 @@ export default function SignIn() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showSessionExpiredMessage, setShowSessionExpiredMessage] = useState(false);
+
   const [formData, setFormData] = useState({
     accountType: '',
     username: '',
     teacherCode: '',
+    personalPassword: '', // NEW: Personal password field
     email: '',
     password: '',
-    teacherJoinCode: '' // Changed from schoolCode to teacherJoinCode
+    teacherJoinCode: ''
   });
 
   // Check for session expired message
@@ -32,7 +34,7 @@ export default function SignIn() {
       type: 'student',
       title: 'Student',
       icon: '📚',
-      description: 'Sign in with your username and teacher code',
+      description: 'Sign in with your username, teacher code, and personal password',
       buttonText: 'Student Sign In'
     },
     {
@@ -60,8 +62,37 @@ export default function SignIn() {
     
     setFormData({ ...formData, accountType: type });
     setError('');
-    setShowSessionExpiredMessage(false); // Hide session message when selecting account type
+    setShowSessionExpiredMessage(false);
+
     setStep(2);
+  };
+
+  // NEW: Validate personal password
+  const isPasswordValid = (password) => {
+    return password && password.length >= 5 && /^[a-z]+$/.test(password);
+  };
+
+  // Perform student sign-in with enhanced authentication
+  const performStudentSignIn = async () => {
+    try {
+      console.log('🔐 Attempting student sign-in with enhanced authentication...');
+      console.log('👤 Username:', formData.username);
+      console.log('🏫 Teacher Code:', formData.teacherCode);
+
+      // Use the updated 3-parameter function
+      await authHelpers.signInStudentWithTeacherCode(
+        formData.username, 
+        formData.teacherCode.toUpperCase(),
+        formData.personalPassword.toLowerCase()
+      );
+      
+      console.log('✅ Student sign-in successful - redirecting to dashboard');
+      router.push('/student-dashboard');
+      
+    } catch (error) {
+      console.error('❌ Student sign-in error:', error);
+      throw error;
+    }
   };
 
   const handleSignIn = async () => {
@@ -71,19 +102,19 @@ export default function SignIn() {
     try {
       if (formData.accountType === 'student') {
         if (!formData.username.trim() || !formData.teacherCode.trim()) {
-          setError('Please enter both your username and teacher code');
+          setError('Please enter your username and teacher code');
           setLoading(false);
           return;
         }
 
-        console.log('🔐 Attempting student sign-in with teacher code...');
-        console.log('👤 Username:', formData.username);
-        console.log('🏫 Teacher Code:', formData.teacherCode);
+        if (!formData.personalPassword.trim()) {
+          setError('Please enter your personal password');
+          setLoading(false);
+          return;
+        }
 
-        await authHelpers.signInStudentWithTeacherCode(formData.username, formData.teacherCode.toUpperCase());
-        
-        console.log('✅ Student sign-in successful - redirecting to dashboard');
-        router.push('/student-dashboard');
+        // Handle student sign-in
+        await performStudentSignIn();
         
       } else if (formData.accountType === 'educator') {
         if (!formData.email || !formData.password || !formData.teacherJoinCode) {
@@ -96,7 +127,7 @@ export default function SignIn() {
         console.log('📧 Email:', formData.email);
         console.log('🏫 Teacher Join Code:', formData.teacherJoinCode);
 
-        // FIXED: Use the new teacher verification function
+        // Use the teacher verification function
         const teacherAccess = await dbHelpers.verifyTeacherAccess(formData.email, formData.teacherJoinCode.toUpperCase());
         if (!teacherAccess.valid) {
           setError(teacherAccess.error);
@@ -216,6 +247,8 @@ export default function SignIn() {
             </div>
           )}
 
+
+
           {/* Step 1: Account Type Selection */}
           {step === 1 && (
             <div>
@@ -261,7 +294,7 @@ export default function SignIn() {
                       }
                     }}
                   >
-                    <div style={{ fontSize: '2rem' }}>{account.icon}</div>
+                  <div style={{ fontSize: '2rem' }}>{account.icon}</div>
                     <div style={{ flex: 1 }}>
                       <h3 style={{
                         fontSize: '1.125rem',
@@ -307,7 +340,7 @@ export default function SignIn() {
                 {accountTypes.find(a => a.type === formData.accountType)?.buttonText}
               </h2>
 
-              {/* Student Sign In */}
+              {/* Student Sign In - UPDATED */}
               {formData.accountType === 'student' && (
                 <div>
                   <p style={{
@@ -317,7 +350,7 @@ export default function SignIn() {
                     marginBottom: '1.5rem',
                     lineHeight: '1.4'
                   }}>
-                    Enter your username and teacher code to sign in
+                    Enter your username, teacher code, and personal password to sign in
                   </p>
 
                   <div style={{ marginBottom: '1rem' }}>
@@ -366,7 +399,7 @@ export default function SignIn() {
                     </p>
                   </div>
 
-                  <div style={{ marginBottom: '1.5rem' }}>
+                  <div style={{ marginBottom: '1rem' }}>
                     <label style={{
                       display: 'block',
                       fontSize: '0.875rem',
@@ -374,7 +407,7 @@ export default function SignIn() {
                       color: '#374151',
                       marginBottom: '0.5rem'
                     }}>
-                      Teacher Code (Your Password)
+                      Teacher Code
                     </label>
                     <input
                       type="password"
@@ -412,26 +445,75 @@ export default function SignIn() {
                     </p>
                   </div>
 
-                  <div style={{
-                    background: 'rgba(173, 212, 234, 0.1)',
-                    border: '1px solid rgba(173, 212, 234, 0.3)',
-                    borderRadius: '0.5rem',
-                    padding: '1rem',
-                    marginBottom: '1.5rem'
-                  }}>
-                    <p style={{
-                      color: '#223848',
+                  {/* NEW: Personal Password Field */}
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <label style={{
+                      display: 'block',
                       fontSize: '0.875rem',
-                      margin: 0,
-                      lineHeight: '1.4'
+                      fontWeight: '600',
+                      color: '#374151',
+                      marginBottom: '0.5rem'
                     }}>
-                      💡 <strong>Simple Sign-In:</strong> Your username was shown when you created your account, and your password is your teacher code!
+                      Your Personal Password
+                    </label>
+                    <input
+                      type="password"
+                      value={formData.personalPassword}
+                      onChange={(e) => setFormData(prev => ({ 
+                        ...prev, 
+                        personalPassword: e.target.value.toLowerCase().replace(/[^a-z]/g, '')
+                      }))}
+                      placeholder="your personal password"
+                      maxLength={20}
+                      style={{
+                        width: '100%',
+                        padding: '0.875rem',
+                        border: '2px solid #e5e7eb',
+                        borderRadius: '0.75rem',
+                        fontSize: '1rem',
+                        boxSizing: 'border-box',
+                        transition: 'border-color 0.2s',
+                        outline: 'none',
+                        textAlign: 'center',
+                        fontWeight: 'bold',
+                        letterSpacing: '0.05em',
+                        color: '#1f2937',
+                        backgroundColor: 'white'
+                      }}
+                      onFocus={(e) => e.target.style.borderColor = '#ADD4EA'}
+                      onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+                    />
+                    <p style={{
+                      fontSize: '0.75rem',
+                      color: '#6b7280',
+                      margin: '0.5rem 0 0 0',
+                      textAlign: 'center'
+                    }}>
+                      The simple password you chose when creating your account
                     </p>
                   </div>
+
+
+                    <div style={{
+                      background: 'rgba(173, 212, 234, 0.1)',
+                      border: '1px solid rgba(173, 212, 234, 0.3)',
+                      borderRadius: '0.5rem',
+                      padding: '1rem',
+                      marginBottom: '1.5rem'
+                    }}>
+                      <p style={{
+                        color: '#223848',
+                        fontSize: '0.875rem',
+                        margin: 0,
+                        lineHeight: '1.4'
+                      }}>
+                        🔐 <strong>Secure Sign-In:</strong> Your username and teacher code identify you, and your personal password keeps your account safe!
+                      </p>
+                    </div>
                 </div>
               )}
 
-              {/* Educator Sign In - UPDATED */}
+              {/* Educator Sign In - UNCHANGED */}
               {formData.accountType === 'educator' && (
                 <div>
                   <p style={{
@@ -653,7 +735,14 @@ export default function SignIn() {
             {step === 2 && formData.accountType !== 'parent' && (
               <button
                 onClick={handleSignIn}
-                disabled={loading}
+                disabled={
+                  loading || 
+                  (formData.accountType === 'student' && (
+                    !formData.username.trim() || 
+                    !formData.teacherCode.trim() || 
+                    !formData.personalPassword.trim()
+                  ))
+                }
                 style={{
                   flex: 2,
                   padding: '0.875rem 1.5rem',
@@ -665,13 +754,28 @@ export default function SignIn() {
                   borderRadius: '0.75rem',
                   fontSize: '1rem',
                   fontWeight: '600',
-                  cursor: loading ? 'not-allowed' : 'pointer',
+                  cursor: (
+                    loading || 
+                    (formData.accountType === 'student' && (
+                      !formData.username.trim() || 
+                      !formData.teacherCode.trim() || 
+                      !formData.personalPassword.trim()
+                    ))
+                  ) ? 'not-allowed' : 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '0.5rem',
                   minHeight: '48px',
-                  minWidth: '120px'
+                  minWidth: '120px',
+                  opacity: (
+                    loading || 
+                    (formData.accountType === 'student' && (
+                      !formData.username.trim() || 
+                      !formData.teacherCode.trim() || 
+                      !formData.personalPassword.trim()
+                    ))
+                  ) ? 0.7 : 1
                 }}
               >
                 {loading && (
@@ -684,7 +788,7 @@ export default function SignIn() {
                     animation: 'spin 1s linear infinite'
                   }}></div>
                 )}
-                Sign In
+                {loading ? 'Signing In...' : 'Sign In'}
               </button>
             )}
           </div>

@@ -1,8 +1,8 @@
-// pages/student-settings.js - FIXED SIGN OUT REDIRECT
+// pages/student-settings.js - Updated with Personal Password Management
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
-import { getStudentDataEntities, updateStudentDataEntities, getSchoolNomineesEntities } from '../lib/firebase';
+import { getStudentDataEntities, updateStudentDataEntities, getSchoolNomineesEntities, dbHelpers } from '../lib/firebase';
 import { createParentInviteCode } from '../lib/parentLinking';
 import Head from 'next/head'
 
@@ -114,6 +114,14 @@ export default function StudentSettings() {
   const [timerDuration, setTimerDuration] = useState(20);
   const [maxNominees, setMaxNominees] = useState(100); // Max 100 books per year
 
+  // NEW: Personal Password Management State
+  const [showPasswordSection, setShowPasswordSection] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+
   // 🍔 HAMBURGER MENU STATE VARIABLES
   const [showNavMenu, setShowNavMenu] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
@@ -129,6 +137,11 @@ export default function StudentSettings() {
   { name: 'Stats', path: '/student-stats', icon: '△' },
   { name: 'Settings', path: '/student-settings', icon: '⚙', current: true }
 ], []);
+
+  // NEW: Password validation function
+  const isPasswordValid = useCallback((password) => {
+    return password && password.length >= 5 && /^[a-z]+$/.test(password);
+  }, []);
 
   // 🍔 NOTIFICATION FUNCTIONS
   const requestNotificationPermission = useCallback(async () => {
@@ -304,7 +317,7 @@ export default function StudentSettings() {
       setStudentData(updatedData);
       setCurrentTheme(themes[selectedThemePreview]);
       
-      setShowSuccess('✨ Theme saved! Your bookshelf looks amazing!');
+      setShowSuccess('✨ Theme saved! Your bookshelf and saints collection look amazing!');
       setTimeout(() => setShowSuccess(''), 3000);
       
     } catch (error) {
@@ -367,6 +380,60 @@ export default function StudentSettings() {
       console.error('❌ Error saving timer:', error);
       setShowSuccess('❌ Error saving timer. Please try again.');
       setTimeout(() => setShowSuccess(''), 3000);
+    }
+    setIsSaving(false);
+  };
+
+  // NEW: Password change functionality
+  const handlePasswordChange = async () => {
+    setPasswordError('');
+    setIsSaving(true);
+    
+    try {
+      // Validate current password
+      if (currentPassword !== studentData.personalPassword) {
+        setPasswordError('Current password is incorrect');
+        setIsSaving(false);
+        return;
+      }
+      
+      // Validate new password
+      if (!isPasswordValid(newPassword)) {
+        setPasswordError('New password must be at least 5 lowercase letters');
+        setIsSaving(false);
+        return;
+      }
+      
+      // Same password check
+      if (currentPassword === newPassword) {
+        setPasswordError('New password must be different from current password');
+        setIsSaving(false);
+        return;
+      }
+      
+      // Update password
+      await dbHelpers.updateStudentPersonalPassword(
+        studentData.id, 
+        studentData.entityId, 
+        studentData.schoolId, 
+        newPassword
+      );
+      
+      // Update local state
+      const updatedData = { ...studentData, personalPassword: newPassword };
+      setStudentData(updatedData);
+      
+      // Reset form
+      setCurrentPassword('');
+      setNewPassword('');
+      setShowPasswordSection(false);
+      
+      setShowSuccess('🔐 Personal password updated successfully!');
+      setTimeout(() => setShowSuccess(''), 3000);
+      
+    } catch (error) {
+      console.error('❌ Error updating password:', error);
+      setPasswordError('Failed to update password. Please try again.');
     }
     setIsSaving(false);
   };
@@ -721,6 +788,238 @@ export default function StudentSettings() {
                 </p>
               </div>
             </div>
+          </div>
+
+          {/* NEW: Personal Password Section */}
+          <div style={{
+            backgroundColor: previewTheme.surface,
+            borderRadius: '16px',
+            padding: '20px',
+            marginBottom: '24px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <h2 style={{
+                fontSize: '18px',
+                fontWeight: 'bold',
+                color: previewTheme.textPrimary,
+                margin: 0
+              }}>
+                🔐 Personal Password
+              </h2>
+              <button
+                onClick={() => setShowPasswordSection(!showPasswordSection)}
+                style={{
+                  backgroundColor: showPasswordSection ? `${previewTheme.secondary}30` : previewTheme.primary,
+                  color: previewTheme.textPrimary,
+                  border: 'none',
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                {showPasswordSection ? 'Cancel' : 'Change Password'}
+              </button>
+            </div>
+            
+            {!showPasswordSection ? (
+              <div>
+                <p style={{
+                  fontSize: '14px',
+                  color: previewTheme.textSecondary,
+                  marginBottom: '12px'
+                }}>
+                  Your personal password keeps your account secure from other students.
+                </p>
+                <div style={{
+                  backgroundColor: `${previewTheme.primary}20`,
+                  border: `1px solid ${previewTheme.primary}50`,
+                  borderRadius: '8px',
+                  padding: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px'
+                }}>
+                  <span style={{ fontSize: '14px', color: previewTheme.textPrimary }}>
+                    Current password: 
+                  </span>
+                  <code style={{
+                    backgroundColor: previewTheme.surface,
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    fontFamily: 'monospace',
+                    fontSize: '14px',
+                    color: previewTheme.textPrimary,
+                    border: `1px solid ${previewTheme.primary}30`
+                  }}>
+                    {studentData.personalPassword}
+                  </code>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{
+                    display: 'block',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: previewTheme.textPrimary,
+                    marginBottom: '6px'
+                  }}>
+                    Current Password
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showCurrentPassword ? 'text' : 'password'}
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value.toLowerCase().replace(/[^a-z]/g, ''))}
+                      placeholder="Enter your current password"
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        paddingRight: '40px',
+                        border: `2px solid ${previewTheme.primary}50`,
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        fontFamily: 'monospace',
+                        backgroundColor: previewTheme.background
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                      style={{
+                        position: 'absolute',
+                        right: '10px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        fontSize: '16px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {showCurrentPassword ? '🙈' : '👁️'}
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{
+                    display: 'block',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: previewTheme.textPrimary,
+                    marginBottom: '6px'
+                  }}>
+                    New Password
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showNewPassword ? 'text' : 'password'}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value.toLowerCase().replace(/[^a-z]/g, ''))}
+                      placeholder="Enter your new password"
+                      maxLength={20}
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        paddingRight: '40px',
+                        border: `2px solid ${isPasswordValid(newPassword) ? previewTheme.primary : '#e5e7eb'}`,
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        fontFamily: 'monospace',
+                        backgroundColor: previewTheme.background
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      style={{
+                        position: 'absolute',
+                        right: '10px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        fontSize: '16px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {showNewPassword ? '🙈' : '👁️'}
+                    </button>
+                  </div>
+                  
+                  {/* Password requirements */}
+                  <div style={{
+                    backgroundColor: `${previewTheme.primary}10`,
+                    border: `1px solid ${previewTheme.primary}30`,
+                    borderRadius: '6px',
+                    padding: '8px',
+                    marginTop: '8px',
+                    fontSize: '12px'
+                  }}>
+                    <ul style={{ margin: 0, paddingLeft: '16px', color: previewTheme.textSecondary }}>
+                      <li style={{ color: newPassword.length >= 5 ? '#10b981' : previewTheme.textSecondary }}>
+                        At least 5 letters {newPassword.length >= 5 ? '✓' : ''}
+                      </li>
+                      <li style={{ color: /^[a-z]*$/.test(newPassword) ? '#10b981' : previewTheme.textSecondary }}>
+                        Only lowercase letters {/^[a-z]*$/.test(newPassword) ? '✓' : ''}
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+
+                {passwordError && (
+                  <div style={{
+                    backgroundColor: '#fef2f2',
+                    border: '1px solid #fca5a5',
+                    borderRadius: '8px',
+                    padding: '8px 12px',
+                    marginBottom: '16px'
+                  }}>
+                    <p style={{ color: '#dc2626', fontSize: '14px', margin: 0 }}>
+                      {passwordError}
+                    </p>
+                  </div>
+                )}
+
+                <button
+                  onClick={handlePasswordChange}
+                  disabled={
+                    isSaving || 
+                    !currentPassword.trim() || 
+                    !isPasswordValid(newPassword) ||
+                    currentPassword === newPassword
+                  }
+                  style={{
+                    backgroundColor: previewTheme.primary,
+                    color: previewTheme.textPrimary,
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: (
+                      isSaving || 
+                      !currentPassword.trim() || 
+                      !isPasswordValid(newPassword) ||
+                      currentPassword === newPassword
+                    ) ? 'not-allowed' : 'pointer',
+                    opacity: (
+                      isSaving || 
+                      !currentPassword.trim() || 
+                      !isPasswordValid(newPassword) ||
+                      currentPassword === newPassword
+                    ) ? 0.7 : 1
+                  }}
+                >
+                  {isSaving ? 'Updating...' : 'Update Password'}
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Reading Goal Section */}

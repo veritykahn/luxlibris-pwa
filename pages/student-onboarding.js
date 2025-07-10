@@ -1,4 +1,4 @@
-// pages/student-onboarding.js - Clean Production Version
+// pages/student-onboarding.js - Updated with Personal Password Step
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { db } from '../lib/firebase';
@@ -18,6 +18,7 @@ export default function StudentOnboarding() {
     firstName: '',
     lastInitial: '',
     grade: 4,
+    personalPassword: '', // NEW: Personal password field
     teacherId: '',
     entityId: '',
     schoolId: '',
@@ -180,7 +181,7 @@ export default function StudentOnboarding() {
   };
 
   const handleNext = () => {
-    if (currentStep < 3) {
+    if (currentStep < 4) { // Updated: Now 5 steps (0-4)
       setCurrentStep(currentStep + 1);
     } else {
       completeOnboarding();
@@ -193,14 +194,24 @@ export default function StudentOnboarding() {
     }
   };
 
+  // Validation function for personal password
+  const isPasswordValid = (password) => {
+    return password && password.length >= 5 && /^[a-z]+$/.test(password);
+  };
+
   const completeOnboarding = async () => {
     setIsLoading(true);
     setError('');
     
     try {
       // Validate required data
-      if (!formData.firstName || !formData.lastInitial || !formData.teacherId || !formData.entityId || !formData.schoolId) {
+      if (!formData.firstName || !formData.lastInitial || !formData.personalPassword || !formData.teacherId || !formData.entityId || !formData.schoolId) {
         throw new Error('Missing required information');
+      }
+
+      // Validate personal password
+      if (!isPasswordValid(formData.personalPassword)) {
+        throw new Error('Personal password must be at least 5 letters (lowercase only)');
       }
 
       // Verify teacher exists
@@ -235,6 +246,7 @@ export default function StudentOnboarding() {
         authEmail: studentEmail,
         displayUsername: displayUsername,
         signInCode: formData.teacherJoinCode,
+        personalPassword: formData.personalPassword.toLowerCase(), // Store lowercase personal password
         
         // Personal info
         firstName: formData.firstName,
@@ -398,6 +410,32 @@ export default function StudentOnboarding() {
                 </p>
               </div>
               
+              {/* NEW: Personal Password Display */}
+              <div style={{
+                backgroundColor: `${selectedTheme.secondary}20`,
+                border: `1px solid ${selectedTheme.secondary}50`,
+                borderRadius: '12px',
+                padding: '16px',
+                marginBottom: '16px'
+              }}>
+                <p style={{
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: selectedTheme.textPrimary,
+                  marginBottom: '8px'
+                }}>
+                  Your Personal Password:
+                </p>
+                <p style={{
+                  fontSize: '20px',
+                  fontWeight: 'bold',
+                  color: selectedTheme.secondary,
+                  fontFamily: 'monospace'
+                }}>
+                  {formData.personalPassword}
+                </p>
+              </div>
+              
               {/* Teacher Code Display */}
               <div style={{
                 backgroundColor: `${selectedTheme.accent}20`,
@@ -412,7 +450,7 @@ export default function StudentOnboarding() {
                   color: selectedTheme.textPrimary,
                   marginBottom: '8px'
                 }}>
-                  Your Password (Teacher Code):
+                  Your Teacher Code:
                 </p>
                 <p style={{
                   fontSize: '18px',
@@ -430,7 +468,7 @@ export default function StudentOnboarding() {
                 marginBottom: '24px',
                 fontStyle: 'italic'
               }}>
-                Write these down! You&apos;ll need them to sign in.
+                Write these down! You&apos;ll need all three to sign in.
               </p>
               
               <button
@@ -473,7 +511,7 @@ export default function StudentOnboarding() {
         {/* Progress Indicator */}
         <div style={{ padding: '16px 24px' }}>
           <div style={{ display: 'flex', gap: '8px' }}>
-            {[0, 1, 2, 3].map(step => (
+            {[0, 1, 2, 3, 4].map(step => ( // Updated: Now 5 steps
               <div
                 key={step}
                 style={{
@@ -525,7 +563,16 @@ export default function StudentOnboarding() {
                 grades={grades} 
               />
             )}
+            {/* NEW: Personal Password Step */}
             {currentStep === 2 && (
+              <PasswordPage 
+                formData={formData} 
+                setFormData={setFormData} 
+                selectedTheme={selectedTheme}
+                isPasswordValid={isPasswordValid}
+              />
+            )}
+            {currentStep === 3 && (
               <GoalPage 
                 formData={formData} 
                 setFormData={setFormData} 
@@ -533,7 +580,7 @@ export default function StudentOnboarding() {
                 bookGoals={bookGoals} 
               />
             )}
-            {currentStep === 3 && (
+            {currentStep === 4 && (
               <ThemePage 
                 formData={formData} 
                 setFormData={setFormData} 
@@ -567,7 +614,11 @@ export default function StudentOnboarding() {
 
             <button
               onClick={handleNext}
-              disabled={isLoading || (currentStep === 1 && (!formData.firstName || !formData.lastInitial))}
+              disabled={
+                isLoading || 
+                (currentStep === 1 && (!formData.firstName || !formData.lastInitial)) ||
+                (currentStep === 2 && !isPasswordValid(formData.personalPassword))
+              }
               style={{
                 backgroundColor: selectedTheme.primary,
                 color: selectedTheme.textPrimary,
@@ -578,10 +629,14 @@ export default function StudentOnboarding() {
                 fontWeight: '600',
                 cursor: 'pointer',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                opacity: (isLoading || (currentStep === 1 && (!formData.firstName || !formData.lastInitial))) ? 0.7 : 1
+                opacity: (
+                  isLoading || 
+                  (currentStep === 1 && (!formData.firstName || !formData.lastInitial)) ||
+                  (currentStep === 2 && !isPasswordValid(formData.personalPassword))
+                ) ? 0.7 : 1
               }}
             >
-              {isLoading ? 'Creating Profile...' : currentStep < 3 ? 'Next' : 'Create Profile!'}
+              {isLoading ? 'Creating Profile...' : currentStep < 4 ? 'Next' : 'Create Profile!'}
             </button>
           </div>
         </div>
@@ -776,6 +831,165 @@ function InfoPage({ formData, setFormData, selectedTheme, grades }) {
               {grade}th Grade
             </button>
           ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// NEW: Personal Password Page
+function PasswordPage({ formData, setFormData, selectedTheme, isPasswordValid }) {
+  const [showPassword, setShowPassword] = useState(false);
+  
+  return (
+    <div style={{ maxWidth: '400px', margin: '0 auto', textAlign: 'center' }}>
+      <h2 style={{
+        fontSize: '24px',
+        fontWeight: 'bold',
+        color: selectedTheme.textPrimary,
+        fontFamily: 'Didot, serif',
+        marginBottom: '16px'
+      }}>
+        Create Your Personal Password
+      </h2>
+      
+      <p style={{
+        color: `${selectedTheme.textPrimary}CC`,
+        fontSize: '16px',
+        lineHeight: '1.4',
+        marginBottom: '32px'
+      }}>
+        This is just for you! Make it simple and easy to remember.
+      </p>
+
+      <div style={{ marginBottom: '24px' }}>
+        <label style={{
+          fontSize: '16px',
+          fontWeight: '600',
+          color: selectedTheme.textPrimary,
+          display: 'block',
+          marginBottom: '12px',
+          textAlign: 'left'
+        }}>
+          Your Personal Password
+        </label>
+        
+        <div style={{ position: 'relative' }}>
+          <input
+            type={showPassword ? "text" : "password"}
+            value={formData.personalPassword}
+            onChange={(e) => setFormData({
+              ...formData, 
+              personalPassword: e.target.value.toLowerCase().replace(/[^a-z]/g, '')
+            })}
+            placeholder="at least 5 letters"
+            maxLength={20}
+            style={{
+              width: '100%',
+              padding: '16px',
+              paddingRight: '50px',
+              borderRadius: '12px',
+              border: `2px solid ${isPasswordValid(formData.personalPassword) ? selectedTheme.primary : '#e5e7eb'}`,
+              backgroundColor: selectedTheme.surface,
+              color: selectedTheme.textPrimary,
+              fontSize: '18px',
+              fontFamily: 'monospace',
+              textAlign: 'center',
+              transition: 'border-color 0.2s ease'
+            }}
+          />
+          
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            style={{
+              position: 'absolute',
+              right: '12px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              background: 'none',
+              border: 'none',
+              fontSize: '20px',
+              cursor: 'pointer'
+            }}
+          >
+            {showPassword ? '🙈' : '👁️'}
+          </button>
+        </div>
+        
+        {/* Password Rules */}
+        <div style={{
+          backgroundColor: `${selectedTheme.primary}10`,
+          border: `1px solid ${selectedTheme.primary}30`,
+          borderRadius: '8px',
+          padding: '12px',
+          marginTop: '12px',
+          textAlign: 'left'
+        }}>
+          <p style={{
+            fontSize: '14px',
+            color: selectedTheme.textPrimary,
+            margin: '0 0 8px 0',
+            fontWeight: '600'
+          }}>
+            Password Rules:
+          </p>
+          <ul style={{
+            fontSize: '13px',
+            color: `${selectedTheme.textPrimary}CC`,
+            margin: 0,
+            paddingLeft: '16px'
+          }}>
+            <li style={{ 
+              color: formData.personalPassword.length >= 5 ? '#10b981' : `${selectedTheme.textPrimary}CC`,
+              marginBottom: '4px'
+            }}>
+              At least 5 letters {formData.personalPassword.length >= 5 ? '✓' : ''}
+            </li>
+            <li style={{ 
+              color: /^[a-z]*$/.test(formData.personalPassword) ? '#10b981' : `${selectedTheme.textPrimary}CC`,
+              marginBottom: '4px'
+            }}>
+              Only lowercase letters (a-z) {/^[a-z]*$/.test(formData.personalPassword) ? '✓' : ''}
+            </li>
+            <li style={{ 
+              color: `${selectedTheme.textPrimary}CC`
+            }}>
+              Easy to remember (like "books" or "reading")
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      {/* Example suggestions */}
+      <div style={{
+        backgroundColor: `${selectedTheme.accent}20`,
+        border: `1px solid ${selectedTheme.accent}50`,
+        borderRadius: '12px',
+        padding: '16px',
+        textAlign: 'left'
+      }}>
+        <p style={{
+          fontSize: '14px',
+          fontWeight: '600',
+          color: selectedTheme.textPrimary,
+          margin: '0 0 8px 0'
+        }}>
+          💡 Good password ideas:
+        </p>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gap: '8px',
+          fontSize: '13px',
+          color: `${selectedTheme.textPrimary}CC`
+        }}>
+          <span>books</span>
+          <span>reading</span>
+          <span>stories</span>
+          <span>adventure</span>
+          <span>dragons</span>
+          <span>unicorn</span>
         </div>
       </div>
     </div>

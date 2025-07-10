@@ -1,4 +1,4 @@
-// pages/student-sign-in.js - Student-only sign-in with first-time account creation
+// pages/student-sign-in.js - Clean Version (No Legacy Code)
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
@@ -14,7 +14,8 @@ export default function StudentSignIn() {
   const [isNewAccount, setIsNewAccount] = useState(false);
   const [formData, setFormData] = useState({
     username: '',
-    teacherCode: ''
+    teacherCode: '',
+    personalPassword: ''
   });
 
   // Handle URL parameters from onboarding redirect
@@ -89,13 +90,28 @@ export default function StudentSignIn() {
     }
   };
 
+  // Validate personal password
+  const validatePersonalPassword = (studentRecord, inputPassword) => {
+    // Check if student has a personal password set
+    if (!studentRecord.personalPassword) {
+      console.log('❌ Student missing personal password');
+      return { valid: false, error: 'Personal password not found. Please contact your teacher.' };
+    }
+    
+    // Validate password
+    const isValid = studentRecord.personalPassword === inputPassword.toLowerCase();
+    console.log(`🔐 Personal password validation: ${isValid ? 'SUCCESS' : 'FAILED'}`);
+    
+    return { valid: isValid, error: isValid ? null : 'Personal password is incorrect' };
+  };
+
   const handleSignIn = async () => {
     setError('');
     setLoading(true);
 
     try {
-      if (!formData.username.trim() || !formData.teacherCode.trim()) {
-        setError('Please enter both your username and teacher code');
+      if (!formData.username.trim() || !formData.teacherCode.trim() || !formData.personalPassword.trim()) {
+        setError('Please enter your username, teacher code, and personal password');
         setLoading(false);
         return;
       }
@@ -119,8 +135,18 @@ export default function StudentSignIn() {
 
       console.log('✅ Student record found:', studentRecord.firstName);
 
-      // Step 2: Create Firebase Auth user
-      console.log('🔐 Step 2: Creating Firebase Auth user...');
+      // Step 2: Validate personal password
+      console.log('🔐 Step 2: Validating personal password...');
+      const passwordCheck = validatePersonalPassword(studentRecord, formData.personalPassword);
+      
+      if (!passwordCheck.valid) {
+        setError(passwordCheck.error);
+        setLoading(false);
+        return;
+      }
+
+      // Step 3: Create Firebase Auth user
+      console.log('🔐 Step 3: Creating Firebase Auth user...');
       const studentEmail = `${formData.username.toLowerCase()}@${formData.teacherCode.toLowerCase().replace(/[^a-z0-9]/g, '-')}.luxlibris.app`;
       
       let firebaseUser;
@@ -141,8 +167,8 @@ export default function StudentSignIn() {
         return;
       }
 
-      // Step 3: Update student record with Firebase UID
-      console.log('💾 Step 3: Updating student record with UID...');
+      // Step 4: Update student record with Firebase UID
+      console.log('💾 Step 4: Updating student record with UID...');
       try {
         const studentRef = doc(db, `entities/${studentRecord.entityId}/schools/${studentRecord.schoolId}/students`, studentRecord.id);
         await updateDoc(studentRef, {
@@ -158,7 +184,7 @@ export default function StudentSignIn() {
         return;
       }
 
-      // Step 4: Success! Redirect to dashboard
+      // Step 5: Success! Redirect to dashboard
       console.log('🎉 Sign-in completed successfully! Redirecting to dashboard...');
       router.push('/student-dashboard');
 
@@ -230,7 +256,8 @@ export default function StudentSignIn() {
               margin: 0,
               lineHeight: '1.4'
             }}>
-              {isNewAccount ? 'Let\'s sign you in to start your reading journey!' : 'Sign in with your username and teacher code'}
+              {isNewAccount ? 'Let\'s sign you in to start your reading journey!' : 
+               'Sign in with your username, teacher code, and personal password'}
             </p>
           </div>
 
@@ -250,7 +277,7 @@ export default function StudentSignIn() {
                 margin: 0,
                 lineHeight: '1.4'
               }}>
-                🎉 <strong>Your profile is ready!</strong> Use your username and teacher code below to sign in for the first time.
+                🎉 <strong>Your profile is ready!</strong> Use your username, teacher code, and personal password below to sign in for the first time.
               </p>
             </div>
           )}
@@ -303,7 +330,7 @@ export default function StudentSignIn() {
               </p>
             </div>
 
-            <div style={{ marginBottom: '1.5rem' }}>
+            <div style={{ marginBottom: '1rem' }}>
               <label style={{
                 display: 'block',
                 fontSize: '0.875rem',
@@ -311,7 +338,7 @@ export default function StudentSignIn() {
                 color: '#374151',
                 marginBottom: '0.5rem'
               }}>
-                Teacher Code (Your Password)
+                Teacher Code
               </label>
               <input
                 type="password"
@@ -349,6 +376,54 @@ export default function StudentSignIn() {
               </p>
             </div>
 
+            {/* Personal Password Field */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '0.875rem',
+                fontWeight: '600',
+                color: '#374151',
+                marginBottom: '0.5rem'
+              }}>
+                Your Personal Password
+              </label>
+              <input
+                type="password"
+                value={formData.personalPassword}
+                onChange={(e) => setFormData(prev => ({ 
+                  ...prev, 
+                  personalPassword: e.target.value.toLowerCase().replace(/[^a-z]/g, '')
+                }))}
+                placeholder="your personal password"
+                maxLength={20}
+                style={{
+                  width: '100%',
+                  padding: '0.875rem',
+                  border: '2px solid #e5e7eb',
+                  borderRadius: '0.75rem',
+                  fontSize: '1rem',
+                  boxSizing: 'border-box',
+                  transition: 'border-color 0.2s',
+                  outline: 'none',
+                  textAlign: 'center',
+                  fontWeight: 'bold',
+                  letterSpacing: '0.05em',
+                  color: '#1f2937',
+                  backgroundColor: 'white'
+                }}
+                onFocus={(e) => e.target.style.borderColor = '#ADD4EA'}
+                onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+              />
+              <p style={{
+                fontSize: '0.75rem',
+                color: '#6b7280',
+                margin: '0.5rem 0 0 0',
+                textAlign: 'center'
+              }}>
+                The simple password you chose when creating your account
+              </p>
+            </div>
+
             <div style={{
               background: 'rgba(173, 212, 234, 0.1)',
               border: '1px solid rgba(173, 212, 234, 0.3)',
@@ -362,7 +437,7 @@ export default function StudentSignIn() {
                 margin: 0,
                 lineHeight: '1.4'
               }}>
-                💡 <strong>First Time Signing In:</strong> Your username was created when you completed your profile, and your password is your teacher code!
+                🔐 <strong>Secure Sign-In:</strong> Your username and teacher code identify you, and your personal password keeps your account safe!
               </p>
             </div>
           </div>
@@ -415,7 +490,12 @@ export default function StudentSignIn() {
             
             <button
               onClick={handleSignIn}
-              disabled={loading || !formData.username.trim() || !formData.teacherCode.trim()}
+              disabled={
+                loading || 
+                !formData.username.trim() || 
+                !formData.teacherCode.trim() || 
+                !formData.personalPassword.trim()
+              }
               style={{
                 flex: 2,
                 padding: '0.875rem 1.5rem',
@@ -427,14 +507,24 @@ export default function StudentSignIn() {
                 borderRadius: '0.75rem',
                 fontSize: '1rem',
                 fontWeight: '600',
-                cursor: (loading || !formData.username.trim() || !formData.teacherCode.trim()) ? 'not-allowed' : 'pointer',
+                cursor: (
+                  loading || 
+                  !formData.username.trim() || 
+                  !formData.teacherCode.trim() || 
+                  !formData.personalPassword.trim()
+                ) ? 'not-allowed' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '0.5rem',
                 minHeight: '48px',
                 minWidth: '120px',
-                opacity: (loading || !formData.username.trim() || !formData.teacherCode.trim()) ? 0.7 : 1
+                opacity: (
+                  loading || 
+                  !formData.username.trim() || 
+                  !formData.teacherCode.trim() || 
+                  !formData.personalPassword.trim()
+                ) ? 0.7 : 1
               }}
             >
               {loading && (
