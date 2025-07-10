@@ -29,30 +29,30 @@ export default function SignIn() {
     }
   }, [router.query]);
 
-  const accountTypes = [
-    {
-      type: 'student',
-      title: 'Student',
-      icon: '📚',
-      description: 'Sign in with your username, teacher code, and personal password',
-      buttonText: 'Student Sign In'
-    },
-    {
-      type: 'educator',
-      title: 'Teacher/Librarian',
-      icon: '👨‍💼',
-      description: 'Manage your school&apos;s reading program',
-      buttonText: 'Teacher/Librarian Sign In'
-    },
-    {
-      type: 'parent',
-      title: 'Parent/Guardian',
-      icon: '👨‍👩‍👧‍👦',
-      description: 'Coming soon! Track your child&apos;s reading progress',
-      buttonText: 'Parent Sign In (Coming Soon)',
-      disabled: true
-    }
-  ];
+ const accountTypes = [
+  {
+    type: 'student',
+    title: 'Student',
+    icon: '📚',
+    description: 'Sign in with your username, teacher code, and personal password',
+    buttonText: 'Student Sign In'
+  },
+  {
+    type: 'educator',
+    title: 'Teacher/Librarian',
+    icon: '👨‍💼',
+    description: 'Manage your school\'s reading program',
+    buttonText: 'Teacher/Librarian Sign In'
+  },
+  {
+    type: 'parent',
+    title: 'Parent/Guardian',
+    icon: '👨‍👩‍👧‍👦',
+    description: 'Coming soon! Track your child\'s reading progress',
+    buttonText: 'Parent Sign In (Coming Soon)',
+    disabled: true
+  }
+];
 
   const handleAccountTypeSelect = (type) => {
     if (type === 'parent') {
