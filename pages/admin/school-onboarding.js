@@ -1082,7 +1082,7 @@ function NomineeSelectionStep({ nominees, selectedNominees, onToggleNominee, cal
         marginBottom: '1rem',
         fontSize: 'clamp(0.875rem, 3vw, 1rem)'
       }}>
-        <strong>Important:</strong> This sets your program's book capacity for ALL future years.
+        <strong>Important:</strong> This sets your program&apos;s book capacity for ALL future years.
       </p>
 
       {/* NEW: Lifetime Strategy Explanation */}
@@ -1118,7 +1118,7 @@ function NomineeSelectionStep({ nominees, selectedNominees, onToggleNominee, cal
           fontStyle: 'italic', 
           margin: '0.5rem 0 0 0' 
         }}>
-          Each year you'll pick specific books up to your chosen limit.
+          Each year you&apos;ll pick specific books up to your chosen limit.
         </p>
       </div>
       
