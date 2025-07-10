@@ -955,7 +955,7 @@ function PasswordPage({ formData, setFormData, selectedTheme, isPasswordValid })
             <li style={{ 
               color: `${selectedTheme.textPrimary}CC`
             }}>
-              Easy to remember (like "books" or "reading")
+              Easy to remember (like &quot;books&quot; or &quot;reading&quot;)
             </li>
           </ul>
         </div>
