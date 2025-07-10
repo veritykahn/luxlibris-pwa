@@ -1,7 +1,7 @@
-// pages/admin/god-mode.js - GOD MODE WITH DROPDOWN PROGRAM SELECTION
+// pages/admin/god-mode.js - GOD MODE WITH DROPDOWN PROGRAM SELECTION AND OPERATIONAL FUNCTIONS
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
-import { db, authHelpers } from '../../lib/firebase'
+import { db, authHelpers, dbHelpers } from '../../lib/firebase'
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, setDoc } from 'firebase/firestore'
 
 // Import program functions
@@ -46,6 +46,45 @@ export default function GodModeWithPrograms() {
 
   // Session timeout (2 hours = 7200000 ms)
   const SESSION_TIMEOUT = 2 * 60 * 60 * 1000
+
+  // Operational functions to replace test functions
+  const runSystemHealthCheck = async () => {
+    setLoading(true);
+    try {
+      const currentYear = dbHelpers.getCurrentAcademicYear();
+      const config = await dbHelpers.getSystemConfig();
+      
+      alert(`🔧 System Health Check Results:
+
+📅 Current Academic Year: ${currentYear}
+⚙️ Program Phase: ${config.programPhase}
+🗳️ Voting Period: ${config.votingStartDate.toDate().toLocaleDateString()} - ${config.votingEndDate.toDate().toLocaleDateString()}
+✅ All systems operational!`);
+    } catch (error) {
+      alert('❌ System health check failed: ' + error.message);
+    }
+    setLoading(false);
+  };
+
+  const showAcademicYearInfo = async () => {
+    setLoading(true);
+    try {
+      const currentYear = dbHelpers.getCurrentAcademicYear();
+      const { startDate, endDate } = dbHelpers.getAcademicYearDates(currentYear);
+      const config = await dbHelpers.getSystemConfig();
+      
+      alert(`📅 Academic Year Information:
+
+📚 Current Year: ${currentYear}
+🗓️ Program Period: ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}
+📊 Current Phase: ${config.programPhase}
+🏆 Competition ends: March 31, 2026
+🗳️ Voting: April 1-14, 2026`);
+    } catch (error) {
+      alert('❌ Error loading academic year info: ' + error.message);
+    }
+    setLoading(false);
+  };
 
   // Initialize session from localStorage on component mount
   useEffect(() => {
@@ -947,6 +986,43 @@ Type "DELETE" to confirm:`)
               }}>
                 ⏰ Session: {sessionTimeRemaining} minutes
               </div>
+              
+              {/* Operational buttons replacing test buttons */}
+              <button
+                onClick={runSystemHealthCheck}
+                disabled={loading}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: 'linear-gradient(135deg, #10b981, #059669)',
+                  color: 'white',
+                  borderRadius: '0.5rem',
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  border: 'none',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  marginRight: '1rem'
+                }}
+              >
+                🔧 System Health
+              </button>
+
+              <button
+                onClick={showAcademicYearInfo}
+                disabled={loading}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+                  color: 'white',
+                  borderRadius: '0.5rem',
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  border: 'none',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  marginRight: '1rem'
+                }}
+              >
+                📅 Academic Year Info
+              </button>
               
               <button
                 onClick={handleLogout}

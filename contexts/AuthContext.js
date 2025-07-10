@@ -145,13 +145,27 @@ export const AuthProvider = ({ children }) => {
             if (!studentSnapshot.empty) {
               const studentDoc = studentSnapshot.docs[0]
               const profile = {
-                id: studentDoc.id,
-                entityId: entityDoc.id,
-                schoolId: schoolDoc.id,
-                ...studentDoc.data()
-              }
-              console.log('✅ Found student profile in entities structure')
-              return profile
+  id: studentDoc.id,
+  entityId: entityDoc.id,
+  schoolId: schoolDoc.id,
+  ...studentDoc.data()
+}
+
+// NEW: Check if student needs grade progression
+if (profile.accountType === 'student') {
+  const { checkGradeProgression } = await import('../lib/firebase')
+  const progressionCheck = await checkGradeProgression(profile)
+  profile.needsGradeUpdate = progressionCheck.needsUpdate
+  profile.suggestedGrade = progressionCheck.suggestedGrade
+  profile.shouldBeAlumni = progressionCheck.shouldBeAlumni
+  
+  if (progressionCheck.needsUpdate) {
+    console.log('📈 Student needs grade progression:', profile.firstName)
+  }
+}
+
+console.log('✅ Found student profile in entities structure')
+return profile
             }
           }
         } catch (error) {

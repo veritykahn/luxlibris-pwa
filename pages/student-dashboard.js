@@ -37,6 +37,11 @@ export default function StudentDashboard() {
   const [nextAchievement, setNextAchievement] = useState(null);
   const [smartRecommendations, setSmartRecommendations] = useState([]);
 
+// NEW: Grade progression state
+const [showGradeUpdate, setShowGradeUpdate] = useState(false);
+const [selectedGrade, setSelectedGrade] = useState(null);
+const [isUpdatingGrade, setIsUpdatingGrade] = useState(false);
+
   // Real dashboard data from Firebase
   const [dashboardData, setDashboardData] = useState({
     booksReadThisYear: 0,
@@ -559,6 +564,19 @@ export default function StudentDashboard() {
       }
       
       console.log('✅ Student data loaded:', firebaseStudentData.firstName);
+      
+      // NEW: Check for grade progression after loading student data
+      const { checkGradeProgression } = await import('../lib/firebase');
+      const progressionCheck = await checkGradeProgression(firebaseStudentData);
+      firebaseStudentData.needsGradeUpdate = progressionCheck.needsUpdate;
+      firebaseStudentData.suggestedGrade = progressionCheck.suggestedGrade;
+      firebaseStudentData.shouldBeAlumni = progressionCheck.shouldBeAlumni;
+
+      if (progressionCheck.needsUpdate) {
+        setShowGradeUpdate(true);
+        setSelectedGrade(progressionCheck.suggestedGrade); // Pre-select suggested grade
+      }
+      
       setStudentData(firebaseStudentData);
       
       // Set theme
@@ -783,6 +801,44 @@ export default function StudentDashboard() {
     return '📚 Ready for your next reading adventure?';
   };
 
+  // NEW: Handle grade update
+const handleGradeUpdate = async () => {
+  if (!selectedGrade || !studentData) return;
+  
+  setIsUpdatingGrade(true);
+  try {
+    const { updateStudentGrade } = await import('../lib/firebase');
+    
+    const result = await updateStudentGrade(
+      studentData.id,
+      studentData.entityId, 
+      studentData.schoolId,
+      selectedGrade
+    );
+    
+    if (result.success) {
+      // Refresh student data
+      await loadEnhancedDashboardData();
+      setShowGradeUpdate(false);
+      
+      if (result.isAlumni) {
+        setShowComingSoon('🎓 Congratulations! You\'ve graduated to Alumni status!');
+      } else {
+        setShowComingSoon(`📈 Welcome to Grade ${result.newGrade}! Ready for a new year of reading!`);
+      }
+      
+      setTimeout(() => setShowComingSoon(''), 4000);
+    }
+    
+  } catch (error) {
+    console.error('Error updating grade:', error);
+    setShowComingSoon('❌ Error updating grade. Please try again.');
+    setTimeout(() => setShowComingSoon(''), 3000);
+  }
+  
+  setIsUpdatingGrade(false);
+};
+  
   const handleTabClick = (tabName) => {
   if (tabName === 'Dashboard') {
     setShowComingSoon('You\'re already here! 📍');
@@ -1803,9 +1859,144 @@ export default function StudentDashboard() {
               )}
             </button>
           ))}
-        </div>
+      </div>
 
-        <style jsx>{`
+      {/* Grade Update Modal - ADD THIS HERE */}
+      {showGradeUpdate && studentData && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.8)',
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px'
+        }}>
+          <div style={{
+            backgroundColor: currentTheme.surface,
+            borderRadius: '20px',
+            maxWidth: '400px',
+            width: '100%',
+            padding: '30px',
+            textAlign: 'center',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+            border: `2px solid ${currentTheme.primary}`
+          }}>
+            <div style={{ fontSize: '64px', marginBottom: '20px' }}>🎒</div>
+            
+            <h2 style={{
+              fontSize: '24px',
+              fontWeight: '600',
+              color: currentTheme.textPrimary,
+              marginBottom: '10px',
+              fontFamily: 'Didot, "Times New Roman", serif'
+            }}>
+              Welcome Back, {studentData.firstName}!
+            </h2>
+            
+            <p style={{
+              fontSize: '16px',
+              color: currentTheme.textSecondary,
+              marginBottom: '20px',
+              lineHeight: '1.5'
+            }}>
+              It's a new school year! What grade are you in now?
+            </p>
+            
+            <div style={{
+              background: `${currentTheme.primary}20`,
+              borderRadius: '12px',
+              padding: '15px',
+              marginBottom: '20px',
+              border: `1px solid ${currentTheme.primary}40`
+            }}>
+              <p style={{ 
+                fontSize: '14px', 
+                color: currentTheme.textPrimary,
+                margin: '0 0 10px 0',
+                fontWeight: '600'
+              }}>
+                Last year: Grade {studentData.grade}
+              </p>
+              <p style={{ 
+                fontSize: '14px', 
+                color: currentTheme.textSecondary,
+                margin: 0
+              }}>
+                Suggested: Grade {studentData.suggestedGrade}
+              </p>
+            </div>
+            
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '600',
+                color: currentTheme.textPrimary,
+                marginBottom: '10px'
+              }}>
+                Select your current grade:
+              </label>
+              
+              <select
+                value={selectedGrade || ''}
+                onChange={(e) => setSelectedGrade(parseInt(e.target.value))}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: `2px solid ${currentTheme.primary}`,
+                  fontSize: '16px',
+                  backgroundColor: currentTheme.surface,
+                  color: currentTheme.textPrimary
+                }}
+              >
+                <option value="">Choose your grade...</option>
+                {[4, 5, 6, 7, 8].map(grade => (
+                  <option key={grade} value={grade}>
+                    Grade {grade}
+                    {grade === studentData.suggestedGrade && ' (Suggested)'}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <button
+              onClick={handleGradeUpdate}
+              disabled={!selectedGrade || isUpdatingGrade}
+              style={{
+                width: '100%',
+                backgroundColor: selectedGrade ? currentTheme.primary : '#E0E0E0',
+                color: selectedGrade ? currentTheme.textPrimary : '#999',
+                border: 'none',
+                padding: '15px',
+                borderRadius: '12px',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: selectedGrade ? 'pointer' : 'not-allowed',
+                marginBottom: '10px'
+              }}
+            >
+              {isUpdatingGrade ? '⏳ Updating...' : '🚀 Start New School Year!'}
+            </button>
+            
+            <p style={{
+              fontSize: '12px',
+              color: currentTheme.textSecondary,
+              margin: 0,
+              fontStyle: 'italic'
+            }}>
+              Your reading progress and saints will be preserved!
+            </p>
+          </div>
+        </div>
+      )}
+
+      <style jsx>{`
           @keyframes spin {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
