@@ -1904,7 +1904,7 @@ const handleGradeUpdate = async () => {
               marginBottom: '20px',
               lineHeight: '1.5'
             }}>
-              It's a new school year! What grade are you in now?
+              It&apos;s a new school year! What grade are you in now?
             </p>
             
             <div style={{
