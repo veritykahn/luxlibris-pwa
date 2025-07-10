@@ -1,8 +1,8 @@
-// pages/admin/school-onboarding.js - FIXED VERSION - No Race Conditions
+// pages/admin/school-onboarding.js - ENHANCED VERSION with Strategy Tips & Trigger Warnings
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
-import { db, auth } from '../../lib/firebase'
+import { db, auth, getCurrentAcademicYear } from '../../lib/firebase'
 import { collection, getDocs, doc, getDoc, updateDoc, addDoc, query, where } from 'firebase/firestore'
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth'
 import { useAuth } from '../../contexts/AuthContext'
@@ -261,6 +261,11 @@ export default function TeacherOnboarding() {
         schoolId: schoolData.id,
         schoolName: schoolData.name,
         dioceseId: schoolData.dioceseId,
+
+        // NEW: Academic year tracking  
+        academicYear: getCurrentAcademicYear(),
+        onboardingAcademicYear: getCurrentAcademicYear(),
+
         joinedWithCode: accountData.teacherJoinCode,
         managementType: 'school_reading_program',
         studentJoinCode: codes.studentCode,
@@ -1005,7 +1010,7 @@ export default function TeacherOnboarding() {
             )}
 
             {/* Navigation */}
-            {currentStep > 0 && currentStep < 5 && (
+            {currentStep > 1 && currentStep < 5 && (
               <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -1059,7 +1064,7 @@ export default function TeacherOnboarding() {
   )
 }
 
-// Supporting Components (same as before)
+// ENHANCED Supporting Components
 function NomineeSelectionStep({ nominees, selectedNominees, onToggleNominee, calculateAchievementTiers }) {
   return (
     <div>
@@ -1070,15 +1075,52 @@ function NomineeSelectionStep({ nominees, selectedNominees, onToggleNominee, cal
         marginBottom: '1rem',
         fontFamily: 'Georgia, serif'
       }}>
-        📚 Select Your Nominees
+        📚 Set Your Program Scope
       </h2>
       <p style={{ 
         color: '#ADD4EA', 
         marginBottom: '1rem',
         fontSize: 'clamp(0.875rem, 3vw, 1rem)'
       }}>
-        Choose which books from the 2025-26 master list your students can read.
+        <strong>Important:</strong> This sets your program's book capacity for ALL future years.
       </p>
+
+      {/* NEW: Lifetime Strategy Explanation */}
+      <div style={{
+        background: 'linear-gradient(135deg, #fff3cd, #ffeaa7)',
+        borderRadius: '0.75rem',
+        padding: '1rem',
+        marginBottom: '1.5rem',
+        border: '1px solid #f39c12'
+      }}>
+        <h4 style={{ 
+          color: '#d68910', 
+          marginBottom: '0.5rem', 
+          fontSize: 'clamp(0.875rem, 3vw, 1rem)',
+          fontWeight: '600'
+        }}>
+          💡 Strategy Tip: Choose Your Maximum
+        </h4>
+        <ul style={{ 
+          color: '#8b6914', 
+          fontSize: 'clamp(0.75rem, 2.5vw, 0.875rem)', 
+          lineHeight: '1.4', 
+          margin: 0, 
+          paddingLeft: '1.2rem' 
+        }}>
+          <li><strong>All 20 books:</strong> Get every new book automatically each year</li>
+          <li><strong>15-18 books:</strong> Keep a buffer to skip books with sensitive topics</li>
+          <li><strong>10-15 books:</strong> Smaller, curated selection for your community</li>
+        </ul>
+        <p style={{ 
+          color: '#8b6914', 
+          fontSize: 'clamp(0.6rem, 2vw, 0.75rem)', 
+          fontStyle: 'italic', 
+          margin: '0.5rem 0 0 0' 
+        }}>
+          Each year you'll pick specific books up to your chosen limit.
+        </p>
+      </div>
       
       {/* Dynamic Achievement Preview */}
       <div style={{
@@ -1297,7 +1339,7 @@ function SubmissionOptionsStep({ submissionOptions, onUpdateOption, onComplete, 
   )
 }
 
-// Helper Components
+// ENHANCED Helper Components
 function BookCard({ book, isSelected, onToggle }) {
   return (
     <div
@@ -1314,7 +1356,8 @@ function BookCard({ book, isSelected, onToggle }) {
         maxWidth: '100%'
       }}
     >
-      <div style={{ display: 'flex', gap: '0.75rem' }}>
+      {/* Main content row */}
+      <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
         <div style={{
           width: '20px',
           height: '20px',
@@ -1325,24 +1368,25 @@ function BookCard({ book, isSelected, onToggle }) {
           justifyContent: 'center',
           color: isSelected ? '#223848' : 'white',
           fontSize: '10px',
-          flexShrink: 0
+          flexShrink: 0,
+          marginTop: '2px'
         }}>
           {isSelected ? '✓' : ''}
         </div>
         
         {book.coverImageUrl && (
-  <img  // ← Change Image to img
-    src={book.coverImageUrl}
-    alt={`Cover of ${book.title}`}
-    width={40}
-    height={60}
-    style={{
-      objectFit: 'cover',
-      borderRadius: '0.25rem',
-      flexShrink: 0
-    }}
-  />
-)}
+          <img
+            src={book.coverImageUrl}
+            alt={`Cover of ${book.title}`}
+            style={{
+              width: '40px',
+              height: '60px',
+              objectFit: 'cover',
+              borderRadius: '0.25rem',
+              flexShrink: 0
+            }}
+          />
+        )}
         
         <div style={{ flex: 1, minWidth: 0 }}>
           <h4 style={{
@@ -1370,7 +1414,7 @@ function BookCard({ book, isSelected, onToggle }) {
             <p style={{
               fontSize: 'clamp(0.625rem, 2vw, 0.75rem)',
               color: '#A1E5DB',
-              margin: 0,
+              margin: '0',
               fontStyle: 'italic',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
@@ -1381,6 +1425,29 @@ function BookCard({ book, isSelected, onToggle }) {
           )}
         </div>
       </div>
+      
+      {/* Trigger warning as separate row */}
+      {book.triggerWarning && book.triggerWarning.trim() && (
+        <div style={{
+          background: '#fef2f2',
+          borderRadius: '0.25rem',
+          padding: '0.4rem',
+          marginTop: '0.75rem',
+          border: '1px solid #fca5a5',
+          width: '100%',
+          boxSizing: 'border-box'
+        }}>
+          <div style={{
+            fontSize: 'clamp(0.6rem, 2vw, 0.7rem)',
+            color: '#dc2626',
+            fontWeight: '600',
+            lineHeight: '1.2',
+            wordBreak: 'break-word'
+          }}>
+            ⚠️ Content Note: {book.triggerWarning}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
