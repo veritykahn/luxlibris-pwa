@@ -1118,7 +1118,7 @@ function NomineeSelectionStep({ nominees, selectedNominees, onToggleNominee, cal
           fontStyle: 'italic', 
           margin: '0.5rem 0 0 0' 
         }}>
-          Each year youll pick specific books up to your chosen limit.
+          Each year you&apos;ll pick specific books up to your chosen limit.
         </p>
       </div>
       
