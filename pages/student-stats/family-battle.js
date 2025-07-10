@@ -306,7 +306,7 @@ export default function FamilyBattle() {
                   color: currentTheme.textSecondary,
                   lineHeight: '1.4'
                 }}>
-                  • See who's the ultimate reading champion in your family
+                  • See who&apos;s the ultimate reading champion in your family
                   <br />
                   • Track progress across weekly and monthly challenges
                   <br />
