@@ -306,7 +306,7 @@ export default function LuxDnaLab() {
                   color: currentTheme.textSecondary,
                   lineHeight: '1.4'
                 }}>
-                  • Discover which literary character you're most like
+                  • Discover which literary character you&apos;re most like
                   <br />
                   • Explore your reading preferences and habits
                   <br />
@@ -353,7 +353,7 @@ export default function LuxDnaLab() {
                 fontStyle: 'italic',
                 marginBottom: '8px'
               }}>
-                "The Lux DNA Lab will help you discover your unique reading identity with fun BuzzFeed-style quizzes!"
+                &quot;The Lux DNA Lab will help you discover your unique reading identity with fun quizzes!&quot;
               </div>
               <div style={{
                 fontSize: 'clamp(11px, 3vw, 12px)',
