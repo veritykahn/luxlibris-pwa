@@ -353,7 +353,7 @@ export default function GlobalStats() {
                 fontStyle: 'italic',
                 marginBottom: '8px'
               }}>
-                "Global stats will show you the incredible impact of Catholic students reading together across the world - you're part of something amazing!"
+                &quot;Global stats will show you the incredible impact of Catholic students reading together across the world - you&apos;re part of something amazing!&quot;
               </div>
               <div style={{
                 fontSize: 'clamp(11px, 3vw, 12px)',

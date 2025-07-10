@@ -353,7 +353,7 @@ export default function DioceseStats() {
                 fontStyle: 'italic',
                 marginBottom: '8px'
               }}>
-                "Diocese-wide stats will show you how your school is doing compared to other Catholic schools in your region, all while keeping individual student data completely private!"
+                &quot;Diocese-wide stats will show you how your school is doing compared to other Catholic schools in your region, all while keeping individual student data completely private!&quot;
               </div>
               <div style={{
                 fontSize: 'clamp(11px, 3vw, 12px)',

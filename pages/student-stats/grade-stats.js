@@ -253,7 +253,7 @@ export default function GradeStats() {
               marginBottom: '24px',
               lineHeight: '1.5'
             }}>
-              We're building amazing grade-level comparisons that will help you see how you're doing compared to your classmates in Grade {studentData.grade}!
+              We&apos;re building amazing grade-level comparisons that will help you see how you&apos;re doing compared to your classmates in Grade {studentData.grade}!
             </div>
 
             <div style={{
@@ -279,7 +279,7 @@ export default function GradeStats() {
                   color: currentTheme.textSecondary,
                   lineHeight: '1.4'
                 }}>
-                  • "You're reading more than 75% of Grade {studentData.grade}!"
+                  • &quot;You&apos;re reading more than 75% of Grade {studentData.grade}!&quot;
                   <br />
                   • Average books read by your grade level
                   <br />
@@ -353,7 +353,7 @@ export default function GradeStats() {
                 fontStyle: 'italic',
                 marginBottom: '8px'
               }}>
-                "Grade-level stats will be completely anonymous - you'll see encouraging comparisons without any individual student data being shared!"
+                &quot;Grade-level stats will be completely anonymous - you&apos;ll see encouraging comparisons without any individual student data being shared!&quot;
               </div>
               <div style={{
                 fontSize: 'clamp(11px, 3vw, 12px)',

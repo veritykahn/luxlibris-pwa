@@ -353,7 +353,7 @@ export default function FamilyBattle() {
                 fontStyle: 'italic',
                 marginBottom: '8px'
               }}>
-                "Family Battle will let you challenge your parents and siblings to reading competitions!"
+                &quot;Family Battle will let you challenge your parents and siblings to reading competitions!&quot;
               </div>
               <div style={{
                 fontSize: 'clamp(11px, 3vw, 12px)',
