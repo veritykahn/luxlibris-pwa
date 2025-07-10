@@ -285,7 +285,7 @@ export default function RoleSelector() {
             <RoleCard
               icon="🧑‍🎓"
               title="Student"
-              description="Connect to your school&apos;s reading program and start your journey!"
+              description="Connect to your school's reading program and start your journey!"
               features={[
                 "🏫 Connect to your school",
                 "📚 Interactive bookshelf",
@@ -302,9 +302,9 @@ export default function RoleSelector() {
             <RoleCard
               icon="👨‍👩‍👧‍👦"
               title="Parent"
-              description="Support your child&apos;s school reading program"
+              description="Support your childs school reading program"
               features={[
-                "🏫 Connect to your child&apos;s school",
+                "🏫 Connect to your child's school",
                 "👀 Basic progress viewing (FREE)",
                 "🔐 Quiz code access",
                 "⭐ Premium analytics ($10/yr)",
@@ -371,7 +371,7 @@ export default function RoleSelector() {
               justifyContent: 'center',
               flexWrap: 'wrap'
             }}>
-              <a href="mailto:admin@luxlibris.org?subject=School Interest&body=Hi! I&apos;d like my school to participate in Lux Libris." style={{
+              <a href="mailto:admin@luxlibris.org?subject=School Interest&body=Hi! I'd like my school to participate in Lux Libris." style={{
                 background: 'linear-gradient(135deg, #6b7280, #4b5563)',
                 color: 'white',
                 padding: '0.75rem 1.5rem',

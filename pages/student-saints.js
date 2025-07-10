@@ -296,12 +296,31 @@ export default function StudentSaints() {
       case 'first_book_grade_8':
         return grade === 8 && booksSubmitted >= 1;
       case 'seasonal_feast_day':
-        const today = new Date();
-        const month = today.getMonth() + 1;
-        if (saint.id === 'saint_030' && month === 3) return true;
-        return false;
-      default:
-        return false;
+  const today = new Date();
+  const month = today.getMonth() + 1;
+  const grade = studentData.grade || 4;
+  
+  // Grade 4: Christmas Season (December-January) - St. Nicholas
+  if (saint.id === 'saint_028' && grade === 4 && (month === 12 || month === 1)) {
+    return true;
+  }
+  // Grade 5: Easter Season (March-April) - St. George
+  if (saint.id === 'saint_088' && grade === 5 && (month === 3 || month === 4)) {
+    return true;
+  }
+  // Grade 6: Mary's Month (May) - Our Lady of Grace
+  if (saint.id === 'saint_173' && grade === 6 && month === 5) {
+    return true;
+  }
+  // Grade 7: Summer Saints (June-August) - St. Christopher
+  if (saint.id === 'saint_109' && grade === 7 && (month >= 6 && month <= 8)) {
+    return true;
+  }
+  // Grade 8: Fall/All Saints (September-November) - St. Michael
+  if (saint.id === 'saint_011' && grade === 8 && (month >= 9 && month <= 11)) {
+    return true;
+  }
+  return false;
     }
   }, []);
 
