@@ -300,50 +300,58 @@ export default function StudentSaints() {
   const month = today.getMonth() + 1;
   const grade = studentData.grade || 4;
   
-  // Grade 4: Christmas Season (December-January) - St. Nicholas
-  if (saint.id === 'saint_028' && grade === 4 && (month === 12 || month === 1)) {
+  // Grade 4: Christmas Season (December) - St. Nicholas
+  if (saint.id === 'saint_028' && grade === 4 && month === 12) {
     return true;
   }
-  // Grade 5: Easter Season (March-April) - St. George
-  if (saint.id === 'saint_088' && grade === 5 && (month === 3 || month === 4)) {
+  
+  // Grade 5: Lent/Easter Prep (February-March) - St. George
+  if (saint.id === 'saint_088' && grade === 5 && (month === 2 || month === 3)) {
     return true;
   }
-  // Grade 6: Mary's Month (May) - Our Lady of Grace
-  if (saint.id === 'saint_173' && grade === 6 && month === 5) {
+  
+  // Grade 6: Rosary Month (October) - Our Lady of the Rosary
+  if (saint.id === 'saint_136' && grade === 6 && month === 10) {
     return true;
   }
-  // Grade 7: Summer Saints (June-August) - St. Christopher
-  if (saint.id === 'saint_109' && grade === 7 && (month >= 6 && month <= 8)) {
+  
+  // Grade 7: Holiday Travel Season (November) - St. Christopher
+  if (saint.id === 'saint_109' && grade === 7 && month === 11) {
     return true;
   }
-  // Grade 8: Fall/All Saints (September-November) - St. Michael
-  if (saint.id === 'saint_011' && grade === 8 && (month >= 9 && month <= 11)) {
+  
+  // Grade 8: Start of School/Senior Year (September) - St. Michael
+  if (saint.id === 'saint_011' && grade === 8 && month === 9) {
     return true;
   }
+  
   return false;
     }
   }, []);
 
   // 🎵 Play unlock sound
   const playUnlockSound = useCallback((saint) => {
-    try {
-      let soundFile;
-      if (saint.rarity === 'common' || saint.rarity?.includes('grade_exclusive')) {
-        soundFile = '/sounds/unlock_common.mp3';
-      } else if (saint.rarity === 'rare' || saint.rarity === 'legendary' || saint.rarity === 'seasonal') {
-        soundFile = '/sounds/unlock_legendary.mp3';
-      } else if (saint.luxlings_series === 'Mini Marians' || saint.luxlings_series === 'Ultimate Redeemer') {
-        soundFile = '/sounds/unlock_jesus.mp3';
-      } else {
-        soundFile = '/sounds/unlock_common.mp3';
-      }
-      const audio = new Audio(soundFile);
-      audio.volume = 0.7;
-      audio.play().catch(err => console.log('Audio play failed:', err));
-    } catch (error) {
-      console.log('Sound not available:', error);
+  try {
+    let soundFile;
+    
+    // Determine which sound to play based on saint type
+    if (saint.rarity === 'common') {
+      soundFile = '/sounds/unlock_saint.mp3'; // Common saints
+    } else if (saint.rarity === 'marian' || saint.unlockCondition === 'collected_all_marians') {
+      soundFile = '/sounds/unlock_jesus.mp3'; // Marian saints and Ultimate Redeemer
+    } else {
+      soundFile = '/sounds/unlock_achievement.mp3'; // Rare, legendary, seasonal, grade-specific
     }
-  }, []);
+    
+    const audio = new Audio(soundFile);
+    audio.volume = 0.3;
+    audio.play().catch(error => {
+      console.log('Audio play failed:', error);
+    });
+  } catch (error) {
+    console.log('Sound loading failed:', error);
+  }
+}, []);
 
   // 🔥 Load streak data
   const loadStreakData = useCallback(async (studentData) => {
@@ -510,101 +518,329 @@ export default function StudentSaints() {
     return hoursDiff < 24; // Show glow for 24 hours
   }, []);
 
-  // Load saints data
-  const loadSaintsData = useCallback(async () => {
-    try {
-      const saintsRef = collection(db, 'saints');
-      const saintsSnapshot = await getDocs(saintsRef);
-      const saintsData = [];
+  // Replace your existing loadSaintsData function with this version
+const loadSaintsData = useCallback(async () => {
+  try {
+    const saintsRef = collection(db, 'saints');
+    const saintsSnapshot = await getDocs(saintsRef);
+    const saintsData = [];
+    
+    saintsSnapshot.forEach(doc => {
+      saintsData.push({ id: doc.id, ...doc.data() });
+    });
+
+    setSaints(saintsData);
+    const calculatedStreak = await loadStreakData(studentData);
+
+    // 📊 CALCULATE ALL MILESTONES EARNED
+    const commonMilestonesEarned = Math.floor(calculatedStreak / 14);   // Every 14 days
+    const rareMilestonesEarned = Math.floor(calculatedStreak / 30);     // Every 30 days  
+    const legendaryMilestonesEarned = Math.floor(calculatedStreak / 90); // Every 90 days
+    
+    const lifetimeBooks = studentData.lifetimeBooksSubmitted || 0;
+    const booksThisYear = studentData.booksSubmittedThisYear || 0;
+    const studentGrade = studentData.grade || 4;
+    
+    // 🌸 NEW: April and month checking
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth() + 1; // 1-12
+    const isApril = currentMonth === 4;
+
+    console.log('📈 All Milestones:', {
+      currentStreak: calculatedStreak,
+      commonEarned: commonMilestonesEarned,
+      rareEarned: rareMilestonesEarned,
+      legendaryEarned: legendaryMilestonesEarned,
+      lifetimeBooks,
+      booksThisYear,
+      grade: studentGrade,
+      currentMonth,
+      isApril
+    });
+
+    // 🗂️ GROUP SAINTS BY UNLOCK TYPE
+    const saintsByType = {
+      // Streak-based saints (progressive)
+      common: saintsData.filter(s => 
+        s.rarity === 'common' && 
+        (s.unlockCondition === 'streak_7_days' || s.unlockCondition === 'streak_14_days')
+      ).sort((a, b) => a.id.localeCompare(b.id)),
       
-      saintsSnapshot.forEach(doc => {
-        saintsData.push({ id: doc.id, ...doc.data() });
-      });
-
-      setSaints(saintsData);
-      const calculatedStreak = await loadStreakData(studentData);
-
-      const currentlyUnlocked = new Set();
-      const previouslyUnlocked = new Set(studentData.unlockedSaints || []);
-      const newUnlocks = new Set();
-      const persistentGlowSaints = new Set();
-
-      saintsData.forEach(saint => {
-        if (checkSaintUnlock(saint, studentData, calculatedStreak)) {
-          currentlyUnlocked.add(saint.id);
-          
-          // Check if this is a new unlock
-          if (!previouslyUnlocked.has(saint.id)) {
-            newUnlocks.add(saint.id);
-            playUnlockSound(saint);
-          }
-          
-          // Check if should show persistent glow
-          if (shouldShowNewGlow(saint.id, studentData)) {
-            persistentGlowSaints.add(saint.id);
-          }
-        }
-      });
-
-      setUnlockedSaints(currentlyUnlocked);
+      rare: saintsData.filter(s => 
+        s.rarity === 'rare' && s.unlockCondition === 'streak_30_days'
+      ).sort((a, b) => a.id.localeCompare(b.id)),
       
-      // Combine new unlocks with persistent glow saints
-      const allGlowingSaints = new Set([...newUnlocks, ...persistentGlowSaints]);
-      setNewlyUnlockedSaints(allGlowingSaints);
+      legendary: saintsData.filter(s => 
+        s.rarity === 'legendary' && s.unlockCondition === 'streak_90_days'
+      ).sort((a, b) => a.id.localeCompare(b.id)),
+      
+      // 🌸 April Marian Saints (Monthly + Grade) - YOUR EXACT SAINTS
+      april_marians: saintsData.filter(s => 
+        s.unlockCondition && s.unlockCondition.startsWith('april_grade_')
+      ).sort((a, b) => a.id.localeCompare(b.id)),
+      
+      // 🏆 Ultimate Redeemer - YOUR EXACT SAINT
+      ultimate_redeemer: saintsData.filter(s => 
+        s.unlockCondition === 'collected_all_marians'
+      ),
+      
+      // Grade-specific first book saints
+      grade_first_book: saintsData.filter(s => 
+        s.unlockCondition && s.unlockCondition.includes('first_book_grade')
+      ).sort((a, b) => a.id.localeCompare(b.id)),
+      
+      // Seasonal saints (including Our Lady of the Rosary)
+      seasonal: saintsData.filter(s => 
+        s.unlockCondition === 'seasonal_feast_day'
+      ).sort((a, b) => a.id.localeCompare(b.id))
+    };
 
-      if (newUnlocks.size > 0) {
-        try {
-          // Prepare timestamp data for newly unlocked saints
-          const existingTimestamps = studentData.newlyUnlockedSaintsWithTimestamp || {};
-          const newTimestamps = { ...existingTimestamps };
-          
-          const now = new Date().toISOString();
-          newUnlocks.forEach(saintId => {
-            newTimestamps[saintId] = {
-              timestamp: now,
-              name: saintsData.find(s => s.id === saintId)?.name || 'Unknown Saint'
-            };
-          });
+    console.log('🏷️ Saints by type:', {
+      common: saintsByType.common.length,
+      rare: saintsByType.rare.length,
+      legendary: saintsByType.legendary.length,
+      april_marians: saintsByType.april_marians.length,
+      ultimate_redeemer: saintsByType.ultimate_redeemer.length,
+      grade_first_book: saintsByType.grade_first_book.length,
+      seasonal: saintsByType.seasonal.length
+    });
 
-          // Clean up old timestamps (older than 25 hours to be safe)
-          Object.keys(newTimestamps).forEach(saintId => {
-            const unlockTime = new Date(newTimestamps[saintId].timestamp);
-            const hoursDiff = (new Date() - unlockTime) / (1000 * 60 * 60);
-            if (hoursDiff > 25) {
-              delete newTimestamps[saintId];
-            }
-          });
+    // 🔓 GET CURRENTLY UNLOCKED SAINTS
+    const currentlyUnlocked = new Set(studentData.unlockedSaints || []);
+    const newUnlocks = new Set();
+    const persistentGlowSaints = new Set();
 
-          await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
-            unlockedSaints: Array.from(currentlyUnlocked),
-            newlyUnlockedSaintsWithTimestamp: newTimestamps
-          });
+    // 🔥 PROGRESSIVE UNLOCKING LOGIC
 
-          const newUnlockNames = saintsData
-            .filter(s => newUnlocks.has(s.id))
-            .map(s => s.name.replace('St. ', '').replace('Our Lady of ', '').replace('Bl. ', ''))
-            .join(', ');
+    // 1️⃣ STREAK-BASED PROGRESSIVE UNLOCKING
+    
+    // Common Saints (Every 14 days = 1 saint)
+    const unlockedCommonCount = Array.from(currentlyUnlocked).filter(id => 
+      saintsByType.common.find(s => s.id === id)
+    ).length;
+    
+    for (let i = unlockedCommonCount; i < Math.min(commonMilestonesEarned, saintsByType.common.length); i++) {
+      const saint = saintsByType.common[i];
+      if (!currentlyUnlocked.has(saint.id)) {
+        currentlyUnlocked.add(saint.id);
+        newUnlocks.add(saint.id);
+        console.log(`🔥 Unlocked common saint ${i + 1}/${commonMilestonesEarned}:`, saint.name);
+      }
+    }
 
-          // 🔔 Send browser notifications for new unlocks
-          if (notificationsEnabled) {
-            saintsData
-              .filter(s => newUnlocks.has(s.id))
-              .forEach(saint => {
-                sendSaintUnlockNotification(saint.name);
-              });
-          }
+    // Rare Saints (Every 30 days = 1 saint)
+    const unlockedRareCount = Array.from(currentlyUnlocked).filter(id => 
+      saintsByType.rare.find(s => s.id === id)
+    ).length;
+    
+    for (let i = unlockedRareCount; i < Math.min(rareMilestonesEarned, saintsByType.rare.length); i++) {
+      const saint = saintsByType.rare[i];
+      if (!currentlyUnlocked.has(saint.id)) {
+        currentlyUnlocked.add(saint.id);
+        newUnlocks.add(saint.id);
+        console.log(`⭐ Unlocked rare saint ${i + 1}/${rareMilestonesEarned}:`, saint.name);
+      }
+    }
 
-          setShowSuccess(`🎉 New saint${newUnlocks.size > 1 ? 's' : ''} unlocked: ${newUnlockNames}!`);
-          setTimeout(() => setShowSuccess(''), 4000);
-        } catch (error) {
-          console.error('Error updating unlocked saints:', error);
+    // Legendary Saints (Every 90 days = 1 saint)
+    const unlockedLegendaryCount = Array.from(currentlyUnlocked).filter(id => 
+      saintsByType.legendary.find(s => s.id === id)
+    ).length;
+    
+    for (let i = unlockedLegendaryCount; i < Math.min(legendaryMilestonesEarned, saintsByType.legendary.length); i++) {
+      const saint = saintsByType.legendary[i];
+      if (!currentlyUnlocked.has(saint.id)) {
+        currentlyUnlocked.add(saint.id);
+        newUnlocks.add(saint.id);
+        console.log(`✨ Unlocked legendary saint ${i + 1}/${legendaryMilestonesEarned}:`, saint.name);
+      }
+    }
+
+    // 2️⃣ 🌸 APRIL MARIAN SAINTS (Monthly + Grade Check)
+    
+    if (isApril) {
+      const currentGradeMarianSaint = saintsByType.april_marians.find(s => 
+        s.unlockCondition === `april_grade_${studentGrade}`
+      );
+      
+      if (currentGradeMarianSaint && !currentlyUnlocked.has(currentGradeMarianSaint.id)) {
+        currentlyUnlocked.add(currentGradeMarianSaint.id);
+        newUnlocks.add(currentGradeMarianSaint.id);
+        console.log(`🌸 Unlocked April Grade ${studentGrade} Marian:`, currentGradeMarianSaint.name);
+      }
+    }
+
+    // 3️⃣ 🏆 ULTIMATE REDEEMER (Requires All 5 April Marian Saints)
+    
+    // YOUR EXACT MARIAN SAINT IDS
+    const allAprilMarianIds = [
+      "saint_134", // Our Lady of Guadalupe (Grade 4)
+      "saint_132", // Our Lady of Lourdes (Grade 5)  
+      "saint_133", // Our Lady of Fatima (Grade 6)
+      "saint_135", // Our Lady of Sorrows (Grade 7)
+      "saint_173"  // Our Lady of Grace (Grade 8)
+    ];
+    
+    const unlockedAprilMarianIds = Array.from(currentlyUnlocked).filter(id => allAprilMarianIds.includes(id));
+    const hasAllAprilMarians = allAprilMarianIds.every(id => currentlyUnlocked.has(id));
+    
+    console.log('👑 April Marian Collection Status:', {
+      required: allAprilMarianIds,
+      unlocked: unlockedAprilMarianIds,
+      hasAll: hasAllAprilMarians,
+      progress: `${unlockedAprilMarianIds.length}/${allAprilMarianIds.length}`
+    });
+
+    if (hasAllAprilMarians) {
+      const ultimateRedeemer = saintsByType.ultimate_redeemer.find(s => 
+        s.unlockCondition === "collected_all_marians"
+      );
+      
+      if (ultimateRedeemer && !currentlyUnlocked.has(ultimateRedeemer.id)) {
+        currentlyUnlocked.add(ultimateRedeemer.id);
+        newUnlocks.add(ultimateRedeemer.id);
+        console.log('🏆 ULTIMATE ACHIEVEMENT! Unlocked Ultimate Redeemer:', ultimateRedeemer.name);
+      }
+    }
+
+    // 4️⃣ GRADE-SPECIFIC FIRST BOOK SAINTS
+    if (booksThisYear >= 1) {
+      const gradeFirstBookSaint = saintsByType.grade_first_book.find(s => 
+        s.unlockCondition === `first_book_grade_${studentGrade}`
+      );
+      
+      if (gradeFirstBookSaint && !currentlyUnlocked.has(gradeFirstBookSaint.id)) {
+        currentlyUnlocked.add(gradeFirstBookSaint.id);
+        newUnlocks.add(gradeFirstBookSaint.id);
+        console.log(`🎓 Unlocked Grade ${studentGrade} first book saint:`, gradeFirstBookSaint.name);
+      }
+    }
+
+    // 5️⃣ SEASONAL SAINTS (Including Our Lady of the Rosary)
+    const seasonalSaintsToUnlock = saintsByType.seasonal.filter(saint => {
+      // Our Lady of the Rosary (saint_136) - October for Grade 6
+      if (saint.id === 'saint_136' && studentGrade === 6 && currentMonth === 10) {
+        return true;
+      }
+      
+      // Add other seasonal conditions here if you have them
+      // Grade 4: Christmas Season (December) - St. Nicholas
+      if (saint.id === 'saint_028' && studentGrade === 4 && currentMonth === 12) {
+        return true;
+      }
+      
+      // Grade 5: Lent/Easter Prep (February-March) - St. George  
+      if (saint.id === 'saint_088' && studentGrade === 5 && (currentMonth === 2 || currentMonth === 3)) {
+        return true;
+      }
+      
+      // Grade 7: Holiday Travel Season (November) - St. Christopher
+      if (saint.id === 'saint_109' && studentGrade === 7 && currentMonth === 11) {
+        return true;
+      }
+      
+      // Grade 8: Start of School/Senior Year (September) - St. Michael
+      if (saint.id === 'saint_011' && studentGrade === 8 && currentMonth === 9) {
+        return true;
+      }
+      
+      return false;
+    });
+    
+    seasonalSaintsToUnlock.forEach(saint => {
+      if (!currentlyUnlocked.has(saint.id)) {
+        currentlyUnlocked.add(saint.id);
+        newUnlocks.add(saint.id);
+        console.log(`🍀 Unlocked seasonal saint for Grade ${studentGrade}, Month ${currentMonth}:`, saint.name);
+      }
+    });
+
+    // 6️⃣ CHECK FOR PERSISTENT GLOW (24-hour new saint indicator)
+    saintsData.forEach(saint => {
+      if (shouldShowNewGlow(saint.id, studentData)) {
+        persistentGlowSaints.add(saint.id);
+      }
+    });
+
+    // 7️⃣ PLAY UNLOCK SOUNDS & NOTIFICATIONS
+    newUnlocks.forEach(saintId => {
+      const saint = saintsData.find(s => s.id === saintId);
+      if (saint) {
+        playUnlockSound(saint);
+        if (notificationsEnabled) {
+          sendSaintUnlockNotification(saint.name);
         }
       }
+    });
 
-    } catch (error) {
-      console.error('Error loading saints data:', error);
+    // 8️⃣ UPDATE STATE
+    setUnlockedSaints(currentlyUnlocked);
+    
+    // Combine new unlocks with persistent glow saints
+    const allGlowingSaints = new Set([...newUnlocks, ...persistentGlowSaints]);
+    setNewlyUnlockedSaints(allGlowingSaints);
+
+    // 9️⃣ SAVE TO DATABASE (if there are new unlocks)
+    if (newUnlocks.size > 0) {
+      try {
+        // Prepare timestamp data for newly unlocked saints
+        const existingTimestamps = studentData.newlyUnlockedSaintsWithTimestamp || {};
+        const newTimestamps = { ...existingTimestamps };
+        
+        const now = new Date().toISOString();
+        newUnlocks.forEach(saintId => {
+          newTimestamps[saintId] = {
+            timestamp: now,
+            name: saintsData.find(s => s.id === saintId)?.name || 'Unknown Saint'
+          };
+        });
+
+        // Clean up old timestamps (older than 25 hours)
+        Object.keys(newTimestamps).forEach(saintId => {
+          const unlockTime = new Date(newTimestamps[saintId].timestamp);
+          const hoursDiff = (new Date() - unlockTime) / (1000 * 60 * 60);
+          if (hoursDiff > 25) {
+            delete newTimestamps[saintId];
+          }
+        });
+
+        await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
+          unlockedSaints: Array.from(currentlyUnlocked),
+          newlyUnlockedSaintsWithTimestamp: newTimestamps
+        });
+
+        const newUnlockNames = saintsData
+          .filter(s => newUnlocks.has(s.id))
+          .map(s => s.name.replace('St. ', '').replace('Our Lady of ', '').replace('Bl. ', ''))
+          .join(', ');
+
+        setShowSuccess(`🎉 New saint${newUnlocks.size > 1 ? 's' : ''} unlocked: ${newUnlockNames}!`);
+        setTimeout(() => setShowSuccess(''), 4000);
+
+        console.log('✅ Successfully saved', newUnlocks.size, 'new saint unlocks to database');
+      } catch (error) {
+        console.error('❌ Error updating unlocked saints:', error);
+      }
     }
-  }, [studentData, checkSaintUnlock, playUnlockSound, loadStreakData, shouldShowNewGlow]);
+
+    console.log('📊 Final unlock summary:', {
+      totalUnlocked: currentlyUnlocked.size,
+      newlyUnlocked: newUnlocks.size,
+      breakdown: {
+        common: Array.from(currentlyUnlocked).filter(id => saintsByType.common.find(s => s.id === id)).length,
+        rare: Array.from(currentlyUnlocked).filter(id => saintsByType.rare.find(s => s.id === id)).length,
+        legendary: Array.from(currentlyUnlocked).filter(id => saintsByType.legendary.find(s => s.id === id)).length,
+        aprilMarians: Array.from(currentlyUnlocked).filter(id => saintsByType.april_marians.find(s => s.id === id)).length,
+        ultimateRedeemer: Array.from(currentlyUnlocked).filter(id => saintsByType.ultimate_redeemer.find(s => s.id === id)).length,
+        gradeFirstBook: Array.from(currentlyUnlocked).filter(id => saintsByType.grade_first_book.find(s => s.id === id)).length,
+        seasonal: Array.from(currentlyUnlocked).filter(id => saintsByType.seasonal.find(s => s.id === id)).length
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error loading saints data:', error);
+  }
+}, [studentData, playUnlockSound, loadStreakData, shouldShowNewGlow, notificationsEnabled, sendSaintUnlockNotification]);
 
   // Load initial data
   useEffect(() => {
