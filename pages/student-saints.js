@@ -396,113 +396,196 @@ export default function StudentSaints() {
     }
   }, [calculateSmartStreak]);
 
-  // 🏗️ SIMPLIFIED: Clean shelf organization matching bookshelf style
-  const organizeSaintsIntoShelves = useCallback((saints, unlockedSaints, studentData, calculatedStreak) => {
-    // Group saints by rarity/type
-    const saintsByType = {
-      jesus: saints.filter(s => s.luxlings_series === 'Ultimate Redeemer'),
-      marian: saints.filter(s => s.luxlings_series === 'Mini Marians'),
-      grade: saints.filter(s => s.rarity?.includes('grade_exclusive') || 
-                                  (s.unlockCondition && s.unlockCondition.includes('first_book_grade'))),
-      seasonal: saints.filter(s => s.rarity === 'seasonal'),
-      legendary: saints.filter(s => s.rarity === 'legendary'),
-      rare: saints.filter(s => s.rarity === 'rare'),
-      common: saints.filter(s => s.rarity === 'common')
-    };
+// 🏗️ DYNAMIC: Smart shelf organization with auto-building
+const organizeSaintsIntoShelves = useCallback((saints, unlockedSaints, studentData, calculatedStreak) => {
+  // Group saints by rarity/type (MUTUALLY EXCLUSIVE - priority order matters!)
+  const jesusArray = saints.filter(s => s.luxlings_series === 'Ultimate Redeemer');
+  const marianArray = saints.filter(s => s.luxlings_series === 'Mini Marians');
+  const gradeArray = saints.filter(s => 
+    !jesusArray.includes(s) && 
+    !marianArray.includes(s) && 
+    (s.rarity?.includes('grade_exclusive') || (s.unlockCondition && s.unlockCondition.includes('first_book_grade')))
+  );
+  const seasonalArray = saints.filter(s => 
+    !jesusArray.includes(s) && 
+    !marianArray.includes(s) && 
+    !gradeArray.includes(s) && 
+    s.rarity === 'seasonal'
+  );
+  const legendaryArray = saints.filter(s => 
+    !jesusArray.includes(s) && 
+    !marianArray.includes(s) && 
+    !gradeArray.includes(s) && 
+    !seasonalArray.includes(s) && 
+    s.rarity === 'legendary'
+  );
+  const rareArray = saints.filter(s => 
+    !jesusArray.includes(s) && 
+    !marianArray.includes(s) && 
+    !gradeArray.includes(s) && 
+    !seasonalArray.includes(s) && 
+    !legendaryArray.includes(s) && 
+    s.rarity === 'rare'
+  );
+  const commonArray = saints.filter(s => 
+    !jesusArray.includes(s) && 
+    !marianArray.includes(s) && 
+    !gradeArray.includes(s) && 
+    !seasonalArray.includes(s) && 
+    !legendaryArray.includes(s) && 
+    !rareArray.includes(s) && 
+    s.rarity === 'common'
+  );
 
-    // 🌈 Dynamic glow based on theme brightness
-    const isLightTheme = currentTheme?.background?.includes('#FFF') || 
-                        currentTheme?.background === '#FFFFFF' ||
-                        currentTheme?.background === '#FFFCF5' ||
-                        currentTheme?.background === '#FEFEFE' ||
-                        currentTheme?.background === '#FFF0F5' ||
-                        currentTheme?.background === '#E0FFFF' ||
-                        currentTheme?.background === '#FFFEF8';
-    
-    const getGlow = (intensity) => {
-      if (isLightTheme) {
-        return `0 0 ${intensity}px rgba(0,0,0,0.4), 0 0 ${intensity * 1.5}px ${currentTheme.primary}60`;
-      } else {
-        return `0 0 ${intensity}px rgba(255,255,255,0.7), 0 0 ${intensity * 1.5}px rgba(255,255,255,0.3)`;
-      }
-    };
+  const saintsByType = {
+    jesus: jesusArray,
+    marian: marianArray,
+    grade: gradeArray,
+    seasonal: seasonalArray,
+    legendary: legendaryArray,
+    rare: rareArray,
+    common: commonArray
+  };
 
-    // Fixed shelf configs with correct counts
-    const shelfConfigs = [
-      { 
-        type: 'jesus', 
-        shelfColor: currentTheme?.primary || '#ADD4EA',
-        textColor: currentTheme?.textPrimary || '#223848',
-        glow: getGlow(20),
-        capacity: 1,
-        label: '✨ Ultimate Goal ✨'
-      },
-      { 
-        type: 'marian', 
-        shelfColor: currentTheme?.primary || '#ADD4EA',
-        textColor: currentTheme?.textPrimary || '#223848',
-        glow: getGlow(16),
-        capacity: 5,
-        label: '💎 Marian Apparitions 💎'
-      },
-      { 
-        type: 'grade', 
-        shelfColor: currentTheme?.primary || '#ADD4EA',
-        textColor: currentTheme?.textPrimary || '#223848',
-        glow: getGlow(14),
-        capacity: 5,
-        label: '🎓 Grade Saints 🎓'
-      },
-      { 
-        type: 'seasonal', 
-        shelfColor: currentTheme?.primary || '#ADD4EA',
-        textColor: currentTheme?.textPrimary || '#223848',
-        glow: getGlow(12),
-        capacity: 5,
-        label: '🍀 Seasonal Saints 🍀'
-      },
-      { 
-        type: 'legendary', 
-        shelfColor: currentTheme?.primary || '#ADD4EA',
-        textColor: currentTheme?.textPrimary || '#223848',
-        glow: getGlow(10),
-        capacity: 5,
-        label: '⚡ Legendary Saints ⚡'
-      },
-      { 
-        type: 'rare', 
-        shelfColor: currentTheme?.primary || '#ADD4EA',
-        textColor: currentTheme?.textPrimary || '#223848',
-        glow: getGlow(8),
-        capacity: 5,
-        label: '🌟 Rare Saints 🌟'
-      },
-      { 
-        type: 'common', 
-        shelfColor: currentTheme?.primary || '#ADD4EA',
-        textColor: currentTheme?.textPrimary || '#223848',
-        glow: getGlow(6),
-        capacity: 5,
-        label: '🔥 Common Saints 🔥'
-      }
-    ];
+  // 🔍 DEBUG LOGS (keep these for now)
+  console.log('🏠 Shelf Organization Debug:');
+  console.log('Total saints passed in:', saints.length);
+  console.log('Marian saints found:', saintsByType.marian.length);
+  console.log('Marian saint IDs:', saintsByType.marian.map(s => s.id));
+  console.log('Saint 173 details:', saints.find(s => s.id === 'saint_173'));
+  console.log('Unlocked saints Set:', unlockedSaints);
+  console.log('Is saint_173 unlocked?', unlockedSaints.has('saint_173'));
 
-    // Generate all shelves - always show for visual progression
-    const shelves = [];
-    
-    shelfConfigs.forEach(config => {
-      const typeSaints = saintsByType[config.type] || [];
-      
-      // Always create shelf (show progression goals)
-      shelves.push({
-        ...config,
-        saints: typeSaints.slice(0, config.capacity),
-        totalSaints: typeSaints.length
-      });
+  // 🌈 Dynamic glow based on theme brightness
+  const isLightTheme = currentTheme?.background?.includes('#FFF') || 
+                      currentTheme?.background === '#FFFFFF' ||
+                      currentTheme?.background === '#FFFCF5' ||
+                      currentTheme?.background === '#FEFEFE' ||
+                      currentTheme?.background === '#FFF0F5' ||
+                      currentTheme?.background === '#E0FFFF' ||
+                      currentTheme?.background === '#FFFEF8';
+  
+  const getGlow = (intensity) => {
+    if (isLightTheme) {
+      return `0 0 ${intensity}px rgba(0,0,0,0.4), 0 0 ${intensity * 1.5}px ${currentTheme.primary}60`;
+    } else {
+      return `0 0 ${intensity}px rgba(255,255,255,0.7), 0 0 ${intensity * 1.5}px rgba(255,255,255,0.3)`;
+    }
+  };
+
+  // 📚 START BUILDING SHELVES
+  const shelves = [];
+
+  // 🏆 FIXED SHELVES (Always show these)
+  const fixedShelfConfigs = [
+    { 
+      type: 'jesus', 
+      shelfColor: currentTheme?.primary || '#ADD4EA',
+      textColor: currentTheme?.textPrimary || '#223848',
+      glow: getGlow(20),
+      capacity: 1,
+      label: '✨ Ultimate Goal ✨'
+    },
+    { 
+      type: 'marian', 
+      shelfColor: currentTheme?.primary || '#ADD4EA',
+      textColor: currentTheme?.textPrimary || '#223848',
+      glow: getGlow(16),
+      capacity: 5,
+      label: '💎 Marian Apparitions 💎'
+    },
+    { 
+      type: 'grade', 
+      shelfColor: currentTheme?.primary || '#ADD4EA',
+      textColor: currentTheme?.textPrimary || '#223848',
+      glow: getGlow(14),
+      capacity: 5,
+      label: '🎓 Grade Saints 🎓'
+    },
+    { 
+      type: 'seasonal', 
+      shelfColor: currentTheme?.primary || '#ADD4EA',
+      textColor: currentTheme?.textPrimary || '#223848',
+      glow: getGlow(12),
+      capacity: 5,
+      label: '🍀 Seasonal Saints 🍀'
+    }
+  ];
+
+  // Add fixed shelves
+  fixedShelfConfigs.forEach(config => {
+    const typeSaints = saintsByType[config.type] || [];
+    shelves.push({
+      ...config,
+      saints: typeSaints.slice(0, config.capacity),
+      totalSaints: typeSaints.length
     });
+  });
 
-    return shelves;
-  }, [currentTheme]);
+  // 🔥 DYNAMIC SHELVES - Only for types with many saints
+  
+  // Helper function to create dynamic shelves
+  const createDynamicShelves = (type, saintsArray, baseLabel, glow, shelfColor) => {
+    // Only show unlocked saints for dynamic shelves
+    const unlockedSaintsOfType = saintsArray.filter(saint => unlockedSaints.has(saint.id));
+    
+    if (unlockedSaintsOfType.length === 0) return; // Don't create empty shelves
+    
+    const shelvesNeeded = Math.ceil(unlockedSaintsOfType.length / 5);
+    
+    for (let i = 0; i < shelvesNeeded; i++) {
+      const startIndex = i * 5;
+      const endIndex = Math.min(startIndex + 5, unlockedSaintsOfType.length);
+      const shelfSaints = unlockedSaintsOfType.slice(startIndex, endIndex);
+      
+      shelves.push({
+        type: `${type}_${i + 1}`,
+        shelfColor: shelfColor,
+        textColor: currentTheme?.textPrimary || '#223848',
+        glow: glow,
+        capacity: 5,
+        label: shelvesNeeded === 1 ? baseLabel : `${baseLabel} ${i + 1}`,
+        saints: shelfSaints,
+        totalSaints: unlockedSaintsOfType.length,
+        isUnlockedOnly: true // Flag to show these are only unlocked saints
+      });
+    }
+  };
+
+  // 🔥 Create dynamic shelves for each type
+  createDynamicShelves(
+    'legendary', 
+    saintsByType.legendary, 
+    '⚡ Legendary Saints ⚡', 
+    getGlow(10),
+    currentTheme?.primary || '#ADD4EA'
+  );
+
+  createDynamicShelves(
+    'rare', 
+    saintsByType.rare, 
+    '🌟 Rare Saints 🌟', 
+    getGlow(8),
+    currentTheme?.primary || '#ADD4EA'
+  );
+
+  createDynamicShelves(
+    'common', 
+    saintsByType.common, 
+    '🔥 Common Saints 🔥', 
+    getGlow(6),
+    currentTheme?.primary || '#ADD4EA'
+  );
+
+  console.log('📚 Dynamic Shelves Created:', {
+    totalShelves: shelves.length,
+    legendaryShelvesCreated: shelves.filter(s => s.type.startsWith('legendary')).length,
+    rareShelvesCreated: shelves.filter(s => s.type.startsWith('rare')).length,
+    commonShelvesCreated: shelves.filter(s => s.type.startsWith('common')).length
+  });
+
+  return shelves;
+}, [currentTheme]);
 
   // Helper function to check if saint glow should persist (24 hours)
   const shouldShowNewGlow = useCallback((saintId, studentData) => {
