@@ -50,7 +50,6 @@ export default function StudentHealthyHabits() {
   // XP SYSTEM STATE VARIABLES
   const [showXPReward, setShowXPReward] = useState(false);
   const [xpReward, setXPReward] = useState({ amount: 0, reason: '', total: 0 });
-  const [currentWeekBadge, setCurrentWeekBadge] = useState(null);
 
   // Wake lock state
   const [wakeLock, setWakeLock] = useState(null);
@@ -375,12 +374,6 @@ export default function StudentHealthyHabits() {
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
     }
-  }, []);
-
-  // Load current week's badge on mount
-  useEffect(() => {
-    const weekBadge = getCurrentWeekBadge();
-    setCurrentWeekBadge(weekBadge);
   }, []);
 
   // Load streak data with smart calculation and timeline calendar
@@ -1184,59 +1177,6 @@ export default function StudentHealthyHabits() {
 
         {/* MAIN CONTENT */}
         <div style={{ padding: 'clamp(16px, 5vw, 20px)', maxWidth: '400px', margin: '0 auto' }}>
-          {/* CURRENT WEEK BADGE CHALLENGE */}
-          {currentWeekBadge && (
-            <div style={{
-              backgroundColor: currentTheme.surface,
-              borderRadius: '16px',
-              padding: '16px',
-              marginBottom: '20px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              textAlign: 'center'
-            }}>
-              <h3 style={{
-                fontSize: '14px',
-                fontWeight: '600',
-                color: currentTheme.textPrimary,
-                margin: '0 0 12px 0'
-              }}>
-                🎯 This Week&apos;s Challenge
-              </h3>
-              
-              <div style={{
-                backgroundColor: `${currentTheme.primary}20`,
-                borderRadius: '12px',
-                padding: '12px',
-                marginBottom: '8px'
-              }}>
-                <div style={{ fontSize: '24px', marginBottom: '8px' }}>
-                  {currentWeekBadge.emoji}
-                </div>
-                <div style={{
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  color: currentTheme.textPrimary,
-                  marginBottom: '4px'
-                }}>
-                  {currentWeekBadge.name}
-                </div>
-                <div style={{
-                  fontSize: '12px',
-                  color: currentTheme.textSecondary
-                }}>
-                  {currentWeekBadge.description}
-                </div>
-              </div>
-              
-              <div style={{
-                fontSize: '14px',
-                fontWeight: '600',
-                color: currentTheme.primary
-              }}>
-                🏆 {currentWeekBadge.xp} XP Reward
-              </div>
-            </div>
-          )}
 
           {/* TIMER SECTION */}
           <div style={{

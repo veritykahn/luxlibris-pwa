@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../contexts/AuthContext';
 import { getStudentDataEntities } from '../../lib/firebase';
+import { getCurrentWeekBadge, getBadgeProgress } from '../../lib/badge-system';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import Head from 'next/head';
@@ -19,6 +20,7 @@ export default function StudentStatsMain() {
   const [isGeneratingCertificate, setIsGeneratingCertificate] = useState(false);
   const [quickStats, setQuickStats] = useState(null);
   const [braggingRightsData, setBraggingRightsData] = useState(null);
+  const [currentWeekBadge, setCurrentWeekBadge] = useState(null);
 
   // Theme definitions (keeping the same as original)
   const themes = useMemo(() => ({
@@ -305,6 +307,10 @@ export default function StudentStatsMain() {
       const selectedThemeKey = firebaseStudentData.selectedTheme || 'classic_lux';
       const selectedTheme = themes[selectedThemeKey];
       setCurrentTheme(selectedTheme);
+      
+      // Load current week's badge challenge
+      const weekBadge = getCurrentWeekBadge();
+      setCurrentWeekBadge(weekBadge);
       
       // Calculate quick stats for overview
       await calculateQuickStats(firebaseStudentData);
@@ -871,6 +877,96 @@ Visit luxlibris.org to learn more about our reading program.
               </div>
             )}
           </div>
+
+          {/* THIS WEEK'S CHALLENGE */}
+          {currentWeekBadge && (
+            <div style={{
+              backgroundColor: currentTheme.surface,
+              borderRadius: '20px',
+              padding: '20px',
+              marginBottom: '20px',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+              textAlign: 'center'
+            }}>
+              <div style={{
+                fontSize: '14px',
+                fontWeight: '600',
+                color: currentTheme.textPrimary,
+                marginBottom: '16px'
+              }}>
+                {currentWeekBadge.week === 0 ? '🚀 Coming Soon' : '🎯 This Week\'s Challenge'}
+              </div>
+              
+              <div style={{
+                backgroundColor: `${currentTheme.primary}20`,
+                borderRadius: '16px',
+                padding: '16px',
+                marginBottom: '16px'
+              }}>
+                <div style={{ fontSize: 'clamp(32px, 10vw, 40px)', marginBottom: '12px' }}>
+                  {currentWeekBadge.emoji}
+                </div>
+                <div style={{
+                  fontSize: 'clamp(16px, 5vw, 18px)',
+                  fontWeight: 'bold',
+                  color: currentTheme.textPrimary,
+                  marginBottom: '8px'
+                }}>
+                  {currentWeekBadge.name}
+                </div>
+                <div style={{
+                  fontSize: 'clamp(12px, 3.5vw, 14px)',
+                  color: currentTheme.textSecondary,
+                  marginBottom: currentWeekBadge.week === 0 ? '0' : '12px'
+                }}>
+                  {currentWeekBadge.description}
+                </div>
+                
+                {currentWeekBadge.week > 0 && (
+                  <div style={{
+                    fontSize: 'clamp(14px, 4vw, 16px)',
+                    fontWeight: '600',
+                    color: currentTheme.primary
+                  }}>
+                    🏆 {currentWeekBadge.xp} XP Reward
+                  </div>
+                )}
+              </div>
+              
+              {currentWeekBadge.week === 0 ? (
+                <div style={{
+                  fontSize: 'clamp(11px, 3vw, 12px)',
+                  color: currentTheme.textSecondary
+                }}>
+                  The 39-week badge challenge starts with the new school year!
+                </div>
+              ) : (
+                <button
+                  onClick={() => router.push('/student-healthy-habits')}
+                  style={{
+                    backgroundColor: currentTheme.primary,
+                    color: currentTheme.textPrimary,
+                    border: 'none',
+                    borderRadius: '16px',
+                    padding: 'clamp(10px, 3vw, 12px) clamp(16px, 5vw, 20px)',
+                    fontSize: 'clamp(12px, 3.5vw, 14px)',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    width: '100%',
+                    minHeight: '44px',
+                    touchAction: 'manipulation',
+                    WebkitTapHighlightColor: 'transparent'
+                  }}
+                >
+                  📖 Start Reading Session
+                </button>
+              )}
+            </div>
+          )}
 
           {/* BRAGGING RIGHTS CARD */}
           <div style={{
