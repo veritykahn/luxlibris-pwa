@@ -1200,7 +1200,7 @@ export default function StudentHealthyHabits() {
                 color: currentTheme.textPrimary,
                 margin: '0 0 12px 0'
               }}>
-                🎯 This Week's Challenge
+                🎯 This Week&apos;s Challenge
               </h3>
               
               <div style={{
