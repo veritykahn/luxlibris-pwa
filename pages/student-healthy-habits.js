@@ -5,6 +5,13 @@ import { getStudentDataEntities, updateStudentDataEntities } from '../lib/fireba
 import { collection, addDoc, query, where, getDocs, orderBy, limit, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import Head from 'next/head';
+// XP SYSTEM IMPORTS
+import { 
+  getCurrentWeekBadge, 
+  calculateSessionXP, 
+  checkTimerBadgeProgress,
+  getLevelProgress 
+} from '../lib/badge-system';
 
 export default function StudentHealthyHabits() {
   const router = useRouter();
@@ -39,6 +46,11 @@ export default function StudentHealthyHabits() {
   const [showBookProgressModal, setShowBookProgressModal] = useState(false);
   const [currentBookId, setCurrentBookId] = useState(null);
   const [currentBookTitle, setCurrentBookTitle] = useState('');
+
+  // XP SYSTEM STATE VARIABLES
+  const [showXPReward, setShowXPReward] = useState(false);
+  const [xpReward, setXPReward] = useState({ amount: 0, reason: '', total: 0 });
+  const [currentWeekBadge, setCurrentWeekBadge] = useState(null);
 
   // Wake lock state
   const [wakeLock, setWakeLock] = useState(null);
@@ -365,6 +377,12 @@ export default function StudentHealthyHabits() {
     }
   }, []);
 
+  // Load current week's badge on mount
+  useEffect(() => {
+    const weekBadge = getCurrentWeekBadge();
+    setCurrentWeekBadge(weekBadge);
+  }, []);
+
   // Load streak data with smart calculation and timeline calendar
   const loadStreakData = useCallback(async (studentData) => {
     try {
@@ -572,18 +590,24 @@ export default function StudentHealthyHabits() {
     }
   }, [studentData, loadStreakData]);
 
+  // UPDATED SAVE READING SESSION WITH XP SYSTEM
   const saveReadingSession = useCallback(async (duration, completed) => {
     try {
       if (!studentData) return;
 
       const today = getLocalDateString(new Date());
+      
+      // Calculate XP for this session
+      const sessionXP = calculateSessionXP(duration, completed);
+      
       const sessionData = {
         date: today,
         startTime: new Date(),
         duration: duration,
         targetDuration: Math.floor(timerDuration / 60),
         completed: completed,
-        bookId: currentBookId || null
+        bookId: currentBookId || null,
+        xpEarned: sessionXP, // NEW: Track XP per session
       };
 
       const sessionsRef = collection(db, `entities/${studentData.entityId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
@@ -592,6 +616,49 @@ export default function StudentHealthyHabits() {
 
       setTodaysSessions(prev => [newSession, ...prev]);
       setTodaysMinutes(prev => prev + duration);
+
+      // NEW: Update student's total XP
+      const currentTotalXP = studentData.totalXP || 0;
+      const newTotalXP = currentTotalXP + sessionXP;
+      
+      // NEW: Check for badges
+      const currentWeek = getCurrentWeekBadge();
+      const badgeResult = currentWeek ? await checkTimerBadgeProgress(studentData, sessionData, currentWeek.week) : null;
+      
+      if (badgeResult && badgeResult.earned) {
+        // Award badge XP too
+        const totalXP = newTotalXP + badgeResult.badge.xp;
+        
+        await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
+          totalXP: totalXP,
+          [`badgeEarned_week${currentWeek.week}`]: true,
+          lastBadgeEarned: new Date()
+        });
+        
+        // Show XP popup with badge
+        setXPReward({
+          amount: sessionXP + badgeResult.badge.xp,
+          reason: `${sessionXP} XP + ${badgeResult.badge.emoji} ${badgeResult.badge.name} (+${badgeResult.badge.xp} XP)`,
+          total: totalXP,
+          badge: badgeResult.badge
+        });
+      } else {
+        // Update XP without badge
+        await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
+          totalXP: newTotalXP,
+          lastXPUpdate: new Date()
+        });
+        
+        // Show regular XP popup
+        setXPReward({
+          amount: sessionXP,
+          reason: completed ? `${duration} minute session completed!` : `${duration} minutes banked!`,
+          total: newTotalXP
+        });
+      }
+      
+      setShowXPReward(true);
+      setTimeout(() => setShowXPReward(false), 4000);
 
       if (completed && todaysSessions.filter(s => s.completed && s.date === today).length === 0) {
         await updateStreakData();
@@ -726,8 +793,8 @@ export default function StudentHealthyHabits() {
 
   const handleBankSession = async () => {
     const minutesRead = Math.floor((timerDuration - timeRemaining) / 60);
-    if (minutesRead < 1) {
-      setShowSuccess('⏱️ Read for at least 1 minute to bank progress');
+    if (minutesRead < 5) {
+      setShowSuccess('⏱️ Read for at least 5 minutes to bank progress');
       setTimeout(() => setShowSuccess(''), 3000);
       return;
     }
@@ -770,6 +837,100 @@ export default function StudentHealthyHabits() {
   };
 
   const svgSize = getSvgSize();
+
+  // XP REWARD POPUP COMPONENT
+  const XPRewardPopup = ({ show, xpData, onClose }) => {
+    if (!show) return null;
+    
+    const levelInfo = getLevelProgress(xpData.total);
+    
+    return (
+      <div style={{
+        position: 'fixed',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        backgroundColor: currentTheme.surface,
+        borderRadius: '20px',
+        padding: '24px',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+        zIndex: 1001,
+        textAlign: 'center',
+        border: `3px solid ${currentTheme.primary}`,
+        minWidth: '280px',
+        maxWidth: '90vw'
+      }}>
+        <div style={{ fontSize: '48px', marginBottom: '12px' }}>
+          {xpData.badge ? xpData.badge.emoji : '⚡'}
+        </div>
+        
+        <div style={{
+          fontSize: '20px',
+          fontWeight: 'bold',
+          color: currentTheme.primary,
+          marginBottom: '8px'
+        }}>
+          +{xpData.amount} XP!
+        </div>
+        
+        <div style={{
+          fontSize: '14px',
+          color: currentTheme.textPrimary,
+          marginBottom: '16px'
+        }}>
+          {xpData.reason}
+        </div>
+        
+        {xpData.badge && (
+          <div style={{
+            backgroundColor: `${currentTheme.primary}20`,
+            borderRadius: '12px',
+            padding: '12px',
+            marginBottom: '16px'
+          }}>
+            <div style={{
+              fontSize: '16px',
+              fontWeight: '600',
+              color: currentTheme.textPrimary,
+              marginBottom: '4px'
+            }}>
+              🏆 Badge Earned!
+            </div>
+            <div style={{
+              fontSize: '14px',
+              color: currentTheme.textSecondary
+            }}>
+              {xpData.badge.name}
+            </div>
+          </div>
+        )}
+        
+        <div style={{
+          fontSize: '12px',
+          color: currentTheme.textSecondary,
+          marginBottom: '16px'
+        }}>
+          Total XP: {xpData.total} • Level {levelInfo.level}
+        </div>
+        
+        <button
+          onClick={onClose}
+          style={{
+            backgroundColor: currentTheme.primary,
+            color: currentTheme.textPrimary,
+            border: 'none',
+            borderRadius: '12px',
+            padding: '12px 24px',
+            fontSize: '14px',
+            fontWeight: '600',
+            cursor: 'pointer'
+          }}
+        >
+          Awesome! 🎯
+        </button>
+      </div>
+    );
+  };
 
   // Show loading
   if (loading || isLoading || !studentData || !currentTheme) {
@@ -1023,6 +1184,60 @@ export default function StudentHealthyHabits() {
 
         {/* MAIN CONTENT */}
         <div style={{ padding: 'clamp(16px, 5vw, 20px)', maxWidth: '400px', margin: '0 auto' }}>
+          {/* CURRENT WEEK BADGE CHALLENGE */}
+          {currentWeekBadge && (
+            <div style={{
+              backgroundColor: currentTheme.surface,
+              borderRadius: '16px',
+              padding: '16px',
+              marginBottom: '20px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              textAlign: 'center'
+            }}>
+              <h3 style={{
+                fontSize: '14px',
+                fontWeight: '600',
+                color: currentTheme.textPrimary,
+                margin: '0 0 12px 0'
+              }}>
+                🎯 This Week's Challenge
+              </h3>
+              
+              <div style={{
+                backgroundColor: `${currentTheme.primary}20`,
+                borderRadius: '12px',
+                padding: '12px',
+                marginBottom: '8px'
+              }}>
+                <div style={{ fontSize: '24px', marginBottom: '8px' }}>
+                  {currentWeekBadge.emoji}
+                </div>
+                <div style={{
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  color: currentTheme.textPrimary,
+                  marginBottom: '4px'
+                }}>
+                  {currentWeekBadge.name}
+                </div>
+                <div style={{
+                  fontSize: '12px',
+                  color: currentTheme.textSecondary
+                }}>
+                  {currentWeekBadge.description}
+                </div>
+              </div>
+              
+              <div style={{
+                fontSize: '14px',
+                fontWeight: '600',
+                color: currentTheme.primary
+              }}>
+                🏆 {currentWeekBadge.xp} XP Reward
+              </div>
+            </div>
+          )}
+
           {/* TIMER SECTION */}
           <div style={{
             backgroundColor: currentTheme.surface,
@@ -1412,6 +1627,13 @@ export default function StudentHealthyHabits() {
             </p>
           </div>
         </div>
+
+        {/* XP REWARD POPUP */}
+        <XPRewardPopup 
+          show={showXPReward}
+          xpData={xpReward}
+          onClose={() => setShowXPReward(false)}
+        />
 
         {/* COMPLETION CELEBRATION */}
         {showCompletionCelebration && (
