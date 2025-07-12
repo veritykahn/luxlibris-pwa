@@ -1,7 +1,7 @@
 // pages/student-onboarding.js - Updated with Personal Password Step
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { db } from '../lib/firebase';
+import { db, getCurrentAcademicYear } from '../lib/firebase';
 import { collection, addDoc, getDocs, doc, getDoc } from 'firebase/firestore';
 import Head from 'next/head'
 
@@ -249,11 +249,15 @@ export default function StudentOnboarding() {
         personalPassword: formData.personalPassword.toLowerCase(), // Store lowercase personal password
         
         // Personal info
-        firstName: formData.firstName,
-        lastInitial: formData.lastInitial,
-        
-        // Teacher & School linking
-        currentTeacherId: formData.teacherId,
+  firstName: formData.firstName,
+  lastInitial: formData.lastInitial,
+  
+  // ADD THESE TWO LINES:
+  academicYear: getCurrentAcademicYear(),
+  gradeHistory: [{ academicYear: getCurrentAcademicYear(), grade: parseInt(formData.grade), joinedAt: new Date() }],
+  
+  // Teacher & School linking
+  currentTeacherId: formData.teacherId,
         teacherHistory: [formData.teacherId],
         createdByTeacherId: formData.teacherId,
         
