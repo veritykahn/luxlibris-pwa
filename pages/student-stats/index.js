@@ -1,4 +1,4 @@
-// pages/student-stats/index.js - Enhanced Stats Dashboard with Reading Personality & Visual Certificates
+// pages/student-stats/index.js - Enhanced Stats Dashboard with Certificate Generation Removed
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
@@ -6,8 +6,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { getStudentDataEntities } from '../../lib/firebase';
 import { getCurrentWeekBadge, getBadgeProgress, getEarnedBadges, getLevelProgress } from '../../lib/badge-system';
 import { calculateReadingPersonality, shouldShowFirstBookCelebration, unlockCertificate } from '../../lib/reading-personality';
-import * as ShareableModal from '../../lib/shareable-modal-generator';
-import { generateEnhancedBraggingRights } from '../../lib/leaderboard-system';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import Head from 'next/head';
@@ -20,9 +18,7 @@ export default function StudentStatsMain() {
   const [isLoading, setIsLoading] = useState(true);
   const [showNavMenu, setShowNavMenu] = useState(false);
   const [showStatsDropdown, setShowStatsDropdown] = useState(false);
-  const [showBraggingRights, setShowBraggingRights] = useState(false);
   const [showFirstBookCelebration, setShowFirstBookCelebration] = useState(false);
-  const [isGeneratingCertificate, setIsGeneratingCertificate] = useState(false);
   const [quickStats, setQuickStats] = useState(null);
   const [readingPersonality, setReadingPersonality] = useState(null);
   const [badgeProgress, setBadgeProgress] = useState(null);
@@ -160,12 +156,11 @@ export default function StudentStatsMain() {
       if (event.key === 'Escape') {
         setShowNavMenu(false);
         setShowStatsDropdown(false);
-        setShowBraggingRights(false);
         setShowFirstBookCelebration(false);
       }
     };
 
-    if (showNavMenu || showStatsDropdown || showBraggingRights || showFirstBookCelebration) {
+    if (showNavMenu || showStatsDropdown || showFirstBookCelebration) {
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('keydown', handleEscape);
     }
@@ -174,7 +169,7 @@ export default function StudentStatsMain() {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscape);
     };
-  }, [showNavMenu, showStatsDropdown, showBraggingRights, showFirstBookCelebration]);
+  }, [showNavMenu, showStatsDropdown, showFirstBookCelebration]);
 
   // Calculate quick stats for dashboard overview
   const calculateQuickStats = useCallback(async (studentData) => {
@@ -332,70 +327,20 @@ export default function StudentStatsMain() {
     router.push(option.path);
   };
 
-  // Generate bragging rights data (same as my-stats)
-  const generateBraggingRights = useCallback(() => {
-    return generateEnhancedBraggingRights(studentData, quickStats, badgeProgress, earnedBadges);
-  }, [studentData, quickStats, badgeProgress, earnedBadges]);
-
-  // Handle certificate download (using shareable modal system)
-  const handleDownloadCertificate = async () => {
-    setIsGeneratingCertificate(true);
-    
-    try {
-      const braggingData = generateBraggingRights();
-      if (braggingData) {
-        const success = await ShareableModal.downloadShareableModal(braggingData, currentTheme, studentData);
-        if (success) {
-          alert('🎉 Achievement image downloaded! Check your downloads folder.');
-        } else {
-          alert('❌ Error generating image. Please try again.');
-        }
-      }
-    } catch (error) {
-      console.error('Error generating achievement image:', error);
-      alert('❌ Error generating image. Please try again.');
-    }
-    
-    setIsGeneratingCertificate(false);
-  };
-
-  // Handle certificate sharing (using shareable modal system)
-  const handleShareCertificate = async () => {
-    setIsGeneratingCertificate(true);
-    
-    try {
-      const braggingData = generateBraggingRights();
-      if (braggingData) {
-        const success = await ShareableModal.shareModal(braggingData, currentTheme, studentData);
-        if (!success) {
-          alert('❌ Error sharing image. Please try again.');
-        }
-      }
-    } catch (error) {
-      console.error('Error sharing achievement image:', error);
-      alert('❌ Error sharing image. Please try again.');
-    }
-    
-    setIsGeneratingCertificate(false);
-  };
-
   // Handle first book celebration completion
   const handleFirstBookCelebration = async () => {
     setShowFirstBookCelebration(false);
     
     try {
       await unlockCertificate(studentData);
-      alert('🎉 Congratulations! Your certificate feature has been unlocked!');
+      alert('🎉 Congratulations! Keep reading to unlock more achievements!');
       
       // Refresh student data to reflect the unlock
       await loadStatsData();
     } catch (error) {
-      console.error('Error unlocking certificate:', error);
+      console.error('Error handling first book celebration:', error);
     }
   };
-
-  // Check if certificate is unlocked
-  const isCertificateUnlocked = studentData?.certificateUnlocked || (studentData?.booksSubmittedThisYear > 0);
 
   // Show loading
   if (loading || isLoading || !studentData || !currentTheme || !quickStats) {
@@ -846,7 +791,7 @@ export default function StudentStatsMain() {
             </div>
           )}
           
-          {/* OVERVIEW CARDS (SIMPLIFIED - NO READING PERSONALITY) */}
+          {/* OVERVIEW CARDS */}
           <div style={{
             backgroundColor: currentTheme.surface,
             borderRadius: '20px',
@@ -1031,170 +976,6 @@ export default function StudentStatsMain() {
             )}
           </div>
 
-          {/* ENHANCED BRAGGING RIGHTS CARD */}
-          <div style={{
-            backgroundColor: currentTheme.surface,
-            borderRadius: '16px',
-            padding: '20px',
-            marginBottom: '20px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-          }}>
-            <h3 style={{
-              fontSize: 'clamp(14px, 4vw, 16px)',
-              fontWeight: '600',
-              color: currentTheme.textPrimary,
-              margin: '0 0 16px 0'
-            }}>
-              🏆 Share Your Achievements
-            </h3>
-            
-            <div style={{
-              backgroundColor: `${currentTheme.primary}20`,
-              borderRadius: '12px',
-              padding: '16px',
-              marginBottom: '16px',
-              textAlign: 'center'
-            }}>
-              <div style={{ fontSize: 'clamp(32px, 10vw, 40px)', marginBottom: '12px' }}>📄</div>
-              
-              <div style={{
-                fontSize: 'clamp(14px, 4vw, 16px)',
-                fontWeight: '600',
-                color: currentTheme.textPrimary,
-                marginBottom: '8px'
-              }}>
-                Create Beautiful Achievement Image
-              </div>
-              
-              <div style={{
-                fontSize: 'clamp(12px, 3.5vw, 14px)',
-                color: currentTheme.textSecondary,
-                marginBottom: '16px'
-              }}>
-                Generate a shareable image with your stats, badges, and achievements
-              </div>
-              
-              {earnedBadges.length > 0 && (
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  marginBottom: '16px'
-                }}>
-                  {earnedBadges.slice(-3).reverse().map((badge, index) => (
-                    <div
-                      key={index}
-                      style={{
-                        fontSize: '24px',
-                        padding: '4px'
-                      }}
-                    >
-                      {badge.emoji}
-                    </div>
-                  ))}
-                  {earnedBadges.length > 3 && (
-                    <div style={{
-                      fontSize: '12px',
-                      color: currentTheme.textSecondary,
-                      alignSelf: 'center'
-                    }}>
-                      +{earnedBadges.length - 3} more
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-            
-            {isCertificateUnlocked ? (
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '12px'
-              }}>
-                <button
-                  onClick={handleDownloadCertificate}
-                  disabled={isGeneratingCertificate}
-                  style={{
-                    backgroundColor: currentTheme.primary,
-                    color: currentTheme.textPrimary,
-                    border: 'none',
-                    borderRadius: '16px',
-                    padding: 'clamp(10px, 3vw, 12px) clamp(12px, 4vw, 16px)',
-                    fontSize: 'clamp(11px, 3.5vw, 13px)',
-                    fontWeight: '600',
-                    cursor: isGeneratingCertificate ? 'not-allowed' : 'pointer',
-                    opacity: isGeneratingCertificate ? 0.7 : 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                    minHeight: '44px',
-                    touchAction: 'manipulation',
-                    WebkitTapHighlightColor: 'transparent'
-                  }}
-                >
-                  {isGeneratingCertificate ? '⏳' : '📥'} Download Image
-                </button>
-                
-                <button
-                  onClick={handleShareCertificate}
-                  disabled={isGeneratingCertificate}
-                  style={{
-                    backgroundColor: currentTheme.secondary,
-                    color: currentTheme.textPrimary,
-                    border: 'none',
-                    borderRadius: '16px',
-                    padding: 'clamp(10px, 3vw, 12px) clamp(12px, 4vw, 16px)',
-                    fontSize: 'clamp(11px, 3.5vw, 13px)',
-                    fontWeight: '600',
-                    cursor: isGeneratingCertificate ? 'not-allowed' : 'pointer',
-                    opacity: isGeneratingCertificate ? 0.7 : 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                    minHeight: '44px',
-                    touchAction: 'manipulation',
-                    WebkitTapHighlightColor: 'transparent'
-                  }}
-                >
-                  {isGeneratingCertificate ? '⏳' : '📤'} Share Image
-                </button>
-              </div>
-            ) : (
-              <div style={{
-                backgroundColor: '#FF9800',
-                color: 'white',
-                borderRadius: '12px',
-                padding: '12px',
-                textAlign: 'center'
-              }}>
-                <div style={{
-                  fontSize: 'clamp(12px, 3.5vw, 14px)',
-                  fontWeight: '600',
-                  marginBottom: '4px'
-                }}>
-                  🔒 Complete Your First Book
-                </div>
-                <div style={{
-                  fontSize: 'clamp(10px, 3vw, 11px)',
-                  opacity: 0.9
-                }}>
-                  Unlock certificates by finishing your first book!
-                </div>
-              </div>
-            )}
-            
-            <div style={{
-              fontSize: 'clamp(10px, 3vw, 11px)',
-              color: currentTheme.textSecondary,
-              textAlign: 'center',
-              marginTop: '12px'
-            }}>
-              Beautiful achievement image with Lux Libris branding
-            </div>
-          </div>
-
           {/* CALL TO ACTION */}
           <div style={{
             backgroundColor: currentTheme.surface,
@@ -1303,13 +1084,13 @@ export default function StudentStatsMain() {
                       color: currentTheme.textPrimary,
                       marginBottom: '8px'
                     }}>
-                      📄 Certificate Generator Unlocked
+                      📖 Reading Journey Milestone
                     </div>
                     <div style={{
                       fontSize: '12px',
                       color: currentTheme.textSecondary
                     }}>
-                      You can now create and share beautiful reading certificates!
+                      Keep reading to unlock more achievements and saints!
                     </div>
                   </div>
                 </div>

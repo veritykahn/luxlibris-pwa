@@ -1,4 +1,4 @@
-// pages/student-stats/my-stats.js - Updated with Reading Personality and Enhanced Certificate
+// pages/student-stats/my-stats.js - Updated with Bragging Rights Modal (Screenshot Only)
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../contexts/AuthContext';
@@ -11,7 +11,6 @@ import {
   generateEnhancedBraggingRights 
 } from '../../lib/leaderboard-system';
 import { calculateReadingPersonality } from '../../lib/reading-personality';
-import * as ShareableModal from '../../lib/shareable-modal-generator';
 
 export default function MyStats() {
   const router = useRouter();
@@ -22,7 +21,6 @@ export default function MyStats() {
   const [showNavMenu, setShowNavMenu] = useState(false);
   const [showStatsDropdown, setShowStatsDropdown] = useState(false);
   const [showBraggingRights, setShowBraggingRights] = useState(false);
-  const [isGeneratingCertificate, setIsGeneratingCertificate] = useState(false);
   
   // New state variables for enhanced features
   const [badgeProgress, setBadgeProgress] = useState(null);
@@ -244,12 +242,12 @@ export default function MyStats() {
     return streakCount;
   }, []);
 
-  // REPLACE the existing generateBraggingRights function with this:
+  // Generate bragging rights data
   const generateBraggingRights = useCallback(() => {
     return generateEnhancedBraggingRights(studentData, personalStats, badgeProgress, earnedBadges);
   }, [studentData, personalStats, badgeProgress, earnedBadges]);
 
-  // ADD this function to load real leaderboard data:
+  // Load real leaderboard data
   const loadLeaderboardData = useCallback(async () => {
     if (!studentData || !leaderboardUnlocked) return;
     
@@ -264,7 +262,7 @@ export default function MyStats() {
     setIsLoadingLeaderboard(false);
   }, [studentData, leaderboardUnlocked]);
 
-  // UPDATE the handleLeaderboardUnlock function:
+  // Handle leaderboard unlock
   const handleLeaderboardUnlock = async () => {
     try {
       // Get the teacher's parent quiz code (this is the correct one to check)
@@ -547,7 +545,7 @@ export default function MyStats() {
     }
   }, []);
 
-  // ADD this useEffect to load leaderboard when unlocked:
+  // Load leaderboard when unlocked
   useEffect(() => {
     if (leaderboardUnlocked && studentData) {
       loadLeaderboardData();
@@ -597,48 +595,6 @@ export default function MyStats() {
       router.push('/role-selector');
     }
   }, [loading, isAuthenticated, user, loadStatsData]);
-
-  // REPLACE the handleDownloadCertificate function:
-  const handleDownloadCertificate = async () => {
-    setIsGeneratingCertificate(true);
-    
-    try {
-      const braggingData = generateBraggingRights();
-      if (braggingData) {
-        const success = await ShareableModal.downloadShareableModal(braggingData, currentTheme, studentData);
-        if (success) {
-          alert('🎉 Achievement image downloaded! Check your downloads folder.');
-        } else {
-          alert('❌ Error generating image. Please try again.');
-        }
-      }
-    } catch (error) {
-      console.error('Error generating achievement image:', error);
-      alert('❌ Error generating image. Please try again.');
-    }
-    
-    setIsGeneratingCertificate(false);
-  };
-
-  // ADD new share function:
-  const handleShareCertificate = async () => {
-    setIsGeneratingCertificate(true);
-    
-    try {
-      const braggingData = generateBraggingRights();
-      if (braggingData) {
-        const success = await ShareableModal.shareModal(braggingData, currentTheme, studentData);
-        if (!success) {
-          alert('❌ Error sharing image. Please try again.');
-        }
-      }
-    } catch (error) {
-      console.error('Error sharing achievement image:', error);
-      alert('❌ Error sharing image. Please try again.');
-    }
-    
-    setIsGeneratingCertificate(false);
-  };
 
   if (loading || isLoading || !studentData || !currentTheme) {
     return (
@@ -1603,8 +1559,8 @@ export default function MyStats() {
                           fontSize: '16px',
                           marginBottom: '16px',
                           textAlign: 'center',
-                          backgroundColor: '#FFFFFF', // WHITE BACKGROUND
-                          color: '#000000' // BLACK TEXT
+                          backgroundColor: '#FFFFFF',
+                          color: '#000000'
                         }}
                       />
                       <div style={{ display: 'flex', gap: '8px' }}>
@@ -1816,7 +1772,7 @@ export default function MyStats() {
           </div>
         )}
 
-        {/* ENHANCED BRAGGING RIGHTS MODAL */}
+        {/* BRAGGING RIGHTS MODAL - NO DOWNLOAD/SHARE BUTTONS */}
         {showBraggingRights && (() => {
           const braggingData = generateBraggingRights();
           
@@ -1905,7 +1861,7 @@ export default function MyStats() {
                     marginBottom: '20px'
                   }}>
                     <div style={{
-                      backgroundColor: '#FFFFFF', // WHITE BACKGROUND
+                      backgroundColor: '#FFFFFF',
                       border: `2px solid ${currentTheme.primary}`,
                       borderRadius: '12px',
                       padding: '12px',
@@ -1914,19 +1870,19 @@ export default function MyStats() {
                       <div style={{
                         fontSize: 'clamp(16px, 5vw, 18px)',
                         fontWeight: 'bold',
-                        color: '#000000' // BLACK TEXT
+                        color: '#000000'
                       }}>
                         {braggingData?.level || 1}
                       </div>
                       <div style={{
                         fontSize: 'clamp(9px, 2.5vw, 10px)',
-                        color: '#666666' // DARK GREY TEXT
+                        color: '#666666'
                       }}>
                         Level
                       </div>
                     </div>
                     <div style={{
-                      backgroundColor: '#FFFFFF', // WHITE BACKGROUND
+                      backgroundColor: '#FFFFFF',
                       border: `2px solid ${currentTheme.primary}`,
                       borderRadius: '12px',
                       padding: '12px',
@@ -1935,19 +1891,19 @@ export default function MyStats() {
                       <div style={{
                         fontSize: 'clamp(16px, 5vw, 18px)',
                         fontWeight: 'bold',
-                        color: '#000000' // BLACK TEXT
+                        color: '#000000'
                       }}>
                         {braggingData?.totalXP || 0}
                       </div>
                       <div style={{
                         fontSize: 'clamp(9px, 2.5vw, 10px)',
-                        color: '#666666' // DARK GREY TEXT
+                        color: '#666666'
                       }}>
                         XP
                       </div>
                     </div>
                     <div style={{
-                      backgroundColor: '#FFFFFF', // WHITE BACKGROUND
+                      backgroundColor: '#FFFFFF',
                       border: `2px solid ${currentTheme.primary}`,
                       borderRadius: '12px',
                       padding: '12px',
@@ -1956,13 +1912,13 @@ export default function MyStats() {
                       <div style={{
                         fontSize: 'clamp(16px, 5vw, 18px)',
                         fontWeight: 'bold',
-                        color: '#000000' // BLACK TEXT
+                        color: '#000000'
                       }}>
                         {braggingData?.badgesEarned || 0}
                       </div>
                       <div style={{
                         fontSize: 'clamp(9px, 2.5vw, 10px)',
-                        color: '#666666' // DARK GREY TEXT
+                        color: '#666666'
                       }}>
                         Badges
                       </div>
@@ -2017,14 +1973,14 @@ export default function MyStats() {
                       <div
                         key={index}
                         style={{
-                          backgroundColor: '#FFFFFF', // WHITE BACKGROUND
+                          backgroundColor: '#FFFFFF',
                           border: `1px solid ${currentTheme.primary}60`,
                           borderRadius: '12px',
                           padding: '10px',
                           marginBottom: '6px',
                           fontSize: 'clamp(11px, 3vw, 12px)',
                           fontWeight: '500',
-                          color: '#000000', // BLACK TEXT
+                          color: '#000000',
                           textAlign: 'left'
                         }}
                       >
@@ -2066,61 +2022,28 @@ export default function MyStats() {
                     </div>
                   )}
 
+                  {/* Screenshot hint instead of buttons */}
                   <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: '12px',
+                    backgroundColor: `${currentTheme.primary}20`,
+                    borderRadius: '12px',
+                    padding: '16px',
+                    textAlign: 'center',
                     marginTop: '16px'
                   }}>
-                    <button
-                      onClick={handleDownloadCertificate}
-                      disabled={isGeneratingCertificate}
-                      style={{
-                        backgroundColor: currentTheme.primary,
-                        color: currentTheme.textPrimary,
-                        border: 'none',
-                        borderRadius: '16px',
-                        padding: '16px',
-                        fontSize: 'clamp(12px, 3.5vw, 14px)',
-                        fontWeight: '600',
-                        cursor: isGeneratingCertificate ? 'not-allowed' : 'pointer',
-                        opacity: isGeneratingCertificate ? 0.7 : 1,
-                        minHeight: '44px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '8px',
-                        touchAction: 'manipulation',
-                        WebkitTapHighlightColor: 'transparent'
-                      }}
-                    >
-                      {isGeneratingCertificate ? '⏳ Creating...' : '📥 Download Image'}
-                    </button>
-                    
-                    <button
-                      onClick={handleShareCertificate}
-                      disabled={isGeneratingCertificate}
-                      style={{
-                        backgroundColor: currentTheme.secondary,
-                        color: currentTheme.textPrimary,
-                        border: 'none',
-                        borderRadius: '16px',
-                        padding: '16px',
-                        fontSize: 'clamp(12px, 3.5vw, 14px)',
-                        fontWeight: '600',
-                        cursor: isGeneratingCertificate ? 'not-allowed' : 'pointer',
-                        opacity: isGeneratingCertificate ? 0.7 : 1,
-                        minHeight: '44px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '8px',
-                        touchAction: 'manipulation',
-                        WebkitTapHighlightColor: 'transparent'
-                      }}
-                    >
-                      {isGeneratingCertificate ? '⏳ Creating...' : '📤 Share Image'}
-                    </button>
+                    <div style={{
+                      fontSize: 'clamp(14px, 4vw, 16px)',
+                      fontWeight: '600',
+                      color: currentTheme.textPrimary,
+                      marginBottom: '8px'
+                    }}>
+                      📸 Want to share this?
+                    </div>
+                    <div style={{
+                      fontSize: 'clamp(11px, 3vw, 12px)',
+                      color: currentTheme.textSecondary
+                    }}>
+                      Take a screenshot to share your achievements with family and friends!
+                    </div>
                   </div>
                 </div>
               </div>
