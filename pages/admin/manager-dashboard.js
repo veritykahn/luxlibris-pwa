@@ -1,4 +1,4 @@
-// pages/admin/dashboard.js - Unified Lux Libris Admin Dashboard
+// pages/admin/dashboard.js - Protected Unified Lux Libris Admin Dashboard
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import saintsManager from '../../enhanced-saints-manager'
@@ -6,6 +6,13 @@ import quizzesManager from '../../enhanced-quizzes-manager'
 import programsSetup from '../../setup-programs'
 
 export default function UnifiedAdminDashboard() {
+  // Authentication State
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [password, setPassword] = useState('')
+  const [lastActivity, setLastActivity] = useState(Date.now())
+  const [sessionTimeRemaining, setSessionTimeRemaining] = useState(120) // minutes
+  
+  // Existing Dashboard State
   const [activeSection, setActiveSection] = useState('saints')
   const [activeTab, setActiveTab] = useState('saints-bulk')
   const [isRunning, setIsRunning] = useState(false)
@@ -48,11 +55,121 @@ export default function UnifiedAdminDashboard() {
     results: {}
   })
 
-  // Load all stats on page load
+  // Session timeout (2 hours = 7200000 ms)
+  const SESSION_TIMEOUT = 2 * 60 * 60 * 1000
+
+  // Initialize session from localStorage on component mount
   useEffect(() => {
-    loadAllStats()
+    const savedSession = localStorage.getItem('adminDashboardSession')
+    if (savedSession) {
+      const sessionData = JSON.parse(savedSession)
+      const now = Date.now()
+      const timePassed = now - sessionData.lastActivity
+      
+      if (timePassed < SESSION_TIMEOUT) {
+        setIsAuthenticated(true)
+        setLastActivity(sessionData.lastActivity)
+        loadAllStats()
+      } else {
+        localStorage.removeItem('adminDashboardSession')
+      }
+    }
   }, [])
 
+  // Save session to localStorage whenever authentication changes
+  useEffect(() => {
+    if (isAuthenticated) {
+      localStorage.setItem('adminDashboardSession', JSON.stringify({
+        authenticated: true,
+        lastActivity: lastActivity
+      }))
+    } else {
+      localStorage.removeItem('adminDashboardSession')
+    }
+  }, [isAuthenticated, lastActivity])
+
+  // Check session timeout
+  useEffect(() => {
+    if (!isAuthenticated) return
+
+    const checkSession = () => {
+      const now = Date.now()
+      const timeRemaining = SESSION_TIMEOUT - (now - lastActivity)
+      const minutesRemaining = Math.max(0, Math.round(timeRemaining / 60000))
+      
+      setSessionTimeRemaining(minutesRemaining)
+      
+      if (timeRemaining <= 0) {
+        alert('Session expired after 2 hours. Please sign in again.')
+        handleLogout()
+        return
+      }
+    }
+
+    // Check every minute
+    const interval = setInterval(checkSession, 60000)
+    checkSession() // Initial check
+    
+    return () => clearInterval(interval)
+  }, [isAuthenticated, lastActivity])
+
+  // Update activity on user interactions
+  useEffect(() => {
+    if (!isAuthenticated) return
+
+    const updateActivity = () => {
+      const newActivity = Date.now()
+      setLastActivity(newActivity)
+      // Update localStorage immediately
+      localStorage.setItem('adminDashboardSession', JSON.stringify({
+        authenticated: true,
+        lastActivity: newActivity
+      }))
+    }
+    
+    const events = ['click', 'keypress', 'scroll', 'mousemove']
+    events.forEach(event => 
+      document.addEventListener(event, updateActivity, true)
+    )
+
+    return () => {
+      events.forEach(event => 
+        document.removeEventListener(event, updateActivity, true)
+      )
+    }
+  }, [isAuthenticated])
+
+  // Password Protection
+  const handleLogin = () => {
+    if (password === 'LUXLIBRIS-GOD-2025') {
+      const now = Date.now()
+      setIsAuthenticated(true)
+      setLastActivity(now)
+      localStorage.setItem('adminDashboardSession', JSON.stringify({
+        authenticated: true,
+        lastActivity: now
+      }))
+      loadAllStats() // Load data after successful login
+    } else {
+      alert('Invalid admin password')
+    }
+  }
+
+  // Logout function
+  const handleLogout = () => {
+    setIsAuthenticated(false)
+    setPassword('')
+    localStorage.removeItem('adminDashboardSession')
+    setLastActivity(Date.now())
+    // Clear all data
+    setSaintsStats(null)
+    setQuizzesStats(null)
+    setProgramsStats(null)
+    setLogs([])
+    setResult(null)
+  }
+
+  // Load all stats on authentication
   const loadAllStats = async () => {
     try {
       const [saints, saintsQuizzes, bookQuizzes] = await Promise.all([
@@ -67,6 +184,98 @@ export default function UnifiedAdminDashboard() {
     } catch (error) {
       console.error('Error loading stats:', error)
     }
+  }
+
+  // Login Screen
+  if (!isAuthenticated) {
+    return (
+      <>
+        <Head>
+          <title>Lux Libris Admin - Authentication Required</title>
+        </Head>
+        <div style={{
+          minHeight: '100vh',
+          background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 25%, #0f172a 50%, #581c87 75%, #0f172a 100%)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontFamily: 'system-ui, -apple-system, sans-serif'
+        }}>
+          <div style={{
+            background: 'rgba(0, 0, 0, 0.5)',
+            backdropFilter: 'blur(8px)',
+            borderRadius: '1rem',
+            padding: '2rem',
+            border: '1px solid rgba(124, 58, 237, 0.3)',
+            textAlign: 'center',
+            minWidth: '400px'
+          }}>
+            <div style={{
+              width: '4rem',
+              height: '4rem',
+              background: 'linear-gradient(135deg, #7c3aed, #059669, #dc2626, #0891b2)',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '2rem',
+              margin: '0 auto 1rem'
+            }}>
+              🎛️
+            </div>
+            <h1 style={{
+              fontSize: '2rem',
+              fontWeight: 'bold',
+              color: 'white',
+              margin: '0 0 0.5rem',
+              fontFamily: 'Georgia, serif'
+            }}>
+              Lux Libris Admin Dashboard
+            </h1>
+            <p style={{
+              color: '#c4b5fd',
+              marginBottom: '2rem'
+            }}>
+              Administrator Access Required - Saints, Quizzes & Programs Management
+            </p>
+            <div style={{ marginBottom: '1rem' }}>
+              <input
+                type="password"
+                placeholder="Enter Admin Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  borderRadius: '0.5rem',
+                  border: '1px solid rgba(124, 58, 237, 0.3)',
+                  background: 'rgba(0, 0, 0, 0.3)',
+                  color: 'white',
+                  fontSize: '1rem'
+                }}
+              />
+            </div>
+            <button
+              onClick={handleLogin}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                background: 'linear-gradient(135deg, #7c3aed, #a855f7)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '0.5rem',
+                fontSize: '1rem',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
+              🚀 ACCESS ADMIN DASHBOARD
+            </button>
+          </div>
+        </div>
+      </>
+    )
   }
 
   // Unified console logging system
@@ -292,7 +501,7 @@ export default function UnifiedAdminDashboard() {
       }}>
         <div style={{ maxWidth: '90rem', margin: '0 auto' }}>
           
-          {/* Header */}
+          {/* Header with Session Info */}
           <div style={{
             background: 'rgba(0, 0, 0, 0.5)',
             backdropFilter: 'blur(8px)',
@@ -303,18 +512,67 @@ export default function UnifiedAdminDashboard() {
             textAlign: 'center'
           }}>
             <div style={{
-              width: '5rem',
-              height: '5rem',
-              background: 'linear-gradient(135deg, #7c3aed, #059669, #dc2626, #0891b2)',
-              borderRadius: '50%',
               display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '2.5rem',
-              margin: '0 auto 1rem'
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              marginBottom: '1rem'
             }}>
-              🎛️
+              <div style={{ flex: 1 }}></div>
+              <div style={{
+                width: '5rem',
+                height: '5rem',
+                background: 'linear-gradient(135deg, #7c3aed, #059669, #dc2626, #0891b2)',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '2.5rem'
+              }}>
+                🎛️
+              </div>
+              <div style={{ 
+                flex: 1, 
+                display: 'flex', 
+                justifyContent: 'flex-end', 
+                alignItems: 'center',
+                gap: '1rem'
+              }}>
+                {/* Session Timer */}
+                <div style={{
+                  padding: '0.5rem 1rem',
+                  background: sessionTimeRemaining <= 10 
+                    ? 'rgba(239, 68, 68, 0.2)' 
+                    : 'rgba(124, 58, 237, 0.2)',
+                  borderRadius: '0.5rem',
+                  fontSize: '0.875rem',
+                  color: sessionTimeRemaining <= 10 ? '#fca5a5' : '#c4b5fd',
+                  border: sessionTimeRemaining <= 10 
+                    ? '1px solid rgba(239, 68, 68, 0.3)' 
+                    : '1px solid rgba(124, 58, 237, 0.3)',
+                  fontWeight: '600'
+                }}>
+                  ⏰ {sessionTimeRemaining} min
+                </div>
+                
+                {/* Logout Button */}
+                <button
+                  onClick={handleLogout}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    background: 'linear-gradient(135deg, #f87171, #ef4444)',
+                    color: 'white',
+                    borderRadius: '0.5rem',
+                    fontSize: '0.875rem',
+                    fontWeight: '600',
+                    border: 'none',
+                    cursor: 'pointer'
+                  }}
+                >
+                  🚪 Sign Out
+                </button>
+              </div>
             </div>
+            
             <h1 style={{
               fontSize: '3rem',
               fontWeight: 'bold',

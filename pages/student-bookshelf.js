@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
-import { getStudentDataEntities, getSchoolNomineesEntities, updateStudentDataEntities } from '../lib/firebase';
+import { getStudentDataEntities, getSchoolNomineesEntities, updateStudentDataEntities, getCurrentAcademicYear } from '../lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import Head from 'next/head';
@@ -495,13 +495,20 @@ export default function StudentBookshelf() {
       const selectedTheme = themes[selectedThemeKey];
       setCurrentTheme(selectedTheme);
       
-      if (firebaseStudentData.entityId && firebaseStudentData.schoolId) {
-        const schoolNominees = await getSchoolNomineesEntities(
-          firebaseStudentData.entityId, 
-          firebaseStudentData.schoolId
-        );
-        setNominees(schoolNominees);
-      }
+    if (firebaseStudentData.entityId && firebaseStudentData.schoolId) {
+  const allNominees = await getSchoolNomineesEntities(
+    firebaseStudentData.entityId, 
+    firebaseStudentData.schoolId
+  );
+  
+  // Filter by current academic year
+  const currentYear = getCurrentAcademicYear();
+  const schoolNominees = allNominees.filter(book => 
+    book.academicYear === currentYear || !book.academicYear
+  );
+  
+  setNominees(schoolNominees);
+}
       
     } catch (error) {
       console.error('❌ Error loading bookshelf:', error);

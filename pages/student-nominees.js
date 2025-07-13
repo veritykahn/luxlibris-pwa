@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
-import { getStudentDataEntities, getSchoolNomineesEntities, addBookToBookshelfEntities, removeBookFromBookshelfEntities } from '../lib/firebase';
+import { getStudentDataEntities, getSchoolNomineesEntities, addBookToBookshelfEntities, addBookToBookshelfEntitiesWithYear, removeBookFromBookshelfEntities, getCurrentAcademicYear } from '../lib/firebase';
 import Head from 'next/head';
 
 export default function StudentNominees() {
@@ -318,16 +318,22 @@ export default function StudentNominees() {
       setCurrentTheme(themes[selectedTheme]);
 
       if (firebaseStudentData.entityId && firebaseStudentData.schoolId) {
-        const schoolNominees = await getSchoolNomineesEntities(
-          firebaseStudentData.entityId,
-          firebaseStudentData.schoolId
-        );
-
-        // NEW: Sort the nominees before setting them
-        const sortedNominees = sortNominees(schoolNominees);
-        setNominees(sortedNominees);
-        console.log('✅ Loaded', sortedNominees.length, 'nominee books (sorted by category & title)');
-      }
+  const allNominees = await getSchoolNomineesEntities(
+    firebaseStudentData.entityId,
+    firebaseStudentData.schoolId
+  );
+  
+  // Filter by current academic year
+  const currentYear = getCurrentAcademicYear();
+  const currentYearNominees = allNominees.filter(book => 
+    book.academicYear === currentYear || !book.academicYear
+  );
+  
+  // Sort the filtered nominees (preserving your existing sorting)
+  const sortedNominees = sortNominees(currentYearNominees);
+  setNominees(sortedNominees);
+  console.log('✅ Loaded', sortedNominees.length, 'nominee books (sorted by category & title) for', currentYear);
+}
     } catch (error) {
       console.error('❌ Error loading nominees:', error);
       router.push('/student-dashboard');
@@ -392,7 +398,7 @@ export default function StudentNominees() {
     setIsAddingBook(true);
     try {
       console.log('📖 Adding book to bookshelf:', book.title, format);
-      const newBookProgress = await addBookToBookshelfEntities(
+      const newBookProgress = await addBookToBookshelfEntitiesWithYear(
         studentData.id,
         studentData.entityId,
         studentData.schoolId,
@@ -443,7 +449,7 @@ export default function StudentNominees() {
         );
 
         // Add new format
-        const newBookProgress = await addBookToBookshelfEntities(
+        const newBookProgress = await addBookToBookshelfEntitiesWithYear(
           studentData.id,
           studentData.entityId,
           studentData.schoolId,
