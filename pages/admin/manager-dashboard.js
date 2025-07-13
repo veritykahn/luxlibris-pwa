@@ -1,20 +1,22 @@
-// pages/admin/dashboard.js - Protected Unified Lux Libris Admin Dashboard
+// pages/admin/dashboard.js - Enhanced with Books Management & Academic Year System - FIXED
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import saintsManager from '../../enhanced-saints-manager'
 import quizzesManager from '../../enhanced-quizzes-manager'
 import programsSetup from '../../setup-programs'
+import booksManager from '../../enhanced-books-manager'
+import bookQuizzesManager from '../../book-quizzes-manager'
 
-export default function UnifiedAdminDashboard() {
+export default function EnhancedAdminDashboard() {
   // Authentication State
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [password, setPassword] = useState('')
   const [lastActivity, setLastActivity] = useState(Date.now())
-  const [sessionTimeRemaining, setSessionTimeRemaining] = useState(120) // minutes
+  const [sessionTimeRemaining, setSessionTimeRemaining] = useState(120)
   
-  // Existing Dashboard State
-  const [activeSection, setActiveSection] = useState('saints')
-  const [activeTab, setActiveTab] = useState('saints-bulk')
+  // Dashboard State
+  const [activeSection, setActiveSection] = useState('books')
+  const [activeTab, setActiveTab] = useState('books-current-year')
   const [isRunning, setIsRunning] = useState(false)
   const [result, setResult] = useState(null)
   const [logs, setLogs] = useState([])
@@ -23,8 +25,10 @@ export default function UnifiedAdminDashboard() {
   const [saintsStats, setSaintsStats] = useState(null)
   const [quizzesStats, setQuizzesStats] = useState(null)
   const [programsStats, setProgramsStats] = useState(null)
+  const [booksStats, setBooksStats] = useState(null)
+  const [bookQuizzesStats, setBookQuizzesStats] = useState(null)
   
-  // Form states for different managers
+  // Form states - FIXED: No duplicates
   const [newSaintForm, setNewSaintForm] = useState({
     name: '',
     patronage: '',
@@ -34,6 +38,18 @@ export default function UnifiedAdminDashboard() {
     rarity: 'common',
     unlockCondition: 'streak_7_days',
     luxlings_series: 'Super Sancti'
+  })
+  
+  const [newBookForm, setNewBookForm] = useState({
+    title: '',
+    author: '',
+    coverImage: '',
+    totalPages: '',
+    isAudiobook: false,
+    totalMinutes: '',
+    platforms: '',
+    academicYear: '2025-26',
+    status: 'active'
   })
   
   const [newSaintsQuizForm, setNewSaintsQuizForm] = useState({
@@ -46,7 +62,7 @@ export default function UnifiedAdminDashboard() {
     results: {}
   })
   
-  const [newBookQuizForm, setNewBookQuizForm] = useState({
+  const [newLuxDnaQuizForm, setNewLuxDnaQuizForm] = useState({
     quiz_id: '',
     title: '',
     description: '',
@@ -55,10 +71,18 @@ export default function UnifiedAdminDashboard() {
     results: {}
   })
 
-  // Session timeout (2 hours = 7200000 ms)
+  const [newBookQuizForm, setNewBookQuizForm] = useState({
+    book_id: '',
+    title: '',
+    description: '',
+    target_grades: [4, 5, 6, 7, 8],
+    questions: [],
+    results: {}
+  })
+
+  // Session timeout and authentication logic
   const SESSION_TIMEOUT = 2 * 60 * 60 * 1000
 
-  // Initialize session from localStorage on component mount
   useEffect(() => {
     const savedSession = localStorage.getItem('adminDashboardSession')
     if (savedSession) {
@@ -76,7 +100,6 @@ export default function UnifiedAdminDashboard() {
     }
   }, [])
 
-  // Save session to localStorage whenever authentication changes
   useEffect(() => {
     if (isAuthenticated) {
       localStorage.setItem('adminDashboardSession', JSON.stringify({
@@ -88,7 +111,6 @@ export default function UnifiedAdminDashboard() {
     }
   }, [isAuthenticated, lastActivity])
 
-  // Check session timeout
   useEffect(() => {
     if (!isAuthenticated) return
 
@@ -106,21 +128,18 @@ export default function UnifiedAdminDashboard() {
       }
     }
 
-    // Check every minute
     const interval = setInterval(checkSession, 60000)
-    checkSession() // Initial check
+    checkSession()
     
     return () => clearInterval(interval)
   }, [isAuthenticated, lastActivity])
 
-  // Update activity on user interactions
   useEffect(() => {
     if (!isAuthenticated) return
 
     const updateActivity = () => {
       const newActivity = Date.now()
       setLastActivity(newActivity)
-      // Update localStorage immediately
       localStorage.setItem('adminDashboardSession', JSON.stringify({
         authenticated: true,
         lastActivity: newActivity
@@ -139,7 +158,6 @@ export default function UnifiedAdminDashboard() {
     }
   }, [isAuthenticated])
 
-  // Password Protection
   const handleLogin = () => {
     if (password === 'LUXLIBRIS-GOD-2025') {
       const now = Date.now()
@@ -149,38 +167,41 @@ export default function UnifiedAdminDashboard() {
         authenticated: true,
         lastActivity: now
       }))
-      loadAllStats() // Load data after successful login
+      loadAllStats()
     } else {
       alert('Invalid admin password')
     }
   }
 
-  // Logout function
   const handleLogout = () => {
     setIsAuthenticated(false)
     setPassword('')
     localStorage.removeItem('adminDashboardSession')
     setLastActivity(Date.now())
-    // Clear all data
     setSaintsStats(null)
     setQuizzesStats(null)
     setProgramsStats(null)
+    setBooksStats(null)
+    setBookQuizzesStats(null)
     setLogs([])
     setResult(null)
   }
 
-  // Load all stats on authentication
+  // FIXED: Load all stats including book quizzes
   const loadAllStats = async () => {
     try {
-      const [saints, saintsQuizzes, bookQuizzes] = await Promise.all([
+      const [saints, saintsQuizzes, luxDnaQuizzes, books, bookQuizzes] = await Promise.all([
         saintsManager.getSaintsStats(),
         quizzesManager.getQuizzesStats('saints'),
-        quizzesManager.getQuizzesStats('books')
+        quizzesManager.getQuizzesStats('books'),
+        booksManager.getBooksStats(),
+        bookQuizzesManager.getBookQuizzesStats()
       ])
       
       setSaintsStats(saints)
-      setQuizzesStats({ saints: saintsQuizzes, books: bookQuizzes })
-      // Programs stats would go here when available
+      setQuizzesStats({ saints: saintsQuizzes, luxDna: luxDnaQuizzes })
+      setBooksStats(books)
+      setBookQuizzesStats(bookQuizzes)
     } catch (error) {
       console.error('Error loading stats:', error)
     }
@@ -236,7 +257,7 @@ export default function UnifiedAdminDashboard() {
               color: '#c4b5fd',
               marginBottom: '2rem'
             }}>
-              Administrator Access Required - Saints, Quizzes & Programs Management
+              Administrator Access Required - Books, Saints, Quizzes & Programs Management
             </p>
             <div style={{ marginBottom: '1rem' }}>
               <input
@@ -278,7 +299,7 @@ export default function UnifiedAdminDashboard() {
     )
   }
 
-  // Unified console logging system
+  // Enhanced console logging system
   const originalLog = console.log
   const originalError = console.error
 
@@ -287,7 +308,6 @@ export default function UnifiedAdminDashboard() {
     setResult(null)
     setLogs([])
 
-    // Capture logs
     const capturedLogs = []
     console.log = (...args) => {
       capturedLogs.push({ type: 'log', message: args.join(' '), time: new Date().toLocaleTimeString() })
@@ -305,6 +325,79 @@ export default function UnifiedAdminDashboard() {
       let setupResult
       
       switch (operation) {
+        // BOOK QUIZZES OPERATIONS
+        case 'book-quizzes-setup':
+          console.log('🎯 Starting book quizzes bulk setup...')
+          setupResult = await bookQuizzesManager.setupAllBookQuizzes()
+          break
+          
+        case 'book-quizzes-archive':
+          console.log('📦 Archiving previous year book quizzes...')
+          const previousQuizYear = prompt('Enter previous academic year to archive (e.g., "2024-25"):')
+          if (previousQuizYear) {
+            setupResult = await bookQuizzesManager.archivePreviousYearQuizzes(previousQuizYear)
+          } else {
+            setupResult = { success: false, message: 'Archive cancelled - no year specified' }
+          }
+          break
+          
+        case 'book-quizzes-add-single':
+          console.log('➕ Adding single book quiz...')
+          const bookQuizData = { ...newBookQuizForm }
+          setupResult = await bookQuizzesManager.addSingleBookQuiz(bookQuizData)
+          if (setupResult.success) {
+            setNewBookQuizForm({
+              book_id: '',
+              title: '',
+              description: '',
+              target_grades: [4, 5, 6, 7, 8],
+              questions: [],
+              results: {}
+            })
+          }
+          break
+
+        // BOOKS OPERATIONS
+        case 'books-setup-academic-year':
+          console.log('🚀 Setting up status field for existing books...')
+          setupResult = await booksManager.setupAcademicYearSystem()
+          break
+          
+        case 'books-add-current-year':
+          console.log('📚 Adding nominees for current academic year (2025-26)...')
+          setupResult = await booksManager.addCurrentYearNominees()
+          break
+          
+        case 'books-archive-previous':
+          console.log('📦 Archiving previous year nominees...')
+          const previousYear = prompt('Enter previous academic year to archive (e.g., "2024-25"):')
+          if (previousYear) {
+            setupResult = await booksManager.archivePreviousYear(previousYear)
+          } else {
+            setupResult = { success: false, message: 'Archive cancelled - no year specified' }
+          }
+          break
+          
+        case 'books-add-single':
+          console.log('➕ Adding single book nominee...')
+          const nextBookId = await booksManager.getNextBookIdForYear('2025-26')
+          const bookData = { ...newBookForm, id: nextBookId }
+          setupResult = await booksManager.addSingleBook(bookData)
+          if (setupResult.success) {
+            setNewBookForm({
+              title: '',
+              author: '',
+              coverImage: '',
+              totalPages: '',
+              isAudiobook: false,
+              totalMinutes: '',
+              platforms: '',
+              academicYear: '2025-26',
+              status: 'active'
+            })
+          }
+          break
+
         // SAINTS OPERATIONS
         case 'saints-bulk':
           console.log('🚀 Starting saints bulk setup...')
@@ -364,18 +457,18 @@ export default function UnifiedAdminDashboard() {
           }
           break
 
-        case 'quizzes-books-bulk':
-          console.log('🚀 Starting book quizzes bulk setup...')
+        case 'quizzes-luxdna-bulk':
+          console.log('🚀 Starting Lux DNA quizzes bulk setup...')
           setupResult = await quizzesManager.setupAllBookQuizzes()
           break
           
-        case 'quizzes-books-addSingle':
-          console.log('➕ Adding single book quiz...')
-          const nextBookQuizId = await quizzesManager.getNextQuizId('books')
-          const bookQuizData = { ...newBookQuizForm, quiz_id: nextBookQuizId }
-          setupResult = await quizzesManager.addSingleBookQuiz(bookQuizData)
+        case 'quizzes-luxdna-addSingle':
+          console.log('➕ Adding single Lux DNA quiz...')
+          const nextLuxDnaQuizId = await quizzesManager.getNextQuizId('books')
+          const luxDnaQuizData = { ...newLuxDnaQuizForm, quiz_id: nextLuxDnaQuizId }
+          setupResult = await quizzesManager.addSingleBookQuiz(luxDnaQuizData)
           if (setupResult.success) {
-            setNewBookQuizForm({
+            setNewLuxDnaQuizForm({
               quiz_id: '',
               title: '',
               description: '',
@@ -400,7 +493,7 @@ export default function UnifiedAdminDashboard() {
       
       if (setupResult.success) {
         console.log('✅ Operation completed successfully!')
-        await loadAllStats() // Refresh all stats
+        await loadAllStats()
       } else {
         console.error('❌ Operation failed:', setupResult.message)
       }
@@ -409,7 +502,6 @@ export default function UnifiedAdminDashboard() {
       setResult({ success: false, message: error.message })
     }
 
-    // Restore original console methods
     console.log = originalLog
     console.error = originalError
     setIsRunning(false)
@@ -420,25 +512,50 @@ export default function UnifiedAdminDashboard() {
     setNewSaintForm(prev => ({ ...prev, [field]: value }))
   }
 
-  const handleSaintsQuizFormChange = (field, value) => {
-    setNewSaintsQuizForm(prev => ({ ...prev, [field]: value }))
+  const handleBookFormChange = (field, value) => {
+    setNewBookForm(prev => ({ ...prev, [field]: value }))
   }
 
   const handleBookQuizFormChange = (field, value) => {
     setNewBookQuizForm(prev => ({ ...prev, [field]: value }))
   }
 
+  const handleSaintsQuizFormChange = (field, value) => {
+    setNewSaintsQuizForm(prev => ({ ...prev, [field]: value }))
+  }
+
+  const handleLuxDnaQuizFormChange = (field, value) => {
+    setNewLuxDnaQuizForm(prev => ({ ...prev, [field]: value }))
+  }
+
   // Navigation sections
   const sections = [
+    { id: 'books', name: 'Books Management', icon: '📚', color: '#f59e0b' },
+    { id: 'book-quizzes', name: 'Book Quizzes', icon: '🎯', color: '#8b5cf6' },
     { id: 'saints', name: 'Saints Management', icon: '👼', color: '#7c3aed' },
-    { id: 'quizzes', name: 'Quizzes Management', icon: '🧩', color: '#059669' },
+    { id: 'quizzes', name: 'Lux DNA Quizzes', icon: '🧩', color: '#059669' },
     { id: 'programs', name: 'Programs Management', icon: '⚙️', color: '#dc2626' },
     { id: 'analytics', name: 'Analytics & Stats', icon: '📊', color: '#0891b2' }
   ]
 
-  // Dynamic tabs based on active section
+  // Tabs for sections
   const getTabsForSection = (section) => {
     switch (section) {
+      case 'books':
+        return [
+          { id: 'books-current-year', name: 'Current Year (2025-26)', icon: '📅' },
+          { id: 'books-add-nominees', name: 'Add Current Year Nominees', icon: '➕' },
+          { id: 'books-archive', name: 'Archive Previous Year', icon: '📦' },
+          { id: 'books-add-single', name: 'Add Single Book', icon: '📖' },
+          { id: 'books-setup', name: 'Setup Status Field', icon: '🚀' }
+        ]
+      case 'book-quizzes':
+        return [
+          { id: 'book-quizzes-current-year', name: 'Current Year (2025-26)', icon: '📅' },
+          { id: 'book-quizzes-setup', name: 'Setup Book Quizzes', icon: '🎯' },
+          { id: 'book-quizzes-archive', name: 'Archive Previous Year', icon: '📦' },
+          { id: 'book-quizzes-add-single', name: 'Add Single Quiz', icon: '➕' }
+        ]
       case 'saints':
         return [
           { id: 'saints-bulk', name: 'Bulk Setup', icon: '🏗️' },
@@ -450,8 +567,8 @@ export default function UnifiedAdminDashboard() {
           { id: 'quizzes-saints-bulk', name: 'Saints Quizzes Bulk', icon: '📿' },
           { id: 'quizzes-saints-addNew', name: 'Add New Saints Quizzes', icon: '➕' },
           { id: 'quizzes-saints-addSingle', name: 'Add Single Saints Quiz', icon: '👤' },
-          { id: 'quizzes-books-bulk', name: 'Book Quizzes Bulk', icon: '📚' },
-          { id: 'quizzes-books-addSingle', name: 'Add Single Book Quiz', icon: '📖' }
+          { id: 'quizzes-luxdna-bulk', name: 'Lux DNA Quizzes Bulk', icon: '🧬' },
+          { id: 'quizzes-luxdna-addSingle', name: 'Add Single Lux DNA Quiz', icon: '🔬' }
         ]
       case 'programs':
         return [
@@ -468,7 +585,6 @@ export default function UnifiedAdminDashboard() {
     }
   }
 
-  // Change section handler
   const handleSectionChange = (newSection) => {
     setActiveSection(newSection)
     const tabs = getTabsForSection(newSection)
@@ -490,7 +606,7 @@ export default function UnifiedAdminDashboard() {
   return (
     <>
       <Head>
-        <title>Lux Libris Admin Dashboard</title>
+        <title>Lux Libris Enhanced Admin Dashboard</title>
       </Head>
       
       <div style={{
@@ -521,7 +637,7 @@ export default function UnifiedAdminDashboard() {
               <div style={{
                 width: '5rem',
                 height: '5rem',
-                background: 'linear-gradient(135deg, #7c3aed, #059669, #dc2626, #0891b2)',
+                background: 'linear-gradient(135deg, #f59e0b, #7c3aed, #059669, #dc2626, #0891b2)',
                 borderRadius: '50%',
                 display: 'flex',
                 alignItems: 'center',
@@ -537,7 +653,6 @@ export default function UnifiedAdminDashboard() {
                 alignItems: 'center',
                 gap: '1rem'
               }}>
-                {/* Session Timer */}
                 <div style={{
                   padding: '0.5rem 1rem',
                   background: sessionTimeRemaining <= 10 
@@ -554,7 +669,6 @@ export default function UnifiedAdminDashboard() {
                   ⏰ {sessionTimeRemaining} min
                 </div>
                 
-                {/* Logout Button */}
                 <button
                   onClick={handleLogout}
                   style={{
@@ -580,18 +694,18 @@ export default function UnifiedAdminDashboard() {
               margin: '0 0 1rem',
               fontFamily: 'Georgia, serif'
             }}>
-              Lux Libris Admin Dashboard
+              Lux Libris Enhanced Admin Dashboard
             </h1>
             <p style={{
               color: '#c4b5fd',
               fontSize: '1.25rem',
               marginBottom: '0'
             }}>
-              Unified management for Saints, Quizzes, Programs & Analytics
+              Complete management for Books, Saints, Quizzes, Programs & Analytics
             </p>
             
             {/* Quick Stats */}
-            {(saintsStats || quizzesStats) && (
+            {(booksStats || saintsStats || quizzesStats || bookQuizzesStats) && (
               <div style={{
                 display: 'flex',
                 gap: '1rem',
@@ -599,6 +713,28 @@ export default function UnifiedAdminDashboard() {
                 marginTop: '1.5rem',
                 flexWrap: 'wrap'
               }}>
+                {booksStats && (
+                  <div style={{
+                    background: 'rgba(245, 158, 11, 0.2)',
+                    borderRadius: '0.5rem',
+                    padding: '0.75rem 1rem',
+                    border: '1px solid rgba(245, 158, 11, 0.3)'
+                  }}>
+                    <span style={{ color: '#fbbf24', fontSize: '0.875rem', display: 'block' }}>Books (2025-26)</span>
+                    <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '1.25rem' }}>{booksStats.currentYear}</span>
+                  </div>
+                )}
+                {bookQuizzesStats && (
+                  <div style={{
+                    background: 'rgba(139, 92, 246, 0.2)',
+                    borderRadius: '0.5rem',
+                    padding: '0.75rem 1rem',
+                    border: '1px solid rgba(139, 92, 246, 0.3)'
+                  }}>
+                    <span style={{ color: '#a78bfa', fontSize: '0.875rem', display: 'block' }}>Book Quizzes</span>
+                    <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '1.25rem' }}>{bookQuizzesStats.currentYear}</span>
+                  </div>
+                )}
                 {saintsStats && (
                   <div style={{
                     background: 'rgba(124, 58, 237, 0.2)',
@@ -621,15 +757,15 @@ export default function UnifiedAdminDashboard() {
                     <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '1.25rem' }}>{quizzesStats.saints.total}</span>
                   </div>
                 )}
-                {quizzesStats?.books && (
+                {quizzesStats?.luxDna && (
                   <div style={{
                     background: 'rgba(220, 38, 38, 0.2)',
                     borderRadius: '0.5rem',
                     padding: '0.75rem 1rem',
                     border: '1px solid rgba(220, 38, 38, 0.3)'
                   }}>
-                    <span style={{ color: '#fca5a5', fontSize: '0.875rem', display: 'block' }}>Book Quizzes</span>
-                    <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '1.25rem' }}>{quizzesStats.books.total}</span>
+                    <span style={{ color: '#fca5a5', fontSize: '0.875rem', display: 'block' }}>Lux DNA Quizzes</span>
+                    <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '1.25rem' }}>{quizzesStats.luxDna.total}</span>
                   </div>
                 )}
               </div>
@@ -720,6 +856,539 @@ export default function UnifiedAdminDashboard() {
             marginBottom: '2rem'
           }}>
             
+            {/* BOOKS MANAGEMENT CONTENT */}
+            {activeSection === 'books' && (
+              <>
+                {activeTab === 'books-current-year' && (
+                  <div>
+                    <h3 style={{ color: '#f59e0b', marginBottom: '1rem', fontSize: '1.5rem' }}>
+                      📅 Current Academic Year: 2025-26
+                    </h3>
+                    <p style={{ color: '#c4b5fd', marginBottom: '2rem' }}>
+                      View and manage book nominees for the current academic year.
+                      This shows all active nominees that schools can select from.
+                    </p>
+                    
+                    {booksStats && (
+                      <div style={{
+                        background: 'rgba(245, 158, 11, 0.1)',
+                        border: '1px solid rgba(245, 158, 11, 0.3)',
+                        borderRadius: '0.75rem',
+                        padding: '1.5rem',
+                        marginBottom: '2rem'
+                      }}>
+                        <h4 style={{ color: '#fbbf24', marginBottom: '1rem', fontSize: '1.25rem' }}>
+                          📊 Academic Year Statistics
+                        </h4>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                          <div>
+                            <span style={{ color: '#fcd34d', display: 'block', fontSize: '0.875rem' }}>Current Year (2025-26)</span>
+                            <span style={{ color: '#fbbf24', fontWeight: 'bold', fontSize: '1.5rem' }}>{booksStats.currentYear}</span>
+                          </div>
+                          <div>
+                            <span style={{ color: '#fcd34d', display: 'block', fontSize: '0.875rem' }}>Total Books</span>
+                            <span style={{ color: '#fbbf24', fontWeight: 'bold', fontSize: '1.5rem' }}>{booksStats.total}</span>
+                          </div>
+                          <div>
+                            <span style={{ color: '#fcd34d', display: 'block', fontSize: '0.875rem' }}>Active Books</span>
+                            <span style={{ color: '#fbbf24', fontWeight: 'bold', fontSize: '1.5rem' }}>{booksStats.active}</span>
+                          </div>
+                          <div>
+                            <span style={{ color: '#fcd34d', display: 'block', fontSize: '0.875rem' }}>Archived Books</span>
+                            <span style={{ color: '#fbbf24', fontWeight: 'bold', fontSize: '1.5rem' }}>{booksStats.archived}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <button
+                      onClick={loadAllStats}
+                      style={{
+                        background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                        color: 'white',
+                        padding: '0.75rem 1.5rem',
+                        borderRadius: '0.5rem',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '1rem',
+                        fontWeight: '500'
+                      }}
+                    >
+                      🔄 Refresh Statistics
+                    </button>
+                  </div>
+                )}
+
+                {activeTab === 'books-add-nominees' && (
+                  <div>
+                    <h3 style={{ color: '#f59e0b', marginBottom: '1rem', fontSize: '1.5rem' }}>
+                      ➕ Add Current Year Nominees (2025-26)
+                    </h3>
+                    <p style={{ color: '#c4b5fd', marginBottom: '2rem' }}>
+                      Add new book nominees for the current academic year. 
+                      Each book will be assigned the next available ID for 2025-26.
+                    </p>
+                    
+                    <div style={{
+                      background: 'rgba(16, 185, 129, 0.1)',
+                      border: '1px solid rgba(16, 185, 129, 0.3)',
+                      borderRadius: '0.5rem',
+                      padding: '1rem',
+                      marginBottom: '2rem'
+                    }}>
+                      <strong style={{ color: '#10b981' }}>✅ Academic Year System:</strong>
+                      <span style={{ color: '#a7f3d0' }}> Books will be added with academicYear: "2025-26" and status: "active"</span>
+                    </div>
+                    
+                    <button
+                      onClick={() => runOperation('books-add-current-year')}
+                      disabled={isRunning}
+                      style={{
+                        background: isRunning 
+                          ? 'linear-gradient(135deg, #6b7280, #4b5563)' 
+                          : 'linear-gradient(135deg, #f59e0b, #d97706)',
+                        color: 'white',
+                        padding: '1rem 2rem',
+                        borderRadius: '0.75rem',
+                        border: 'none',
+                        cursor: isRunning ? 'not-allowed' : 'pointer',
+                        fontSize: '1.125rem',
+                        fontWeight: '600'
+                      }}
+                    >
+                      {isRunning ? '⏳ Adding...' : '➕ Add Current Year Nominees'}
+                    </button>
+                  </div>
+                )}
+
+                {activeTab === 'books-archive' && (
+                  <div>
+                    <h3 style={{ color: '#f59e0b', marginBottom: '1rem', fontSize: '1.5rem' }}>
+                      📦 Archive Previous Year
+                    </h3>
+                    <p style={{ color: '#c4b5fd', marginBottom: '2rem' }}>
+                      Archive nominees from a previous academic year. 
+                      This marks them as "archived" status but keeps them in the database.
+                    </p>
+                    
+                    <div style={{
+                      background: 'rgba(59, 130, 246, 0.1)',
+                      border: '1px solid rgba(59, 130, 246, 0.3)',
+                      borderRadius: '0.5rem',
+                      padding: '1rem',
+                      marginBottom: '2rem'
+                    }}>
+                      <strong style={{ color: '#3b82f6' }}>ℹ️ Archive Process:</strong>
+                      <span style={{ color: '#93c5fd' }}> Books will be marked as archived but remain in database for historical reference.</span>
+                    </div>
+                    
+                    <button
+                      onClick={() => runOperation('books-archive-previous')}
+                      disabled={isRunning}
+                      style={{
+                        background: isRunning 
+                          ? 'linear-gradient(135deg, #6b7280, #4b5563)' 
+                          : 'linear-gradient(135deg, #6b7280, #4b5563)',
+                        color: 'white',
+                        padding: '1rem 2rem',
+                        borderRadius: '0.75rem',
+                        border: 'none',
+                        cursor: isRunning ? 'not-allowed' : 'pointer',
+                        fontSize: '1.125rem',
+                        fontWeight: '600'
+                      }}
+                    >
+                      {isRunning ? '⏳ Archiving...' : '📦 Archive Previous Year'}
+                    </button>
+                  </div>
+                )}
+
+                {activeTab === 'books-add-single' && (
+                  <div>
+                    <h3 style={{ color: '#f59e0b', marginBottom: '1rem', fontSize: '1.5rem' }}>
+                      📖 Add Single Book Nominee
+                    </h3>
+                    <p style={{ color: '#c4b5fd', marginBottom: '2rem' }}>
+                      Add one book nominee manually for the current academic year (2025-26).
+                    </p>
+                    
+                    <div style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
+                      gap: '1rem',
+                      marginBottom: '2rem'
+                    }}>
+                      <div>
+                        <label style={{ color: '#c4b5fd', display: 'block', marginBottom: '0.5rem' }}>
+                          Book Title *
+                        </label>
+                        <input
+                          type="text"
+                          value={newBookForm.title}
+                          onChange={(e) => handleBookFormChange('title', e.target.value)}
+                          placeholder="The Amazing Book Title"
+                          style={{
+                            width: '100%',
+                            padding: '0.75rem',
+                            borderRadius: '0.5rem',
+                            border: '1px solid rgba(245, 158, 11, 0.3)',
+                            background: 'rgba(0, 0, 0, 0.3)',
+                            color: 'white'
+                          }}
+                        />
+                      </div>
+                      
+                      <div>
+                        <label style={{ color: '#c4b5fd', display: 'block', marginBottom: '0.5rem' }}>
+                          Author *
+                        </label>
+                        <input
+                          type="text"
+                          value={newBookForm.author}
+                          onChange={(e) => handleBookFormChange('author', e.target.value)}
+                          placeholder="Jane Doe"
+                          style={{
+                            width: '100%',
+                            padding: '0.75rem',
+                            borderRadius: '0.5rem',
+                            border: '1px solid rgba(245, 158, 11, 0.3)',
+                            background: 'rgba(0, 0, 0, 0.3)',
+                            color: 'white'
+                          }}
+                        />
+                      </div>
+                      
+                      <div>
+                        <label style={{ color: '#c4b5fd', display: 'block', marginBottom: '0.5rem' }}>
+                          Total Pages
+                        </label>
+                        <input
+                          type="number"
+                          value={newBookForm.totalPages}
+                          onChange={(e) => handleBookFormChange('totalPages', e.target.value)}
+                          placeholder="250"
+                          style={{
+                            width: '100%',
+                            padding: '0.75rem',
+                            borderRadius: '0.5rem',
+                            border: '1px solid rgba(245, 158, 11, 0.3)',
+                            background: 'rgba(0, 0, 0, 0.3)',
+                            color: 'white'
+                          }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ color: '#c4b5fd', display: 'block', marginBottom: '0.5rem' }}>
+                          Audiobook Available
+                        </label>
+                        <select
+                          value={newBookForm.isAudiobook}
+                          onChange={(e) => handleBookFormChange('isAudiobook', e.target.value === 'true')}
+                          style={{
+                            width: '100%',
+                            padding: '0.75rem',
+                            borderRadius: '0.5rem',
+                            border: '1px solid rgba(245, 158, 11, 0.3)',
+                            background: 'rgba(0, 0, 0, 0.3)',
+                            color: 'white'
+                          }}
+                        >
+                          <option value={false}>No</option>
+                          <option value={true}>Yes</option>
+                        </select>
+                      </div>
+                    </div>
+                    
+                    <button
+                      onClick={() => runOperation('books-add-single')}
+                      disabled={isRunning || !newBookForm.title || !newBookForm.author}
+                      style={{
+                        background: (isRunning || !newBookForm.title || !newBookForm.author)
+                          ? 'linear-gradient(135deg, #6b7280, #4b5563)' 
+                          : 'linear-gradient(135deg, #f59e0b, #d97706)',
+                        color: 'white',
+                        padding: '1rem 2rem',
+                        borderRadius: '0.75rem',
+                        border: 'none',
+                        cursor: (isRunning || !newBookForm.title || !newBookForm.author) ? 'not-allowed' : 'pointer',
+                        fontSize: '1.125rem',
+                        fontWeight: '600'
+                      }}
+                    >
+                      {isRunning ? '⏳ Adding...' : '📖 Add Single Book'}
+                    </button>
+                  </div>
+                )}
+
+                {activeTab === 'books-setup' && (
+                  <div>
+                    <h3 style={{ color: '#f59e0b', marginBottom: '1rem', fontSize: '1.5rem' }}>
+                      🚀 Setup Status Field
+                    </h3>
+                    <p style={{ color: '#c4b5fd', marginBottom: '2rem' }}>
+                      Add status field to existing books for archiving capability. 
+                      (Academic year field already added manually)
+                    </p>
+                    
+                    <div style={{
+                      background: 'rgba(16, 185, 129, 0.1)',
+                      border: '1px solid rgba(16, 185, 129, 0.3)',
+                      borderRadius: '0.75rem',
+                      padding: '1.5rem',
+                      marginBottom: '2rem'
+                    }}>
+                      <h4 style={{ color: '#10b981', marginBottom: '1rem', fontSize: '1.25rem' }}>
+                        📚 What This Setup Does:
+                      </h4>
+                      <ul style={{ color: '#a7f3d0', lineHeight: '1.6', margin: 0, paddingLeft: '1.5rem' }}>
+                        <li><strong>Adds Status Field:</strong> Sets all existing books to "active"</li>
+                        <li><strong>Enables Archiving:</strong> Allows books to be archived in future years</li>
+                        <li><strong>Preserves Existing Data:</strong> No existing fields are modified</li>
+                        <li><strong>Academic Year Already Set:</strong> Skips books that already have status</li>
+                      </ul>
+                    </div>
+                    
+                    <button
+                      onClick={() => runOperation('books-setup-academic-year')}
+                      disabled={isRunning}
+                      style={{
+                        background: isRunning 
+                          ? 'linear-gradient(135deg, #6b7280, #4b5563)' 
+                          : 'linear-gradient(135deg, #f59e0b, #d97706)',
+                        color: 'white',
+                        padding: '1rem 2rem',
+                        borderRadius: '0.75rem',
+                        border: 'none',
+                        cursor: isRunning ? 'not-allowed' : 'pointer',
+                        fontSize: '1.125rem',
+                        fontWeight: '600'
+                      }}
+                    >
+                      {isRunning ? '⏳ Setting up...' : '🚀 Setup Status Field'}
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* BOOK QUIZZES MANAGEMENT CONTENT */}
+            {activeSection === 'book-quizzes' && (
+              <>
+                {activeTab === 'book-quizzes-current-year' && (
+                  <div>
+                    <h3 style={{ color: '#8b5cf6', marginBottom: '1rem', fontSize: '1.5rem' }}>
+                      📅 Current Book Quizzes: 2025-26
+                    </h3>
+                    <p style={{ color: '#c4b5fd', marginBottom: '2rem' }}>
+                      View and manage book quizzes for the current academic year.
+                      These quizzes are tied to specific books by book ID.
+                    </p>
+                    
+                    {bookQuizzesStats && (
+                      <div style={{
+                        background: 'rgba(139, 92, 246, 0.1)',
+                        border: '1px solid rgba(139, 92, 246, 0.3)',
+                        borderRadius: '0.75rem',
+                        padding: '1.5rem',
+                        marginBottom: '2rem'
+                      }}>
+                        <h4 style={{ color: '#a78bfa', marginBottom: '1rem', fontSize: '1.25rem' }}>
+                          📊 Book Quiz Statistics
+                        </h4>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                          <div>
+                            <span style={{ color: '#c4b5fd', display: 'block', fontSize: '0.875rem' }}>Current Year (2025-26)</span>
+                            <span style={{ color: '#8b5cf6', fontWeight: 'bold', fontSize: '1.5rem' }}>{bookQuizzesStats.currentYear}</span>
+                          </div>
+                          <div>
+                            <span style={{ color: '#c4b5fd', display: 'block', fontSize: '0.875rem' }}>Total Quizzes</span>
+                            <span style={{ color: '#8b5cf6', fontWeight: 'bold', fontSize: '1.5rem' }}>{bookQuizzesStats.total}</span>
+                          </div>
+                          <div>
+                            <span style={{ color: '#c4b5fd', display: 'block', fontSize: '0.875rem' }}>Active Quizzes</span>
+                            <span style={{ color: '#8b5cf6', fontWeight: 'bold', fontSize: '1.5rem' }}>{bookQuizzesStats.active}</span>
+                          </div>
+                          <div>
+                            <span style={{ color: '#c4b5fd', display: 'block', fontSize: '0.875rem' }}>Archived Quizzes</span>
+                            <span style={{ color: '#8b5cf6', fontWeight: 'bold', fontSize: '1.5rem' }}>{bookQuizzesStats.archived}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <button
+                      onClick={loadAllStats}
+                      style={{
+                        background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+                        color: 'white',
+                        padding: '0.75rem 1.5rem',
+                        borderRadius: '0.5rem',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '1rem',
+                        fontWeight: '500'
+                      }}
+                    >
+                      🔄 Refresh Statistics
+                    </button>
+                  </div>
+                )}
+
+                {activeTab === 'book-quizzes-setup' && (
+                  <div>
+                    <h3 style={{ color: '#8b5cf6', marginBottom: '1rem', fontSize: '1.5rem' }}>
+                      🎯 Setup Book Quizzes (Overwrites)
+                    </h3>
+                    <p style={{ color: '#c4b5fd', marginBottom: '2rem' }}>
+                      Set up book quizzes for the current academic year. 
+                      This OVERWRITES existing quizzes for 2025-26 with new ones.
+                    </p>
+                    
+                    <div style={{
+                      background: 'rgba(239, 68, 68, 0.1)',
+                      border: '1px solid rgba(239, 68, 68, 0.3)',
+                      borderRadius: '0.5rem',
+                      padding: '1rem',
+                      marginBottom: '2rem'
+                    }}>
+                      <strong style={{ color: '#ef4444' }}>⚠️ Warning:</strong>
+                      <span style={{ color: '#fca5a5' }}> This deletes all existing 2025-26 book quizzes and replaces them.</span>
+                    </div>
+                    
+                    <button
+                      onClick={() => runOperation('book-quizzes-setup')}
+                      disabled={isRunning}
+                      style={{
+                        background: isRunning 
+                          ? 'linear-gradient(135deg, #6b7280, #4b5563)' 
+                          : 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+                        color: 'white',
+                        padding: '1rem 2rem',
+                        borderRadius: '0.75rem',
+                        border: 'none',
+                        cursor: isRunning ? 'not-allowed' : 'pointer',
+                        fontSize: '1.125rem',
+                        fontWeight: '600'
+                      }}
+                    >
+                      {isRunning ? '⏳ Processing...' : '🎯 Setup Book Quizzes'}
+                    </button>
+                  </div>
+                )}
+
+                {activeTab === 'book-quizzes-archive' && (
+                  <div>
+                    <h3 style={{ color: '#8b5cf6', marginBottom: '1rem', fontSize: '1.5rem' }}>
+                      📦 Archive Previous Year Book Quizzes
+                    </h3>
+                    <p style={{ color: '#c4b5fd', marginBottom: '2rem' }}>
+                      Archive book quizzes from a previous academic year. 
+                      This marks them as "archived" but keeps them in the database.
+                    </p>
+                    
+                    <div style={{
+                      background: 'rgba(59, 130, 246, 0.1)',
+                      border: '1px solid rgba(59, 130, 246, 0.3)',
+                      borderRadius: '0.5rem',
+                      padding: '1rem',
+                      marginBottom: '2rem'
+                    }}>
+                      <strong style={{ color: '#3b82f6' }}>ℹ️ Archive Process:</strong>
+                      <span style={{ color: '#93c5fd' }}> Quizzes will be marked as archived but remain for historical reference.</span>
+                    </div>
+                    
+                    <button
+                      onClick={() => runOperation('book-quizzes-archive')}
+                      disabled={isRunning}
+                      style={{
+                        background: isRunning 
+                          ? 'linear-gradient(135deg, #6b7280, #4b5563)' 
+                          : 'linear-gradient(135deg, #6b7280, #4b5563)',
+                        color: 'white',
+                        padding: '1rem 2rem',
+                        borderRadius: '0.75rem',
+                        border: 'none',
+                        cursor: isRunning ? 'not-allowed' : 'pointer',
+                        fontSize: '1.125rem',
+                        fontWeight: '600'
+                      }}
+                    >
+                      {isRunning ? '⏳ Archiving...' : '📦 Archive Previous Year'}
+                    </button>
+                  </div>
+                )}
+
+                {activeTab === 'book-quizzes-add-single' && (
+                  <div>
+                    <h3 style={{ color: '#8b5cf6', marginBottom: '1rem', fontSize: '1.5rem' }}>
+                      ➕ Add Single Book Quiz
+                    </h3>
+                    <p style={{ color: '#c4b5fd', marginBottom: '2rem' }}>
+                      Add a quiz for a specific book using the book's ID.
+                    </p>
+                    
+                    <div style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
+                      gap: '1rem',
+                      marginBottom: '2rem'
+                    }}>
+                      <div>
+                        <label style={{ color: '#c4b5fd', display: 'block', marginBottom: '0.5rem' }}>
+                          Book ID *
+                        </label>
+                        <input
+                          type="text"
+                          value={newBookQuizForm.book_id}
+                          onChange={(e) => handleBookQuizFormChange('book_id', e.target.value)}
+                          placeholder="001"
+                          style={{
+                            width: '100%',
+                            padding: '0.75rem',
+                            borderRadius: '0.5rem',
+                            border: '1px solid rgba(139, 92, 246, 0.3)',
+                            background: 'rgba(0, 0, 0, 0.3)',
+                            color: 'white'
+                          }}
+                        />
+                      </div>
+                    </div>
+                    
+                    <div style={{
+                      background: 'rgba(59, 130, 246, 0.1)',
+                      border: '1px solid rgba(59, 130, 246, 0.3)',
+                      borderRadius: '0.5rem',
+                      padding: '1rem',
+                      marginBottom: '2rem'
+                    }}>
+                      <strong style={{ color: '#3b82f6' }}>📝 Note:</strong>
+                      <span style={{ color: '#93c5fd' }}> You'll need to add the quiz questions manually in Firebase after creation.</span>
+                    </div>
+                    
+                    <button
+                      onClick={() => runOperation('book-quizzes-add-single')}
+                      disabled={isRunning || !newBookQuizForm.book_id}
+                      style={{
+                        background: (isRunning || !newBookQuizForm.book_id)
+                          ? 'linear-gradient(135deg, #6b7280, #4b5563)' 
+                          : 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+                        color: 'white',
+                        padding: '1rem 2rem',
+                        borderRadius: '0.75rem',
+                        border: 'none',
+                        cursor: (isRunning || !newBookQuizForm.book_id) ? 'not-allowed' : 'pointer',
+                        fontSize: '1.125rem',
+                        fontWeight: '600'
+                      }}
+                    >
+                      {isRunning ? '⏳ Adding...' : '➕ Add Book Quiz'}
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+
             {/* SAINTS MANAGEMENT CONTENT */}
             {activeSection === 'saints' && (
               <>
@@ -942,29 +1611,127 @@ export default function UnifiedAdminDashboard() {
                   </div>
                 )}
 
-                {activeTab === 'quizzes-books-bulk' && (
+                {activeTab === 'quizzes-saints-addNew' && (
                   <div>
                     <h3 style={{ color: '#059669', marginBottom: '1rem', fontSize: '1.5rem' }}>
-                      📚 Book Quizzes Bulk Setup
+                      ➕ Add New Saints Quizzes Only
                     </h3>
                     <p style={{ color: '#c4b5fd', marginBottom: '2rem' }}>
-                      Import all book quizzes to book-quizzes collection.
-                      This feature will be enabled when book quizzes are created.
+                      Add only new saints quizzes from the NEW_QUIZZES_TO_ADD array. 
+                      Skips quizzes that already exist.
                     </p>
                     
-                    <div style={{
-                      background: 'rgba(59, 130, 246, 0.1)',
-                      border: '1px solid rgba(59, 130, 246, 0.3)',
-                      borderRadius: '0.5rem',
-                      padding: '1rem',
+                    <button
+                      onClick={() => runOperation('quizzes-saints-addNew')}
+                      disabled={isRunning}
+                      style={{
+                        background: isRunning 
+                          ? 'linear-gradient(135deg, #6b7280, #4b5563)' 
+                          : 'linear-gradient(135deg, #10b981, #059669)',
+                        color: 'white',
+                        padding: '1rem 2rem',
+                        borderRadius: '0.75rem',
+                        border: 'none',
+                        cursor: isRunning ? 'not-allowed' : 'pointer',
+                        fontSize: '1.125rem',
+                        fontWeight: '600'
+                      }}
+                    >
+                      {isRunning ? '⏳ Adding...' : '➕ Add New Saints Quizzes'}
+                    </button>
+                  </div>
+                )}
+
+                {activeTab === 'quizzes-saints-addSingle' && (
+                  <div>
+                    <h3 style={{ color: '#059669', marginBottom: '1rem', fontSize: '1.5rem' }}>
+                      👤 Add Single Saints Quiz
+                    </h3>
+                    <p style={{ color: '#c4b5fd', marginBottom: '2rem' }}>
+                      Add one saints quiz manually.
+                    </p>
+                    
+                    <div style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
+                      gap: '1rem',
                       marginBottom: '2rem'
                     }}>
-                      <strong style={{ color: '#3b82f6' }}>ℹ️ Coming Soon:</strong>
-                      <span style={{ color: '#93c5fd' }}> Book quizzes are not created yet. This will be enabled in the future.</span>
+                      <div>
+                        <label style={{ color: '#c4b5fd', display: 'block', marginBottom: '0.5rem' }}>
+                          Quiz Title *
+                        </label>
+                        <input
+                          type="text"
+                          value={newSaintsQuizForm.title}
+                          onChange={(e) => handleSaintsQuizFormChange('title', e.target.value)}
+                          placeholder="Saints Knowledge Quiz"
+                          style={{
+                            width: '100%',
+                            padding: '0.75rem',
+                            borderRadius: '0.5rem',
+                            border: '1px solid rgba(5, 150, 105, 0.3)',
+                            background: 'rgba(0, 0, 0, 0.3)',
+                            color: 'white'
+                          }}
+                        />
+                      </div>
+                      
+                      <div>
+                        <label style={{ color: '#c4b5fd', display: 'block', marginBottom: '0.5rem' }}>
+                          Series
+                        </label>
+                        <select
+                          value={newSaintsQuizForm.series}
+                          onChange={(e) => handleSaintsQuizFormChange('series', e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '0.75rem',
+                            borderRadius: '0.5rem',
+                            border: '1px solid rgba(5, 150, 105, 0.3)',
+                            background: 'rgba(0, 0, 0, 0.3)',
+                            color: 'white'
+                          }}
+                        >
+                          {seriesOptions.map(series => (
+                            <option key={series} value={series}>{series}</option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                     
                     <button
-                      onClick={() => runOperation('quizzes-books-bulk')}
+                      onClick={() => runOperation('quizzes-saints-addSingle')}
+                      disabled={isRunning || !newSaintsQuizForm.title}
+                      style={{
+                        background: (isRunning || !newSaintsQuizForm.title)
+                          ? 'linear-gradient(135deg, #6b7280, #4b5563)' 
+                          : 'linear-gradient(135deg, #059669, #047857)',
+                        color: 'white',
+                        padding: '1rem 2rem',
+                        borderRadius: '0.75rem',
+                        border: 'none',
+                        cursor: (isRunning || !newSaintsQuizForm.title) ? 'not-allowed' : 'pointer',
+                        fontSize: '1.125rem',
+                        fontWeight: '600'
+                      }}
+                    >
+                      {isRunning ? '⏳ Adding...' : '👤 Add Saints Quiz'}
+                    </button>
+                  </div>
+                )}
+
+                {activeTab === 'quizzes-luxdna-bulk' && (
+                  <div>
+                    <h3 style={{ color: '#059669', marginBottom: '1rem', fontSize: '1.5rem' }}>
+                      🧬 Lux DNA Quizzes Bulk Setup
+                    </h3>
+                    <p style={{ color: '#c4b5fd', marginBottom: '2rem' }}>
+                      Import all Lux DNA quizzes to book-quizzes collection.
+                    </p>
+                    
+                    <button
+                      onClick={() => runOperation('quizzes-luxdna-bulk')}
                       disabled={isRunning}
                       style={{
                         background: isRunning 
@@ -979,7 +1746,64 @@ export default function UnifiedAdminDashboard() {
                         fontWeight: '600'
                       }}
                     >
-                      {isRunning ? '⏳ Processing...' : '📚 Import Book Quizzes'}
+                      {isRunning ? '⏳ Processing...' : '🧬 Import Lux DNA Quizzes'}
+                    </button>
+                  </div>
+                )}
+
+                {activeTab === 'quizzes-luxdna-addSingle' && (
+                  <div>
+                    <h3 style={{ color: '#059669', marginBottom: '1rem', fontSize: '1.5rem' }}>
+                      🔬 Add Single Lux DNA Quiz
+                    </h3>
+                    <p style={{ color: '#c4b5fd', marginBottom: '2rem' }}>
+                      Add one Lux DNA quiz manually.
+                    </p>
+                    
+                    <div style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
+                      gap: '1rem',
+                      marginBottom: '2rem'
+                    }}>
+                      <div>
+                        <label style={{ color: '#c4b5fd', display: 'block', marginBottom: '0.5rem' }}>
+                          Quiz Title *
+                        </label>
+                        <input
+                          type="text"
+                          value={newLuxDnaQuizForm.title}
+                          onChange={(e) => handleLuxDnaQuizFormChange('title', e.target.value)}
+                          placeholder="Book Knowledge Quiz"
+                          style={{
+                            width: '100%',
+                            padding: '0.75rem',
+                            borderRadius: '0.5rem',
+                            border: '1px solid rgba(5, 150, 105, 0.3)',
+                            background: 'rgba(0, 0, 0, 0.3)',
+                            color: 'white'
+                          }}
+                        />
+                      </div>
+                    </div>
+                    
+                    <button
+                      onClick={() => runOperation('quizzes-luxdna-addSingle')}
+                      disabled={isRunning || !newLuxDnaQuizForm.title}
+                      style={{
+                        background: (isRunning || !newLuxDnaQuizForm.title)
+                          ? 'linear-gradient(135deg, #6b7280, #4b5563)' 
+                          : 'linear-gradient(135deg, #dc2626, #b91c1c)',
+                        color: 'white',
+                        padding: '1rem 2rem',
+                        borderRadius: '0.75rem',
+                        border: 'none',
+                        cursor: (isRunning || !newLuxDnaQuizForm.title) ? 'not-allowed' : 'pointer',
+                        fontSize: '1.125rem',
+                        fontWeight: '600'
+                      }}
+                    >
+                      {isRunning ? '⏳ Adding...' : '🔬 Add Lux DNA Quiz'}
                     </button>
                   </div>
                 )}
@@ -1050,6 +1874,78 @@ export default function UnifiedAdminDashboard() {
                     
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' }}>
                       
+                      {/* Books Stats */}
+                      {booksStats && (
+                        <div style={{
+                          background: 'rgba(245, 158, 11, 0.1)',
+                          border: '1px solid rgba(245, 158, 11, 0.3)',
+                          borderRadius: '0.75rem',
+                          padding: '1.5rem'
+                        }}>
+                          <h4 style={{ color: '#fbbf24', marginBottom: '1rem', fontSize: '1.25rem' }}>
+                            📚 Books Collection ({booksStats.total} total)
+                          </h4>
+                          
+                          <div style={{ marginBottom: '1rem' }}>
+                            <h5 style={{ color: '#fcd34d', marginBottom: '0.5rem' }}>By Status</h5>
+                            <div style={{ color: '#fbbf24', marginBottom: '0.25rem' }}>
+                              Active: {booksStats.active}
+                            </div>
+                            <div style={{ color: '#fbbf24', marginBottom: '0.25rem' }}>
+                              Archived: {booksStats.archived}
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <h5 style={{ color: '#fcd34d', marginBottom: '0.5rem' }}>By Academic Year</h5>
+                            <div style={{ color: '#fbbf24', marginBottom: '0.25rem', fontSize: '0.875rem' }}>
+                              2025-26: {booksStats.currentYear}
+                            </div>
+                            {booksStats.byYear && Object.entries(booksStats.byYear).map(([year, count]) => (
+                              <div key={year} style={{ color: '#fbbf24', marginBottom: '0.25rem', fontSize: '0.875rem' }}>
+                                {year}: {count}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Book Quizzes Stats */}
+                      {bookQuizzesStats && (
+                        <div style={{
+                          background: 'rgba(139, 92, 246, 0.1)',
+                          border: '1px solid rgba(139, 92, 246, 0.3)',
+                          borderRadius: '0.75rem',
+                          padding: '1.5rem'
+                        }}>
+                          <h4 style={{ color: '#a78bfa', marginBottom: '1rem', fontSize: '1.25rem' }}>
+                            🎯 Book Quizzes ({bookQuizzesStats.total} total)
+                          </h4>
+                          
+                          <div style={{ marginBottom: '1rem' }}>
+                            <h5 style={{ color: '#c4b5fd', marginBottom: '0.5rem' }}>By Status</h5>
+                            <div style={{ color: '#a78bfa', marginBottom: '0.25rem' }}>
+                              Active: {bookQuizzesStats.active}
+                            </div>
+                            <div style={{ color: '#a78bfa', marginBottom: '0.25rem' }}>
+                              Archived: {bookQuizzesStats.archived}
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <h5 style={{ color: '#c4b5fd', marginBottom: '0.5rem' }}>By Academic Year</h5>
+                            <div style={{ color: '#a78bfa', marginBottom: '0.25rem', fontSize: '0.875rem' }}>
+                              2025-26: {bookQuizzesStats.currentYear}
+                            </div>
+                            {bookQuizzesStats.byYear && Object.entries(bookQuizzesStats.byYear).map(([year, count]) => (
+                              <div key={year} style={{ color: '#a78bfa', marginBottom: '0.25rem', fontSize: '0.875rem' }}>
+                                {year}: {count}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       {/* Saints Stats */}
                       {saintsStats && (
                         <div style={{
@@ -1091,7 +1987,7 @@ export default function UnifiedAdminDashboard() {
                           padding: '1.5rem'
                         }}>
                           <h4 style={{ color: '#6ee7b7', marginBottom: '1rem', fontSize: '1.25rem' }}>
-                            🧩 Quizzes Collection
+                            🧩 Lux DNA Quizzes Collection
                           </h4>
                           
                           <div style={{ marginBottom: '1rem' }}>
@@ -1104,15 +2000,17 @@ export default function UnifiedAdminDashboard() {
                           </div>
                           
                           <div>
-                            <h5 style={{ color: '#10b981', marginBottom: '0.5rem' }}>Book Quizzes ({quizzesStats.books.total})</h5>
-                            {quizzesStats.books.total === 0 ? (
-                              <div style={{ color: '#6ee7b7', fontSize: '0.875rem' }}>No book quizzes yet</div>
-                            ) : (
-                              Object.entries(quizzesStats.books.bySeries).map(([category, count]) => (
+                            <h5 style={{ color: '#10b981', marginBottom: '0.5rem' }}>Lux DNA Quizzes ({quizzesStats.luxDna?.total || 0})</h5>
+                            {quizzesStats.luxDna && quizzesStats.luxDna.total === 0 ? (
+                              <div style={{ color: '#6ee7b7', fontSize: '0.875rem' }}>No Lux DNA quizzes yet</div>
+                            ) : quizzesStats.luxDna ? (
+                              Object.entries(quizzesStats.luxDna.bySeries || {}).map(([category, count]) => (
                                 <div key={category} style={{ color: '#a7f3d0', marginBottom: '0.25rem', fontSize: '0.875rem' }}>
                                   {category}: {count}
                                 </div>
                               ))
+                            ) : (
+                              <div style={{ color: '#6ee7b7', fontSize: '0.875rem' }}>Loading...</div>
                             )}
                           </div>
                         </div>
@@ -1235,5 +2133,3 @@ export default function UnifiedAdminDashboard() {
     </>
   )
 }
-
-// NO SERVER-SIDE FUNCTIONS - This is purely client-side

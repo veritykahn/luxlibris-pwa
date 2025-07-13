@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getStudentDataEntities, getSchoolNomineesEntities, updateStudentDataEntities, getCurrentAcademicYear } from '../lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { getQuizByBookId } from '../book-quizzes-manager';
 import Head from 'next/head';
 
 export default function StudentBookshelf() {
@@ -495,21 +496,26 @@ export default function StudentBookshelf() {
       const selectedTheme = themes[selectedThemeKey];
       setCurrentTheme(selectedTheme);
       
-    if (firebaseStudentData.entityId && firebaseStudentData.schoolId) {
-  const allNominees = await getSchoolNomineesEntities(
-    firebaseStudentData.entityId, 
-    firebaseStudentData.schoolId
-  );
-  
-  // Filter by current academic year
-  const currentYear = getCurrentAcademicYear();
-  const schoolNominees = allNominees.filter(book => 
-    book.academicYear === currentYear || !book.academicYear
-  );
-  
-  setNominees(schoolNominees);
-}
-      
+      if (firebaseStudentData.entityId && firebaseStudentData.schoolId) {
+        const allNominees = await getSchoolNomineesEntities(
+          firebaseStudentData.entityId, 
+          firebaseStudentData.schoolId
+        );
+        
+        // Filter by current academic year and active status
+        const currentYear = getCurrentAcademicYear();
+        console.log(`📚 Filtering nominees for academic year: ${currentYear}`);
+        
+        const schoolNominees = allNominees.filter(book => {
+          // Include books for current year with active status, or legacy books without academic year
+          return (book.academicYear === currentYear && book.status === 'active') || 
+                 (!book.academicYear && !book.status); // Legacy books
+        });
+        
+        console.log(`📚 Found ${schoolNominees.length} active nominees for ${currentYear}`);
+        setNominees(schoolNominees);
+      }
+        
     } catch (error) {
       console.error('❌ Error loading bookshelf:', error);
       router.push('/student-dashboard');
@@ -791,19 +797,61 @@ export default function StudentBookshelf() {
         return;
       }
 
-      const quizRef = doc(db, 'quizzes', selectedBook.bookId);
-      const quizDoc = await getDoc(quizRef);
+      // Get current academic year
+      const currentYear = getCurrentAcademicYear();
+      console.log(`🎯 Looking for quiz for book ${selectedBook.bookId} in academic year ${currentYear}`);
 
-      if (!quizDoc.exists()) {
-        setShowSuccess('❌ Quiz not available for this book yet.');
-        setTimeout(() => setShowSuccess(''), 3000);
+      // NEW SAFE LINKING: Quiz links to book through ID + academic year + status
+      const quizData = await getQuizByBookId(selectedBook.bookId, currentYear);
+
+      if (!quizData) {
+        console.log('🔄 Quiz not found with academic year linking, trying legacy method...');
+        
+        // FALLBACK: Legacy quiz lookup for backward compatibility
+        const legacyQuizRef = doc(db, 'quizzes', selectedBook.bookId);
+        const legacyQuizDoc = await getDoc(legacyQuizRef);
+        
+        if (!legacyQuizDoc.exists()) {
+          setShowSuccess('❌ Quiz not available for this book yet.');
+          setTimeout(() => setShowSuccess(''), 3000);
+          setIsSaving(false);
+          return;
+        }
+        
+        const legacyQuizData = legacyQuizDoc.data();
+        console.log('📚 Using legacy quiz format');
+        
+        // Process legacy quiz
+        let allQuestions = [];
+        if (legacyQuizData.questions && Array.isArray(legacyQuizData.questions)) {
+          allQuestions = legacyQuizData.questions;
+        }
+
+        if (allQuestions.length === 0) {
+          setShowSuccess('❌ No quiz questions found for this book.');
+          setTimeout(() => setShowSuccess(''), 3000);
+          setIsSaving(false);
+          return;
+        }
+
+        const shuffled = [...allQuestions].sort(() => 0.5 - Math.random());
+        const selectedQuestions = shuffled.slice(0, Math.min(10, allQuestions.length));
+
+        setQuizQuestions(selectedQuestions);
+        setCurrentQuestionIndex(0);
+        setQuizAnswers([]);
+        setTimeRemaining(30 * 60);
+        setTimerActive(false);
+        setShowParentPermission(false);
+        setShowQuizModal(true);
         setIsSaving(false);
         return;
       }
 
-      const quizData = quizDoc.data();
-      let allQuestions = [];
+      // NEW: Process academic year-aware quiz
+      console.log(`✅ Found quiz for book ${selectedBook.bookId} with academic year linking:`, quizData);
       
+      let allQuestions = [];
       if (quizData.questions && Array.isArray(quizData.questions)) {
         allQuestions = quizData.questions;
       }
@@ -815,6 +863,7 @@ export default function StudentBookshelf() {
         return;
       }
 
+      // Shuffle and select questions
       const shuffled = [...allQuestions].sort(() => 0.5 - Math.random());
       const selectedQuestions = shuffled.slice(0, Math.min(10, allQuestions.length));
 

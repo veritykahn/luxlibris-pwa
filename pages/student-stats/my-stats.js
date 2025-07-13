@@ -1071,7 +1071,7 @@ export default function MyStats() {
                   marginBottom: '8px',
                   fontFamily: 'Didot, "Times New Roman", serif'
                 }}>
-                  You&apos;re a {readingPersonality.name}!
+                  You&apos;re {['A', 'E', 'I', 'O', 'U'].includes(readingPersonality.name[0]) ? 'an' : 'a'} {readingPersonality.name}!
                 </div>
                 <div style={{
                   fontSize: 'clamp(12px, 3.5vw, 14px)',
