@@ -400,18 +400,27 @@ export default function StudentSaints() {
 const organizeSaintsIntoShelves = useCallback((saints, unlockedSaints, studentData, calculatedStreak) => {
   // Group saints by rarity/type (MUTUALLY EXCLUSIVE - priority order matters!)
   const jesusArray = saints.filter(s => s.luxlings_series === 'Ultimate Redeemer');
-  const marianArray = saints.filter(s => s.luxlings_series === 'Mini Marians');
+  
+  // FIXED: Exclude Our Lady of the Rosary (saint_136) from Marian shelf - it belongs on seasonal
+  const marianArray = saints.filter(s => 
+    s.luxlings_series === 'Mini Marians' && s.id !== 'saint_136'
+  );
+  
   const gradeArray = saints.filter(s => 
     !jesusArray.includes(s) && 
     !marianArray.includes(s) && 
+    s.id !== 'saint_136' && // Also exclude from grade array
     (s.rarity?.includes('grade_exclusive') || (s.unlockCondition && s.unlockCondition.includes('first_book_grade')))
   );
+  
+  // FIXED: Include Our Lady of the Rosary (saint_136) in seasonal array regardless of its series
   const seasonalArray = saints.filter(s => 
     !jesusArray.includes(s) && 
     !marianArray.includes(s) && 
     !gradeArray.includes(s) && 
-    s.rarity === 'seasonal'
+    (s.rarity === 'seasonal' || s.id === 'saint_136') // Special case for Our Lady of the Rosary
   );
+  
   const legendaryArray = saints.filter(s => 
     !jesusArray.includes(s) && 
     !marianArray.includes(s) && 
@@ -419,6 +428,7 @@ const organizeSaintsIntoShelves = useCallback((saints, unlockedSaints, studentDa
     !seasonalArray.includes(s) && 
     s.rarity === 'legendary'
   );
+  
   const rareArray = saints.filter(s => 
     !jesusArray.includes(s) && 
     !marianArray.includes(s) && 
@@ -427,6 +437,7 @@ const organizeSaintsIntoShelves = useCallback((saints, unlockedSaints, studentDa
     !legendaryArray.includes(s) && 
     s.rarity === 'rare'
   );
+  
   const commonArray = saints.filter(s => 
     !jesusArray.includes(s) && 
     !marianArray.includes(s) && 
@@ -446,15 +457,6 @@ const organizeSaintsIntoShelves = useCallback((saints, unlockedSaints, studentDa
     rare: rareArray,
     common: commonArray
   };
-
-  // 🔍 DEBUG LOGS (keep these for now)
-  console.log('🏠 Shelf Organization Debug:');
-  console.log('Total saints passed in:', saints.length);
-  console.log('Marian saints found:', saintsByType.marian.length);
-  console.log('Marian saint IDs:', saintsByType.marian.map(s => s.id));
-  console.log('Saint 173 details:', saints.find(s => s.id === 'saint_173'));
-  console.log('Unlocked saints Set:', unlockedSaints);
-  console.log('Is saint_173 unlocked?', unlockedSaints.has('saint_173'));
 
   // 🌈 Dynamic glow based on theme brightness
   const isLightTheme = currentTheme?.background?.includes('#FFF') || 
@@ -491,7 +493,7 @@ const organizeSaintsIntoShelves = useCallback((saints, unlockedSaints, studentDa
       shelfColor: currentTheme?.primary || '#ADD4EA',
       textColor: currentTheme?.textPrimary || '#223848',
       glow: getGlow(16),
-      capacity: 5,
+      capacity: 5, // Perfect for the 5 April Marian saints (excluding Our Lady of Rosary)
       label: '💎 Marian Apparitions 💎'
     },
     { 
@@ -576,13 +578,6 @@ const organizeSaintsIntoShelves = useCallback((saints, unlockedSaints, studentDa
     getGlow(6),
     currentTheme?.primary || '#ADD4EA'
   );
-
-  console.log('📚 Dynamic Shelves Created:', {
-    totalShelves: shelves.length,
-    legendaryShelvesCreated: shelves.filter(s => s.type.startsWith('legendary')).length,
-    rareShelvesCreated: shelves.filter(s => s.type.startsWith('rare')).length,
-    commonShelvesCreated: shelves.filter(s => s.type.startsWith('common')).length
-  });
 
   return shelves;
 }, [currentTheme]);

@@ -1292,7 +1292,7 @@ export default function MyStats() {
                   color: currentTheme.textPrimary,
                   marginBottom: '4px'
                 }}>
-                  {saintsStats.totalUnlocked}/137
+                  {saintsStats.totalUnlocked}/234
                 </div>
                 <div style={{
                   fontSize: 'clamp(11px, 3vw, 12px)',

@@ -182,7 +182,7 @@ export default function LuxDnaLab() {
     }
   }, [loading, isAuthenticated, user, loadData]);
 
-  // Calculate quiz score
+  // Calculate quiz score with improved tie-breaking and fallback
   const calculateQuizResult = useCallback((quiz, answers) => {
     const scores = {};
     
@@ -194,7 +194,7 @@ export default function LuxDnaLab() {
     // Calculate scores based on answers
     quiz.questions.forEach((question, questionIndex) => {
       const answer = answers[questionIndex];
-      if (answer && question.answers[answer] && question.answers[answer].points) {
+      if (answer !== undefined && question.answers[answer] && question.answers[answer].points) {
         Object.entries(question.answers[answer].points).forEach(([saintKey, points]) => {
           if (scores.hasOwnProperty(saintKey)) {
             scores[saintKey] += points;
@@ -203,18 +203,30 @@ export default function LuxDnaLab() {
       }
     });
     
-    // Find the saint with the highest score
-    let highestScore = 0;
-    let resultSaint = null;
+    console.log('🧮 Quiz scores calculated:', scores);
     
-    Object.entries(scores).forEach(([saintKey, score]) => {
-      if (score > highestScore) {
-        highestScore = score;
-        resultSaint = saintKey;
-      }
-    });
+    // Find the highest score
+    const maxScore = Math.max(...Object.values(scores));
+    console.log('🏆 Highest score:', maxScore);
     
-    return resultSaint ? quiz.results[resultSaint] : null;
+    // Get all saints with the highest score (handles ties)
+    const winners = Object.entries(scores).filter(([saintKey, score]) => score === maxScore);
+    console.log('🎯 Winners (tied for highest):', winners);
+    
+    // If no one has any points, pick a random result as fallback
+    if (maxScore === 0) {
+      console.log('⚠️ No points scored, using random fallback');
+      const allResults = Object.keys(quiz.results);
+      const randomKey = allResults[Math.floor(Math.random() * allResults.length)];
+      return quiz.results[randomKey];
+    }
+    
+    // If there are ties, pick randomly among winners
+    const randomWinner = winners[Math.floor(Math.random() * winners.length)];
+    const [winnerKey] = randomWinner;
+    
+    console.log('✅ Final result:', winnerKey, quiz.results[winnerKey]?.name || 'Unknown');
+    return quiz.results[winnerKey];
   }, []);
 
   // Start a quiz
