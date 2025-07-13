@@ -1,9 +1,13 @@
-// pages/student-stats/index.js - Enhanced Main Dashboard with Header Dropdown Navigation
+// pages/student-stats/index.js - Enhanced Stats Dashboard with Reading Personality & Visual Certificates
+
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../contexts/AuthContext';
 import { getStudentDataEntities } from '../../lib/firebase';
-import { getCurrentWeekBadge, getBadgeProgress } from '../../lib/badge-system';
+import { getCurrentWeekBadge, getBadgeProgress, getEarnedBadges, getLevelProgress } from '../../lib/badge-system';
+import { calculateReadingPersonality, shouldShowFirstBookCelebration, unlockCertificate } from '../../lib/reading-personality';
+import * as ShareableModal from '../../lib/shareable-modal-generator';
+import { generateEnhancedBraggingRights } from '../../lib/leaderboard-system';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import Head from 'next/head';
@@ -17,12 +21,16 @@ export default function StudentStatsMain() {
   const [showNavMenu, setShowNavMenu] = useState(false);
   const [showStatsDropdown, setShowStatsDropdown] = useState(false);
   const [showBraggingRights, setShowBraggingRights] = useState(false);
+  const [showFirstBookCelebration, setShowFirstBookCelebration] = useState(false);
   const [isGeneratingCertificate, setIsGeneratingCertificate] = useState(false);
   const [quickStats, setQuickStats] = useState(null);
-  const [braggingRightsData, setBraggingRightsData] = useState(null);
+  const [readingPersonality, setReadingPersonality] = useState(null);
+  const [badgeProgress, setBadgeProgress] = useState(null);
+  const [earnedBadges, setEarnedBadges] = useState([]);
+  const [levelProgress, setLevelProgress] = useState(null);
   const [currentWeekBadge, setCurrentWeekBadge] = useState(null);
 
-  // Theme definitions (keeping the same as original)
+  // Theme definitions
   const themes = useMemo(() => ({
     classic_lux: {
       name: 'Lux Libris Classic',
@@ -114,7 +122,7 @@ export default function StudentStatsMain() {
     }
   }), []);
 
-  // Navigation menu items (keeping the same as original)
+  // Navigation menu items
   const navMenuItems = useMemo(() => [
     { name: 'Dashboard', path: '/student-dashboard', icon: '⌂' },
     { name: 'Nominees', path: '/student-nominees', icon: '□' },
@@ -152,10 +160,12 @@ export default function StudentStatsMain() {
       if (event.key === 'Escape') {
         setShowNavMenu(false);
         setShowStatsDropdown(false);
+        setShowBraggingRights(false);
+        setShowFirstBookCelebration(false);
       }
     };
 
-    if (showNavMenu || showStatsDropdown) {
+    if (showNavMenu || showStatsDropdown || showBraggingRights || showFirstBookCelebration) {
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('keydown', handleEscape);
     }
@@ -164,7 +174,7 @@ export default function StudentStatsMain() {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscape);
     };
-  }, [showNavMenu, showStatsDropdown]);
+  }, [showNavMenu, showStatsDropdown, showBraggingRights, showFirstBookCelebration]);
 
   // Calculate quick stats for dashboard overview
   const calculateQuickStats = useCallback(async (studentData) => {
@@ -215,6 +225,15 @@ export default function StudentStatsMain() {
       const achievementTiers = studentData.achievementTiers || [];
       const nextTier = achievementTiers.find(tier => booksThisYear < tier.books);
       
+      // Calculate badge and level stats
+      const badges = getEarnedBadges(studentData);
+      const badgeStats = getBadgeProgress(studentData);
+      const levelInfo = getLevelProgress(studentData.totalXP || 0);
+
+      setEarnedBadges(badges);
+      setBadgeProgress(badgeStats);
+      setLevelProgress(levelInfo);
+      
       setQuickStats({
         booksThisYear,
         personalGoal,
@@ -226,7 +245,8 @@ export default function StudentStatsMain() {
         completedSessions,
         nextTier,
         currentReadingLevel: studentData.currentReadingLevel || 'faithful_flame',
-        averageSessionLength: completedSessions > 0 ? Math.round(totalReadingMinutes / completedSessions) : 0
+        averageSessionLength: completedSessions > 0 ? Math.round(totalReadingMinutes / completedSessions) : 0,
+        totalXP: studentData.totalXP || 0
       });
       
     } catch (error) {
@@ -242,55 +262,10 @@ export default function StudentStatsMain() {
         completedSessions: 0,
         nextTier: null,
         currentReadingLevel: 'faithful_flame',
-        averageSessionLength: 0
+        averageSessionLength: 0,
+        totalXP: studentData.totalXP || 0
       });
     }
-  }, []);
-
-  // Generate bragging rights data
-  const generateBraggingRights = useCallback((studentData, quickStats) => {
-    if (!quickStats) return null;
-
-    const achievements = [];
-    
-    // Sample achievements based on quick stats
-    if (quickStats.booksThisYear >= quickStats.personalGoal) {
-      achievements.push(`🎯 Reached ${quickStats.booksThisYear}-book goal!`);
-    } else if (quickStats.booksThisYear > 0) {
-      achievements.push(`📚 Read ${quickStats.booksThisYear} book${quickStats.booksThisYear > 1 ? 's' : ''} this year!`);
-    }
-    
-    if (quickStats.currentStreak >= 7) {
-      achievements.push(`🔥 ${quickStats.currentStreak}-day reading streak!`);
-    }
-    
-    if (quickStats.readingHours >= 10) {
-      achievements.push(`⏰ ${quickStats.readingHours} hours of reading time!`);
-    }
-    
-    if (quickStats.saintsUnlocked >= 5) {
-      achievements.push(`♔ ${quickStats.saintsUnlocked} saints unlocked!`);
-    }
-    
-    if (quickStats.completedSessions >= 20) {
-      achievements.push(`📖 ${quickStats.completedSessions} reading sessions completed!`);
-    }
-    
-    // Add encouraging messages if few achievements
-    if (achievements.length < 3) {
-      achievements.push(`🌟 Active reader this year!`);
-      achievements.push(`📚 Building great reading habits!`);
-    }
-
-    return {
-      topAchievements: achievements.slice(0, 6),
-      studentName: `${studentData.firstName} ${studentData.lastInitial}`,
-      schoolName: studentData.schoolName,
-      grade: studentData.grade,
-      date: new Date().toLocaleDateString(),
-      saintsCount: quickStats.saintsUnlocked,
-      readingLevel: quickStats.currentReadingLevel
-    };
   }, []);
 
   // Load student data and calculate stats
@@ -315,6 +290,15 @@ export default function StudentStatsMain() {
       // Calculate quick stats for overview
       await calculateQuickStats(firebaseStudentData);
       
+      // Calculate reading personality
+      const personality = await calculateReadingPersonality(firebaseStudentData);
+      setReadingPersonality(personality);
+      
+      // Check for first book celebration
+      if (shouldShowFirstBookCelebration(firebaseStudentData)) {
+        setShowFirstBookCelebration(true);
+      }
+      
     } catch (error) {
       console.error('Error loading stats data:', error);
       router.push('/student-dashboard');
@@ -322,14 +306,6 @@ export default function StudentStatsMain() {
     
     setIsLoading(false);
   }, [user, router, themes, calculateQuickStats]);
-
-  // Generate bragging rights when quick stats are available
-  useEffect(() => {
-    if (studentData && quickStats) {
-      const braggingData = generateBraggingRights(studentData, quickStats);
-      setBraggingRightsData(braggingData);
-    }
-  }, [studentData, quickStats, generateBraggingRights]);
 
   // Load initial data
   useEffect(() => {
@@ -356,50 +332,70 @@ export default function StudentStatsMain() {
     router.push(option.path);
   };
 
-  // Handle certificate download
+  // Generate bragging rights data (same as my-stats)
+  const generateBraggingRights = useCallback(() => {
+    return generateEnhancedBraggingRights(studentData, quickStats, badgeProgress, earnedBadges);
+  }, [studentData, quickStats, badgeProgress, earnedBadges]);
+
+  // Handle certificate download (using shareable modal system)
   const handleDownloadCertificate = async () => {
     setIsGeneratingCertificate(true);
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      if (braggingRightsData) {
-        const certificateText = `
-🏆 READING ACHIEVEMENT CERTIFICATE 🏆
-
-${braggingRightsData.studentName}
-Grade ${braggingRightsData.grade} • ${braggingRightsData.schoolName}
-
-🌟 TOP ACHIEVEMENTS 🌟
-${braggingRightsData.topAchievements.map(achievement => `• ${achievement}`).join('\n')}
-
-📊 STATS SUMMARY:
-• Saints Collected: ${braggingRightsData.saintsCount}
-• Reading Level: ${braggingRightsData.readingLevel}
-• Generated: ${braggingRightsData.date}
-
-🎉 Keep reading and unlocking more achievements!
-
-Visit luxlibris.org to learn more about our reading program.
-        `;
-        
-        const blob = new Blob([certificateText], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${braggingRightsData.studentName.replace(' ', '_')}_Reading_Certificate.txt`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+      const braggingData = generateBraggingRights();
+      if (braggingData) {
+        const success = await ShareableModal.downloadShareableModal(braggingData, currentTheme, studentData);
+        if (success) {
+          alert('🎉 Achievement image downloaded! Check your downloads folder.');
+        } else {
+          alert('❌ Error generating image. Please try again.');
+        }
       }
-      
     } catch (error) {
-      console.error('Error generating certificate:', error);
+      console.error('Error generating achievement image:', error);
+      alert('❌ Error generating image. Please try again.');
     }
     
     setIsGeneratingCertificate(false);
   };
+
+  // Handle certificate sharing (using shareable modal system)
+  const handleShareCertificate = async () => {
+    setIsGeneratingCertificate(true);
+    
+    try {
+      const braggingData = generateBraggingRights();
+      if (braggingData) {
+        const success = await ShareableModal.shareModal(braggingData, currentTheme, studentData);
+        if (!success) {
+          alert('❌ Error sharing image. Please try again.');
+        }
+      }
+    } catch (error) {
+      console.error('Error sharing achievement image:', error);
+      alert('❌ Error sharing image. Please try again.');
+    }
+    
+    setIsGeneratingCertificate(false);
+  };
+
+  // Handle first book celebration completion
+  const handleFirstBookCelebration = async () => {
+    setShowFirstBookCelebration(false);
+    
+    try {
+      await unlockCertificate(studentData);
+      alert('🎉 Congratulations! Your certificate feature has been unlocked!');
+      
+      // Refresh student data to reflect the unlock
+      await loadStatsData();
+    } catch (error) {
+      console.error('Error unlocking certificate:', error);
+    }
+  };
+
+  // Check if certificate is unlocked
+  const isCertificateUnlocked = studentData?.certificateUnlocked || (studentData?.booksSubmittedThisYear > 0);
 
   // Show loading
   if (loading || isLoading || !studentData || !currentTheme || !quickStats) {
@@ -457,7 +453,7 @@ Visit luxlibris.org to learn more about our reading program.
           justifyContent: 'space-between'
         }}>
           <button
-            onClick={() => router.back()}
+            onClick={() => router.push('/student-dashboard')}
             style={{
               backgroundColor: 'rgba(255,255,255,0.3)',
               border: 'none',
@@ -690,10 +686,167 @@ Visit luxlibris.org to learn more about our reading program.
           </div>
         </div>
 
-        {/* MAIN CONTENT */}
+        {/* MAIN CONTENT - UPDATED LAYOUT */}
         <div style={{ padding: 'clamp(16px, 5vw, 20px)', maxWidth: '400px', margin: '0 auto' }}>
           
-          {/* OVERVIEW CARDS */}
+          {/* THIS WEEK'S CHALLENGE + XP (PROMINENT AT TOP) */}
+          {currentWeekBadge && (
+            <div style={{
+              backgroundColor: currentTheme.surface,
+              borderRadius: '20px',
+              padding: '20px',
+              marginBottom: '20px',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+              textAlign: 'center'
+            }}>
+              <div style={{
+                fontSize: '14px',
+                fontWeight: '600',
+                color: currentTheme.textPrimary,
+                marginBottom: '16px'
+              }}>
+                {currentWeekBadge.week === 0 ? '🚀 Coming Soon' : '🎯 This Week\'s Challenge'}
+              </div>
+              
+              <div style={{
+                backgroundColor: `${currentTheme.primary}20`,
+                borderRadius: '16px',
+                padding: '16px',
+                marginBottom: '16px'
+              }}>
+                <div style={{ fontSize: 'clamp(32px, 10vw, 40px)', marginBottom: '12px' }}>
+                  {currentWeekBadge.emoji}
+                </div>
+                <div style={{
+                  fontSize: 'clamp(16px, 5vw, 18px)',
+                  fontWeight: 'bold',
+                  color: currentTheme.textPrimary,
+                  marginBottom: '8px'
+                }}>
+                  {currentWeekBadge.name}
+                </div>
+                <div style={{
+                  fontSize: 'clamp(12px, 3.5vw, 14px)',
+                  color: currentTheme.textSecondary,
+                  marginBottom: currentWeekBadge.week === 0 ? '0' : '12px'
+                }}>
+                  {currentWeekBadge.description}
+                </div>
+                
+                {currentWeekBadge.week > 0 && (
+                  <div style={{
+                    fontSize: 'clamp(14px, 4vw, 16px)',
+                    fontWeight: '600',
+                    color: currentTheme.primary
+                  }}>
+                    🏆 {currentWeekBadge.xp} XP Reward
+                  </div>
+                )}
+              </div>
+              
+              {/* PROMINENT XP DISPLAY */}
+              <div style={{
+                backgroundColor: currentTheme.surface,
+                borderRadius: '16px',
+                padding: '16px',
+                marginBottom: '16px',
+                border: `2px solid ${currentTheme.primary}60`
+              }}>
+                <div style={{
+                  fontSize: 'clamp(28px, 10vw, 36px)',
+                  fontWeight: 'bold',
+                  color: currentTheme.textPrimary,
+                  marginBottom: '8px'
+                }}>
+                  ⚡ {quickStats.totalXP || 0} XP
+                </div>
+                
+                {levelProgress && (
+                  <>
+                    <div style={{
+                      fontSize: 'clamp(14px, 4vw, 16px)',
+                      fontWeight: '600',
+                      color: currentTheme.textPrimary,
+                      marginBottom: '12px',
+                      fontFamily: 'Didot, "Times New Roman", serif'
+                    }}>
+                      Level {levelProgress.level}
+                    </div>
+                    
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      marginBottom: '8px'
+                    }}>
+                      <div style={{
+                        fontSize: 'clamp(11px, 3vw, 12px)',
+                        color: currentTheme.textSecondary
+                      }}>
+                        {levelProgress.progress} XP
+                      </div>
+                      <div style={{
+                        fontSize: 'clamp(11px, 3vw, 12px)',
+                        color: currentTheme.textSecondary
+                      }}>
+                        {levelProgress.toNext} XP to Level {levelProgress.level + 1}
+                      </div>
+                    </div>
+                    
+                    <div style={{
+                      height: '8px',
+                      backgroundColor: '#E0E0E0',
+                      borderRadius: '4px',
+                      overflow: 'hidden'
+                    }}>
+                      <div style={{
+                        height: '100%',
+                        width: `${levelProgress.percentage}%`,
+                        background: `linear-gradient(90deg, ${currentTheme.primary}, ${currentTheme.secondary})`,
+                        borderRadius: '4px',
+                        transition: 'width 0.5s ease'
+                      }} />
+                    </div>
+                  </>
+                )}
+              </div>
+              
+              {currentWeekBadge.week === 0 ? (
+                <div style={{
+                  fontSize: 'clamp(11px, 3vw, 12px)',
+                  color: currentTheme.textSecondary
+                }}>
+                  The 39-week badge challenge starts with the new school year!
+                </div>
+              ) : (
+                <button
+                  onClick={() => router.push('/student-healthy-habits')}
+                  style={{
+                    backgroundColor: currentTheme.primary,
+                    color: currentTheme.textPrimary,
+                    border: 'none',
+                    borderRadius: '16px',
+                    padding: 'clamp(10px, 3vw, 12px) clamp(16px, 5vw, 20px)',
+                    fontSize: 'clamp(12px, 3.5vw, 14px)',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    width: '100%',
+                    minHeight: '44px',
+                    touchAction: 'manipulation',
+                    WebkitTapHighlightColor: 'transparent'
+                  }}
+                >
+                  📖 Start Reading Session
+                </button>
+              )}
+            </div>
+          )}
+          
+          {/* OVERVIEW CARDS (SIMPLIFIED - NO READING PERSONALITY) */}
           <div style={{
             backgroundColor: currentTheme.surface,
             borderRadius: '20px',
@@ -708,7 +861,7 @@ Visit luxlibris.org to learn more about our reading program.
               color: currentTheme.textPrimary,
               marginBottom: '16px'
             }}>
-              📊 Your Reading Overview
+              📚 Your Reading Overview
             </div>
             
             <div style={{
@@ -878,97 +1031,7 @@ Visit luxlibris.org to learn more about our reading program.
             )}
           </div>
 
-          {/* THIS WEEK'S CHALLENGE */}
-          {currentWeekBadge && (
-            <div style={{
-              backgroundColor: currentTheme.surface,
-              borderRadius: '20px',
-              padding: '20px',
-              marginBottom: '20px',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-              textAlign: 'center'
-            }}>
-              <div style={{
-                fontSize: '14px',
-                fontWeight: '600',
-                color: currentTheme.textPrimary,
-                marginBottom: '16px'
-              }}>
-                {currentWeekBadge.week === 0 ? '🚀 Coming Soon' : '🎯 This Week\'s Challenge'}
-              </div>
-              
-              <div style={{
-                backgroundColor: `${currentTheme.primary}20`,
-                borderRadius: '16px',
-                padding: '16px',
-                marginBottom: '16px'
-              }}>
-                <div style={{ fontSize: 'clamp(32px, 10vw, 40px)', marginBottom: '12px' }}>
-                  {currentWeekBadge.emoji}
-                </div>
-                <div style={{
-                  fontSize: 'clamp(16px, 5vw, 18px)',
-                  fontWeight: 'bold',
-                  color: currentTheme.textPrimary,
-                  marginBottom: '8px'
-                }}>
-                  {currentWeekBadge.name}
-                </div>
-                <div style={{
-                  fontSize: 'clamp(12px, 3.5vw, 14px)',
-                  color: currentTheme.textSecondary,
-                  marginBottom: currentWeekBadge.week === 0 ? '0' : '12px'
-                }}>
-                  {currentWeekBadge.description}
-                </div>
-                
-                {currentWeekBadge.week > 0 && (
-                  <div style={{
-                    fontSize: 'clamp(14px, 4vw, 16px)',
-                    fontWeight: '600',
-                    color: currentTheme.primary
-                  }}>
-                    🏆 {currentWeekBadge.xp} XP Reward
-                  </div>
-                )}
-              </div>
-              
-              {currentWeekBadge.week === 0 ? (
-                <div style={{
-                  fontSize: 'clamp(11px, 3vw, 12px)',
-                  color: currentTheme.textSecondary
-                }}>
-                  The 39-week badge challenge starts with the new school year!
-                </div>
-              ) : (
-                <button
-                  onClick={() => router.push('/student-healthy-habits')}
-                  style={{
-                    backgroundColor: currentTheme.primary,
-                    color: currentTheme.textPrimary,
-                    border: 'none',
-                    borderRadius: '16px',
-                    padding: 'clamp(10px, 3vw, 12px) clamp(16px, 5vw, 20px)',
-                    fontSize: 'clamp(12px, 3.5vw, 14px)',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    width: '100%',
-                    minHeight: '44px',
-                    touchAction: 'manipulation',
-                    WebkitTapHighlightColor: 'transparent'
-                  }}
-                >
-                  📖 Start Reading Session
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* BRAGGING RIGHTS CARD */}
+          {/* ENHANCED BRAGGING RIGHTS CARD */}
           <div style={{
             backgroundColor: currentTheme.surface,
             borderRadius: '16px',
@@ -982,40 +1045,154 @@ Visit luxlibris.org to learn more about our reading program.
               color: currentTheme.textPrimary,
               margin: '0 0 16px 0'
             }}>
-              🏆 Bragging Rights
+              🏆 Share Your Achievements
             </h3>
             
             <div style={{
-              fontSize: 'clamp(12px, 3.5vw, 14px)',
-              color: currentTheme.textSecondary,
-              marginBottom: '16px'
+              backgroundColor: `${currentTheme.primary}20`,
+              borderRadius: '12px',
+              padding: '16px',
+              marginBottom: '16px',
+              textAlign: 'center'
             }}>
-              Show off your reading achievements! Generate a certificate with your top accomplishments.
+              <div style={{ fontSize: 'clamp(32px, 10vw, 40px)', marginBottom: '12px' }}>📄</div>
+              
+              <div style={{
+                fontSize: 'clamp(14px, 4vw, 16px)',
+                fontWeight: '600',
+                color: currentTheme.textPrimary,
+                marginBottom: '8px'
+              }}>
+                Create Beautiful Achievement Image
+              </div>
+              
+              <div style={{
+                fontSize: 'clamp(12px, 3.5vw, 14px)',
+                color: currentTheme.textSecondary,
+                marginBottom: '16px'
+              }}>
+                Generate a shareable image with your stats, badges, and achievements
+              </div>
+              
+              {earnedBadges.length > 0 && (
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  marginBottom: '16px'
+                }}>
+                  {earnedBadges.slice(-3).reverse().map((badge, index) => (
+                    <div
+                      key={index}
+                      style={{
+                        fontSize: '24px',
+                        padding: '4px'
+                      }}
+                    >
+                      {badge.emoji}
+                    </div>
+                  ))}
+                  {earnedBadges.length > 3 && (
+                    <div style={{
+                      fontSize: '12px',
+                      color: currentTheme.textSecondary,
+                      alignSelf: 'center'
+                    }}>
+                      +{earnedBadges.length - 3} more
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             
-            <button
-              onClick={() => setShowBraggingRights(true)}
-              style={{
-                backgroundColor: currentTheme.primary,
-                color: currentTheme.textPrimary,
-                border: 'none',
-                borderRadius: '16px',
-                padding: '12px 20px',
-                fontSize: 'clamp(13px, 3.5vw, 14px)',
-                fontWeight: '600',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                width: '100%',
-                minHeight: '44px',
-                touchAction: 'manipulation',
-                WebkitTapHighlightColor: 'transparent'
-              }}
-            >
-              🏆 Generate Certificate
-            </button>
+            {isCertificateUnlocked ? (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '12px'
+              }}>
+                <button
+                  onClick={handleDownloadCertificate}
+                  disabled={isGeneratingCertificate}
+                  style={{
+                    backgroundColor: currentTheme.primary,
+                    color: currentTheme.textPrimary,
+                    border: 'none',
+                    borderRadius: '16px',
+                    padding: 'clamp(10px, 3vw, 12px) clamp(12px, 4vw, 16px)',
+                    fontSize: 'clamp(11px, 3.5vw, 13px)',
+                    fontWeight: '600',
+                    cursor: isGeneratingCertificate ? 'not-allowed' : 'pointer',
+                    opacity: isGeneratingCertificate ? 0.7 : 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    minHeight: '44px',
+                    touchAction: 'manipulation',
+                    WebkitTapHighlightColor: 'transparent'
+                  }}
+                >
+                  {isGeneratingCertificate ? '⏳' : '📥'} Download Image
+                </button>
+                
+                <button
+                  onClick={handleShareCertificate}
+                  disabled={isGeneratingCertificate}
+                  style={{
+                    backgroundColor: currentTheme.secondary,
+                    color: currentTheme.textPrimary,
+                    border: 'none',
+                    borderRadius: '16px',
+                    padding: 'clamp(10px, 3vw, 12px) clamp(12px, 4vw, 16px)',
+                    fontSize: 'clamp(11px, 3.5vw, 13px)',
+                    fontWeight: '600',
+                    cursor: isGeneratingCertificate ? 'not-allowed' : 'pointer',
+                    opacity: isGeneratingCertificate ? 0.7 : 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    minHeight: '44px',
+                    touchAction: 'manipulation',
+                    WebkitTapHighlightColor: 'transparent'
+                  }}
+                >
+                  {isGeneratingCertificate ? '⏳' : '📤'} Share Image
+                </button>
+              </div>
+            ) : (
+              <div style={{
+                backgroundColor: '#FF9800',
+                color: 'white',
+                borderRadius: '12px',
+                padding: '12px',
+                textAlign: 'center'
+              }}>
+                <div style={{
+                  fontSize: 'clamp(12px, 3.5vw, 14px)',
+                  fontWeight: '600',
+                  marginBottom: '4px'
+                }}>
+                  🔒 Complete Your First Book
+                </div>
+                <div style={{
+                  fontSize: 'clamp(10px, 3vw, 11px)',
+                  opacity: 0.9
+                }}>
+                  Unlock certificates by finishing your first book!
+                </div>
+              </div>
+            )}
+            
+            <div style={{
+              fontSize: 'clamp(10px, 3vw, 11px)',
+              color: currentTheme.textSecondary,
+              textAlign: 'center',
+              marginTop: '12px'
+            }}>
+              Beautiful achievement image with Lux Libris branding
+            </div>
           </div>
 
           {/* CALL TO ACTION */}
@@ -1052,8 +1229,8 @@ Visit luxlibris.org to learn more about our reading program.
           </div>
         </div>
 
-        {/* BRAGGING RIGHTS MODAL */}
-        {showBraggingRights && braggingRightsData && (
+        {/* FIRST BOOK CELEBRATION MODAL */}
+        {showFirstBookCelebration && (
           <div style={{
             position: 'fixed',
             top: 0,
@@ -1072,98 +1249,73 @@ Visit luxlibris.org to learn more about our reading program.
               borderRadius: '20px',
               maxWidth: '380px',
               width: '100%',
-              maxHeight: '85vh',
-              overflowY: 'auto',
               position: 'relative',
-              boxShadow: '0 20px 40px rgba(0,0,0,0.3)'
+              boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+              overflow: 'hidden'
             }}>
-              <button
-                onClick={() => setShowBraggingRights(false)}
-                style={{
-                  position: 'absolute',
-                  top: '12px',
-                  right: '12px',
-                  backgroundColor: 'rgba(0,0,0,0.7)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '50%',
-                  width: '36px',
-                  height: '36px',
-                  fontSize: '16px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  zIndex: 10,
-                  touchAction: 'manipulation',
-                  WebkitTapHighlightColor: 'transparent'
-                }}
-              >
-                ✕
-              </button>
-
               <div style={{
                 background: `linear-gradient(135deg, ${currentTheme.primary}, ${currentTheme.secondary})`,
-                borderRadius: '20px 20px 0 0',
-                padding: '20px',
+                padding: '30px 20px',
                 textAlign: 'center',
                 color: 'white'
               }}>
-                <div style={{ fontSize: 'clamp(40px, 12vw, 48px)', marginBottom: '12px' }}>🏆</div>
+                <div style={{ fontSize: '60px', marginBottom: '16px' }}>🎉</div>
                 <h2 style={{
-                  fontSize: 'clamp(18px, 5vw, 20px)',
+                  fontSize: '24px',
                   fontWeight: '600',
                   margin: '0 0 8px 0',
                   fontFamily: 'Didot, "Times New Roman", serif'
                 }}>
-                  Bragging Rights Certificate
+                  Congratulations!
                 </h2>
                 <p style={{
-                  fontSize: 'clamp(12px, 3.5vw, 14px)',
+                  fontSize: '16px',
                   opacity: 0.9,
                   margin: '0'
                 }}>
-                  {braggingRightsData.studentName} • Grade {braggingRightsData.grade}
+                  You completed your first book!
                 </p>
               </div>
 
-              <div style={{ padding: '20px' }}>
+              <div style={{ padding: '30px 20px' }}>
                 <div style={{
                   textAlign: 'center',
-                  marginBottom: '20px'
+                  marginBottom: '24px'
                 }}>
                   <div style={{
-                    fontSize: 'clamp(12px, 3.5vw, 14px)',
+                    fontSize: '18px',
                     fontWeight: '600',
                     color: currentTheme.textPrimary,
-                    marginBottom: '16px'
+                    marginBottom: '12px'
                   }}>
-                    🌟 Your Top Achievements This Year 🌟
+                    🏆 Achievement Unlocked!
                   </div>
                   
-                  {braggingRightsData.topAchievements.map((achievement, index) => (
-                    <div
-                      key={index}
-                      style={{
-                        backgroundColor: `${currentTheme.primary}20`,
-                        borderRadius: '12px',
-                        padding: '12px',
-                        marginBottom: '8px',
-                        fontSize: 'clamp(12px, 3.5vw, 14px)',
-                        fontWeight: '500',
-                        color: currentTheme.textPrimary,
-                        textAlign: 'left'
-                      }}
-                    >
-                      {achievement}
+                  <div style={{
+                    backgroundColor: `${currentTheme.primary}20`,
+                    borderRadius: '12px',
+                    padding: '16px',
+                    marginBottom: '16px'
+                  }}>
+                    <div style={{
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      color: currentTheme.textPrimary,
+                      marginBottom: '8px'
+                    }}>
+                      📄 Certificate Generator Unlocked
                     </div>
-                  ))}
+                    <div style={{
+                      fontSize: '12px',
+                      color: currentTheme.textSecondary
+                    }}>
+                      You can now create and share beautiful reading certificates!
+                    </div>
+                  </div>
                 </div>
 
                 <button
-                  onClick={handleDownloadCertificate}
-                  disabled={isGeneratingCertificate}
+                  onClick={handleFirstBookCelebration}
                   style={{
                     width: '100%',
                     backgroundColor: currentTheme.primary,
@@ -1171,10 +1323,9 @@ Visit luxlibris.org to learn more about our reading program.
                     border: 'none',
                     borderRadius: '16px',
                     padding: '16px',
-                    fontSize: 'clamp(12px, 3.5vw, 14px)',
+                    fontSize: '16px',
                     fontWeight: '600',
-                    cursor: isGeneratingCertificate ? 'not-allowed' : 'pointer',
-                    opacity: isGeneratingCertificate ? 0.7 : 1,
+                    cursor: 'pointer',
                     minHeight: '44px',
                     display: 'flex',
                     alignItems: 'center',
@@ -1184,7 +1335,7 @@ Visit luxlibris.org to learn more about our reading program.
                     WebkitTapHighlightColor: 'transparent'
                   }}
                 >
-                  {isGeneratingCertificate ? '⏳ Generating...' : '📄 Download Certificate'}
+                  🚀 Continue Reading Journey
                 </button>
               </div>
             </div>

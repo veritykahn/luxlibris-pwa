@@ -1,4 +1,4 @@
-// pages/student-stats/my-stats.js - Updated with all requested changes
+// pages/student-stats/my-stats.js - Updated with Reading Personality and Enhanced Certificate
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../contexts/AuthContext';
@@ -10,6 +10,8 @@ import {
   getGradeLeaderboard, 
   generateEnhancedBraggingRights 
 } from '../../lib/leaderboard-system';
+import { calculateReadingPersonality } from '../../lib/reading-personality';
+import * as ShareableModal from '../../lib/shareable-modal-generator';
 
 export default function MyStats() {
   const router = useRouter();
@@ -31,6 +33,7 @@ export default function MyStats() {
   const [showParentCodeInput, setShowParentCodeInput] = useState(false);
   const [leaderboardData, setLeaderboardData] = useState([]);
   const [isLoadingLeaderboard, setIsLoadingLeaderboard] = useState(false);
+  const [readingPersonality, setReadingPersonality] = useState(null);
   
   // Stats data
   const [personalStats, setPersonalStats] = useState(null);
@@ -574,6 +577,10 @@ export default function MyStats() {
       calculateRealWorldAchievements(firebaseStudentData);
       await calculateMedalAchievements(firebaseStudentData);
       
+      // Calculate reading personality
+      const personality = await calculateReadingPersonality(firebaseStudentData);
+      setReadingPersonality(personality);
+      
     } catch (error) {
       console.error('Error loading stats data:', error);
       router.push('/student-dashboard');
@@ -596,50 +603,38 @@ export default function MyStats() {
     setIsGeneratingCertificate(true);
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
       const braggingData = generateBraggingRights();
       if (braggingData) {
-        const certificateText = `
-🏆 LUX LIBRIS READING ACHIEVEMENT CERTIFICATE 🏆
-${braggingData.studentName}
-Grade ${braggingData.grade} • ${braggingData.schoolName}
-Generated: ${braggingData.date}
-═══════════════════════════════════════════════
-🌟 READING ACHIEVEMENTS THIS YEAR 🌟
-${braggingData.topAchievements.map(achievement => `✦ ${achievement}`).join('\n')}
-═══════════════════════════════════════════════
-📊 STATS SUMMARY:
-📚 Books This Year: ${braggingData.booksThisYear}
-⚡ Total XP Earned: ${braggingData.totalXP}
-🏆 Badges Collected: ${braggingData.badgesEarned}/39
-♔ Saints Unlocked: ${braggingData.saintsCount}
-🔥 Current Streak: ${braggingData.currentStreak} days
-📈 Reading Level: ${braggingData.level}
-${braggingData.featuredBadge ? `\n🎖️ LATEST BADGE EARNED:\n${braggingData.featuredBadge.emoji} ${braggingData.featuredBadge.name}\n"${braggingData.featuredBadge.description}"\n` : ''}
-${braggingData.specialBadges && braggingData.specialBadges.length > 0 ? `\n⚡ SPECIAL BADGES:\n${braggingData.specialBadges.map(badge => `${badge.emoji} ${badge.name}`).join('\n')}\n` : ''}
-═══════════════════════════════════════════════
-🎉 Keep reading and unlocking more achievements!
-This certificate proves your dedication to building 
-healthy reading habits and growing in wisdom.
-Lux Libris - Where Reading Lights the Way
-Visit luxlibris.org to learn more about our program.
-═══════════════════════════════════════════════
-        `;
-        
-        const blob = new Blob([certificateText], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${braggingData.studentName.replace(' ', '_')}_Lux_Libris_Certificate_${new Date().toISOString().split('T')[0]}.txt`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        const success = await ShareableModal.downloadShareableModal(braggingData, currentTheme, studentData);
+        if (success) {
+          alert('🎉 Achievement image downloaded! Check your downloads folder.');
+        } else {
+          alert('❌ Error generating image. Please try again.');
+        }
       }
-      
     } catch (error) {
-      console.error('Error generating certificate:', error);
+      console.error('Error generating achievement image:', error);
+      alert('❌ Error generating image. Please try again.');
+    }
+    
+    setIsGeneratingCertificate(false);
+  };
+
+  // ADD new share function:
+  const handleShareCertificate = async () => {
+    setIsGeneratingCertificate(true);
+    
+    try {
+      const braggingData = generateBraggingRights();
+      if (braggingData) {
+        const success = await ShareableModal.shareModal(braggingData, currentTheme, studentData);
+        if (!success) {
+          alert('❌ Error sharing image. Please try again.');
+        }
+      }
+    } catch (error) {
+      console.error('Error sharing achievement image:', error);
+      alert('❌ Error sharing image. Please try again.');
     }
     
     setIsGeneratingCertificate(false);
@@ -1081,6 +1076,61 @@ Visit luxlibris.org to learn more about our program.
                 >
                   📊 Grade Leaderboard
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* READING PERSONALITY SECTION */}
+          {readingPersonality && (
+            <div style={{
+              backgroundColor: currentTheme.surface,
+              borderRadius: '20px',
+              padding: '20px',
+              marginBottom: '20px',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+              textAlign: 'center'
+            }}>
+              <div style={{
+                fontSize: '14px',
+                fontWeight: '600',
+                color: currentTheme.textPrimary,
+                marginBottom: '16px'
+              }}>
+                📖 Your Reading Personality
+              </div>
+              
+              <div style={{
+                backgroundColor: readingPersonality.color + '20',
+                borderRadius: '16px',
+                padding: '16px',
+                border: `2px solid ${readingPersonality.color}60`
+              }}>
+                <div style={{ fontSize: 'clamp(36px, 12vw, 44px)', marginBottom: '12px' }}>
+                  {readingPersonality.emoji}
+                </div>
+                <div style={{
+                  fontSize: 'clamp(16px, 5vw, 18px)',
+                  fontWeight: 'bold',
+                  color: currentTheme.textPrimary,
+                  marginBottom: '8px',
+                  fontFamily: 'Didot, "Times New Roman", serif'
+                }}>
+                  You're a {readingPersonality.name}!
+                </div>
+                <div style={{
+                  fontSize: 'clamp(12px, 3.5vw, 14px)',
+                  color: currentTheme.textSecondary,
+                  marginBottom: '8px'
+                }}>
+                  {readingPersonality.description}
+                </div>
+                <div style={{
+                  fontSize: 'clamp(11px, 3vw, 12px)',
+                  color: currentTheme.textSecondary,
+                  opacity: 0.8
+                }}>
+                  {readingPersonality.percentage}% of your reading happens {readingPersonality.timeRange}
+                </div>
               </div>
             </div>
           )}
@@ -2016,31 +2066,62 @@ Visit luxlibris.org to learn more about our program.
                     </div>
                   )}
 
-                  <button
-                    onClick={handleDownloadCertificate}
-                    disabled={isGeneratingCertificate}
-                    style={{
-                      width: '100%',
-                      backgroundColor: currentTheme.primary,
-                      color: currentTheme.textPrimary,
-                      border: 'none',
-                      borderRadius: '16px',
-                      padding: '16px',
-                      fontSize: 'clamp(12px, 3.5vw, 14px)',
-                      fontWeight: '600',
-                      cursor: isGeneratingCertificate ? 'not-allowed' : 'pointer',
-                      opacity: isGeneratingCertificate ? 0.7 : 1,
-                      minHeight: '44px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px',
-                      touchAction: 'manipulation',
-                      WebkitTapHighlightColor: 'transparent'
-                    }}
-                  >
-                    {isGeneratingCertificate ? '⏳ Generating...' : '📄 Download Certificate'}
-                  </button>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '12px',
+                    marginTop: '16px'
+                  }}>
+                    <button
+                      onClick={handleDownloadCertificate}
+                      disabled={isGeneratingCertificate}
+                      style={{
+                        backgroundColor: currentTheme.primary,
+                        color: currentTheme.textPrimary,
+                        border: 'none',
+                        borderRadius: '16px',
+                        padding: '16px',
+                        fontSize: 'clamp(12px, 3.5vw, 14px)',
+                        fontWeight: '600',
+                        cursor: isGeneratingCertificate ? 'not-allowed' : 'pointer',
+                        opacity: isGeneratingCertificate ? 0.7 : 1,
+                        minHeight: '44px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        touchAction: 'manipulation',
+                        WebkitTapHighlightColor: 'transparent'
+                      }}
+                    >
+                      {isGeneratingCertificate ? '⏳ Creating...' : '📥 Download Image'}
+                    </button>
+                    
+                    <button
+                      onClick={handleShareCertificate}
+                      disabled={isGeneratingCertificate}
+                      style={{
+                        backgroundColor: currentTheme.secondary,
+                        color: currentTheme.textPrimary,
+                        border: 'none',
+                        borderRadius: '16px',
+                        padding: '16px',
+                        fontSize: 'clamp(12px, 3.5vw, 14px)',
+                        fontWeight: '600',
+                        cursor: isGeneratingCertificate ? 'not-allowed' : 'pointer',
+                        opacity: isGeneratingCertificate ? 0.7 : 1,
+                        minHeight: '44px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        touchAction: 'manipulation',
+                        WebkitTapHighlightColor: 'transparent'
+                      }}
+                    >
+                      {isGeneratingCertificate ? '⏳ Creating...' : '📤 Share Image'}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

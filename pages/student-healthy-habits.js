@@ -583,15 +583,15 @@ export default function StudentHealthyHabits() {
     }
   }, [studentData, loadStreakData]);
 
-  // UPDATED SAVE READING SESSION WITH XP SYSTEM
+  // UPDATED SAVE READING SESSION WITH NEW XP SYSTEM
   const saveReadingSession = useCallback(async (duration, completed) => {
     try {
       if (!studentData) return;
 
       const today = getLocalDateString(new Date());
       
-      // Calculate XP for this session
-      const sessionXP = calculateSessionXP(duration, completed);
+      // NEW: 1 XP per minute system
+      const sessionXP = duration; // Simple: 1 XP per minute
       
       const sessionData = {
         date: today,
@@ -600,7 +600,7 @@ export default function StudentHealthyHabits() {
         targetDuration: Math.floor(timerDuration / 60),
         completed: completed,
         bookId: currentBookId || null,
-        xpEarned: sessionXP, // NEW: Track XP per session
+        xpEarned: sessionXP, // Track XP per session
       };
 
       const sessionsRef = collection(db, `entities/${studentData.entityId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
@@ -610,11 +610,11 @@ export default function StudentHealthyHabits() {
       setTodaysSessions(prev => [newSession, ...prev]);
       setTodaysMinutes(prev => prev + duration);
 
-      // NEW: Update student's total XP
+      // Update student's total XP
       const currentTotalXP = studentData.totalXP || 0;
       const newTotalXP = currentTotalXP + sessionXP;
       
-      // NEW: Check for badges
+      // Check for badges
       const currentWeek = getCurrentWeekBadge();
       const badgeResult = currentWeek ? await checkTimerBadgeProgress(studentData, sessionData, currentWeek.week) : null;
       
@@ -624,16 +624,15 @@ export default function StudentHealthyHabits() {
         
         await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
           totalXP: totalXP,
-          [`badgeEarned_week${currentWeek.week}`]: true,
+          [`badgeEarnedWeek${currentWeek.week}`]: true,
           lastBadgeEarned: new Date()
         });
         
-        // Show XP popup with badge
+        // Show XP popup (simple)
         setXPReward({
           amount: sessionXP + badgeResult.badge.xp,
-          reason: `${sessionXP} XP + ${badgeResult.badge.emoji} ${badgeResult.badge.name} (+${badgeResult.badge.xp} XP)`,
-          total: totalXP,
-          badge: badgeResult.badge
+          reason: `${sessionXP} XP + ${badgeResult.badge.xp} bonus XP!`,
+          total: totalXP
         });
       } else {
         // Update XP without badge
@@ -645,7 +644,7 @@ export default function StudentHealthyHabits() {
         // Show regular XP popup
         setXPReward({
           amount: sessionXP,
-          reason: completed ? `${duration} minute session completed!` : `${duration} minutes banked!`,
+          reason: completed ? `${duration} minute session completed!` : `${duration} minutes of reading!`,
           total: newTotalXP
         });
       }
@@ -658,7 +657,10 @@ export default function StudentHealthyHabits() {
         await calculateReadingLevel(studentData);
       }
 
-      setShowSuccess(completed ? '🎉 Reading session completed!' : '📖 Progress saved!');
+      setShowSuccess(completed ? 
+        `🎉 Reading session completed! +${sessionXP} XP earned!` : 
+        `📖 Progress saved! +${sessionXP} XP earned!`
+      );
       setTimeout(() => setShowSuccess(''), 3000);
     } catch (error) {
       console.error('Error saving reading session:', error);
@@ -784,8 +786,11 @@ export default function StudentHealthyHabits() {
     requestWakeLock();
   };
 
+  // UPDATED HANDLE BANK SESSION WITH 5 MINUTE MINIMUM
   const handleBankSession = async () => {
     const minutesRead = Math.floor((timerDuration - timeRemaining) / 60);
+    
+    // NEW: Minimum 5 minutes to bank
     if (minutesRead < 5) {
       setShowSuccess('⏱️ Read for at least 5 minutes to bank progress');
       setTimeout(() => setShowSuccess(''), 3000);
@@ -805,8 +810,8 @@ export default function StudentHealthyHabits() {
 
     setTimeRemaining(timerDuration);
     setShowSuccess(isCompleted ?
-      '🎉 Session banked and streak earned!' :
-      `📖 ${minutesRead} minutes banked! Read 20+ minutes for streak credit`
+      `🎉 Session banked! +${minutesRead} XP + streak earned!` :
+      `📖 ${minutesRead} minutes banked! +${minutesRead} XP earned`
     );
     setTimeout(() => setShowSuccess(''), 4000);
   };
@@ -831,11 +836,9 @@ export default function StudentHealthyHabits() {
 
   const svgSize = getSvgSize();
 
-  // XP REWARD POPUP COMPONENT
+  // SIMPLE XP REWARD POPUP COMPONENT
   const XPRewardPopup = ({ show, xpData, onClose }) => {
     if (!show) return null;
-    
-    const levelInfo = getLevelProgress(xpData.total);
     
     return (
       <div style={{
@@ -854,11 +857,11 @@ export default function StudentHealthyHabits() {
         maxWidth: '90vw'
       }}>
         <div style={{ fontSize: '48px', marginBottom: '12px' }}>
-          {xpData.badge ? xpData.badge.emoji : '⚡'}
+          ⚡
         </div>
         
         <div style={{
-          fontSize: '20px',
+          fontSize: '24px',
           fontWeight: 'bold',
           color: currentTheme.primary,
           marginBottom: '8px'
@@ -872,38 +875,6 @@ export default function StudentHealthyHabits() {
           marginBottom: '16px'
         }}>
           {xpData.reason}
-        </div>
-        
-        {xpData.badge && (
-          <div style={{
-            backgroundColor: `${currentTheme.primary}20`,
-            borderRadius: '12px',
-            padding: '12px',
-            marginBottom: '16px'
-          }}>
-            <div style={{
-              fontSize: '16px',
-              fontWeight: '600',
-              color: currentTheme.textPrimary,
-              marginBottom: '4px'
-            }}>
-              🏆 Badge Earned!
-            </div>
-            <div style={{
-              fontSize: '14px',
-              color: currentTheme.textSecondary
-            }}>
-              {xpData.badge.name}
-            </div>
-          </div>
-        )}
-        
-        <div style={{
-          fontSize: '12px',
-          color: currentTheme.textSecondary,
-          marginBottom: '16px'
-        }}>
-          Total XP: {xpData.total} • Level {levelInfo.level}
         </div>
         
         <button
