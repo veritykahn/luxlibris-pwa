@@ -1124,7 +1124,7 @@ export default function SchoolStats() {
                 color: currentTheme.textPrimary,
                 margin: '0 0 16px 0'
               }}>
-                ⭐ Our School's Reading Superpowers!
+                ⭐ Our School&apos;s Reading Superpowers!
               </h3>
               
               <div style={{
@@ -1209,7 +1209,7 @@ export default function SchoolStats() {
                 color: currentTheme.textPrimary,
                 margin: '0 0 16px 0'
               }}>
-                📚 Our School's Favorite Book
+                📚 Our School&apos;s Favorite Book
               </h3>
               
               <div style={{

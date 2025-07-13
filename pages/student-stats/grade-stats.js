@@ -906,13 +906,13 @@ export default function GradeStats() {
                   color: currentTheme.textPrimary,
                   marginBottom: '8px'
                 }}>
-                  Together you've read {gradeStats.totalBooksCompleted} books this year!
+                  Together you&apos;ve read {gradeStats.totalBooksCompleted} books this year!
                 </div>
                 <div style={{
                   fontSize: 'clamp(12px, 3.5vw, 14px)',
                   color: currentTheme.textSecondary
                 }}>
-                  What an incredible reading community you've built! 📚✨
+                  What an incredible reading community you&apos;ve built! 📚✨
                 </div>
               </div>
 
@@ -978,7 +978,7 @@ export default function GradeStats() {
                     fontSize: 'clamp(10px, 3vw, 11px)',
                     color: currentTheme.textSecondary
                   }}>
-                    You've Read!
+                    You&apos;ve Read!
                   </div>
                 </div>
               </div>
@@ -1203,7 +1203,7 @@ export default function GradeStats() {
                 color: currentTheme.textPrimary,
                 margin: '0 0 16px 0'
               }}>
-                📚 Grade {gradeStats?.grade}'s Favorite Book
+                📚 Grade {gradeStats?.grade}&apos;s Favorite Book
               </h3>
               
               <div style={{
