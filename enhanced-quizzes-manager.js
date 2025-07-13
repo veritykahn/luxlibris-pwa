@@ -396,14 +396,14 @@ const SAINTS_QUIZZES_DATA = [
         {"text": "Reading, studying, and learning new things", "points": {"dominic": 3, "ignatius": 2, "angela": 1}},
         {"text": "Playing with kids and helping them have fun", "points": {"john_bosco": 3, "jerome": 2}},
         {"text": "Helping people solve their problems", "points": {"vincent": 3, "jerome": 1}},
-        {"text": "In quiet places where I can think and pray", "points": {"bruno": 3, "paul_cross": 2, "clare": 1}}
+        {"text": "In quiet places where I can think", "points": {"bruno": 3, "paul_cross": 2, "clare": 1}}
       ]
     },
     {
       "id": 5,
       "question": "What's your approach to following Jesus?",
       "answers": [
-        {"text": "Living simply and sharing everything with others", "points": {"francis": 3, "clare": 3, "vincent": 1}},
+        {"text": "Living simply and sharing with others", "points": {"francis": 3, "clare": 3, "vincent": 1}},
         {"text": "Using my mind to understand and teach the faith", "points": {"dominic": 3, "ignatius": 2, "angela": 1}},
         {"text": "Being joyful and showing others that faith is fun", "points": {"john_bosco": 3, "francis": 1}},
         {"text": "Focusing on prayer and spiritual practices", "points": {"bruno": 3, "paul_cross": 3, "enda": 2}},
@@ -561,80 +561,80 @@ const SAINTS_QUIZZES_DATA = [
     },
     {
       "id": 2,
-      "question": "How do you like to help people?",
-      "answers": [
-        {"text": "By finding things they've lost", "points": {"anthony": 3, "christopher": 1}},
-        {"text": "By taking care of them when they're sick", "points": {"blaise": 3, "lazarus": 2, "apollonia": 1}},
-        {"text": "By making sure they have food and shelter", "points": {"martha": 3, "lawrence": 2, "nicholas": 2}},
-        {"text": "By working hard to provide for my family", "points": {"joseph": 3, "isidore": 2, "zita": 2}},
-        {"text": "By keeping them safe during travels or dangers", "points": {"christopher": 3, "genevieve": 2, "florian": 1}}
-      ]
-    },
-    {
-      "id": 3,
-      "question": "What's your favorite type of work or activity?",
-      "answers": [
-        {"text": "Cooking or making things with my hands", "points": {"martha": 3, "lawrence": 2, "eligius": 2}},
-        {"text": "Taking care of animals or plants", "points": {"blaise": 2, "isidore": 3, "fiacre": 3}},
-        {"text": "Helping people solve problems", "points": {"anthony": 3, "joseph": 2, "felix": 1}},
-        {"text": "Cleaning and organizing spaces", "points": {"zita": 3, "martha": 1}},
-        {"text": "Protecting people and keeping them safe", "points": {"florian": 3, "christopher": 2, "genevieve": 2}}
-      ]
-    },
-    {
-      "id": 4,
-      "question": "When someone has a problem, what do you do first?",
-      "answers": [
-        {"text": "Listen carefully and try to understand exactly what they need", "points": {"martha": 2, "blaise": 2, "joseph": 1}},
-        {"text": "Jump in immediately to help fix the situation", "points": {"florian": 3, "christopher": 2, "lawrence": 1}},
-        {"text": "Help them find what they're looking for", "points": {"anthony": 3, "felix": 1}},
-        {"text": "Offer them food, comfort, or a place to rest", "points": {"nicholas": 3, "martha": 2, "lazarus": 1}},
-        {"text": "Share something I've learned from my own experience", "points": {"apollonia": 2, "zita": 2, "isidore": 1}}
-      ]
-    },
-    {
-      "id": 5,
-      "question": "What kind of gifts do you like to give?",
-      "answers": [
-        {"text": "Practical things people really need", "points": {"nicholas": 3, "joseph": 2, "zita": 1}},
-        {"text": "Homemade food or crafts", "points": {"martha": 3, "lawrence": 2, "eligius": 1}},
-        {"text": "Something that helps them with their health", "points": {"blaise": 2, "apollonia": 2, "lazarus": 1}},
-        {"text": "Tools or supplies for their work or hobbies", "points": {"isidore": 2, "fiacre": 2, "eligius": 2}},
-        {"text": "Something that keeps them safe or protected", "points": {"christopher": 2, "florian": 2, "felix": 1}}
-      ]
-    },
-    {
-      "id": 6,
-      "question": "What's your approach to solving everyday problems?",
-      "answers": [
-        {"text": "I pray to God and trust that help will come", "points": {"anthony": 3, "genevieve": 2, "felix": 1}},
-        {"text": "I use practical skills and common sense", "points": {"martha": 3, "joseph": 2, "zita": 2}},
-        {"text": "I work extra hard until the problem is solved", "points": {"isidore": 3, "florian": 2, "lawrence": 1}},
-        {"text": "I focus on taking care of people's immediate needs first", "points": {"blaise": 2, "lazarus": 2, "nicholas": 2}},
-        {"text": "I try to prevent the problem from happening again", "points": {"christopher": 2, "apollonia": 2, "genevieve": 1}}
-      ]
-    },
-    {
-      "id": 7,
-      "question": "What motivates you most?",
-      "answers": [
-        {"text": "Seeing people reunited with what they've lost", "points": {"anthony": 3, "felix": 1}},
-        {"text": "Knowing that families are taken care of", "points": {"joseph": 3, "martha": 2, "nicholas": 1}},
-        {"text": "Helping people feel better when they're hurting", "points": {"blaise": 3, "apollonia": 2, "lazarus": 2}},
-        {"text": "Making sure no one goes hungry or homeless", "points": {"lawrence": 3, "nicholas": 2, "zita": 1}},
-        {"text": "Keeping people safe from harm", "points": {"florian": 3, "christopher": 2, "genevieve": 2}}
-      ]
-    },
-    {
-      "id": 8,
-      "question": "How do others describe you?",
-      "answers": [
-        {"text": "The person who always knows where to find things", "points": {"anthony": 3, "felix": 1}},
-        {"text": "Someone who takes great care of their family and home", "points": {"martha": 3, "joseph": 2, "zita": 2}},
-        {"text": "A person who's great in emergencies", "points": {"florian": 3, "blaise": 2, "christopher": 1}},
-        {"text": "Someone who's generous and always sharing", "points": {"lawrence": 3, "nicholas": 2, "lazarus": 1}},
-        {"text": "A hard worker who never gives up", "points": {"isidore": 3, "eligius": 2, "fiacre": 1}}
-      ]
+  "question": "How do you like to help people?",
+  "answers": [
+    {"text": "By helping them find lost things (keys, phones, etc.)", "points": {"anthony": 3, "christopher": 1}},
+    {"text": "By taking care of them when they're sick or hurt", "points": {"blaise": 3, "lazarus": 2, "apollonia": 1}},
+    {"text": "By making sure they have what they need (food, clothes, shelter)", "points": {"martha": 3, "lawrence": 2, "nicholas": 2}},
+    {"text": "By working hard to support my family and community", "points": {"joseph": 3, "isidore": 2, "zita": 2}},
+    {"text": "By keeping them safe when they're traveling or in danger", "points": {"christopher": 3, "genevieve": 2, "florian": 1}}
+  ]
+},
+{
+  "id": 3,
+  "question": "What's your favorite type of work or activity?",
+  "answers": [
+    {"text": "Cooking, baking, or creating things with my hands", "points": {"martha": 3, "lawrence": 2, "eligius": 2}},
+    {"text": "Taking care of pets, plants, or working outdoors", "points": {"blaise": 2, "isidore": 3, "fiacre": 3}},
+    {"text": "Helping people figure out solutions to their problems", "points": {"anthony": 3, "joseph": 2, "felix": 1}},
+    {"text": "Organizing spaces and keeping things clean and tidy", "points": {"zita": 3, "martha": 1}},
+    {"text": "Looking out for others and making sure they're safe", "points": {"florian": 3, "christopher": 2, "genevieve": 2}}
+  ]
+},
+{
+  "id": 4,
+  "question": "When someone comes to you with a problem, what's your first move?",
+  "answers": [
+    {"text": "I listen carefully and ask questions to understand what's really going on", "points": {"martha": 2, "blaise": 2, "joseph": 1}},
+    {"text": "I jump in right away to help fix whatever's wrong", "points": {"florian": 3, "christopher": 2, "lawrence": 1}},
+    {"text": "I help them search for whatever they're missing or looking for", "points": {"anthony": 3, "felix": 1}},
+    {"text": "I offer them something to eat, drink, or a place to chill", "points": {"nicholas": 3, "martha": 2, "lazarus": 1}},
+    {"text": "I share advice from something similar I've been through", "points": {"apollonia": 2, "zita": 2, "isidore": 1}}
+  ]
+},
+{
+  "id": 5,
+  "question": "What kind of gifts do you like to give people?",
+  "answers": [
+    {"text": "Practical stuff they actually need and will use", "points": {"nicholas": 3, "joseph": 2, "zita": 1}},
+    {"text": "Homemade food, art, or something I made myself", "points": {"martha": 3, "lawrence": 2, "eligius": 1}},
+    {"text": "Something that helps them feel better or stay healthy", "points": {"blaise": 2, "apollonia": 2, "lazarus": 1}},
+    {"text": "Supplies or gear for their hobbies or interests", "points": {"isidore": 2, "fiacre": 2, "eligius": 2}},
+    {"text": "Something that keeps them safe or protected", "points": {"christopher": 2, "florian": 2, "felix": 1}}
+  ]
+},
+{
+  "id": 6,
+  "question": "What's your go-to approach for solving everyday problems?",
+  "answers": [
+    {"text": "I pray about it and trust that God will help me figure it out", "points": {"anthony": 3, "genevieve": 2, "felix": 1}},
+    {"text": "I use common sense and practical skills to work it out", "points": {"martha": 3, "joseph": 2, "zita": 2}},
+    {"text": "I keep working at it until I find a solution", "points": {"isidore": 3, "florian": 2, "lawrence": 1}},
+    {"text": "I focus on taking care of people's immediate needs first", "points": {"blaise": 2, "lazarus": 2, "nicholas": 2}},
+    {"text": "I try to figure out how to prevent it from happening again", "points": {"christopher": 2, "apollonia": 2, "genevieve": 1}}
+  ]
+},
+{
+  "id": 7,
+  "question": "What gets you most excited and motivated?",
+  "answers": [
+    {"text": "Seeing people find what they've been searching for", "points": {"anthony": 3, "felix": 1}},
+    {"text": "Knowing that families are well taken care of", "points": {"joseph": 3, "martha": 2, "nicholas": 1}},
+    {"text": "Helping people feel better when they're going through tough times", "points": {"blaise": 3, "apollonia": 2, "lazarus": 2}},
+    {"text": "Making sure no one around me is hungry or homeless", "points": {"lawrence": 3, "nicholas": 2, "zita": 1}},
+    {"text": "Keeping people safe from danger or harm", "points": {"florian": 3, "christopher": 2, "genevieve": 2}}
+  ]
+},
+{
+  "id": 8,
+  "question": "How would your friends and family describe you?",
+  "answers": [
+    {"text": "The person who always knows where to find lost stuff", "points": {"anthony": 3, "felix": 1}},
+    {"text": "Someone who really takes care of their family and home", "points": {"martha": 3, "joseph": 2, "zita": 2}},
+    {"text": "The one people call when there's an emergency", "points": {"florian": 3, "blaise": 2, "christopher": 1}},
+    {"text": "Someone who's super generous and always sharing what they have", "points": {"lawrence": 3, "nicholas": 2, "lazarus": 1}},
+    {"text": "A hard worker who never gives up on anything", "points": {"isidore": 3, "eligius": 2, "fiacre": 1}}
+  ]
     }
   ],
   "results": {
@@ -792,83 +792,83 @@ const SAINTS_QUIZZES_DATA = [
         {"text": "Girl", "points": {"joan": 5, "cecilia": 5, "lucy": 5, "kateri": 5, "rose": 5, "barbara_saint": 5, "perpetua": 5, "agatha": 5, "edith": 5, "damian_molokai": 5, "teresa_calcutta": 5, "jp2": 5, "barbara_yi": 5}}
       ]
     },
-    {
-      "id": 2,
-      "question": "What kind of 'superpower' would you most want?",
-      "answers": [
-        {"text": "Leading armies and being incredibly brave", "points": {"joan": 3, "sebastian": 2, "maximilian": 1}},
-        {"text": "Healing people and performing miracles", "points": {"damian_molokai": 3, "teresa_calcutta": 2, "peter_chanel": 1}},
-        {"text": "Converting entire countries to faith", "points": {"boniface": 3, "francis_xavier": 2, "cyril": 2, "methodius": 2}},
-        {"text": "Protecting people from harm and evil", "points": {"barbara_saint": 2, "longinus": 2, "demetrius": 2}},
-        {"text": "Inspiring people through music and art", "points": {"cecilia": 3, "lucy": 2}}
-      ]
-    },
-    {
-      "id": 3,
-      "question": "How do you handle really scary situations?",
-      "answers": [
-        {"text": "I trust God completely and fear nothing", "points": {"joan": 3, "maximilian": 3, "oscar": 2}},
-        {"text": "I use my courage to protect others", "points": {"sebastian": 3, "demetrius": 2, "lwanga": 1}},
-        {"text": "I stay calm and pray for guidance", "points": {"kateri": 2, "teresa_calcutta": 2, "jp2": 1}},
-        {"text": "I speak the truth no matter the cost", "points": {"oscar": 3, "dismas": 2, "edmund": 1}},
-        {"text": "I rely on God's strength to get through", "points": {"lucy": 2, "agatha": 2, "barbara_yi": 1}}
-      ]
-    },
-    {
-      "id": 4,
-      "question": "What's your approach to helping others?",
-      "answers": [
-        {"text": "I work with the poorest and most forgotten people", "points": {"teresa_calcutta": 3, "damian_molokai": 3, "martin": 2}},
-        {"text": "I travel far to bring people the Gospel", "points": {"francis_xavier": 3, "boniface": 2, "peter_chanel": 2}},
-        {"text": "I stand up for those who are oppressed", "points": {"oscar": 3, "maximilian": 2, "joan": 1}},
-        {"text": "I help people connect with their culture and faith", "points": {"kateri": 2, "juan_diego": 2, "cyril": 1, "methodius": 1}},
-        {"text": "I use my talents to inspire and uplift others", "points": {"cecilia": 3, "vincent_ferrer": 2}}
-      ]
-    },
-    {
-      "id": 5,
-      "question": "What motivates you most?",
-      "answers": [
-        {"text": "Love for my country and people", "points": {"joan": 3, "kim": 2, "lorenzo": 2}},
-        {"text": "Desire to serve the suffering", "points": {"damian_molokai": 3, "teresa_calcutta": 2, "agatha": 1}},
-        {"text": "Passion for spreading God's word", "points": {"francis_xavier": 2, "boniface": 2, "vincent_ferrer": 2}},
-        {"text": "Protecting the innocent and weak", "points": {"maximilian": 3, "lwanga": 2, "barbara_saint": 1}},
-        {"text": "Living my faith authentically", "points": {"kateri": 2, "rose": 2, "edith": 2}}
-      ]
-    },
-    {
-      "id": 6,
-      "question": "How do you deal with persecution or bullying?",
-      "answers": [
-        {"text": "I stand firm and never back down", "points": {"joan": 3, "sebastian": 2, "perpetua": 2}},
-        {"text": "I forgive my enemies and pray for them", "points": {"dismas": 3, "longinus": 2, "martin": 1}},
-        {"text": "I continue my mission no matter what", "points": {"oscar": 3, "maximilian": 2, "damian_molokai": 1}},
-        {"text": "I find strength in my cultural identity", "points": {"kateri": 2, "juan_diego": 2, "kim": 1}},
-        {"text": "I use my gifts to rise above the negativity", "points": {"cecilia": 2, "lucy": 2, "teresa_calcutta": 1}}
-      ]
-    },
-    {
-      "id": 7,
-      "question": "What kind of legacy do you want to leave?",
-      "answers": [
-        {"text": "Being remembered as incredibly brave", "points": {"joan": 3, "lwanga": 2, "miki": 2}},
-        {"text": "Bringing entire nations to God", "points": {"boniface": 3, "francis_xavier": 2, "cyril": 1, "methodius": 1}},
-        {"text": "Showing that God's love reaches everyone", "points": {"teresa_calcutta": 3, "martin": 2, "damian_molokai": 1}},
-        {"text": "Inspiring people through beauty and art", "points": {"cecilia": 3, "lucy": 2}},
-        {"text": "Proving that young people can be heroes too", "points": {"sebastian": 2, "lwanga": 2, "lorenzo": 2}}
-      ]
-    },
-    {
-      "id": 8,
-      "question": "What's your greatest strength?",
-      "answers": [
-        {"text": "Unshakeable courage in the face of danger", "points": {"joan": 3, "maximilian": 2, "oscar": 2}},
-        {"text": "Ability to see God in everyone, especially outcasts", "points": {"damian_molokai": 3, "teresa_calcutta": 2, "martin": 2}},
-        {"text": "Gift for bringing different cultures together", "points": {"cyril": 2, "methodius": 2, "kateri": 2, "francis_xavier": 1}},
-        {"text": "Talent for inspiring others through my example", "points": {"cecilia": 2, "vincent_ferrer": 2, "jp2": 2}},
-        {"text": "Willingness to sacrifice everything for others", "points": {"maximilian": 3, "lwanga": 2, "peter_chanel": 1}}
-      ]
-    }
+   {
+  "id": 2,
+  "question": "What kind of 'superpower' would you most want?",
+  "answers": [
+    {"text": "Leading people and being incredibly brave in tough situations", "points": {"joan": 3, "sebastian": 2, "maximilian": 1}},
+    {"text": "Healing people and helping them through miracles", "points": {"damian_molokai": 3, "teresa_calcutta": 2, "peter_chanel": 1}},
+    {"text": "Converting entire countries to faith", "points": {"boniface": 3, "francis_xavier": 2, "cyril": 2, "methodius": 2}},
+    {"text": "Protecting people from harm and evil", "points": {"barbara_saint": 2, "longinus": 2, "demetrius": 2}},
+    {"text": "Inspiring people through amazing music and art", "points": {"cecilia": 3, "lucy": 2}}
+  ]
+},
+{
+  "id": 3,
+  "question": "How do you handle really scary or stressful situations?",
+  "answers": [
+    {"text": "I trust God completely and try not to let fear control me", "points": {"joan": 3, "maximilian": 3, "oscar": 2}},
+    {"text": "I use my courage to stand up for and protect others", "points": {"sebastian": 3, "demetrius": 2, "lwanga": 1}},
+    {"text": "I stay calm and pray for guidance on what to do", "points": {"kateri": 2, "teresa_calcutta": 2, "jp2": 1}},
+    {"text": "I speak up for what's right no matter what people think", "points": {"oscar": 3, "dismas": 2, "edmund": 1}},
+    {"text": "I rely on God's strength to help me get through it", "points": {"lucy": 2, "agatha": 2, "barbara_yi": 1}}
+  ]
+},
+{
+  "id": 4,
+  "question": "What's your approach to helping others?",
+  "answers": [
+    {"text": "I reach out to kids who are lonely, ignored, or struggling", "points": {"teresa_calcutta": 3, "damian_molokai": 3, "martin": 2}},
+    {"text": "I share my faith and invite others to youth group or church", "points": {"francis_xavier": 3, "boniface": 2, "peter_chanel": 2}},
+    {"text": "I stand up for students who are being bullied or treated unfairly", "points": {"oscar": 3, "maximilian": 2, "joan": 1}},
+    {"text": "I help people appreciate their culture and connect with their faith", "points": {"kateri": 2, "juan_diego": 2, "cyril": 1, "methodius": 1}},
+    {"text": "I use my talents (music, art, sports) to encourage others", "points": {"cecilia": 3, "vincent_ferrer": 2}}
+  ]
+},
+{
+  "id": 5,
+  "question": "What motivates you most in life?",
+  "answers": [
+    {"text": "Love for my family, friends, and community", "points": {"joan": 3, "kim": 2, "lorenzo": 2}},
+    {"text": "Wanting to help people who are hurting or struggling", "points": {"damian_molokai": 3, "teresa_calcutta": 2, "agatha": 1}},
+    {"text": "Passion for sharing God's love with others", "points": {"francis_xavier": 2, "boniface": 2, "vincent_ferrer": 2}},
+    {"text": "Protecting people who can't protect themselves", "points": {"maximilian": 3, "lwanga": 2, "barbara_saint": 1}},
+    {"text": "Living out my faith in an authentic way", "points": {"kateri": 2, "rose": 2, "edith": 2}}
+  ]
+},
+{
+  "id": 6,
+  "question": "How do you deal with bullying or people giving you a hard time?",
+  "answers": [
+    {"text": "I stand firm in what I believe and don't back down", "points": {"joan": 3, "sebastian": 2, "perpetua": 2}},
+    {"text": "I forgive people who hurt me and even pray for them", "points": {"dismas": 3, "longinus": 2, "martin": 1}},
+    {"text": "I keep doing what I know is right no matter what they say", "points": {"oscar": 3, "maximilian": 2, "damian_molokai": 1}},
+    {"text": "I find strength in my identity and where I come from", "points": {"kateri": 2, "juan_diego": 2, "kim": 1}},
+    {"text": "I use my gifts and talents to rise above the negativity", "points": {"cecilia": 2, "lucy": 2, "teresa_calcutta": 1}}
+  ]
+},
+{
+  "id": 7,
+  "question": "What kind of impact do you want to have on the world?",
+  "answers": [
+    {"text": "Being known as someone who was really brave when it mattered", "points": {"joan": 3, "lwanga": 2, "miki": 2}},
+    {"text": "Helping lots of people discover God and faith", "points": {"boniface": 3, "francis_xavier": 2, "cyril": 1, "methodius": 1}},
+    {"text": "Showing that God's love is for everyone, especially outcasts", "points": {"teresa_calcutta": 3, "martin": 2, "damian_molokai": 1}},
+    {"text": "Creating beautiful things that inspire people", "points": {"cecilia": 3, "lucy": 2}},
+    {"text": "Proving that young people can make a huge difference", "points": {"sebastian": 2, "lwanga": 2, "lorenzo": 2}}
+  ]
+},
+{
+  "id": 8,
+  "question": "What would you say is your greatest strength?",
+  "answers": [
+    {"text": "Having courage when facing scary or difficult situations", "points": {"joan": 3, "maximilian": 2, "oscar": 2}},
+    {"text": "Being able to see the good in everyone, especially people others ignore", "points": {"damian_molokai": 3, "teresa_calcutta": 2, "martin": 2}},
+    {"text": "Being good at bringing different types of people together", "points": {"cyril": 2, "methodius": 2, "kateri": 2, "francis_xavier": 1}},
+    {"text": "Having a talent for inspiring others through my example", "points": {"cecilia": 2, "vincent_ferrer": 2, "jp2": 2}},
+    {"text": "Being willing to sacrifice for others when they really need help", "points": {"maximilian": 3, "lwanga": 2, "peter_chanel": 1}}
+  ]
+}
   ],
   "results": {
     "joan": {
@@ -1137,93 +1137,93 @@ const SAINTS_QUIZZES_DATA = [
   "target_grades": [4, 5, 6, 7, 8],
   "questions": [
     {
-      "id": 1,
-      "question": "How would you have reacted when Jesus first called you to follow Him?",
-      "answers": [
-        {"text": "I would drop everything immediately and follow", "points": {"peter": 3, "andrew": 3, "john_baptist": 2}},
-        {"text": "I would ask lots of questions first", "points": {"thomas": 3, "philip": 2, "matthew": 1}},
-        {"text": "I would be excited to bring my friends too", "points": {"andrew": 3, "philip": 3, "bartholomew": 2}},
-        {"text": "I would feel unworthy but say yes anyway", "points": {"matthew": 3, "peter": 2, "jude": 1}},
-        {"text": "I would want to know if Jesus was really the Messiah", "points": {"thomas": 2, "john_baptist": 2, "simon_zealot": 1}}
-      ]
-    },
-    {
-      "id": 2,
-      "question": "What role would you naturally take in Jesus's group?",
-      "answers": [
-        {"text": "The leader who speaks for everyone", "points": {"peter": 3, "james_greater": 2}},
-        {"text": "The one who brings new people to meet Jesus", "points": {"andrew": 3, "philip": 3}},
-        {"text": "The practical one who handles money and details", "points": {"matthew": 3, "bartholomew": 2}},
-        {"text": "Jesus's closest friend and confidant", "points": {"john_evangelist": 3, "james_lesser": 1}},
-        {"text": "The one who asks the hard questions", "points": {"thomas": 3, "jude": 2}}
-      ]
-    },
-    {
-      "id": 3,
-      "question": "How do you handle it when you make mistakes?",
-      "answers": [
-        {"text": "I feel terrible but ask for forgiveness", "points": {"peter": 3, "matthew": 2}},
-        {"text": "I learn from it and try to do better", "points": {"thomas": 2, "philip": 2, "bartholomew": 2}},
-        {"text": "I help others not make the same mistake", "points": {"andrew": 2, "james_lesser": 2}},
-        {"text": "I trust that God can use even my mistakes for good", "points": {"john_evangelist": 2, "jude": 2}},
-        {"text": "I work extra hard to make up for it", "points": {"matthew": 3, "simon_zealot": 2}}
-      ]
-    },
-    {
-      "id": 4,
-      "question": "What's your approach to sharing your faith?",
-      "answers": [
-        {"text": "I'm passionate and sometimes speak before thinking", "points": {"peter": 3, "james_greater": 2}},
-        {"text": "I love introducing people to Jesus personally", "points": {"andrew": 3, "philip": 2}},
-        {"text": "I share through my changed life and example", "points": {"matthew": 3, "bartholomew": 2}},
-        {"text": "I write or tell stories about Jesus's love", "points": {"john_evangelist": 3, "james_lesser": 1}},
-        {"text": "I make sure people understand exactly what I mean", "points": {"thomas": 3, "jude": 2}}
-      ]
-    },
-    {
-      "id": 5,
-      "question": "How do you prefer to pray or worship?",
-      "answers": [
-        {"text": "I like to pray out loud and with energy", "points": {"peter": 3, "john_baptist": 2}},
-        {"text": "I prefer quiet, personal time with God", "points": {"john_evangelist": 3, "andrew": 2}},
-        {"text": "I like to pray with others in community", "points": {"philip": 2, "bartholomew": 2, "james_lesser": 2}},
-        {"text": "I need to understand what I'm praying about", "points": {"thomas": 3, "matthew": 2}},
-        {"text": "I like traditional prayers and rituals", "points": {"simon_zealot": 2, "jude": 2}}
-      ]
-    },
-    {
-      "id": 6,
-      "question": "What would be your biggest strength as a disciple?",
-      "answers": [
-        {"text": "My enthusiasm and willingness to take risks", "points": {"peter": 3, "james_greater": 2}},
-        {"text": "My ability to connect people with Jesus", "points": {"andrew": 3, "philip": 3}},
-        {"text": "My complete transformation and gratitude", "points": {"matthew": 3, "mary_magdalene": 2}},
-        {"text": "My deep love and loyalty to Jesus", "points": {"john_evangelist": 3, "mary_magdalene": 2}},
-        {"text": "My honest questions that help others understand", "points": {"thomas": 3, "jude": 1}}
-      ]
-    },
-    {
-      "id": 7,
-      "question": "How would you want to serve Jesus after His resurrection?",
-      "answers": [
-        {"text": "Leading the Church and preaching boldly", "points": {"peter": 3, "james_greater": 2}},
-        {"text": "Traveling to share the Gospel with new people", "points": {"andrew": 2, "thomas": 2, "bartholomew": 2}},
-        {"text": "Writing down Jesus's teachings so they're preserved", "points": {"matthew": 3, "john_evangelist": 3}},
-        {"text": "Helping people who feel far from God", "points": {"matthew": 2, "jude": 2}},
-        {"text": "Making sure people really understand the truth", "points": {"thomas": 3, "philip": 2}}
-      ]
-    },
-    {
-      "id": 8,
-      "question": "What drew you most to Jesus?",
-      "answers": [
-        {"text": "His powerful personality and leadership", "points": {"peter": 3, "james_greater": 2}},
-        {"text": "The way He cared for ordinary people", "points": {"andrew": 2, "matthew": 2, "philip": 2}},
-        {"text": "His incredible love and mercy", "points": {"john_evangelist": 3, "mary_magdalene": 3}},
-        {"text": "His wisdom and ability to answer every question", "points": {"thomas": 3, "bartholomew": 2}},
-        {"text": "His call to radical change and justice", "points": {"simon_zealot": 3, "john_baptist": 2}}
-      ]
-    }
+  "id": 1,
+  "question": "How would you have reacted when Jesus first called you to follow Him?",
+  "answers": [
+    {"text": "I would drop everything immediately and follow", "points": {"peter": 3, "andrew": 3, "john_baptist": 2}},
+    {"text": "I would ask lots of questions first", "points": {"thomas": 3, "philip": 2, "matthew": 1}},
+    {"text": "I would be excited to bring my friends too", "points": {"andrew": 3, "philip": 3, "bartholomew": 2}},
+    {"text": "I would feel unworthy but say yes anyway", "points": {"matthew": 3, "peter": 2, "jude": 1}},
+    {"text": "I would want to know if Jesus was really the Messiah", "points": {"thomas": 2, "john_baptist": 2, "simon_zealot": 1}}
+  ]
+},
+{
+  "id": 2,
+  "question": "What role would you naturally take in Jesus's group?",
+  "answers": [
+    {"text": "The leader who speaks up for everyone", "points": {"peter": 3, "james_greater": 2}},
+    {"text": "The one who brings new people to meet Jesus", "points": {"andrew": 3, "philip": 3}},
+    {"text": "The organized one who keeps track of details and resources", "points": {"matthew": 3, "bartholomew": 2}},
+    {"text": "Jesus's closest friend and the one He confides in", "points": {"john_evangelist": 3, "james_lesser": 1}},
+    {"text": "The one who asks the tough questions everyone's thinking", "points": {"thomas": 3, "jude": 2}}
+  ]
+},
+{
+  "id": 3,
+  "question": "How do you handle it when you mess up or make mistakes?",
+  "answers": [
+    {"text": "I feel terrible but ask for forgiveness", "points": {"peter": 3, "matthew": 2}},
+    {"text": "I learn from it and try to do better next time", "points": {"thomas": 2, "philip": 2, "bartholomew": 2}},
+    {"text": "I help others avoid making the same mistake", "points": {"andrew": 2, "james_lesser": 2}},
+    {"text": "I trust that God can use even my mistakes for good", "points": {"john_evangelist": 2, "jude": 2}},
+    {"text": "I work extra hard to make up for it", "points": {"matthew": 3, "simon_zealot": 2}}
+  ]
+},
+{
+  "id": 4,
+  "question": "What's your approach to sharing your faith with others?",
+  "answers": [
+    {"text": "I'm passionate and sometimes speak before thinking", "points": {"peter": 3, "james_greater": 2}},
+    {"text": "I love introducing people to Jesus one-on-one", "points": {"andrew": 3, "philip": 2}},
+    {"text": "I share through how my life has changed", "points": {"matthew": 3, "bartholomew": 2}},
+    {"text": "I share stories about Jesus's love and what He means to me", "points": {"john_evangelist": 3, "james_lesser": 1}},
+    {"text": "I make sure people really understand what I'm talking about", "points": {"thomas": 3, "jude": 2}}
+  ]
+},
+{
+  "id": 5,
+  "question": "How do you prefer to pray or worship?",
+  "answers": [
+    {"text": "I like to pray out loud with energy and emotion", "points": {"peter": 3, "john_baptist": 2}},
+    {"text": "I prefer quiet, personal time alone with God", "points": {"john_evangelist": 3, "andrew": 2}},
+    {"text": "I like to pray and worship with others in a group", "points": {"philip": 2, "bartholomew": 2, "james_lesser": 2}},
+    {"text": "I need to understand what I'm praying about and why", "points": {"thomas": 3, "matthew": 2}},
+    {"text": "I like familiar prayers and traditional ways of worship", "points": {"simon_zealot": 2, "jude": 2}}
+  ]
+},
+{
+  "id": 6,
+  "question": "What would be your biggest strength as a disciple?",
+  "answers": [
+    {"text": "My enthusiasm and willingness to take risks for Jesus", "points": {"peter": 3, "james_greater": 2}},
+    {"text": "My ability to connect people with Jesus", "points": {"andrew": 3, "philip": 3}},
+    {"text": "My complete life change and deep gratitude", "points": {"matthew": 3, "mary_magdalene": 2}},
+    {"text": "My deep love and unwavering loyalty to Jesus", "points": {"john_evangelist": 3, "mary_magdalene": 2}},
+    {"text": "My honest questions that help others understand better", "points": {"thomas": 3, "jude": 1}}
+  ]
+},
+{
+  "id": 7,
+  "question": "How would you want to serve Jesus after His resurrection?",
+  "answers": [
+    {"text": "Being a leader in the church and speaking boldly about faith", "points": {"peter": 3, "james_greater": 2}},
+    {"text": "Traveling to share the Gospel with people who haven't heard it", "points": {"andrew": 2, "thomas": 2, "bartholomew": 2}},
+    {"text": "Writing down Jesus's teachings so future generations can learn", "points": {"matthew": 3, "john_evangelist": 3}},
+    {"text": "Reaching out to people who feel far from God", "points": {"matthew": 2, "jude": 2}},
+    {"text": "Teaching people and helping them really understand the truth", "points": {"thomas": 3, "philip": 2}}
+  ]
+},
+{
+  "id": 8,
+  "question": "What drew you most to Jesus?",
+  "answers": [
+    {"text": "His powerful personality and natural leadership", "points": {"peter": 3, "james_greater": 2}},
+    {"text": "The way He cared for ordinary, everyday people", "points": {"andrew": 2, "matthew": 2, "philip": 2}},
+    {"text": "His incredible love and mercy toward everyone", "points": {"john_evangelist": 3, "mary_magdalene": 3}},
+    {"text": "His wisdom and ability to answer every tough question", "points": {"thomas": 3, "bartholomew": 2}},
+    {"text": "His call to fight for real change and justice", "points": {"simon_zealot": 3, "john_baptist": 2}}
+  ]
+}
   ],
   "results": {
     "peter": {
@@ -1340,91 +1340,91 @@ const SAINTS_QUIZZES_DATA = [
   "target_grades": [4, 5, 6, 7, 8],
   "questions": [
     {
-      "id": 1,
-      "question": "Are you a boy or a girl?",
-      "type": "gender",
-      "answers": [
-        {"text": "Boy", "points": {"aquinas": 5, "anselm": 5, "neumann": 5, "albert": 5, "bede": 5, "charles": 5, "newman": 5, "serra": 5, "finnian": 5, "eucherius": 5, "eusebius": 5}},
-        {"text": "Girl", "points": {"elizabeth_seton": 5, "hildegard": 5, "duchesne": 5, "drexel": 5, "cabrini": 5}}
-      ]
-    },
-    {
-      "id": 2,
-      "question": "What's your favorite way to learn?",
-      "answers": [
-        {"text": "Reading lots of books and doing research", "points": {"aquinas": 3, "albert": 2, "bede": 2}},
-        {"text": "Asking deep questions and thinking things through", "points": {"anselm": 3, "newman": 2, "hildegard": 1}},
-        {"text": "Teaching others what I've learned", "points": {"elizabeth_seton": 3, "neumann": 2, "cabrini": 2}},
-        {"text": "Hands-on experiments and trying new things", "points": {"albert": 3, "hildegard": 2, "drexel": 1}},
-        {"text": "Learning different languages and cultures", "points": {"neumann": 3, "duchesne": 2, "serra": 2}}
-      ]
-    },
-    {
-      "id": 3,
-      "question": "What subject would you most want to master?",
-      "answers": [
-        {"text": "Theology and understanding God", "points": {"aquinas": 3, "anselm": 3, "newman": 2}},
-        {"text": "Science and how the world works", "points": {"albert": 3, "hildegard": 2}},
-        {"text": "History and learning from the past", "points": {"bede": 3, "eusebius": 2, "eucherius": 1}},
-        {"text": "Education and helping people learn", "points": {"elizabeth_seton": 3, "neumann": 2, "drexel": 2}},
-        {"text": "Languages and different cultures", "points": {"serra": 2, "duchesne": 2, "cabrini": 2}}
-      ]
-    },
-    {
-      "id": 4,
-      "question": "How do you like to share your knowledge?",
-      "answers": [
-        {"text": "Writing detailed books and explanations", "points": {"aquinas": 3, "bede": 2, "newman": 2}},
-        {"text": "Starting schools and educational programs", "points": {"elizabeth_seton": 3, "neumann": 3, "drexel": 2}},
-        {"text": "Having conversations and debates", "points": {"anselm": 2, "charles": 2, "newman": 2}},
-        {"text": "Creating art, music, or creative works", "points": {"hildegard": 3, "cabrini": 1}},
-        {"text": "Teaching people who haven't had opportunities to learn", "points": {"duchesne": 3, "serra": 2, "drexel": 2}}
-      ]
-    },
-    {
-      "id": 5,
-      "question": "What motivates you to keep learning?",
-      "answers": [
-        {"text": "I want to understand God and faith better", "points": {"aquinas": 3, "anselm": 2, "newman": 2}},
-        {"text": "I love discovering how everything connects", "points": {"albert": 3, "hildegard": 2, "bede": 1}},
-        {"text": "I want to help kids get a good education", "points": {"elizabeth_seton": 3, "neumann": 2, "drexel": 2}},
-        {"text": "Knowledge is power to help others", "points": {"drexel": 3, "duchesne": 2, "cabrini": 2}},
-        {"text": "Learning helps me serve God better", "points": {"serra": 2, "charles": 2, "finnian": 2}}
-      ]
-    },
-    {
-      "id": 6,
-      "question": "What's your approach to difficult questions?",
-      "answers": [
-        {"text": "I research thoroughly until I find the answer", "points": {"aquinas": 3, "albert": 2, "bede": 2}},
-        {"text": "I think logically through each step", "points": {"anselm": 3, "newman": 2}},
-        {"text": "I ask teachers and experts for help", "points": {"elizabeth_seton": 2, "neumann": 2, "charles": 1}},
-        {"text": "I try different creative approaches", "points": {"hildegard": 3, "albert": 1}},
-        {"text": "I pray for wisdom and guidance", "points": {"serra": 2, "duchesne": 2, "finnian": 2}}
-      ]
-    },
-    {
-      "id": 7,
-      "question": "How do you want to use your education?",
-      "answers": [
-        {"text": "To write books that help people understand faith", "points": {"aquinas": 3, "newman": 3, "bede": 1}},
-        {"text": "To discover new things about the natural world", "points": {"albert": 3, "hildegard": 2}},
-        {"text": "To make sure everyone has access to good schools", "points": {"elizabeth_seton": 3, "drexel": 3, "neumann": 2}},
-        {"text": "To help people who are poor or overlooked", "points": {"drexel": 2, "cabrini": 2, "duchesne": 2}},
-        {"text": "To spread the Gospel to new places", "points": {"serra": 3, "duchesne": 2, "cabrini": 1}}
-      ]
-    },
-    {
-      "id": 8,
-      "question": "What would be your ideal learning environment?",
-      "answers": [
-        {"text": "A quiet library with lots of books", "points": {"aquinas": 3, "bede": 2, "anselm": 2}},
-        {"text": "A laboratory where I can experiment", "points": {"albert": 3, "hildegard": 2}},
-        {"text": "A classroom full of eager students", "points": {"elizabeth_seton": 3, "neumann": 2, "charles": 2}},
-        {"text": "Traveling to learn about different cultures", "points": {"duchesne": 3, "serra": 2, "cabrini": 2}},
-        {"text": "A place where I can help solve real problems", "points": {"drexel": 3, "newman": 1, "cabrini": 1}}
-      ]
-    }
+ "id": 1,
+ "question": "Are you a boy or a girl?",
+ "type": "gender",
+ "answers": [
+  {"text": "Boy", "points": {"aquinas": 5, "anselm": 5, "neumann": 5, "albert": 5, "bede": 5, "charles": 5, "newman": 5, "serra": 5, "finnian": 5, "eucherius": 5, "eusebius": 5}},
+  {"text": "Girl", "points": {"elizabeth_seton": 5, "hildegard": 5, "duchesne": 5, "drexel": 5, "cabrini": 5}}
+ ]
+},
+{
+ "id": 2,
+ "question": "What's your favorite way to learn?",
+ "answers": [
+  {"text": "Reading lots of books and doing research online", "points": {"aquinas": 3, "albert": 2, "bede": 2}},
+  {"text": "Asking deep questions and really thinking things through", "points": {"anselm": 3, "newman": 2, "hildegard": 1}},
+  {"text": "Teaching or tutoring others what I've learned", "points": {"elizabeth_seton": 3, "neumann": 2, "cabrini": 2}},
+  {"text": "Hands-on experiments and trying new things", "points": {"albert": 3, "hildegard": 2, "drexel": 1}},
+  {"text": "Learning about different languages and cultures", "points": {"neumann": 3, "duchesne": 2, "serra": 2}}
+ ]
+},
+{
+ "id": 3,
+ "question": "What subject would you most want to get really good at?",
+ "answers": [
+  {"text": "Theology and understanding God better", "points": {"aquinas": 3, "anselm": 3, "newman": 2}},
+  {"text": "Science and how the world works", "points": {"albert": 3, "hildegard": 2}},
+  {"text": "History and learning from the past", "points": {"bede": 3, "eusebius": 2, "eucherius": 1}},
+  {"text": "Education and helping people learn", "points": {"elizabeth_seton": 3, "neumann": 2, "drexel": 2}},
+  {"text": "Languages and different cultures around the world", "points": {"serra": 2, "duchesne": 2, "cabrini": 2}}
+ ]
+},
+{
+ "id": 4,
+ "question": "How do you like to share your knowledge with others?",
+ "answers": [
+  {"text": "Writing blogs, articles, or detailed explanations", "points": {"aquinas": 3, "bede": 2, "newman": 2}},
+  {"text": "Starting tutoring programs or study groups", "points": {"elizabeth_seton": 3, "neumann": 3, "drexel": 2}},
+  {"text": "Having conversations and friendly debates", "points": {"anselm": 2, "charles": 2, "newman": 2}},
+  {"text": "Creating art, music, videos, or other creative content", "points": {"hildegard": 3, "cabrini": 1}},
+  {"text": "Helping people who haven't had good learning opportunities", "points": {"duchesne": 3, "serra": 2, "drexel": 2}}
+ ]
+},
+{
+ "id": 5,
+ "question": "What motivates you to keep learning and studying?",
+ "answers": [
+  {"text": "I want to understand God and my faith better", "points": {"aquinas": 3, "anselm": 2, "newman": 2}},
+  {"text": "I love discovering how everything in life connects", "points": {"albert": 3, "hildegard": 2, "bede": 1}},
+  {"text": "I want to help kids get a really good education", "points": {"elizabeth_seton": 3, "neumann": 2, "drexel": 2}},
+  {"text": "Knowledge gives me power to help people who need it", "points": {"drexel": 3, "duchesne": 2, "cabrini": 2}},
+  {"text": "Learning helps me serve God and others better", "points": {"serra": 2, "charles": 2, "finnian": 2}}
+ ]
+},
+{
+ "id": 6,
+ "question": "What's your approach to really difficult questions or problems?",
+ "answers": [
+  {"text": "I research everything I can until I find the answer", "points": {"aquinas": 3, "albert": 2, "bede": 2}},
+  {"text": "I think logically through each step of the problem", "points": {"anselm": 3, "newman": 2}},
+  {"text": "I ask teachers, mentors, and experts for help", "points": {"elizabeth_seton": 2, "neumann": 2, "charles": 1}},
+  {"text": "I try different creative approaches until something works", "points": {"hildegard": 3, "albert": 1}},
+  {"text": "I pray for wisdom and ask God to guide me", "points": {"serra": 2, "duchesne": 2, "finnian": 2}}
+ ]
+},
+{
+ "id": 7,
+ "question": "How do you want to use your education to make a difference?",
+ "answers": [
+  {"text": "Write things that help people understand faith better", "points": {"aquinas": 3, "newman": 3, "bede": 1}},
+  {"text": "Discover new things about the natural world", "points": {"albert": 3, "hildegard": 2}},
+  {"text": "Make sure everyone has access to good education", "points": {"elizabeth_seton": 3, "drexel": 3, "neumann": 2}},
+  {"text": "Help people who are poor, forgotten, or overlooked", "points": {"drexel": 2, "cabrini": 2, "duchesne": 2}},
+  {"text": "Share the Gospel and God's love in new places", "points": {"serra": 3, "duchesne": 2, "cabrini": 1}}
+ ]
+},
+{
+ "id": 8,
+ "question": "What would be your ideal learning environment?",
+ "answers": [
+  {"text": "A quiet library or study space with lots of books and resources", "points": {"aquinas": 3, "bede": 2, "anselm": 2}},
+  {"text": "A science lab where I can experiment and test ideas", "points": {"albert": 3, "hildegard": 2}},
+  {"text": "A classroom where I can teach and learn from students", "points": {"elizabeth_seton": 3, "neumann": 2, "charles": 2}},
+  {"text": "Traveling to learn about different cultures and places", "points": {"duchesne": 3, "serra": 2, "cabrini": 2}},
+  {"text": "Somewhere I can use what I learn to solve real problems", "points": {"drexel": 3, "newman": 1, "cabrini": 1}}
+ ]
+}
   ],
   "results": {
     "aquinas": {
@@ -1573,83 +1573,83 @@ const SAINTS_QUIZZES_DATA = [
         {"text": "Girl", "points": {"brigid": 5, "margaret_scotland": 5, "elizabeth_hungary": 5}}
       ]
     },
-    {
-      "id": 2,
-      "question": "What's your approach to bringing people together?",
-      "answers": [
-        {"text": "Through celebration, storytelling, and traditions", "points": {"patrick": 3, "brigid": 3, "columba": 2}},
-        {"text": "By being brave and standing up for what's right", "points": {"george": 3, "james": 2, "wenceslaus": 2}},
-        {"text": "Through acts of charity and caring for the poor", "points": {"elizabeth_hungary": 3, "margaret_scotland": 2, "david": 1}},
-        {"text": "By defending my country and people", "points": {"denis": 2, "stanislaus": 2, "olaf": 2}},
-        {"text": "Through education and preserving culture", "points": {"ansgar": 2, "adalbert": 2, "alban": 1}}
-      ]
-    },
-    {
-      "id": 3,
-      "question": "How do you show pride in your heritage?",
-      "answers": [
-        {"text": "I celebrate traditional holidays and customs", "points": {"patrick": 3, "brigid": 2, "stephen": 2}},
-        {"text": "I tell stories about brave heroes from my culture", "points": {"george": 2, "james": 2, "denis": 2}},
-        {"text": "I help preserve my language and traditions", "points": {"david": 3, "columba": 2, "ansgar": 1}},
-        {"text": "I work to make my country/community better", "points": {"wenceslaus": 3, "casimir": 2, "margaret_scotland": 2}},
-        {"text": "I share my culture's gifts with others", "points": {"elizabeth_hungary": 2, "adalbert": 2, "alban": 1}}
-      ]
-    },
-    {
-      "id": 4,
-      "question": "What role would you want in your community?",
-      "answers": [
-        {"text": "The storyteller who keeps traditions alive", "points": {"patrick": 3, "brigid": 2, "columba": 2}},
-        {"text": "The protector who defends against enemies", "points": {"george": 3, "denis": 2, "olaf": 2}},
-        {"text": "The peacemaker who solves conflicts", "points": {"wenceslaus": 3, "david": 2, "margaret_scotland": 1}},
-        {"text": "The generous leader who helps the poor", "points": {"elizabeth_hungary": 3, "casimir": 2, "stephen": 1}},
-        {"text": "The missionary who spreads faith to new places", "points": {"ansgar": 3, "adalbert": 2, "columba": 1}}
-      ]
-    },
-    {
-      "id": 5,
-      "question": "How do you handle conflicts with neighboring groups?",
-      "answers": [
-        {"text": "I try to find common ground and make peace", "points": {"david": 3, "margaret_scotland": 3, "casimir": 2}},
-        {"text": "I stand firm but fight fairly and honorably", "points": {"george": 3, "james": 2, "olaf": 2}},
-        {"text": "I use diplomacy and try to convert through example", "points": {"wenceslaus": 2, "stephen": 2, "ansgar": 2}},
-        {"text": "I defend my people fiercely when necessary", "points": {"denis": 3, "stanislaus": 2, "eric": 2}},
-        {"text": "I focus on building bridges through culture and faith", "points": {"patrick": 2, "adalbert": 2, "alban": 1}}
-      ]
-    },
-    {
-      "id": 6,
-      "question": "What's most important for your country or culture?",
-      "answers": [
-        {"text": "Keeping our unique traditions and customs alive", "points": {"brigid": 3, "patrick": 2, "columba": 2}},
-        {"text": "Being known for courage and honor", "points": {"george": 3, "james": 2, "canute": 2}},
-        {"text": "Taking care of everyone, especially the poor", "points": {"elizabeth_hungary": 3, "margaret_scotland": 2, "david": 1}},
-        {"text": "Having strong, just leadership", "points": {"wenceslaus": 3, "stephen": 2, "casimir": 2}},
-        {"text": "Spreading our faith to others", "points": {"ansgar": 3, "adalbert": 2, "columba": 1}}
-      ]
-    },
-    {
-      "id": 7,
-      "question": "How do you want to be remembered by future generations?",
-      "answers": [
-        {"text": "As someone who made their culture famous worldwide", "points": {"patrick": 3, "george": 2, "james": 2}},
-        {"text": "As a brave defender who never gave up", "points": {"denis": 3, "stanislaus": 2, "eric": 2}},
-        {"text": "As a generous leader who cared for everyone", "points": {"elizabeth_hungary": 3, "margaret_scotland": 2, "stephen": 1}},
-        {"text": "As someone who brought peace and unity", "points": {"david": 3, "wenceslaus": 2, "casimir": 2}},
-        {"text": "As a bridge-builder who connected different peoples", "points": {"ansgar": 3, "adalbert": 2, "alban": 1}}
-      ]
-    },
-    {
-      "id": 8,
-      "question": "What's your greatest strength as a cultural leader?",
-      "answers": [
-        {"text": "My ability to inspire people with stories and traditions", "points": {"patrick": 3, "brigid": 2, "columba": 2}},
-        {"text": "My courage in fighting for what's right", "points": {"george": 3, "james": 2, "stanislaus": 2}},
-        {"text": "My wisdom in making fair decisions", "points": {"wenceslaus": 3, "david": 2, "margaret_scotland": 1}},
-        {"text": "My generous heart that puts others first", "points": {"elizabeth_hungary": 3, "casimir": 2, "stephen": 1}},
-        {"text": "My vision for bringing different cultures together", "points": {"ansgar": 3, "adalbert": 2, "alban": 1}}
-      ]
-    }
+  {
+ "id": 2,
+ "question": "What's your approach to bringing people together?",
+ "answers": [
+  {"text": "Through celebrations, storytelling, and keeping traditions alive", "points": {"patrick": 3, "brigid": 3, "columba": 2}},
+  {"text": "By being brave and standing up for what's right", "points": {"george": 3, "james": 2, "wenceslaus": 2}},
+  {"text": "Through acts of kindness and caring for people who need help", "points": {"elizabeth_hungary": 3, "margaret_scotland": 2, "david": 1}},
+  {"text": "By defending my community and the people I care about", "points": {"denis": 2, "stanislaus": 2, "olaf": 2}},
+  {"text": "Through education and helping preserve our culture", "points": {"ansgar": 2, "adalbert": 2, "alban": 1}}
+ ]
+},
+{
+ "id": 3,
+ "question": "How do you show pride in your heritage and background?",
+ "answers": [
+  {"text": "I celebrate traditional holidays and learn about our customs", "points": {"patrick": 3, "brigid": 2, "stephen": 2}},
+  {"text": "I share stories about brave heroes and role models from my culture", "points": {"george": 2, "james": 2, "denis": 2}},
+  {"text": "I help preserve our language, traditions, and way of life", "points": {"david": 3, "columba": 2, "ansgar": 1}},
+  {"text": "I work to make my community and country better", "points": {"wenceslaus": 3, "casimir": 2, "margaret_scotland": 2}},
+  {"text": "I share my culture's unique gifts and talents with others", "points": {"elizabeth_hungary": 2, "adalbert": 2, "alban": 1}}
+ ]
+},
+{
+ "id": 4,
+ "question": "What role would you want to have in your community?",
+ "answers": [
+  {"text": "The storyteller who keeps our history and traditions alive", "points": {"patrick": 3, "brigid": 2, "columba": 2}},
+  {"text": "The protector who stands up against bullies and injustice", "points": {"george": 3, "denis": 2, "olaf": 2}},
+  {"text": "The peacemaker who helps solve conflicts and brings people together", "points": {"wenceslaus": 3, "david": 2, "margaret_scotland": 1}},
+  {"text": "The generous leader who helps people in need", "points": {"elizabeth_hungary": 3, "casimir": 2, "stephen": 1}},
+  {"text": "The bridge-builder who helps different groups understand each other", "points": {"ansgar": 3, "adalbert": 2, "columba": 1}}
+ ]
+},
+{
+ "id": 5,
+ "question": "How do you handle conflicts with people who disagree with you or your group?",
+ "answers": [
+  {"text": "I try to find things we have in common and work toward peace", "points": {"david": 3, "margaret_scotland": 3, "casimir": 2}},
+  {"text": "I stand firm in my beliefs but fight fairly and with honor", "points": {"george": 3, "james": 2, "olaf": 2}},
+  {"text": "I use conversation and try to win them over through my example", "points": {"wenceslaus": 2, "stephen": 2, "ansgar": 2}},
+  {"text": "I defend my people and beliefs fiercely when necessary", "points": {"denis": 3, "stanislaus": 2, "eric": 2}},
+  {"text": "I focus on building understanding through sharing culture and faith", "points": {"patrick": 2, "adalbert": 2, "alban": 1}}
+ ]
+},
+{
+ "id": 6,
+ "question": "What's most important for your community or culture?",
+ "answers": [
+  {"text": "Keeping our unique traditions and customs alive for future generations", "points": {"brigid": 3, "patrick": 2, "columba": 2}},
+  {"text": "Being known for courage, honor, and doing what's right", "points": {"george": 3, "james": 2, "canute": 2}},
+  {"text": "Taking care of everyone, especially people who are struggling", "points": {"elizabeth_hungary": 3, "margaret_scotland": 2, "david": 1}},
+  {"text": "Having strong, fair leadership that serves everyone", "points": {"wenceslaus": 3, "stephen": 2, "casimir": 2}},
+  {"text": "Sharing our faith and values with people who haven't heard them", "points": {"ansgar": 3, "adalbert": 2, "columba": 1}}
+ ]
+},
+{
+ "id": 7,
+ "question": "How do you want to be remembered in the future?",
+ "answers": [
+  {"text": "As someone who made my culture known and respected around the world", "points": {"patrick": 3, "george": 2, "james": 2}},
+  {"text": "As a brave defender who never backed down from doing what's right", "points": {"denis": 3, "stanislaus": 2, "eric": 2}},
+  {"text": "As a generous leader who genuinely cared for everyone", "points": {"elizabeth_hungary": 3, "margaret_scotland": 2, "stephen": 1}},
+  {"text": "As someone who brought peace and helped unite different people", "points": {"david": 3, "wenceslaus": 2, "casimir": 2}},
+  {"text": "As a bridge-builder who connected different cultures and peoples", "points": {"ansgar": 3, "adalbert": 2, "alban": 1}}
+ ]
+},
+{
+ "id": 8,
+ "question": "What's your greatest strength as a leader in your community?",
+ "answers": [
+  {"text": "My ability to inspire people through stories and keeping traditions alive", "points": {"patrick": 3, "brigid": 2, "columba": 2}},
+  {"text": "My courage in fighting for what's right, even when it's difficult", "points": {"george": 3, "james": 2, "stanislaus": 2}},
+  {"text": "My wisdom in making fair decisions that benefit everyone", "points": {"wenceslaus": 3, "david": 2, "margaret_scotland": 1}},
+  {"text": "My generous heart that always puts others' needs first", "points": {"elizabeth_hungary": 3, "casimir": 2, "stephen": 1}},
+  {"text": "My vision for bringing different cultures and groups together", "points": {"ansgar": 3, "adalbert": 2, "alban": 1}}
+ ]
+}
   ],
   "results": {
     "patrick": {
@@ -1823,82 +1823,82 @@ const SAINTS_QUIZZES_DATA = [
       ]
     },
     {
-      "id": 2,
-      "question": "What kind of ruler would you be?",
-      "answers": [
-        {"text": "A warrior king/queen who protects the kingdom", "points": {"louis_ix": 3, "ferdinand": 3, "edward": 2}},
-        {"text": "A wise ruler who makes fair laws and decisions", "points": {"edward": 3, "hedwig": 2, "helena": 2}},
-        {"text": "A generous monarch who helps the poor", "points": {"hedwig": 3, "isabel": 3, "casimir_poland": 2}},
-        {"text": "A pious ruler who builds churches and supports faith", "points": {"helena": 3, "edith_wilton": 2, "olga": 2}},
-        {"text": "A peaceful ruler who avoids war whenever possible", "points": {"isabel": 3, "casimir_poland": 3, "edith_wilton": 1}}
-      ]
-    },
-    {
-      "id": 3,
-      "question": "How would you use your royal wealth?",
-      "answers": [
-        {"text": "Build beautiful churches and monasteries", "points": {"helena": 3, "edward": 2, "olga": 2}},
-        {"text": "Create hospitals and schools for everyone", "points": {"hedwig": 3, "isabel": 2, "louis_ix": 1}},
-        {"text": "Fund crusades and holy wars", "points": {"louis_ix": 3, "ferdinand": 2}},
-        {"text": "Give directly to the poor and needy", "points": {"isabel": 3, "hedwig": 2, "casimir_poland": 2}},
-        {"text": "Support scholars and preserve learning", "points": {"edith_wilton": 3, "helena": 2, "edward": 1}}
-      ]
-    },
-    {
-      "id": 4,
-      "question": "What's your approach to conflicts with other kingdoms?",
-      "answers": [
-        {"text": "Fight bravely but fairly for what's right", "points": {"louis_ix": 3, "ferdinand": 3}},
-        {"text": "Try diplomacy and negotiation first", "points": {"edward": 3, "isabel": 2, "hedwig": 1}},
-        {"text": "Make peace through marriage alliances", "points": {"helena": 2, "hedwig": 2, "olga": 1}},
-        {"text": "Avoid conflict and focus on internal peace", "points": {"casimir_poland": 3, "edith_wilton": 2}},
-        {"text": "Use wisdom to resolve disputes justly", "points": {"isabel": 3, "edward": 2, "hedwig": 1}}
-      ]
-    },
-    {
-      "id": 5,
-      "question": "What's most important for your kingdom?",
-      "answers": [
-        {"text": "Strong Christian faith throughout the land", "points": {"helena": 3, "olga": 3, "louis_ix": 2}},
-        {"text": "Justice and fair treatment for all subjects", "points": {"edward": 3, "louis_ix": 2, "isabel": 2}},
-        {"text": "Prosperity and good education for everyone", "points": {"hedwig": 3, "edith_wilton": 2, "helena": 1}},
-        {"text": "Peace and harmony among all people", "points": {"isabel": 3, "casimir_poland": 2, "edith_wilton": 1}},
-        {"text": "Strong defenses and military might", "points": {"ferdinand": 3, "louis_ix": 1}}
-      ]
-    },
-    {
-      "id": 6,
-      "question": "How do you handle pressure from nobles or advisors?",
-      "answers": [
-        {"text": "I listen to wisdom but follow my conscience", "points": {"edward": 3, "helena": 2, "hedwig": 1}},
-        {"text": "I pray for guidance and do what God wants", "points": {"louis_ix": 3, "casimir_poland": 2, "olga": 2}},
-        {"text": "I consider what's best for my people first", "points": {"isabel": 3, "hedwig": 2, "edith_wilton": 1}},
-        {"text": "I make decisions based on justice and fairness", "points": {"ferdinand": 2, "edward": 2, "hedwig": 1}},
-        {"text": "I stay true to my values no matter what", "points": {"casimir_poland": 3, "edith_wilton": 2}}
-      ]
-    },
-    {
-      "id": 7,
-      "question": "What would be your greatest royal achievement?",
-      "answers": [
-        {"text": "Leading successful crusades for the faith", "points": {"louis_ix": 3, "ferdinand": 2}},
-        {"text": "Establishing lasting peace in my kingdom", "points": {"edward": 3, "isabel": 3, "casimir_poland": 2}},
-        {"text": "Building institutions that help the poor", "points": {"hedwig": 3, "isabel": 2, "helena": 1}},
-        {"text": "Spreading Christianity to new territories", "points": {"helena": 3, "olga": 3, "ferdinand": 1}},
-        {"text": "Creating a center of learning and culture", "points": {"edith_wilton": 3, "hedwig": 2, "helena": 1}}
-      ]
-    },
-    {
-      "id": 8,
-      "question": "How do you want to be remembered as a ruler?",
-      "answers": [
-        {"text": "As a holy warrior who fought for God", "points": {"louis_ix": 3, "ferdinand": 2}},
-        {"text": "As a wise and just monarch who was fair to all", "points": {"edward": 3, "hedwig": 2, "isabel": 1}},
-        {"text": "As a generous ruler who cared for the poor", "points": {"hedwig": 3, "isabel": 3, "casimir_poland": 1}},
-        {"text": "As someone who brought faith to their people", "points": {"helena": 3, "olga": 3, "edith_wilton": 1}},
-        {"text": "As a peaceful ruler who avoided unnecessary wars", "points": {"casimir_poland": 3, "isabel": 2, "edith_wilton": 2}}
-      ]
-    }
+  "id": 2,
+  "question": "What kind of leader would you be in your school or community?",
+  "answers": [
+    {"text": "A strong leader who protects and defends others", "points": {"louis_ix": 3, "ferdinand": 3, "edward": 2}},
+    {"text": "A wise leader who makes fair decisions for everyone", "points": {"edward": 3, "hedwig": 2, "helena": 2}},
+    {"text": "A generous leader who helps people in need", "points": {"hedwig": 3, "isabel": 3, "casimir_poland": 2}},
+    {"text": "A faithful leader who stands up for religious values", "points": {"helena": 3, "edith_wilton": 2, "olga": 2}},
+    {"text": "A peaceful leader who tries to avoid conflicts", "points": {"isabel": 3, "casimir_poland": 3, "edith_wilton": 1}}
+  ]
+},
+{
+  "id": 3,
+  "question": "If you had significant resources or influence, how would you use them?",
+  "answers": [
+    {"text": "Support church youth programs and faith activities", "points": {"helena": 3, "edward": 2, "olga": 2}},
+    {"text": "Create programs to help students succeed in school", "points": {"hedwig": 3, "isabel": 2, "louis_ix": 1}},
+    {"text": "Organize mission trips and faith-based service projects", "points": {"louis_ix": 3, "ferdinand": 2}},
+    {"text": "Give directly to families and people who are struggling", "points": {"isabel": 3, "hedwig": 2, "casimir_poland": 2}},
+    {"text": "Support education and learning opportunities for everyone", "points": {"edith_wilton": 3, "helena": 2, "edward": 1}}
+  ]
+},
+{
+  "id": 4,
+  "question": "How do you handle conflicts with other groups or schools?",
+  "answers": [
+    {"text": "Stand up firmly but fairly for what I believe is right", "points": {"louis_ix": 3, "ferdinand": 3}},
+    {"text": "Try talking it out and finding a compromise first", "points": {"edward": 3, "isabel": 2, "hedwig": 1}},
+    {"text": "Work to build friendships and understanding between groups", "points": {"helena": 2, "hedwig": 2, "olga": 1}},
+    {"text": "Focus on keeping peace within my own group", "points": {"casimir_poland": 3, "edith_wilton": 2}},
+    {"text": "Use wisdom to find solutions that work for everyone", "points": {"isabel": 3, "edward": 2, "hedwig": 1}}
+  ]
+},
+{
+  "id": 5,
+  "question": "What's most important for your school or community?",
+  "answers": [
+    {"text": "Strong Christian values and faith life", "points": {"helena": 3, "olga": 3, "louis_ix": 2}},
+    {"text": "Fairness and equal treatment for everyone", "points": {"edward": 3, "louis_ix": 2, "isabel": 2}},
+    {"text": "Good education and opportunities for everyone to succeed", "points": {"hedwig": 3, "edith_wilton": 2, "helena": 1}},
+    {"text": "Peace and harmony among different groups", "points": {"isabel": 3, "casimir_poland": 2, "edith_wilton": 1}},
+    {"text": "Being prepared to defend what we believe in", "points": {"ferdinand": 3, "louis_ix": 1}}
+  ]
+},
+{
+  "id": 6,
+  "question": "How do you handle pressure from friends, teachers, or parents?",
+  "answers": [
+    {"text": "I listen to advice but follow my own conscience", "points": {"edward": 3, "helena": 2, "hedwig": 1}},
+    {"text": "I pray for guidance and try to do what God wants", "points": {"louis_ix": 3, "casimir_poland": 2, "olga": 2}},
+    {"text": "I think about what's best for the people I care about", "points": {"isabel": 3, "hedwig": 2, "edith_wilton": 1}},
+    {"text": "I try to make decisions based on what's fair and right", "points": {"ferdinand": 2, "edward": 2, "hedwig": 1}},
+    {"text": "I stick to my values no matter what others say", "points": {"casimir_poland": 3, "edith_wilton": 2}}
+  ]
+},
+{
+  "id": 7,
+  "question": "What would be your greatest leadership achievement?",
+  "answers": [
+    {"text": "Leading successful mission trips or faith-based service projects", "points": {"louis_ix": 3, "ferdinand": 2}},
+    {"text": "Creating lasting peace and unity in my school or community", "points": {"edward": 3, "isabel": 3, "casimir_poland": 2}},
+    {"text": "Starting programs that really help people in need", "points": {"hedwig": 3, "isabel": 2, "helena": 1}},
+    {"text": "Helping bring more people to faith and closer to God", "points": {"helena": 3, "olga": 3, "ferdinand": 1}},
+    {"text": "Building something that promotes learning and growth", "points": {"edith_wilton": 3, "hedwig": 2, "helena": 1}}
+  ]
+},
+{
+  "id": 8,
+  "question": "How do you want to be remembered as a leader?",
+  "answers": [
+    {"text": "As someone who courageously fought for their faith", "points": {"louis_ix": 3, "ferdinand": 2}},
+    {"text": "As a wise and fair leader who treated everyone with respect", "points": {"edward": 3, "hedwig": 2, "isabel": 1}},
+    {"text": "As a generous person who genuinely cared for people in need", "points": {"hedwig": 3, "isabel": 3, "casimir_poland": 1}},
+    {"text": "As someone who helped bring others closer to God", "points": {"helena": 3, "olga": 3, "edith_wilton": 1}},
+    {"text": "As a peaceful leader who brought people together", "points": {"casimir_poland": 3, "isabel": 2, "edith_wilton": 2}}
+  ]
+}
   ],
   "results": {
     "louis_ix": {
@@ -1991,83 +1991,83 @@ const SAINTS_QUIZZES_DATA = [
         {"text": "Girl", "points": {"bernadette": 5, "faustina": 5, "philomena": 5, "catherine_laboure": 5, "margaret_mary": 5, "dorothy": 5}}
       ]
     },
-    {
-      "id": 2,
-      "question": "How do you like to help people who are hurting?",
-      "answers": [
-        {"text": "I pray intensely for their healing", "points": {"padre_pio": 3, "andre": 3, "faustina": 2}},
-        {"text": "I provide practical medical care and comfort", "points": {"cosmas": 3, "damian": 3, "camillus": 2}},
-        {"text": "I bring them to special holy places for healing", "points": {"bernadette": 3, "andre": 2}},
-        {"text": "I share God's mercy and forgiveness with them", "points": {"faustina": 3, "margaret_mary": 2, "padre_pio": 1}},
-        {"text": "I create beautiful things to lift their spirits", "points": {"dorothy": 3, "philomena": 2}}
-      ]
-    },
-    {
-      "id": 3,
-      "question": "What kind of problems do you feel most called to help with?",
-      "answers": [
-        {"text": "Serious illnesses and physical suffering", "points": {"bernadette": 3, "andre": 2, "camillus": 2}},
-        {"text": "Spiritual problems and need for confession", "points": {"padre_pio": 3, "faustina": 2}},
-        {"text": "Hopeless situations that seem impossible", "points": {"philomena": 3, "faustina": 2, "andre": 1}},
-        {"text": "People who need to feel God's love", "points": {"margaret_mary": 3, "catherine_laboure": 2, "dorothy": 1}},
-        {"text": "Everyday health problems and minor illnesses", "points": {"cosmas": 2, "damian": 2, "simon_stock": 1}}
-      ]
-    },
-    {
-      "id": 4,
-      "question": "How do you experience God's power working through you?",
-      "answers": [
-        {"text": "Through intense prayer and mystical experiences", "points": {"padre_pio": 3, "margaret_mary": 2, "faustina": 2}},
-        {"text": "Through visions and special messages from heaven", "points": {"bernadette": 3, "faustina": 2, "catherine_laboure": 2}},
-        {"text": "Through practical skills combined with faith", "points": {"cosmas": 3, "damian": 3, "camillus": 1}},
-        {"text": "Through simple prayer and trust in God", "points": {"andre": 3, "philomena": 2, "simon_stock": 1}},
-        {"text": "Through creating beauty that points to God", "points": {"dorothy": 3, "catherine_laboure": 1}}
-      ]
-    },
-    {
-      "id": 5,
-      "question": "What's your approach to prayer for others?",
-      "answers": [
-        {"text": "I pray the rosary and traditional prayers", "points": {"bernadette": 3, "simon_stock": 2, "andre": 1}},
-        {"text": "I spend hours in front of the Blessed Sacrament", "points": {"padre_pio": 3, "margaret_mary": 2}},
-        {"text": "I pray the Divine Mercy chaplet and trust prayers", "points": {"faustina": 3, "philomena": 1}},
-        {"text": "I combine prayer with hands-on care", "points": {"camillus": 3, "cosmas": 2, "damian": 2}},
-        {"text": "I ask Mary and the saints to intercede", "points": {"catherine_laboure": 3, "simon_stock": 2, "dorothy": 1}}
-      ]
-    },
-    {
-      "id": 6,
-      "question": "How do you want people to remember your help?",
-      "answers": [
-        {"text": "As someone who brought them closer to Jesus's Sacred Heart", "points": {"margaret_mary": 3, "faustina": 2}},
-        {"text": "As someone who showed them God's infinite mercy", "points": {"faustina": 3, "padre_pio": 2}},
-        {"text": "As someone who provided excellent medical care with love", "points": {"cosmas": 3, "damian": 3, "camillus": 1}},
-        {"text": "As someone who helped them find healing in holy places", "points": {"bernadette": 3, "andre": 2}},
-        {"text": "As someone who gave them hope when all seemed lost", "points": {"philomena": 3, "andre": 1, "dorothy": 1}}
-      ]
-    },
-    {
-      "id": 7,
-      "question": "What kind of miracle would you most want to perform?",
-      "answers": [
-        {"text": "Healing someone's terminal illness", "points": {"andre": 3, "bernadette": 2, "padre_pio": 1}},
-        {"text": "Helping someone have a deep conversion experience", "points": {"padre_pio": 3, "faustina": 2, "margaret_mary": 1}},
-        {"text": "Saving someone's life through medical knowledge", "points": {"cosmas": 3, "damian": 3, "camillus": 2}},
-        {"text": "Solving an absolutely impossible situation", "points": {"philomena": 3, "faustina": 1}},
-        {"text": "Bringing comfort and peace to someone suffering", "points": {"margaret_mary": 2, "catherine_laboure": 2, "dorothy": 2}}
-      ]
-    },
-    {
-      "id": 8,
-      "question": "How do you stay close to God while helping others?",
-      "answers": [
-        {"text": "Through daily Mass and frequent confession", "points": {"padre_pio": 3, "andre": 2}},
-        {"text": "Through special devotions and prayer practices", "points": {"faustina": 3, "margaret_mary": 2, "simon_stock": 2}},
-        {"text": "Through caring for the sick as if they were Jesus", "points": {"camillus": 3, "cosmas": 2, "damian": 2}},
-        {"text": "Through visiting holy places and shrines", "points": {"bernadette": 3, "andre": 1}},
-        {"text": "Through wearing or sharing blessed objects", "points": {"catherine_laboure": 3, "simon_stock": 2, "dorothy": 1}}
-      ]
-    }
+   {
+ "id": 2,
+ "question": "How do you like to help people who are hurting?",
+ "answers": [
+  {"text": "I pray really hard for them and ask God to help", "points": {"padre_pio": 3, "andre": 3, "faustina": 2}},
+  {"text": "I offer practical help like first aid or comfort", "points": {"cosmas": 3, "damian": 3, "camillus": 2}},
+  {"text": "I take them to church or encourage them to seek spiritual help", "points": {"bernadette": 3, "andre": 2}},
+  {"text": "I remind them that God loves and forgives them", "points": {"faustina": 3, "margaret_mary": 2, "padre_pio": 1}},
+  {"text": "I try to cheer them up with art, music, or something beautiful", "points": {"dorothy": 3, "philomena": 2}}
+ ]
+},
+{
+ "id": 3,
+ "question": "What kind of problems do you feel most called to help with?",
+ "answers": [
+  {"text": "Serious health issues and physical pain", "points": {"bernadette": 3, "andre": 2, "camillus": 2}},
+  {"text": "People struggling with guilt, shame, or spiritual problems", "points": {"padre_pio": 3, "faustina": 2}},
+  {"text": "Situations that seem completely hopeless", "points": {"philomena": 3, "faustina": 2, "andre": 1}},
+  {"text": "People who feel unloved or far from God", "points": {"margaret_mary": 3, "catherine_laboure": 2, "dorothy": 1}},
+  {"text": "Everyday health problems and minor injuries", "points": {"cosmas": 2, "damian": 2, "simon_stock": 1}}
+ ]
+},
+{
+ "id": 4,
+ "question": "How do you feel God works through you to help others?",
+ "answers": [
+  {"text": "Through deep prayer and feeling really close to God", "points": {"padre_pio": 3, "margaret_mary": 2, "faustina": 2}},
+  {"text": "Through special moments when I feel God guiding me", "points": {"bernadette": 3, "faustina": 2, "catherine_laboure": 2}},
+  {"text": "Through using my practical skills combined with faith", "points": {"cosmas": 3, "damian": 3, "camillus": 1}},
+  {"text": "Through simple prayers and trusting God completely", "points": {"andre": 3, "philomena": 2, "simon_stock": 1}},
+  {"text": "Through creating or sharing beautiful things that point to God", "points": {"dorothy": 3, "catherine_laboure": 1}}
+ ]
+},
+{
+ "id": 5,
+ "question": "What's your approach to praying for people who need help?",
+ "answers": [
+  {"text": "I pray the rosary and traditional prayers I've learned", "points": {"bernadette": 3, "simon_stock": 2, "andre": 1}},
+  {"text": "I spend lots of time praying in church or before the Eucharist", "points": {"padre_pio": 3, "margaret_mary": 2}},
+  {"text": "I pray about God's mercy and ask Him to help them", "points": {"faustina": 3, "philomena": 1}},
+  {"text": "I pray while I'm actually helping them with practical things", "points": {"camillus": 3, "cosmas": 2, "damian": 2}},
+  {"text": "I ask Mary and the saints to pray for them too", "points": {"catherine_laboure": 3, "simon_stock": 2, "dorothy": 1}}
+ ]
+},
+{
+ "id": 6,
+ "question": "How do you want people to remember the help you gave them?",
+ "answers": [
+  {"text": "That I helped them feel Jesus's love for them", "points": {"margaret_mary": 3, "faustina": 2}},
+  {"text": "That I showed them how merciful and forgiving God is", "points": {"faustina": 3, "padre_pio": 2}},
+  {"text": "That I gave them really good care and support with love", "points": {"cosmas": 3, "damian": 3, "camillus": 1}},
+  {"text": "That I helped them find healing through faith and prayer", "points": {"bernadette": 3, "andre": 2}},
+  {"text": "That I gave them hope when everything seemed impossible", "points": {"philomena": 3, "andre": 1, "dorothy": 1}}
+ ]
+},
+{
+ "id": 7,
+ "question": "If you could help someone in an amazing way, what would it be?",
+ "answers": [
+  {"text": "Helping someone recover from a serious illness", "points": {"andre": 3, "bernadette": 2, "padre_pio": 1}},
+  {"text": "Helping someone have a life-changing experience with God", "points": {"padre_pio": 3, "faustina": 2, "margaret_mary": 1}},
+  {"text": "Using my knowledge and skills to save someone's life", "points": {"cosmas": 3, "damian": 3, "camillus": 2}},
+  {"text": "Finding a solution to a problem that seemed impossible", "points": {"philomena": 3, "faustina": 1}},
+  {"text": "Bringing real comfort and peace to someone who's suffering", "points": {"margaret_mary": 2, "catherine_laboure": 2, "dorothy": 2}}
+ ]
+},
+{
+ "id": 8,
+ "question": "How do you stay close to God while helping others?",
+ "answers": [
+  {"text": "By going to Mass regularly and praying every day", "points": {"padre_pio": 3, "andre": 2}},
+  {"text": "Through special prayers and devotions that mean a lot to me", "points": {"faustina": 3, "margaret_mary": 2, "simon_stock": 2}},
+  {"text": "By treating the people I help as if they were Jesus", "points": {"camillus": 3, "cosmas": 2, "damian": 2}},
+  {"text": "By visiting church or holy places when I can", "points": {"bernadette": 3, "andre": 1}},
+  {"text": "By wearing or sharing things that remind me of God", "points": {"catherine_laboure": 3, "simon_stock": 2, "dorothy": 1}}
+ ]
+}
   ],
   "results": {
     "padre_pio": {
@@ -2185,82 +2185,82 @@ const SAINTS_QUIZZES_DATA = [
       ]
     },
     {
-      "id": 2,
-      "question": "What draws you to quiet, solitary places?",
-      "answers": [
-        {"text": "I can hear God's voice better in silence", "points": {"paul_hermit": 3, "mary_egypt": 3, "john_climacus": 2}},
-        {"text": "I want to focus completely on prayer", "points": {"anthony_great": 3, "macarius": 2, "benedict": 2}},
-        {"text": "I need to escape from worldly distractions", "points": {"mary_egypt": 3, "moses": 2, "euphrasia": 2}},
-        {"text": "I feel closest to God in nature", "points": {"cuthbert": 3, "aidan": 2, "paul_hermit": 1}},
-        {"text": "I want to create a peaceful community for others", "points": {"benedict": 3, "scholastica": 2, "aidan": 1}}
-      ]
-    },
-    {
-      "id": 3,
-      "question": "What's your approach to dealing with past mistakes?",
-      "answers": [
-        {"text": "I do intense penance and pray for forgiveness", "points": {"mary_egypt": 3, "moses": 3, "euphrasia": 2}},
-        {"text": "I use my experience to help others avoid my mistakes", "points": {"moses": 3, "mary_egypt": 2, "macarius": 1}},
-        {"text": "I focus on building a better future through good works", "points": {"benedict": 3, "scholastica": 2, "aidan": 1}},
-        {"text": "I trust in God's mercy and start fresh", "points": {"anthony_great": 2, "cuthbert": 2, "marina": 2}},
-        {"text": "I study spiritual wisdom to grow in holiness", "points": {"john_climacus": 3, "macarius": 2, "paul_hermit": 1}}
-      ]
-    },
-    {
-      "id": 4,
-      "question": "How do you like to spend your day in solitude?",
-      "answers": [
-        {"text": "Following a structured schedule of prayer and work", "points": {"benedict": 3, "scholastica": 3, "aidan": 1}},
-        {"text": "In constant prayer and meditation", "points": {"paul_hermit": 3, "mary_egypt": 2, "john_climacus": 2}},
-        {"text": "Studying spiritual books and writings", "points": {"john_climacus": 3, "macarius": 2, "benedict": 1}},
-        {"text": "Working with my hands while praying", "points": {"anthony_great": 2, "cuthbert": 2, "marina": 2}},
-        {"text": "Caring for animals and enjoying nature", "points": {"cuthbert": 3, "aidan": 2, "paul_hermit": 1}}
-      ]
-    },
-    {
-      "id": 5,
-      "question": "What's your biggest motivation for choosing a contemplative life?",
-      "answers": [
-        {"text": "I want to make up for my past sins", "points": {"mary_egypt": 3, "moses": 3, "euphrasia": 1}},
-        {"text": "I want to help others find God through my example", "points": {"benedict": 3, "aidan": 2, "macarius": 2}},
-        {"text": "I want to reach the highest levels of prayer", "points": {"john_climacus": 3, "anthony_great": 2, "paul_hermit": 2}},
-        {"text": "I want to escape the dangers of the world", "points": {"marina": 3, "euphrasia": 2, "cuthbert": 1}},
-        {"text": "I feel called to this special way of life", "points": {"scholastica": 3, "anthony_great": 2, "cuthbert": 1}}
-      ]
-    },
-    {
-      "id": 6,
-      "question": "How do you handle temptations and spiritual battles?",
-      "answers": [
-        {"text": "I fight them head-on with prayer and fasting", "points": {"anthony_great": 3, "mary_egypt": 2, "moses": 2}},
-        {"text": "I follow a wise spiritual rule or guide", "points": {"benedict": 3, "john_climacus": 2, "scholastica": 2}},
-        {"text": "I seek advice from other holy people", "points": {"macarius": 3, "aidan": 2, "benedict": 1}},
-        {"text": "I increase my penance and self-discipline", "points": {"euphrasia": 3, "mary_egypt": 2, "paul_hermit": 1}},
-        {"text": "I trust in God's protection and stay focused on Him", "points": {"cuthbert": 2, "marina": 2, "paul_hermit": 2}}
-      ]
-    },
-    {
-      "id": 7,
-      "question": "What kind of legacy do you want to leave?",
-      "answers": [
-        {"text": "A practical rule for living that helps others", "points": {"benedict": 3, "scholastica": 2, "aidan": 1}},
-        {"text": "Proof that anyone can change their life completely", "points": {"moses": 3, "mary_egypt": 3, "marina": 1}},
-        {"text": "Deep spiritual writings about prayer", "points": {"john_climacus": 3, "macarius": 2, "anthony_great": 1}},
-        {"text": "Example that extreme holiness is possible", "points": {"paul_hermit": 3, "euphrasia": 2, "mary_egypt": 1}},
-        {"text": "A community that continues after I'm gone", "points": {"aidan": 3, "benedict": 2, "cuthbert": 1}}
-      ]
-    },
-    {
-      "id": 8,
-      "question": "How do you balance solitude with helping others?",
-      "answers": [
-        {"text": "I create monasteries where others can join me", "points": {"benedict": 3, "scholastica": 3, "aidan": 2}},
-        {"text": "I teach through my example more than words", "points": {"anthony_great": 3, "paul_hermit": 2, "cuthbert": 1}},
-        {"text": "I counsel people who come seeking spiritual advice", "points": {"macarius": 3, "john_climacus": 2, "moses": 1}},
-        {"text": "I focus completely on my own spiritual journey", "points": {"mary_egypt": 3, "euphrasia": 2, "paul_hermit": 1}},
-        {"text": "I find creative ways to serve while staying hidden", "points": {"marina": 3, "cuthbert": 2}}
-      ]
-    }
+  "id": 2,
+  "question": "What draws you to quiet places for prayer and reflection?",
+  "answers": [
+    {"text": "I can hear God's voice better when it's silent", "points": {"paul_hermit": 3, "mary_egypt": 3, "john_climacus": 2}},
+    {"text": "I want to focus completely on praying without distractions", "points": {"anthony_great": 3, "macarius": 2, "benedict": 2}},
+    {"text": "I need to get away from all the noise and busyness of life", "points": {"mary_egypt": 3, "moses": 2, "euphrasia": 2}},
+    {"text": "I feel closest to God when I'm outdoors in nature", "points": {"cuthbert": 3, "aidan": 2, "paul_hermit": 1}},
+    {"text": "I want to create peaceful spaces where others can pray too", "points": {"benedict": 3, "scholastica": 2, "aidan": 1}}
+  ]
+},
+{
+  "id": 3,
+  "question": "What's your approach to dealing with past mistakes and regrets?",
+  "answers": [
+    {"text": "I pray hard for forgiveness and try to make up for what I did", "points": {"mary_egypt": 3, "moses": 3, "euphrasia": 2}},
+    {"text": "I use my experience to help others avoid making the same mistakes", "points": {"moses": 3, "mary_egypt": 2, "macarius": 1}},
+    {"text": "I focus on doing good things now to build a better future", "points": {"benedict": 3, "scholastica": 2, "aidan": 1}},
+    {"text": "I trust in God's forgiveness and try to start fresh", "points": {"anthony_great": 2, "cuthbert": 2, "marina": 2}},
+    {"text": "I study spiritual books and advice to learn how to grow", "points": {"john_climacus": 3, "macarius": 2, "paul_hermit": 1}}
+  ]
+},
+{
+  "id": 4,
+  "question": "How do you like to spend your personal prayer and quiet time?",
+  "answers": [
+    {"text": "Following a regular schedule of prayer, study, and work", "points": {"benedict": 3, "scholastica": 3, "aidan": 1}},
+    {"text": "Spending lots of time in prayer and thinking about God", "points": {"paul_hermit": 3, "mary_egypt": 2, "john_climacus": 2}},
+    {"text": "Reading spiritual books and learning about faith", "points": {"john_climacus": 3, "macarius": 2, "benedict": 1}},
+    {"text": "Doing activities with my hands while praying (art, crafts, etc.)", "points": {"anthony_great": 2, "cuthbert": 2, "marina": 2}},
+    {"text": "Being outside in nature and appreciating God's creation", "points": {"cuthbert": 3, "aidan": 2, "paul_hermit": 1}}
+  ]
+},
+{
+  "id": 5,
+  "question": "What motivates you most to have a strong spiritual life?",
+  "answers": [
+    {"text": "I want to make up for mistakes I've made in the past", "points": {"mary_egypt": 3, "moses": 3, "euphrasia": 1}},
+    {"text": "I want to help others find God through my example", "points": {"benedict": 3, "aidan": 2, "macarius": 2}},
+    {"text": "I want to grow as close to God as possible", "points": {"john_climacus": 3, "anthony_great": 2, "paul_hermit": 2}},
+    {"text": "I want to stay away from bad influences and temptations", "points": {"marina": 3, "euphrasia": 2, "cuthbert": 1}},
+    {"text": "I feel like God is calling me to live this way", "points": {"scholastica": 3, "anthony_great": 2, "cuthbert": 1}}
+  ]
+},
+{
+  "id": 6,
+  "question": "How do you handle temptations and spiritual struggles?",
+  "answers": [
+    {"text": "I face them directly with prayer and sometimes fasting", "points": {"anthony_great": 3, "mary_egypt": 2, "moses": 2}},
+    {"text": "I follow good spiritual habits and routines that keep me strong", "points": {"benedict": 3, "john_climacus": 2, "scholastica": 2}},
+    {"text": "I ask for advice from teachers, priests, or other wise people", "points": {"macarius": 3, "aidan": 2, "benedict": 1}},
+    {"text": "I increase my prayers and try to be more disciplined", "points": {"euphrasia": 3, "mary_egypt": 2, "paul_hermit": 1}},
+    {"text": "I trust in God's protection and keep my focus on Him", "points": {"cuthbert": 2, "marina": 2, "paul_hermit": 2}}
+  ]
+},
+{
+  "id": 7,
+  "question": "What kind of positive impact do you want to have on others?",
+  "answers": [
+    {"text": "Creating practical ways of living that help people grow spiritually", "points": {"benedict": 3, "scholastica": 2, "aidan": 1}},
+    {"text": "Showing that anyone can completely turn their life around", "points": {"moses": 3, "mary_egypt": 3, "marina": 1}},
+    {"text": "Teaching others about deep prayer and spiritual growth", "points": {"john_climacus": 3, "macarius": 2, "anthony_great": 1}},
+    {"text": "Being an example that real holiness is actually possible", "points": {"paul_hermit": 3, "euphrasia": 2, "mary_egypt": 1}},
+    {"text": "Building a community or group that continues to help people", "points": {"aidan": 3, "benedict": 2, "cuthbert": 1}}
+  ]
+},
+{
+  "id": 8,
+  "question": "How do you balance personal spiritual growth with helping others?",
+  "answers": [
+    {"text": "I create groups or clubs where others can join me in spiritual activities", "points": {"benedict": 3, "scholastica": 3, "aidan": 2}},
+    {"text": "I try to teach through my actions and example more than words", "points": {"anthony_great": 3, "paul_hermit": 2, "cuthbert": 1}},
+    {"text": "I give advice and guidance to people who ask for spiritual help", "points": {"macarius": 3, "john_climacus": 2, "moses": 1}},
+    {"text": "I focus mainly on my own spiritual growth right now", "points": {"mary_egypt": 3, "euphrasia": 2, "paul_hermit": 1}},
+    {"text": "I find quiet ways to serve others while maintaining my spiritual life", "points": {"marina": 3, "cuthbert": 2}}
+  ]
+}
   ],
   "results": {
     "benedict": {
@@ -2378,82 +2378,82 @@ const SAINTS_QUIZZES_DATA = [
       ]
     },
     {
-      "id": 2,
-      "question": "What virtue do you most want to be known for?",
-      "answers": [
-        {"text": "Patience and never giving up on people", "points": {"monica": 3, "bakhita": 2, "john_vianney": 1}},
-        {"text": "Joy and making others laugh", "points": {"philip_neri": 3, "francis_sales": 2}},
-        {"text": "Gentleness and never losing my temper", "points": {"francis_sales": 3, "bakhita": 2, "lasalle": 1}},
-        {"text": "Compassion for people who are suffering", "points": {"veronica": 3, "simon_cyrene": 2, "gianna": 1}},
-        {"text": "Humility and serving without recognition", "points": {"alexius": 3, "john_vianney": 2, "simon_cyrene": 1}}
-      ]
-    },
-    {
-      "id": 3,
-      "question": "How do you handle it when people disappoint you?",
-      "answers": [
-        {"text": "I keep praying for them and never give up hope", "points": {"monica": 3, "bakhita": 2}},
-        {"text": "I try to see the good in them and stay positive", "points": {"philip_neri": 3, "francis_sales": 2}},
-        {"text": "I look for ways to help them without judging", "points": {"simon_cyrene": 3, "veronica": 2, "lasalle": 1}},
-        {"text": "I forgive them and try to reconcile", "points": {"hippolytus": 3, "genesius": 2, "francis_sales": 1}},
-        {"text": "I stay humble and work on my own flaws first", "points": {"john_vianney": 3, "alexius": 2}}
-      ]
-    },
-    {
-      "id": 4,
-      "question": "What's your approach to helping others?",
-      "answers": [
-        {"text": "I sacrifice my own comfort for their needs", "points": {"gianna": 3, "simon_cyrene": 2, "monica": 1}},
-        {"text": "I use humor and joy to lift their spirits", "points": {"philip_neri": 3, "francis_sales": 2}},
-        {"text": "I patiently teach them what they need to know", "points": {"lasalle": 3, "john_vianney": 2, "francis_sales": 1}},
-        {"text": "I offer comfort during their painful times", "points": {"veronica": 3, "bakhita": 2, "simon_cyrene": 1}},
-        {"text": "I help quietly without seeking credit", "points": {"alexius": 3, "john_vianney": 1}}
-      ]
-    },
-    {
-      "id": 5,
-      "question": "How do you handle your own suffering or difficulties?",
-      "answers": [
-        {"text": "I trust God's plan and stay gentle", "points": {"bakhita": 3, "monica": 2, "francis_sales": 1}},
-        {"text": "I keep my sense of humor and try to stay joyful", "points": {"philip_neri": 3, "francis_sales": 2}},
-        {"text": "I offer it up for others who need help", "points": {"gianna": 3, "simon_cyrene": 2, "veronica": 1}},
-        {"text": "I see it as a chance to grow in virtue", "points": {"john_vianney": 3, "alexius": 2, "hubert": 1}},
-        {"text": "I look for the lesson God wants to teach me", "points": {"hubert": 3, "hippolytus": 2, "genesius": 1}}
-      ]
-    },
-    {
-      "id": 6,
-      "question": "What motivates you to keep trying when things get hard?",
-      "answers": [
-        {"text": "Love for my family and their eternal salvation", "points": {"monica": 3, "gianna": 3}},
-        {"text": "Knowing that joy and laughter heal people", "points": {"philip_neri": 3, "francis_sales": 1}},
-        {"text": "Wanting to share Jesus's compassion", "points": {"veronica": 3, "simon_cyrene": 2, "bakhita": 1}},
-        {"text": "Believing that education changes lives", "points": {"lasalle": 3, "francis_sales": 1}},
-        {"text": "Understanding that hidden service pleases God most", "points": {"alexius": 3, "john_vianney": 2}}
-      ]
-    },
-    {
-      "id": 7,
-      "question": "How do you deal with your own mistakes and shortcomings?",
-      "answers": [
-        {"text": "I ask for forgiveness and try to make amends", "points": {"hippolytus": 3, "genesius": 3, "monica": 1}},
-        {"text": "I don't take myself too seriously and learn from them", "points": {"philip_neri": 3, "francis_sales": 2}},
-        {"text": "I use my experience to help others avoid similar mistakes", "points": {"genesius": 2, "hubert": 2, "bakhita": 1}},
-        {"text": "I focus on being better tomorrow than today", "points": {"john_vianney": 3, "lasalle": 2, "alexius": 1}},
-        {"text": "I trust in God's mercy and keep trying", "points": {"monica": 2, "bakhita": 2, "francis_sales": 1}}
-      ]
-    },
-    {
-      "id": 8,
-      "question": "What legacy do you want to leave?",
-      "answers": [
-        {"text": "Proof that persistent prayer changes everything", "points": {"monica": 3, "bakhita": 1}},
-        {"text": "That following God should be joyful and fun", "points": {"philip_neri": 3, "francis_sales": 2}},
-        {"text": "That gentleness is stronger than force", "points": {"francis_sales": 3, "bakhita": 2, "lasalle": 1}},
-        {"text": "That small acts of kindness matter infinitely", "points": {"veronica": 3, "simon_cyrene": 2, "alexius": 1}},
-        {"text": "That anyone can change with God's grace", "points": {"genesius": 3, "hubert": 2, "hippolytus": 2}}
-      ]
-    }
+ "id": 2,
+ "question": "What virtue do you most want to be known for?",
+ "answers": [
+  {"text": "Patience and never giving up on people", "points": {"monica": 3, "bakhita": 2, "john_vianney": 1}},
+  {"text": "Joy and making others laugh", "points": {"philip_neri": 3, "francis_sales": 2}},
+  {"text": "Gentleness and never losing my temper", "points": {"francis_sales": 3, "bakhita": 2, "lasalle": 1}},
+  {"text": "Compassion for people who are hurting", "points": {"veronica": 3, "simon_cyrene": 2, "gianna": 1}},
+  {"text": "Humility and serving others without needing recognition", "points": {"alexius": 3, "john_vianney": 2, "simon_cyrene": 1}}
+ ]
+},
+{
+ "id": 3,
+ "question": "How do you handle it when people let you down or disappoint you?",
+ "answers": [
+  {"text": "I keep praying for them and never give up hope", "points": {"monica": 3, "bakhita": 2}},
+  {"text": "I try to see the good in them and stay positive", "points": {"philip_neri": 3, "francis_sales": 2}},
+  {"text": "I look for ways to help them without being judgmental", "points": {"simon_cyrene": 3, "veronica": 2, "lasalle": 1}},
+  {"text": "I forgive them and try to work things out", "points": {"hippolytus": 3, "genesius": 2, "francis_sales": 1}},
+  {"text": "I stay humble and work on my own problems first", "points": {"john_vianney": 3, "alexius": 2}}
+ ]
+},
+{
+ "id": 4,
+ "question": "What's your approach to helping others?",
+ "answers": [
+  {"text": "I'm willing to sacrifice my own comfort for their needs", "points": {"gianna": 3, "simon_cyrene": 2, "monica": 1}},
+  {"text": "I use humor and joy to cheer them up", "points": {"philip_neri": 3, "francis_sales": 2}},
+  {"text": "I patiently teach them or help them learn", "points": {"lasalle": 3, "john_vianney": 2, "francis_sales": 1}},
+  {"text": "I offer comfort when they're going through tough times", "points": {"veronica": 3, "bakhita": 2, "simon_cyrene": 1}},
+  {"text": "I help quietly behind the scenes without making a big deal about it", "points": {"alexius": 3, "john_vianney": 1}}
+ ]
+},
+{
+ "id": 5,
+ "question": "How do you handle your own struggles and difficult times?",
+ "answers": [
+  {"text": "I trust God's plan and try to stay gentle with others", "points": {"bakhita": 3, "monica": 2, "francis_sales": 1}},
+  {"text": "I keep my sense of humor and try to stay positive", "points": {"philip_neri": 3, "francis_sales": 2}},
+  {"text": "I offer up my struggles to help other people who need it", "points": {"gianna": 3, "simon_cyrene": 2, "veronica": 1}},
+  {"text": "I see it as a chance to grow stronger and more virtuous", "points": {"john_vianney": 3, "alexius": 2, "hubert": 1}},
+  {"text": "I look for the lesson God wants me to learn from it", "points": {"hubert": 3, "hippolytus": 2, "genesius": 1}}
+ ]
+},
+{
+ "id": 6,
+ "question": "What motivates you to keep trying when life gets really hard?",
+ "answers": [
+  {"text": "Love for my family and wanting them to know God", "points": {"monica": 3, "gianna": 3}},
+  {"text": "Knowing that joy and laughter can heal people's hearts", "points": {"philip_neri": 3, "francis_sales": 1}},
+  {"text": "Wanting to share Jesus's love and compassion with others", "points": {"veronica": 3, "simon_cyrene": 2, "bakhita": 1}},
+  {"text": "Believing that helping people learn and grow changes their lives", "points": {"lasalle": 3, "francis_sales": 1}},
+  {"text": "Understanding that quiet, hidden service is what God values most", "points": {"alexius": 3, "john_vianney": 2}}
+ ]
+},
+{
+ "id": 7,
+ "question": "How do you deal with your own mistakes and failures?",
+ "answers": [
+  {"text": "I apologize sincerely and try to make things right", "points": {"hippolytus": 3, "genesius": 3, "monica": 1}},
+  {"text": "I don't take myself too seriously and learn from what happened", "points": {"philip_neri": 3, "francis_sales": 2}},
+  {"text": "I use my experience to help others avoid making similar mistakes", "points": {"genesius": 2, "hubert": 2, "bakhita": 1}},
+  {"text": "I focus on being better tomorrow than I was today", "points": {"john_vianney": 3, "lasalle": 2, "alexius": 1}},
+  {"text": "I trust in God's forgiveness and keep working to improve", "points": {"monica": 2, "bakhita": 2, "francis_sales": 1}}
+ ]
+},
+{
+ "id": 8,
+ "question": "How do you want to be remembered or what impact do you want to have?",
+ "answers": [
+  {"text": "As proof that never giving up on people through prayer works", "points": {"monica": 3, "bakhita": 1}},
+  {"text": "As someone who showed that following God should be joyful and fun", "points": {"philip_neri": 3, "francis_sales": 2}},
+  {"text": "As someone who proved that gentleness is stronger than force", "points": {"francis_sales": 3, "bakhita": 2, "lasalle": 1}},
+  {"text": "As someone who showed that small acts of kindness matter infinitely", "points": {"veronica": 3, "simon_cyrene": 2, "alexius": 1}},
+  {"text": "As someone who proved that anyone can change with God's help", "points": {"genesius": 3, "hubert": 2, "hippolytus": 2}}
+ ]
+}
   ],
   "results": {
     "monica": {
@@ -2569,94 +2569,94 @@ const SAINTS_QUIZZES_DATA = [
   "series": "Apostolic All-Stars",
   "target_grades": [4, 5, 6, 7, 8],
   "questions": [
-    {
-      "id": 1,
-      "question": "What's your favorite way to serve the Church?",
-      "answers": [
-        {"text": "Writing books and teaching about God", "points": {"augustine": 3, "aquinas": 3, "jerome": 2}},
-        {"text": "Traveling to spread the Gospel to new places", "points": {"paul": 3, "barnabas": 2, "mark": 2}},
-        {"text": "Leading and organizing Church communities", "points": {"gregory_great": 3, "ambrose": 2, "clement": 2}},
-        {"text": "Helping people understand the Bible", "points": {"jerome": 3, "luke": 2, "mark": 1}},
-        {"text": "Standing up for correct Church teaching", "points": {"athanasius": 3, "polycarp": 2, "ignatius": 2}}
-      ]
-    },
-    {
-      "id": 2,
-      "question": "How do you like to communicate important ideas?",
-      "answers": [
-        {"text": "Through detailed writing and scholarly books", "points": {"augustine": 3, "aquinas": 2, "bonaventure": 2}},
-        {"text": "Through personal letters and correspondence", "points": {"paul": 3, "ignatius": 2, "polycarp": 1}},
-        {"text": "Through beautiful poetry and hymns", "points": {"ephrem": 3, "gregory_nazianzen": 2, "ambrose": 1}},
-        {"text": "Through careful translation and explanation", "points": {"jerome": 3, "luke": 2}},
-        {"text": "Through preaching and public speaking", "points": {"stephen": 2, "antoninus": 2, "apollinaris": 1}}
-      ]
-    },
-    {
-      "id": 3,
-      "question": "What's your approach to handling disagreements in the Church?",
-      "answers": [
-        {"text": "I use logic and reason to prove what's true", "points": {"aquinas": 3, "augustine": 2, "athanasius": 2}},
-        {"text": "I appeal to Scripture and Church tradition", "points": {"jerome": 3, "polycarp": 2, "clement": 2}},
-        {"text": "I try to make peace and bring people together", "points": {"barnabas": 3, "gregory_great": 2, "ambrose": 1}},
-        {"text": "I stand firm on important principles", "points": {"athanasius": 3, "ignatius": 2, "stephen": 2}},
-        {"text": "I organize councils and meetings to discuss issues", "points": {"gregory_great": 2, "cornelius": 2, "fabian": 1}}
-      ]
-    },
-    {
-      "id": 4,
-      "question": "What motivates you most in your ministry?",
-      "answers": [
-        {"text": "Love for learning and understanding God better", "points": {"augustine": 3, "aquinas": 2, "bede": 2}},
-        {"text": "Passion for sharing the Gospel with everyone", "points": {"paul": 3, "mark": 2, "luke": 2}},
-        {"text": "Desire to protect the Church from false teaching", "points": {"athanasius": 3, "polycarp": 2, "ignatius": 2}},
-        {"text": "Joy in helping others grow in faith", "points": {"barnabas": 2, "ambrose": 2, "antoninus": 2}},
-        {"text": "Calling to serve as a shepherd for God's people", "points": {"gregory_great": 3, "clement": 2, "cornelius": 1}}
-      ]
-    },
-    {
-      "id": 5,
-      "question": "How do you handle persecution or opposition?",
-      "answers": [
-        {"text": "I use it as an opportunity to teach and witness", "points": {"stephen": 3, "polycarp": 3, "ignatius": 2}},
-        {"text": "I keep traveling and preaching despite the dangers", "points": {"paul": 3, "apollinaris": 2, "barnabas": 1}},
-        {"text": "I write even more to defend the truth", "points": {"athanasius": 3, "jerome": 2, "augustine": 1}},
-        {"text": "I rely on prayer and trust in God's protection", "points": {"ephrem": 2, "gregory_nazianzen": 2, "bonaventure": 2}},
-        {"text": "I continue my duties faithfully no matter what", "points": {"clement": 2, "fabian": 2, "cornelius": 2}}
-      ]
-    },
-    {
-      "id": 6,
-      "question": "What's your greatest strength as a Church leader?",
-      "answers": [
-        {"text": "My ability to explain complicated ideas simply", "points": {"aquinas": 3, "augustine": 2, "luke": 2}},
-        {"text": "My courage in defending what's right", "points": {"athanasius": 3, "stephen": 2, "polycarp": 2}},
-        {"text": "My skill in organizing and administration", "points": {"gregory_great": 3, "ambrose": 2, "clement": 1}},
-        {"text": "My gift for inspiring and encouraging others", "points": {"barnabas": 3, "paul": 2, "ephrem": 1}},
-        {"text": "My dedication to accurate scholarship", "points": {"jerome": 3, "bede": 2, "evaristus": 1}}
-      ]
-    },
-    {
-      "id": 7,
-      "question": "How do you want to help future generations of Christians?",
-      "answers": [
-        {"text": "By leaving behind great theological writings", "points": {"augustine": 3, "aquinas": 3, "bonaventure": 2}},
-        {"text": "By creating accurate translations of the Bible", "points": {"jerome": 3, "luke": 1}},
-        {"text": "By establishing strong Church structures", "points": {"gregory_great": 3, "clement": 2, "fabian": 1}},
-        {"text": "By showing how to stay faithful under pressure", "points": {"polycarp": 3, "ignatius": 2, "stephen": 2}},
-        {"text": "By preserving important historical records", "points": {"bede": 3, "mark": 2, "evaristus": 1}}
-      ]
-    },
-    {
-      "id": 8,
-      "question": "What aspect of Church life do you most want to strengthen?",
-      "answers": [
-        {"text": "Theological education and understanding", "points": {"aquinas": 3, "augustine": 2, "ambrose": 2}},
-        {"text": "Missionary work and evangelization", "points": {"paul": 3, "barnabas": 2, "mark": 2}},
-        {"text": "Worship and liturgical life", "points": {"gregory_great": 3, "ephrem": 2, "gregory_nazianzen": 1}},
-        {"text": "Biblical scholarship and translation", "points": {"jerome": 3, "luke": 2, "bede": 1}},
-        {"text": "Church unity and orthodoxy", "points": {"athanasius": 3, "clement": 2, "cornelius": 1}}
-      ]
-    }
+   {
+  "id": 1,
+  "question": "What's your favorite way to serve at church or in youth group?",
+  "answers": [
+    {"text": "Writing, blogging, or creating content about faith", "points": {"augustine": 3, "aquinas": 3, "jerome": 2}},
+    {"text": "Going on mission trips or sharing faith with new people", "points": {"paul": 3, "barnabas": 2, "mark": 2}},
+    {"text": "Organizing events and helping lead groups", "points": {"gregory_great": 3, "ambrose": 2, "clement": 2}},
+    {"text": "Helping people understand the Bible and Scripture", "points": {"jerome": 3, "luke": 2, "mark": 1}},
+    {"text": "Standing up for what the Church teaches, even when it's unpopular", "points": {"athanasius": 3, "polycarp": 2, "ignatius": 2}}
+  ]
+},
+{
+  "id": 2,
+  "question": "How do you like to share important ideas about faith?",
+  "answers": [
+    {"text": "Through detailed writing, blogs, or research projects", "points": {"augustine": 3, "aquinas": 2, "bonaventure": 2}},
+    {"text": "Through personal messages, texts, or one-on-one conversations", "points": {"paul": 3, "ignatius": 2, "polycarp": 1}},
+    {"text": "Through creative arts like music, poetry, or videos", "points": {"ephrem": 3, "gregory_nazianzen": 2, "ambrose": 1}},
+    {"text": "Through careful explanation and making things easy to understand", "points": {"jerome": 3, "luke": 2}},
+    {"text": "Through public speaking, presentations, or leading discussions", "points": {"stephen": 2, "antoninus": 2, "apollinaris": 1}}
+  ]
+},
+{
+  "id": 3,
+  "question": "How do you handle disagreements about faith or values at school?",
+  "answers": [
+    {"text": "I use facts and logical reasoning to explain my position", "points": {"aquinas": 3, "augustine": 2, "athanasius": 2}},
+    {"text": "I refer to what the Bible and Church actually teach", "points": {"jerome": 3, "polycarp": 2, "clement": 2}},
+    {"text": "I try to find common ground and bring people together", "points": {"barnabas": 3, "gregory_great": 2, "ambrose": 1}},
+    {"text": "I stand firm on important principles that matter", "points": {"athanasius": 3, "ignatius": 2, "stephen": 2}},
+    {"text": "I suggest we get more people together to discuss it properly", "points": {"gregory_great": 2, "cornelius": 2, "fabian": 1}}
+  ]
+},
+{
+  "id": 4,
+  "question": "What motivates you most in sharing your faith?",
+  "answers": [
+    {"text": "Love for learning more about God and growing in understanding", "points": {"augustine": 3, "aquinas": 2, "bede": 2}},
+    {"text": "Excitement about sharing the Gospel with everyone I meet", "points": {"paul": 3, "mark": 2, "luke": 2}},
+    {"text": "Wanting to protect people from false or harmful teachings", "points": {"athanasius": 3, "polycarp": 2, "ignatius": 2}},
+    {"text": "Joy in helping others grow closer to God", "points": {"barnabas": 2, "ambrose": 2, "antoninus": 2}},
+    {"text": "Feeling called to help guide and support other believers", "points": {"gregory_great": 3, "clement": 2, "cornelius": 1}}
+  ]
+},
+{
+  "id": 5,
+  "question": "How do you handle it when people criticize or mock your faith?",
+  "answers": [
+    {"text": "I use it as a chance to explain what I believe and why", "points": {"stephen": 3, "polycarp": 3, "ignatius": 2}},
+    {"text": "I keep sharing my faith despite the negative reactions", "points": {"paul": 3, "apollinaris": 2, "barnabas": 1}},
+    {"text": "I write or speak even more to defend the truth", "points": {"athanasius": 3, "jerome": 2, "augustine": 1}},
+    {"text": "I pray about it and trust that God will protect me", "points": {"ephrem": 2, "gregory_nazianzen": 2, "bonaventure": 2}},
+    {"text": "I keep doing what I know is right no matter what people say", "points": {"clement": 2, "fabian": 2, "cornelius": 2}}
+  ]
+},
+{
+  "id": 6,
+  "question": "What's your greatest strength in helping others grow in faith?",
+  "answers": [
+    {"text": "My ability to explain complicated religious ideas in simple ways", "points": {"aquinas": 3, "augustine": 2, "luke": 2}},
+    {"text": "My courage in defending what's right even when it's difficult", "points": {"athanasius": 3, "stephen": 2, "polycarp": 2}},
+    {"text": "My skill in organizing events and bringing people together", "points": {"gregory_great": 3, "ambrose": 2, "clement": 1}},
+    {"text": "My gift for inspiring and encouraging others in their faith", "points": {"barnabas": 3, "paul": 2, "ephrem": 1}},
+    {"text": "My commitment to really understanding and studying the faith", "points": {"jerome": 3, "bede": 2, "evaristus": 1}}
+  ]
+},
+{
+  "id": 7,
+  "question": "How do you want to help future Christians and church communities?",
+  "answers": [
+    {"text": "By creating content, videos, or writings that explain the faith well", "points": {"augustine": 3, "aquinas": 3, "bonaventure": 2}},
+    {"text": "By helping make Scripture more accessible and understandable", "points": {"jerome": 3, "luke": 1}},
+    {"text": "By building strong youth programs and church communities", "points": {"gregory_great": 3, "clement": 2, "fabian": 1}},
+    {"text": "By showing how to stay faithful even when it's really hard", "points": {"polycarp": 3, "ignatius": 2, "stephen": 2}},
+    {"text": "By documenting and preserving important faith stories and history", "points": {"bede": 3, "mark": 2, "evaristus": 1}}
+  ]
+},
+{
+  "id": 8,
+  "question": "What aspect of church life do you most want to help strengthen?",
+  "answers": [
+    {"text": "Religious education and helping people understand their faith better", "points": {"aquinas": 3, "augustine": 2, "ambrose": 2}},
+    {"text": "Mission work and reaching out to people who don't know Jesus", "points": {"paul": 3, "barnabas": 2, "mark": 2}},
+    {"text": "Worship, music, and making church services more meaningful", "points": {"gregory_great": 3, "ephrem": 2, "gregory_nazianzen": 1}},
+    {"text": "Bible study and helping people really understand Scripture", "points": {"jerome": 3, "luke": 2, "bede": 1}},
+    {"text": "Church unity and making sure we stay true to what we believe", "points": {"athanasius": 3, "clement": 2, "cornelius": 1}}
+  ]
+}
   ],
   "results": {
     "augustine": {
@@ -2853,93 +2853,93 @@ const SAINTS_QUIZZES_DATA = [
   "target_grades": [4, 5, 6, 7, 8],
   "questions": [
     {
-      "id": 1,
-      "question": "What draws you most to Mary?",
-      "answers": [
-        {"text": "Her healing power and miracles", "points": {"lourdes": 3, "grace": 2}},
-        {"text": "Her messages about peace and prayer", "points": {"fatima": 3, "rosary": 2}},
-        {"text": "Her love for all cultures and peoples", "points": {"guadalupe": 3, "grace": 1}},
-        {"text": "Her understanding of suffering and pain", "points": {"sorrows": 3, "lourdes": 1}},
-        {"text": "Her power in the Rosary", "points": {"rosary": 3, "fatima": 2}}
-      ]
-    },
-    {
-      "id": 2,
-      "question": "How do you like to pray to Mary?",
-      "answers": [
-        {"text": "By saying the Rosary daily", "points": {"fatima": 3, "rosary": 3, "sorrows": 1}},
-        {"text": "By asking for healing for myself or others", "points": {"lourdes": 3, "grace": 2}},
-        {"text": "By praying for peace in the world", "points": {"fatima": 3, "rosary": 2}},
-        {"text": "By asking Mary to understand my pain", "points": {"sorrows": 3, "lourdes": 1}},
-        {"text": "By asking for special graces and favors", "points": {"grace": 3, "guadalupe": 2}}
-      ]
-    },
-    {
-      "id": 3,
-      "question": "What kind of help do you most often ask Mary for?",
-      "answers": [
-        {"text": "Physical healing for sickness", "points": {"lourdes": 3, "grace": 1}},
-        {"text": "Help with family problems and peace", "points": {"fatima": 3, "sorrows": 2}},
-        {"text": "Protection of my culture and identity", "points": {"guadalupe": 3, "grace": 1}},
-        {"text": "Comfort during really hard times", "points": {"sorrows": 3, "lourdes": 2}},
-        {"text": "Strength to pray more and be better", "points": {"rosary": 3, "fatima": 2}}
-      ]
-    },
-    {
-      "id": 4,
-      "question": "How do you see Mary's role in your life?",
-      "answers": [
-        {"text": "As a powerful healer who performs miracles", "points": {"lourdes": 3, "grace": 2}},
-        {"text": "As a mother who gives important warnings and advice", "points": {"fatima": 3, "rosary": 1}},
-        {"text": "As someone who understands different cultures", "points": {"guadalupe": 3, "grace": 1}},
-        {"text": "As a companion who shares in suffering", "points": {"sorrows": 3, "lourdes": 1}},
-        {"text": "As the one who gives out all God's graces", "points": {"grace": 3, "rosary": 2}}
-      ]
-    },
-    {
-      "id": 5,
-      "question": "What Mary story speaks to you most?",
-      "answers": [
-        {"text": "Mary appearing to a young girl who was poor and unknown", "points": {"lourdes": 3, "guadalupe": 2}},
-        {"text": "Mary asking children to pray the Rosary for peace", "points": {"fatima": 3, "rosary": 2}},
-        {"text": "Mary appearing as an indigenous woman to unite cultures", "points": {"guadalupe": 3, "grace": 1}},
-        {"text": "Mary standing by the cross sharing Jesus's pain", "points": {"sorrows": 3, "lourdes": 1}},
-        {"text": "Mary crushing evil and bringing victory", "points": {"rosary": 3, "fatima": 1}}
-      ]
-    },
-    {
-      "id": 6,
-      "question": "How do you want to respond to Mary's call?",
-      "answers": [
-        {"text": "By bringing people to places of healing", "points": {"lourdes": 3, "grace": 1}},
-        {"text": "By spreading devotion to the Rosary", "points": {"fatima": 3, "rosary": 3}},
-        {"text": "By helping different cultures respect each other", "points": {"guadalupe": 3, "grace": 1}},
-        {"text": "By comforting people who are suffering", "points": {"sorrows": 3, "lourdes": 2}},
-        {"text": "By asking Mary for all my needs", "points": {"grace": 3, "rosary": 1}}
-      ]
-    },
-    {
-      "id": 7,
-      "question": "What do you hope Mary will do in today's world?",
-      "answers": [
-        {"text": "Heal the sick and perform more miracles", "points": {"lourdes": 3, "grace": 2}},
-        {"text": "Bring peace between countries and families", "points": {"fatima": 3, "rosary": 2}},
-        {"text": "Help different races and cultures get along", "points": {"guadalupe": 3, "grace": 1}},
-        {"text": "Comfort people who are depressed or hurting", "points": {"sorrows": 3, "lourdes": 1}},
-        {"text": "Help people pray more and love God better", "points": {"rosary": 3, "fatima": 2}}
-      ]
-    },
-    {
-      "id": 8,
-      "question": "How do you want to honor Mary?",
-      "answers": [
-        {"text": "By going on pilgrimages to her shrines", "points": {"lourdes": 3, "guadalupe": 2}},
-        {"text": "By praying the Rosary every day", "points": {"fatima": 3, "rosary": 3}},
-        {"text": "By respecting all cultures as God's children", "points": {"guadalupe": 3, "grace": 1}},
-        {"text": "By offering my sufferings with hers", "points": {"sorrows": 3, "lourdes": 1}},
-        {"text": "By asking for her intercession in everything", "points": {"grace": 3, "rosary": 1}}
-      ]
-    }
+ "id": 1,
+ "question": "What aspect of Mary appeals to you most?",
+ "answers": [
+  {"text": "Her ability to help with healing and miracles", "points": {"lourdes": 3, "grace": 2}},
+  {"text": "Her messages about peace and the importance of prayer", "points": {"fatima": 3, "rosary": 2}},
+  {"text": "Her love for people from all backgrounds and cultures", "points": {"guadalupe": 3, "grace": 1}},
+  {"text": "Her understanding of suffering and difficult times", "points": {"sorrows": 3, "lourdes": 1}},
+  {"text": "Her connection to the Rosary and traditional prayers", "points": {"rosary": 3, "fatima": 2}}
+ ]
+},
+{
+ "id": 2,
+ "question": "If you were to pray to Mary, how would you prefer to do it?",
+ "answers": [
+  {"text": "By praying the Rosary regularly", "points": {"fatima": 3, "rosary": 3, "sorrows": 1}},
+  {"text": "By asking for healing for myself or people I care about", "points": {"lourdes": 3, "grace": 2}},
+  {"text": "By praying for peace in my family and the world", "points": {"fatima": 3, "rosary": 2}},
+  {"text": "By asking Mary to help me when I'm going through tough times", "points": {"sorrows": 3, "lourdes": 1}},
+  {"text": "By asking for help with specific needs and challenges", "points": {"grace": 3, "guadalupe": 2}}
+ ]
+},
+{
+ "id": 3,
+ "question": "What kind of help would you most want to ask Mary for?",
+ "answers": [
+  {"text": "Physical healing for illness or injury", "points": {"lourdes": 3, "grace": 1}},
+  {"text": "Help with family conflicts and bringing peace", "points": {"fatima": 3, "sorrows": 2}},
+  {"text": "Protection of my culture, heritage, and identity", "points": {"guadalupe": 3, "grace": 1}},
+  {"text": "Comfort when I'm going through really hard times", "points": {"sorrows": 3, "lourdes": 2}},
+  {"text": "Strength to grow in prayer and become a better person", "points": {"rosary": 3, "fatima": 2}}
+ ]
+},
+{
+ "id": 4,
+ "question": "How do you see Mary's role in people's lives?",
+ "answers": [
+  {"text": "As a powerful helper who can bring about miraculous healing", "points": {"lourdes": 3, "grace": 2}},
+  {"text": "As a caring mother who gives important guidance and warnings", "points": {"fatima": 3, "rosary": 1}},
+  {"text": "As someone who bridges differences between cultures and peoples", "points": {"guadalupe": 3, "grace": 1}},
+  {"text": "As a companion who understands pain and suffering", "points": {"sorrows": 3, "lourdes": 1}},
+  {"text": "As the one who brings us closer to God and His grace", "points": {"grace": 3, "rosary": 2}}
+ ]
+},
+{
+ "id": 5,
+ "question": "Which story about Mary speaks to you most?",
+ "answers": [
+  {"text": "Mary appearing to a young, poor girl and asking her to spread a message", "points": {"lourdes": 3, "guadalupe": 2}},
+  {"text": "Mary asking children to pray the Rosary for world peace", "points": {"fatima": 3, "rosary": 2}},
+  {"text": "Mary appearing as someone from a local culture to bring people together", "points": {"guadalupe": 3, "grace": 1}},
+  {"text": "Mary standing by Jesus during His suffering and death", "points": {"sorrows": 3, "lourdes": 1}},
+  {"text": "Mary helping Christians defeat evil through prayer", "points": {"rosary": 3, "fatima": 1}}
+ ]
+},
+{
+ "id": 6,
+ "question": "How would you want to respond to Mary's example?",
+ "answers": [
+  {"text": "By helping connect people to places and sources of healing", "points": {"lourdes": 3, "grace": 1}},
+  {"text": "By encouraging others to pray the Rosary and grow in faith", "points": {"fatima": 3, "rosary": 3}},
+  {"text": "By helping people from different backgrounds understand and respect each other", "points": {"guadalupe": 3, "grace": 1}},
+  {"text": "By comforting people who are going through suffering", "points": {"sorrows": 3, "lourdes": 2}},
+  {"text": "By turning to Mary for help with all my needs and challenges", "points": {"grace": 3, "rosary": 1}}
+ ]
+},
+{
+ "id": 7,
+ "question": "What do you hope Mary's influence will do in today's world?",
+ "answers": [
+  {"text": "Bring healing to those who are sick and struggling", "points": {"lourdes": 3, "grace": 2}},
+  {"text": "Create peace between countries, communities, and families", "points": {"fatima": 3, "rosary": 2}},
+  {"text": "Help people of different races and cultures get along better", "points": {"guadalupe": 3, "grace": 1}},
+  {"text": "Provide comfort to people dealing with depression, anxiety, and pain", "points": {"sorrows": 3, "lourdes": 1}},
+  {"text": "Encourage people to pray more and grow closer to God", "points": {"rosary": 3, "fatima": 2}}
+ ]
+},
+{
+ "id": 8,
+ "question": "How would you want to show respect and love for Mary?",
+ "answers": [
+  {"text": "By visiting holy places and shrines dedicated to her", "points": {"lourdes": 3, "guadalupe": 2}},
+  {"text": "By making the Rosary a regular part of my prayer life", "points": {"fatima": 3, "rosary": 3}},
+  {"text": "By treating all people with respect as children of God", "points": {"guadalupe": 3, "grace": 1}},
+  {"text": "By offering up my struggles and difficulties in union with hers", "points": {"sorrows": 3, "lourdes": 1}},
+  {"text": "By asking for her help and intercession in my daily life", "points": {"grace": 3, "rosary": 1}}
+ ]
+}
   ],
   "results": {
     "lourdes": {
@@ -3008,83 +3008,83 @@ const SAINTS_QUIZZES_DATA = [
         {"text": "Girl", "points": {"anne": 5, "zelie": 5}}
       ]
     },
-    {
-      "id": 2,
-      "question": "What's your role in your family?",
-      "answers": [
-        {"text": "I'm a parent or older sibling who takes care of others", "points": {"anne": 3, "joachim": 3, "zelie": 2, "louis": 2}},
-        {"text": "I'm a child or younger sibling who looks up to others", "points": {"anne": 1, "joachim": 1, "zelie": 1, "louis": 1}},
-        {"text": "I'm a grandparent or someone who loves family history", "points": {"anne": 3, "joachim": 3}},
-        {"text": "I try to support everyone and keep peace", "points": {"louis": 3, "zelie": 2}},
-        {"text": "I help my family grow closer to God", "points": {"zelie": 3, "anne": 2, "joachim": 2, "louis": 2}}
-      ]
-    },
-    {
-      "id": 3,
-      "question": "How do you help your family pray together?",
-      "answers": [
-        {"text": "I make sure we pray before meals and bedtime", "points": {"anne": 3, "zelie": 3}},
-        {"text": "I lead family rosary or Bible reading", "points": {"joachim": 3, "louis": 3}},
-        {"text": "I share stories about saints and holy people", "points": {"anne": 3, "joachim": 2}},
-        {"text": "I encourage everyone to go to Mass together", "points": {"louis": 3, "zelie": 2}},
-        {"text": "I pray quietly for each family member", "points": {"zelie": 3, "anne": 2}}
-      ]
-    },
-    {
-      "id": 4,
-      "question": "How do you handle difficult times in your family?",
-      "answers": [
-        {"text": "I trust that God has a plan for our family", "points": {"anne": 3, "joachim": 3}},
-        {"text": "I work extra hard to provide and protect", "points": {"joachim": 3, "louis": 2}},
-        {"text": "I keep the family together through prayer", "points": {"zelie": 3, "anne": 2}},
-        {"text": "I try to find the positive and stay hopeful", "points": {"louis": 3, "zelie": 2}},
-        {"text": "I lean on my faith and trust in God's goodness", "points": {"anne": 2, "joachim": 2, "zelie": 2, "louis": 2}}
-      ]
-    },
-    {
-      "id": 5,
-      "question": "What's most important for your family's spiritual life?",
-      "answers": [
-        {"text": "Teaching children to love God from an early age", "points": {"anne": 3, "zelie": 3}},
-        {"text": "Being a good example of faithfulness", "points": {"joachim": 3, "louis": 3}},
-        {"text": "Creating traditions that bring the family closer to God", "points": {"zelie": 3, "anne": 2}},
-        {"text": "Supporting each family member's individual calling", "points": {"louis": 3, "zelie": 2}},
-        {"text": "Trusting God with your family's future", "points": {"anne": 3, "joachim": 3}}
-      ]
-    },
-    {
-      "id": 6,
-      "question": "How do you support family members who want to serve God?",
-      "answers": [
-        {"text": "I encourage them even if it means sacrifice", "points": {"anne": 3, "joachim": 3}},
-        {"text": "I pray for their vocation and trust God's will", "points": {"zelie": 3, "louis": 3}},
-        {"text": "I give them practical support and encouragement", "points": {"louis": 3, "joachim": 2}},
-        {"text": "I help them discern God's call through prayer", "points": {"zelie": 3, "anne": 2}},
-        {"text": "I trust that God knows what's best for them", "points": {"anne": 2, "joachim": 2, "zelie": 2, "louis": 2}}
-      ]
-    },
-    {
-      "id": 7,
-      "question": "What's your approach to raising holy children?",
-      "answers": [
-        {"text": "I focus on teaching them to trust God completely", "points": {"anne": 3, "joachim": 2}},
-        {"text": "I show them how to work hard and pray hard", "points": {"louis": 3, "zelie": 2}},
-        {"text": "I help them see God in everyday life", "points": {"zelie": 3, "anne": 2}},
-        {"text": "I encourage their individual gifts and talents", "points": {"louis": 3, "zelie": 2}},
-        {"text": "I prepare them for whatever God calls them to do", "points": {"anne": 3, "joachim": 3}}
-      ]
-    },
-    {
-      "id": 8,
-      "question": "What legacy do you want to leave your family?",
-      "answers": [
-        {"text": "A foundation of deep faith that lasts generations", "points": {"anne": 3, "joachim": 3}},
-        {"text": "Example of how to balance work and family with God", "points": {"louis": 3, "zelie": 2}},
-        {"text": "Proof that ordinary families can become extraordinary", "points": {"zelie": 3, "louis": 3}},
-        {"text": "Trust that God's plans are always better than ours", "points": {"anne": 3, "joachim": 2}},
-        {"text": "Love that puts God first but includes everyone", "points": {"zelie": 2, "louis": 2, "anne": 2, "joachim": 2}}
-      ]
-    }
+   {
+ "id": 2,
+ "question": "What's your role in your family?",
+ "answers": [
+  {"text": "I'm an older sibling who helps take care of younger ones", "points": {"anne": 3, "joachim": 3, "zelie": 2, "louis": 2}},
+  {"text": "I'm a younger sibling who looks up to others for guidance", "points": {"anne": 1, "joachim": 1, "zelie": 1, "louis": 1}},
+  {"text": "I'm someone who loves hearing family stories and traditions", "points": {"anne": 3, "joachim": 3}},
+  {"text": "I try to help everyone get along and keep peace in the family", "points": {"louis": 3, "zelie": 2}},
+  {"text": "I encourage my family to grow closer to God together", "points": {"zelie": 3, "anne": 2, "joachim": 2, "louis": 2}}
+ ]
+},
+{
+ "id": 3,
+ "question": "How do you encourage prayer in your family?",
+ "answers": [
+  {"text": "I participate eagerly when we pray before meals and bedtime", "points": {"anne": 3, "zelie": 3}},
+  {"text": "I suggest we pray the rosary or read the Bible together", "points": {"joachim": 3, "louis": 3}},
+  {"text": "I share stories about saints and holy people with my family", "points": {"anne": 3, "joachim": 2}},
+  {"text": "I encourage everyone to go to Mass together as a family", "points": {"louis": 3, "zelie": 2}},
+  {"text": "I quietly pray for each member of my family every day", "points": {"zelie": 3, "anne": 2}}
+ ]
+},
+{
+ "id": 4,
+ "question": "How do you handle difficult times in your family?",
+ "answers": [
+  {"text": "I trust that God has a plan for our family's challenges", "points": {"anne": 3, "joachim": 3}},
+  {"text": "I try to help out more and support my parents", "points": {"joachim": 3, "louis": 2}},
+  {"text": "I suggest we pray together when things get tough", "points": {"zelie": 3, "anne": 2}},
+  {"text": "I try to stay positive and keep everyone's spirits up", "points": {"louis": 3, "zelie": 2}},
+  {"text": "I lean on my faith and trust in God's goodness", "points": {"anne": 2, "joachim": 2, "zelie": 2, "louis": 2}}
+ ]
+},
+{
+ "id": 5,
+ "question": "What do you think is most important for your family's spiritual life?",
+ "answers": [
+  {"text": "Learning to love God from a young age and growing in that love", "points": {"anne": 3, "zelie": 3}},
+  {"text": "Having family members who are good examples of faithfulness", "points": {"joachim": 3, "louis": 3}},
+  {"text": "Creating traditions and habits that bring the family closer to God", "points": {"zelie": 3, "anne": 2}},
+  {"text": "Supporting each family member's individual gifts and calling", "points": {"louis": 3, "zelie": 2}},
+  {"text": "Trusting God with your family's future and decisions", "points": {"anne": 3, "joachim": 3}}
+ ]
+},
+{
+ "id": 6,
+ "question": "How would you support a family member who wanted to serve God in a special way?",
+ "answers": [
+  {"text": "I would encourage them even if it meant our family would miss them", "points": {"anne": 3, "joachim": 3}},
+  {"text": "I would pray for their vocation and trust God's will for their life", "points": {"zelie": 3, "louis": 3}},
+  {"text": "I would give them practical support and encouragement", "points": {"louis": 3, "joachim": 2}},
+  {"text": "I would help them pray and discern what God is calling them to do", "points": {"zelie": 3, "anne": 2}},
+  {"text": "I would trust that God knows what's best for them", "points": {"anne": 2, "joachim": 2, "zelie": 2, "louis": 2}}
+ ]
+},
+{
+ "id": 7,
+ "question": "How do you hope to help your family members (siblings, future kids) grow in faith?",
+ "answers": [
+  {"text": "By showing them how to trust God completely in all situations", "points": {"anne": 3, "joachim": 2}},
+  {"text": "By demonstrating how to work hard and pray hard", "points": {"louis": 3, "zelie": 2}},
+  {"text": "By helping them see God in everyday moments and experiences", "points": {"zelie": 3, "anne": 2}},
+  {"text": "By encouraging their individual gifts and talents", "points": {"louis": 3, "zelie": 2}},
+  {"text": "By preparing them to be open to whatever God calls them to do", "points": {"anne": 3, "joachim": 3}}
+ ]
+},
+{
+ "id": 8,
+ "question": "What kind of impact do you want to have on your family?",
+ "answers": [
+  {"text": "Helping build a foundation of deep faith that lasts for generations", "points": {"anne": 3, "joachim": 3}},
+  {"text": "Showing how to balance responsibilities with keeping God first", "points": {"louis": 3, "zelie": 2}},
+  {"text": "Proving that ordinary families can become extraordinary through faith", "points": {"zelie": 3, "louis": 3}},
+  {"text": "Demonstrating trust that God's plans are always better than ours", "points": {"anne": 3, "joachim": 2}},
+  {"text": "Showing love that puts God first while including everyone", "points": {"zelie": 2, "louis": 2, "anne": 2, "joachim": 2}}
+ ]
+}
   ],
   "results": {
     "anne": {
@@ -3128,94 +3128,94 @@ const SAINTS_QUIZZES_DATA = [
   "series": "Cherub Chibis",
   "target_grades": [4, 5, 6, 7, 8],
   "questions": [
-    {
-      "id": 1,
-      "question": "What kind of mission would you most want as an angel?",
-      "answers": [
-        {"text": "Fighting evil and protecting people from danger", "points": {"michael": 3, "raphael": 1}},
-        {"text": "Delivering important messages from God", "points": {"gabriel": 3, "michael": 1}},
-        {"text": "Helping people heal and guiding them safely", "points": {"raphael": 3, "gabriel": 1}},
-        {"text": "Leading God's army against Satan", "points": {"michael": 3}},
-        {"text": "Announcing God's amazing plans to people", "points": {"gabriel": 3, "raphael": 1}}
-      ]
-    },
-    {
-      "id": 2,
-      "question": "How would you want to help people who are scared?",
-      "answers": [
-        {"text": "By fighting off whatever is threatening them", "points": {"michael": 3, "raphael": 1}},
-        {"text": "By bringing them a message of hope from God", "points": {"gabriel": 3, "michael": 1}},
-        {"text": "By healing their wounds and guiding them to safety", "points": {"raphael": 3, "gabriel": 1}},
-        {"text": "By standing guard and protecting them", "points": {"michael": 3}},
-        {"text": "By telling them 'Do not be afraid!'", "points": {"gabriel": 3, "raphael": 1}}
-      ]
-    },
-    {
-      "id": 3,
-      "question": "What's your greatest strength as a heavenly warrior?",
-      "answers": [
-        {"text": "My courage in fighting against evil", "points": {"michael": 3}},
-        {"text": "My ability to communicate clearly", "points": {"gabriel": 3, "raphael": 1}},
-        {"text": "My healing power and wisdom", "points": {"raphael": 3, "gabriel": 1}},
-        {"text": "My leadership in spiritual battles", "points": {"michael": 3, "gabriel": 1}},
-        {"text": "My gentle guidance and care", "points": {"raphael": 3, "michael": 1}}
-      ]
-    },
-    {
-      "id": 4,
-      "question": "How do you serve God best?",
-      "answers": [
-        {"text": "By defending His people from all harm", "points": {"michael": 3, "raphael": 1}},
-        {"text": "By delivering His most important announcements", "points": {"gabriel": 3}},
-        {"text": "By bringing His healing to those who need it", "points": {"raphael": 3, "gabriel": 1}},
-        {"text": "By leading the fight against Satan and demons", "points": {"michael": 3}},
-        {"text": "By helping people understand God's will", "points": {"gabriel": 3, "raphael": 2}}
-      ]
-    },
-    {
-      "id": 5,
-      "question": "What kind of people do you feel most called to help?",
-      "answers": [
-        {"text": "Soldiers, police, and others who fight evil", "points": {"michael": 3}},
-        {"text": "People who need to hear important news from God", "points": {"gabriel": 3, "michael": 1}},
-        {"text": "Travelers, sick people, and those who need healing", "points": {"raphael": 3}},
-        {"text": "Anyone who is being attacked by evil forces", "points": {"michael": 3, "raphael": 1}},
-        {"text": "People who are confused and need guidance", "points": {"gabriel": 2, "raphael": 2}}
-      ]
-    },
-    {
-      "id": 6,
-      "question": "How do you want people to pray to you?",
-      "answers": [
-        {"text": "For protection from evil and spiritual warfare", "points": {"michael": 3}},
-        {"text": "For help understanding God's messages", "points": {"gabriel": 3, "raphael": 1}},
-        {"text": "For healing and safe travels", "points": {"raphael": 3}},
-        {"text": "For courage in fighting temptation", "points": {"michael": 3, "gabriel": 1}},
-        {"text": "For clear communication and wisdom", "points": {"gabriel": 3, "raphael": 2}}
-      ]
-    },
-    {
-      "id": 7,
-      "question": "What's your favorite way to show God's power?",
-      "answers": [
-        {"text": "By defeating demons and evil spirits", "points": {"michael": 3}},
-        {"text": "By delivering miraculous announcements", "points": {"gabriel": 3}},
-        {"text": "By performing amazing healings", "points": {"raphael": 3}},
-        {"text": "By protecting people from danger", "points": {"michael": 3, "raphael": 1}},
-        {"text": "By helping people understand God's plan", "points": {"gabriel": 3, "raphael": 1}}
-      ]
-    },
-    {
-      "id": 8,
-      "question": "What's your battle cry or motto?",
-      "answers": [
-        {"text": "'Who is like God?' - ready to fight for God's honor", "points": {"michael": 3}},
-        {"text": "'Fear not!' - bringing God's messages of hope", "points": {"gabriel": 3}},
-        {"text": "'God heals!' - bringing restoration and wellness", "points": {"raphael": 3}},
-        {"text": "'Stand firm!' - encouraging others in spiritual battle", "points": {"michael": 3, "gabriel": 1}},
-        {"text": "'God is with you!' - bringing comfort and guidance", "points": {"gabriel": 2, "raphael": 2}}
-      ]
-    }
+   {
+ "id": 1,
+ "question": "If you were an angel, what kind of mission would you most want?",
+ "answers": [
+  {"text": "Fighting evil and protecting people from danger", "points": {"michael": 3, "raphael": 1}},
+  {"text": "Delivering important messages from God", "points": {"gabriel": 3, "michael": 1}},
+  {"text": "Helping people heal and guiding them safely", "points": {"raphael": 3, "gabriel": 1}},
+  {"text": "Leading God's army against Satan and evil", "points": {"michael": 3}},
+  {"text": "Announcing God's amazing plans to people", "points": {"gabriel": 3, "raphael": 1}}
+ ]
+},
+{
+ "id": 2,
+ "question": "How would you want to help people who are scared or in trouble?",
+ "answers": [
+  {"text": "By fighting off whatever is threatening them", "points": {"michael": 3, "raphael": 1}},
+  {"text": "By bringing them a message of hope from God", "points": {"gabriel": 3, "michael": 1}},
+  {"text": "By healing their wounds and guiding them to safety", "points": {"raphael": 3, "gabriel": 1}},
+  {"text": "By standing guard and protecting them from harm", "points": {"michael": 3}},
+  {"text": "By telling them 'Do not be afraid!' and bringing God's peace", "points": {"gabriel": 3, "raphael": 1}}
+ ]
+},
+{
+ "id": 3,
+ "question": "What would be your greatest strength as an angel?",
+ "answers": [
+  {"text": "My courage in fighting against evil and injustice", "points": {"michael": 3}},
+  {"text": "My ability to communicate God's messages clearly", "points": {"gabriel": 3, "raphael": 1}},
+  {"text": "My healing power and wisdom to help people", "points": {"raphael": 3, "gabriel": 1}},
+  {"text": "My leadership in spiritual battles", "points": {"michael": 3, "gabriel": 1}},
+  {"text": "My gentle guidance and compassionate care", "points": {"raphael": 3, "michael": 1}}
+ ]
+},
+{
+ "id": 4,
+ "question": "How would you best serve God as an angel?",
+ "answers": [
+  {"text": "By defending His people from all kinds of harm", "points": {"michael": 3, "raphael": 1}},
+  {"text": "By delivering His most important announcements", "points": {"gabriel": 3}},
+  {"text": "By bringing His healing to those who need it most", "points": {"raphael": 3, "gabriel": 1}},
+  {"text": "By leading the fight against Satan and demons", "points": {"michael": 3}},
+  {"text": "By helping people understand God's will for their lives", "points": {"gabriel": 3, "raphael": 2}}
+ ]
+},
+{
+ "id": 5,
+ "question": "What kind of people would you feel most called to help?",
+ "answers": [
+  {"text": "Soldiers, police, and others who fight against evil", "points": {"michael": 3}},
+  {"text": "People who need to hear important news from God", "points": {"gabriel": 3, "michael": 1}},
+  {"text": "Travelers, sick people, and those who need healing", "points": {"raphael": 3}},
+  {"text": "Anyone who is being attacked by evil or negative forces", "points": {"michael": 3, "raphael": 1}},
+  {"text": "People who are confused and need guidance in life", "points": {"gabriel": 2, "raphael": 2}}
+ ]
+},
+{
+ "id": 6,
+ "question": "How would you want people to pray to you for help?",
+ "answers": [
+  {"text": "For protection from evil and strength in spiritual battles", "points": {"michael": 3}},
+  {"text": "For help understanding God's messages and plans", "points": {"gabriel": 3, "raphael": 1}},
+  {"text": "For healing and safe travels through life", "points": {"raphael": 3}},
+  {"text": "For courage in fighting temptation and doing what's right", "points": {"michael": 3, "gabriel": 1}},
+  {"text": "For clear communication and wisdom in decisions", "points": {"gabriel": 3, "raphael": 2}}
+ ]
+},
+{
+ "id": 7,
+ "question": "What would be your favorite way to show God's power?",
+ "answers": [
+  {"text": "By defeating demons and evil spirits", "points": {"michael": 3}},
+  {"text": "By delivering miraculous announcements that change everything", "points": {"gabriel": 3}},
+  {"text": "By performing amazing healings that restore people", "points": {"raphael": 3}},
+  {"text": "By protecting people from danger in dramatic ways", "points": {"michael": 3, "raphael": 1}},
+  {"text": "By helping people understand God's incredible plan", "points": {"gabriel": 3, "raphael": 1}}
+ ]
+},
+{
+ "id": 8,
+ "question": "What would be your battle cry or motto as an angel?",
+ "answers": [
+  {"text": "'Who is like God?' - ready to fight for God's honor", "points": {"michael": 3}},
+  {"text": "'Fear not!' - bringing God's messages of hope", "points": {"gabriel": 3}},
+  {"text": "'God heals!' - bringing restoration and wellness", "points": {"raphael": 3}},
+  {"text": "'Stand firm!' - encouraging others in spiritual battles", "points": {"michael": 3, "gabriel": 1}},
+  {"text": "'God is with you!' - bringing comfort and guidance", "points": {"gabriel": 2, "raphael": 2}}
+ ]
+}
   ],
   "results": {
     "michael": {
@@ -3251,92 +3251,92 @@ const SAINTS_QUIZZES_DATA = [
   "series": "Cross-Series Special",
   "target_grades": [4, 5, 6, 7, 8],
   "questions": [
-    {
-      "id": 1,
-      "question": "Are you a boy or a girl?",
-      "type": "gender",
-      "answers": [
-        {"text": "Boy", "points": {"anthony_lost": 5, "blaise_healing": 5, "padre_pio_prayer": 5, "francis_nature": 5, "joseph_protection": 5, "michael_warrior": 5, "patrick_culture": 5, "aquinas_wisdom": 5}},
-        {"text": "Girl", "points": {"rita_impossible": 5, "bernadette_visions": 5, "joan_courage": 5, "therese_simplicity": 5, "margaret_mary_love": 5, "helena_discovery": 5, "gianna_sacrifice": 5, "cecilia_music": 5}}
-      ]
-    },
-    {
-      "id": 2,
-      "question": "What kind of 'superpower' would you most want?",
-      "answers": [
-        {"text": "The ability to find anything that's lost", "points": {"anthony_lost": 3, "helena_discovery": 2}},
-        {"text": "The power to heal people instantly", "points": {"blaise_healing": 3, "bernadette_visions": 2}},
-        {"text": "Super courage that fears nothing", "points": {"joan_courage": 3, "michael_warrior": 2}},
-        {"text": "The ability to make impossible things happen", "points": {"rita_impossible": 3, "padre_pio_prayer": 2}},
-        {"text": "Mind-reading powers to understand everything", "points": {"aquinas_wisdom": 3, "therese_simplicity": 2}}
-      ]
-    },
-    {
-      "id": 3,
-      "question": "How would you use your superpower to help people?",
-      "answers": [
-        {"text": "Help them find lost hope, faith, or direction", "points": {"anthony_lost": 3, "therese_simplicity": 2}},
-        {"text": "Heal their physical and emotional wounds", "points": {"blaise_healing": 3, "margaret_mary_love": 2}},
-        {"text": "Protect them from danger and evil", "points": {"michael_warrior": 3, "joseph_protection": 2}},
-        {"text": "Solve their absolutely impossible problems", "points": {"rita_impossible": 3, "padre_pio_prayer": 2}},
-        {"text": "Help them connect with nature and creation", "points": {"francis_nature": 3, "patrick_culture": 1}}
-      ]
-    },
-    {
-      "id": 4,
-      "question": "What's your superhero origin story?",
-      "answers": [
-        {"text": "I discovered my gift through simple, daily prayer", "points": {"therese_simplicity": 3, "anthony_lost": 2}},
-        {"text": "I received special visions or messages from heaven", "points": {"bernadette_visions": 3, "margaret_mary_love": 2}},
-        {"text": "I was chosen by God for a dangerous mission", "points": {"joan_courage": 3, "michael_warrior": 2}},
-        {"text": "I learned to channel God's power through study", "points": {"aquinas_wisdom": 3, "blaise_healing": 1}},
-        {"text": "I developed my gift through years of patient practice", "points": {"padre_pio_prayer": 3, "joseph_protection": 2}}
-      ]
-    },
-    {
-      "id": 5,
-      "question": "What's your superhero weakness or challenge?",
-      "answers": [
-        {"text": "People don't always believe in my abilities", "points": {"bernadette_visions": 3, "joan_courage": 2}},
-        {"text": "My power works better with simple faith than complex problems", "points": {"therese_simplicity": 3, "anthony_lost": 2}},
-        {"text": "I sometimes feel overwhelmed by how much people need help", "points": {"rita_impossible": 3, "blaise_healing": 2}},
-        {"text": "My gifts are often misunderstood by others", "points": {"aquinas_wisdom": 2, "francis_nature": 2, "cecilia_music": 2}},
-        {"text": "Evil forces try extra hard to stop me", "points": {"michael_warrior": 3, "padre_pio_prayer": 2}}
-      ]
-    },
-    {
-      "id": 6,
-      "question": "What's your superhero team role?",
-      "answers": [
-        {"text": "The detective who finds clues and missing pieces", "points": {"anthony_lost": 3, "helena_discovery": 3}},
-        {"text": "The healer who patches everyone up", "points": {"blaise_healing": 3, "margaret_mary_love": 2}},
-        {"text": "The fearless leader who charges into battle", "points": {"joan_courage": 3, "michael_warrior": 3}},
-        {"text": "The strategist who figures out the master plan", "points": {"aquinas_wisdom": 3, "joseph_protection": 2}},
-        {"text": "The heart of the team who keeps everyone united", "points": {"therese_simplicity": 3, "francis_nature": 2}}
-      ]
-    },
-    {
-      "id": 7,
-      "question": "What's your secret superhero identity like?",
-      "answers": [
-        {"text": "I'm just an ordinary person who trusts God completely", "points": {"therese_simplicity": 3, "bernadette_visions": 2}},
-        {"text": "I have a normal job but help people on the side", "points": {"joseph_protection": 3, "blaise_healing": 2}},
-        {"text": "I'm known for being really smart or talented", "points": {"aquinas_wisdom": 3, "cecilia_music": 2}},
-        {"text": "I seem quiet but I'm actually incredibly powerful", "points": {"rita_impossible": 3, "padre_pio_prayer": 2}},
-        {"text": "I'm famous for being brave and speaking up", "points": {"joan_courage": 3, "patrick_culture": 2}}
-      ]
-    },
-    {
-      "id": 8,
-      "question": "How do you want people to call on your superpower?",
-      "answers": [
-        {"text": "When they've lost something important and can't find it", "points": {"anthony_lost": 3, "helena_discovery": 1}},
-        {"text": "When they're sick or hurt and need healing", "points": {"blaise_healing": 3, "bernadette_visions": 2}},
-        {"text": "When they face impossible situations", "points": {"rita_impossible": 3, "padre_pio_prayer": 2}},
-        {"text": "When they need courage for something scary", "points": {"joan_courage": 3, "michael_warrior": 2}},
-        {"text": "When they want to understand God better", "points": {"aquinas_wisdom": 3, "therese_simplicity": 2}}
-      ]
-    }
+   {
+ "id": 1,
+ "question": "Are you a boy or a girl?",
+ "type": "gender",
+ "answers": [
+  {"text": "Boy", "points": {"anthony_lost": 5, "blaise_healing": 5, "padre_pio_prayer": 5, "francis_nature": 5, "joseph_protection": 5, "michael_warrior": 5, "patrick_culture": 5, "aquinas_wisdom": 5}},
+  {"text": "Girl", "points": {"rita_impossible": 5, "bernadette_visions": 5, "joan_courage": 5, "therese_simplicity": 5, "margaret_mary_love": 5, "helena_discovery": 5, "gianna_sacrifice": 5, "cecilia_music": 5}}
+ ]
+},
+{
+ "id": 2,
+ "question": "What kind of 'superpower' would you most want to have?",
+ "answers": [
+  {"text": "The ability to find anything that's lost", "points": {"anthony_lost": 3, "helena_discovery": 2}},
+  {"text": "The power to heal people instantly", "points": {"blaise_healing": 3, "bernadette_visions": 2}},
+  {"text": "Super courage that fears nothing", "points": {"joan_courage": 3, "michael_warrior": 2}},
+  {"text": "The ability to make impossible things happen", "points": {"rita_impossible": 3, "padre_pio_prayer": 2}},
+  {"text": "Mind-reading powers to understand everything", "points": {"aquinas_wisdom": 3, "therese_simplicity": 2}}
+ ]
+},
+{
+ "id": 3,
+ "question": "How would you use your superpower to help people?",
+ "answers": [
+  {"text": "Help them find lost hope, faith, or direction in life", "points": {"anthony_lost": 3, "therese_simplicity": 2}},
+  {"text": "Heal their physical and emotional wounds", "points": {"blaise_healing": 3, "margaret_mary_love": 2}},
+  {"text": "Protect them from danger and evil forces", "points": {"michael_warrior": 3, "joseph_protection": 2}},
+  {"text": "Solve their absolutely impossible problems", "points": {"rita_impossible": 3, "padre_pio_prayer": 2}},
+  {"text": "Help them connect with nature and creation", "points": {"francis_nature": 3, "patrick_culture": 1}}
+ ]
+},
+{
+ "id": 4,
+ "question": "What would be your superhero origin story?",
+ "answers": [
+  {"text": "I discovered my gift through simple, daily prayer and faith", "points": {"therese_simplicity": 3, "anthony_lost": 2}},
+  {"text": "I received special visions or messages from heaven", "points": {"bernadette_visions": 3, "margaret_mary_love": 2}},
+  {"text": "I was chosen by God for a dangerous mission", "points": {"joan_courage": 3, "michael_warrior": 2}},
+  {"text": "I learned to channel God's power through study and wisdom", "points": {"aquinas_wisdom": 3, "blaise_healing": 1}},
+  {"text": "I developed my gift through years of patient practice and prayer", "points": {"padre_pio_prayer": 3, "joseph_protection": 2}}
+ ]
+},
+{
+ "id": 5,
+ "question": "What would be your superhero weakness or biggest challenge?",
+ "answers": [
+  {"text": "People don't always believe in my abilities or take me seriously", "points": {"bernadette_visions": 3, "joan_courage": 2}},
+  {"text": "My power works better with simple faith than complex problems", "points": {"therese_simplicity": 3, "anthony_lost": 2}},
+  {"text": "I sometimes feel overwhelmed by how much people need help", "points": {"rita_impossible": 3, "blaise_healing": 2}},
+  {"text": "My gifts are often misunderstood by others", "points": {"aquinas_wisdom": 2, "francis_nature": 2, "cecilia_music": 2}},
+  {"text": "Evil forces try extra hard to attack and stop me", "points": {"michael_warrior": 3, "padre_pio_prayer": 2}}
+ ]
+},
+{
+ "id": 6,
+ "question": "What would be your role on a superhero team?",
+ "answers": [
+  {"text": "The detective who finds clues and missing pieces", "points": {"anthony_lost": 3, "helena_discovery": 3}},
+  {"text": "The healer who patches everyone up after battles", "points": {"blaise_healing": 3, "margaret_mary_love": 2}},
+  {"text": "The fearless leader who charges into battle first", "points": {"joan_courage": 3, "michael_warrior": 3}},
+  {"text": "The strategist who figures out the master plan", "points": {"aquinas_wisdom": 3, "joseph_protection": 2}},
+  {"text": "The heart of the team who keeps everyone united and hopeful", "points": {"therese_simplicity": 3, "francis_nature": 2}}
+ ]
+},
+{
+ "id": 7,
+ "question": "What would your secret superhero identity be like?",
+ "answers": [
+  {"text": "I'm just an ordinary person who trusts God completely", "points": {"therese_simplicity": 3, "bernadette_visions": 2}},
+  {"text": "I have a normal job or life but help people on the side", "points": {"joseph_protection": 3, "blaise_healing": 2}},
+  {"text": "I'm known for being really smart, talented, or gifted", "points": {"aquinas_wisdom": 3, "cecilia_music": 2}},
+  {"text": "I seem quiet and humble but I'm actually incredibly powerful", "points": {"rita_impossible": 3, "padre_pio_prayer": 2}},
+  {"text": "I'm famous for being brave and always speaking up for others", "points": {"joan_courage": 3, "patrick_culture": 2}}
+ ]
+},
+{
+ "id": 8,
+ "question": "When would you want people to call on your superpower for help?",
+ "answers": [
+  {"text": "When they've lost something important and can't find it", "points": {"anthony_lost": 3, "helena_discovery": 1}},
+  {"text": "When they're sick or hurt and need healing", "points": {"blaise_healing": 3, "bernadette_visions": 2}},
+  {"text": "When they face situations that seem completely impossible", "points": {"rita_impossible": 3, "padre_pio_prayer": 2}},
+  {"text": "When they need courage for something really scary or difficult", "points": {"joan_courage": 3, "michael_warrior": 2}},
+  {"text": "When they want to understand God and faith better", "points": {"aquinas_wisdom": 3, "therese_simplicity": 2}}
+ ]
+}
   ],
   "results": {
     "anthony_lost": {
@@ -3972,24 +3972,24 @@ const SAINTS_QUIZZES_DATA = [
   "questions": [
     {
       "id": 1,
-      "question": "How do you feel most called to serve God?",
+      "question": "If you could help others in any way, how would you want to do it?",
       "answers": [
-        {"text": "Through deep prayer and mystical experiences", "points": {"contemplative_cuties": 3, "desert_disciples": 2, "mini_marians": 1}},
-        {"text": "By performing amazing miracles and dramatic acts", "points": {"super_sancti": 3, "heavenly_helpers": 2, "cherub_chibis": 1}},
-        {"text": "By starting new movements and leading others", "points": {"founder_flames": 3, "apostolic_allstars": 2, "regal_royals": 1}},
+        {"text": "Through deep prayer and quiet spiritual moments", "points": {"contemplative_cuties": 3, "desert_disciples": 2, "mini_marians": 1}},
+        {"text": "By doing amazing, dramatic things that inspire people", "points": {"super_sancti": 3, "heavenly_helpers": 2, "cherub_chibis": 1}},
+        {"text": "By starting new groups and leading others", "points": {"founder_flames": 3, "apostolic_allstars": 2, "regal_royals": 1}},
         {"text": "Through simple, everyday acts of kindness", "points": {"pocket_patrons": 3, "virtue_vignettes": 2, "faithful_families": 1}},
-        {"text": "By learning, teaching, and growing in wisdom", "points": {"learning_legends": 3, "halo_hatchlings": 2}}
+        {"text": "By learning, teaching, and sharing knowledge", "points": {"learning_legends": 3, "halo_hatchlings": 2}}
       ]
     },
     {
       "id": 2,
-      "question": "What's your approach to prayer and spirituality?",
+      "question": "How do you like to pray or connect with God?",
       "answers": [
         {"text": "I love quiet, deep prayer and feeling close to God", "points": {"contemplative_cuties": 3, "desert_disciples": 3}},
-        {"text": "I pray especially to Mary and love Marian devotions", "points": {"mini_marians": 3, "contemplative_cuties": 1}},
-        {"text": "I pray for big miracles and amazing interventions", "points": {"super_sancti": 3, "heavenly_helpers": 2}},
-        {"text": "I like simple prayers while doing daily tasks", "points": {"pocket_patrons": 3, "virtue_vignettes": 2, "faithful_families": 2}},
-        {"text": "I'm still learning how to pray as I grow up", "points": {"halo_hatchlings": 3, "learning_legends": 1}}
+        {"text": "I especially like praying to Mary and learning about her", "points": {"mini_marians": 3, "contemplative_cuties": 1}},
+        {"text": "I pray for big miracles and amazing things to happen", "points": {"super_sancti": 3, "heavenly_helpers": 2}},
+        {"text": "I like simple prayers while doing everyday things", "points": {"pocket_patrons": 3, "virtue_vignettes": 2, "faithful_families": 2}},
+        {"text": "I'm still learning how to pray and connect with God", "points": {"halo_hatchlings": 3, "learning_legends": 1}}
       ]
     },
     {
@@ -4005,13 +4005,13 @@ const SAINTS_QUIZZES_DATA = [
     },
     {
       "id": 4,
-      "question": "What kind of legacy do you want to leave?",
+      "question": "How would you want to make a lasting impact on the world?",
       "answers": [
-        {"text": "Deep spiritual writings and mystical insights", "points": {"contemplative_cuties": 3, "apostolic_allstars": 1}},
-        {"text": "Amazing miracle stories that inspire faith", "points": {"super_sancti": 3, "heavenly_helpers": 2}},
-        {"text": "Organizations and movements that continue after me", "points": {"founder_flames": 3, "learning_legends": 1}},
-        {"text": "A reputation for being helpful and reliable", "points": {"pocket_patrons": 3, "virtue_vignettes": 2}},
-        {"text": "Bringing my culture and people closer to God", "points": {"culture_carriers": 3, "apostolic_allstars": 1}}
+        {"text": "By writing or creating things about deep spiritual ideas", "points": {"contemplative_cuties": 3, "apostolic_allstars": 1}},
+        {"text": "Through amazing stories of miracles that inspire people's faith", "points": {"super_sancti": 3, "heavenly_helpers": 2}},
+        {"text": "By starting organizations and groups that help people long-term", "points": {"founder_flames": 3, "learning_legends": 1}},
+        {"text": "By building a reputation for being helpful and reliable", "points": {"pocket_patrons": 3, "virtue_vignettes": 2}},
+        {"text": "By helping my culture and community grow closer to God", "points": {"culture_carriers": 3, "apostolic_allstars": 1}}
       ]
     },
     {
@@ -4038,13 +4038,13 @@ const SAINTS_QUIZZES_DATA = [
     },
     {
       "id": 7,
-      "question": "How do you want to be remembered?",
+      "question": "What would you want people to say about you?",
       "answers": [
-        {"text": "As someone who had beautiful mystical experiences", "points": {"contemplative_cuties": 3, "mini_marians": 2}},
-        {"text": "As someone who performed impossible miracles", "points": {"super_sancti": 3, "heavenly_helpers": 1}},
-        {"text": "As a wise leader who changed the world", "points": {"founder_flames": 2, "regal_royals": 3, "apostolic_allstars": 2}},
-        {"text": "As someone who was always there when people needed help", "points": {"pocket_patrons": 3, "virtue_vignettes": 2}},
-        {"text": "As a young person who inspired other kids", "points": {"halo_hatchlings": 3, "learning_legends": 1}}
+        {"text": "That I had amazing spiritual experiences and wisdom", "points": {"contemplative_cuties": 3, "mini_marians": 2}},
+        {"text": "That I did incredible, impossible things through God's power", "points": {"super_sancti": 3, "heavenly_helpers": 1}},
+        {"text": "That I was a wise leader who made positive changes", "points": {"founder_flames": 2, "regal_royals": 3, "apostolic_allstars": 2}},
+        {"text": "That I was always there when people needed help", "points": {"pocket_patrons": 3, "virtue_vignettes": 2}},
+        {"text": "That I inspired other young people to be their best", "points": {"halo_hatchlings": 3, "learning_legends": 1}}
       ]
     },
     {
@@ -4062,11 +4062,11 @@ const SAINTS_QUIZZES_DATA = [
       "id": 9,
       "question": "How do you see your relationship with Jesus?",
       "answers": [
-        {"text": "As a mystical union through deep contemplative prayer", "points": {"contemplative_cuties": 3, "mini_marians": 1}},
-        {"text": "As a powerful partnership for performing miracles", "points": {"super_sancti": 3, "heavenly_helpers": 2}},
-        {"text": "As being part of His closest circle of leaders", "points": {"sacred_circle": 3, "apostolic_allstars": 2}},
-        {"text": "As a simple, trusting friendship", "points": {"pocket_patrons": 2, "virtue_vignettes": 2, "halo_hatchlings": 2}},
-        {"text": "As a growing relationship that's still developing", "points": {"halo_hatchlings": 3, "learning_legends": 2}}
+        {"text": "Like a deep, mystical connection through prayer and meditation", "points": {"contemplative_cuties": 3, "mini_marians": 1}},
+        {"text": "Like a powerful partnership for doing amazing things", "points": {"super_sancti": 3, "heavenly_helpers": 2}},
+        {"text": "Like being part of His closest group of friends and leaders", "points": {"sacred_circle": 3, "apostolic_allstars": 2}},
+        {"text": "Like a simple, trusting friendship", "points": {"pocket_patrons": 2, "virtue_vignettes": 2, "halo_hatchlings": 2}},
+        {"text": "Like a growing friendship that's still developing", "points": {"halo_hatchlings": 3, "learning_legends": 2}}
       ]
     },
     {
@@ -4079,10 +4079,67 @@ const SAINTS_QUIZZES_DATA = [
         {"text": "Being incredibly helpful with everyday problems", "points": {"pocket_patrons": 3, "heavenly_helpers": 1}},
         {"text": "Connecting different peoples through faith", "points": {"culture_carriers": 3, "sacred_circle": 1}}
       ]
+    },
+    {
+      "id": 11,
+      "question": "What age group of heroes and role models inspires you most?",
+      "answers": [
+        {"text": "Young people showing that kids can do amazing things too", "points": {"halo_hatchlings": 3, "learning_legends": 1}},
+        {"text": "Adults in their prime doing great deeds and adventures", "points": {"super_sancti": 3, "founder_flames": 2, "culture_carriers": 1}},
+        {"text": "Wise elders sharing deep insights about life", "points": {"contemplative_cuties": 3, "desert_disciples": 2}},
+        {"text": "Parents and family members living good, ordinary lives", "points": {"faithful_families": 3, "virtue_vignettes": 2}},
+        {"text": "Age doesn't matter - good people come from every generation", "points": {"pocket_patrons": 2, "apostolic_allstars": 2, "heavenly_helpers": 2}}
+      ]
+    },
+    {
+      "id": 12,
+      "question": "What kind of environment makes you feel most peaceful and happy?",
+      "answers": [
+        {"text": "Complete quiet in nature or a very peaceful place", "points": {"desert_disciples": 3, "contemplative_cuties": 2}},
+        {"text": "A beautiful church or special place with lots of people", "points": {"mini_marians": 3, "culture_carriers": 2}},
+        {"text": "Wherever there are people who need help", "points": {"pocket_patrons": 3, "heavenly_helpers": 2, "virtue_vignettes": 1}},
+        {"text": "At home surrounded by family and people I love", "points": {"faithful_families": 3, "halo_hatchlings": 2}},
+        {"text": "In a school, library, or place where I can learn", "points": {"learning_legends": 3, "apostolic_allstars": 1}}
+      ]
+    },
+    {
+      "id": 13,
+      "question": "How do you prefer to deal with really tough times or challenges?",
+      "answers": [
+        {"text": "I try to stay patient and offer it up quietly", "points": {"virtue_vignettes": 3, "contemplative_cuties": 2}},
+        {"text": "I fight against the problem with determination and energy", "points": {"super_sancti": 3, "cherub_chibis": 2}},
+        {"text": "I try to organize others and work together to create change", "points": {"founder_flames": 3, "regal_royals": 2}},
+        {"text": "I try to help others who are going through even worse times", "points": {"heavenly_helpers": 3, "pocket_patrons": 2}},
+        {"text": "I turn to Mary or my family for comfort and guidance", "points": {"mini_marians": 3, "faithful_families": 1}}
+      ]
+    },
+    {
+      "id": 14,
+      "question": "What kind of focus or interest appeals to you most?",
+      "answers": [
+        {"text": "Learning more about Mary and following her example", "points": {"mini_marians": 3, "contemplative_cuties": 1}},
+        {"text": "Spending quiet time in prayer and feeling close to Jesus", "points": {"contemplative_cuties": 3, "desert_disciples": 2}},
+        {"text": "Serving people who are poor, forgotten, or need help", "points": {"virtue_vignettes": 2, "pocket_patrons": 2, "apostolic_allstars": 1}},
+        {"text": "Protecting and celebrating my culture, heritage, or community", "points": {"culture_carriers": 3, "cherub_chibis": 2}},
+        {"text": "Learning about God through study, reading, and teaching", "points": {"learning_legends": 3, "apostolic_allstars": 2}}
+      ]
+    },
+    {
+      "id": 15,
+      "question": "What saying or quote would best describe your approach to life?",
+      "answers": [
+        {"text": "'Be still and know that I am God' - finding peace in quiet moments", "points": {"contemplative_cuties": 3, "desert_disciples": 3}},
+        {"text": "'Nothing is impossible with God' - believing in amazing possibilities", "points": {"super_sancti": 3, "heavenly_helpers": 2}},
+        {"text": "'I can do all things through Christ' - confident in taking on challenges", "points": {"founder_flames": 3, "regal_royals": 2, "apostolic_allstars": 1}},
+        {"text": "'Whatever you do, do it with love' - focusing on simple daily kindness", "points": {"virtue_vignettes": 3, "pocket_patrons": 2, "faithful_families": 1}},
+        {"text": "'Here I am, send me' - ready for whatever comes my way", "points": {"cherub_chibis": 3, "culture_carriers": 2, "halo_hatchlings": 1}}
+      ]
     }
   ],
   "results": {
     "halo_hatchlings": {
+      "name": "a Halo Hatchling",
+      "series": "Halo Hatchlings",
       "series_name": "Halo Hatchlings",
       "icon_asset": "assets/luxlings_series/halo_hatchlings.png",
       "description": "You're a Halo Hatchling! You represent the young saints who show that age is no barrier to holiness. Like Carlo Acutis, Dominic Savio, and Maria Goretti, you have a pure heart and are still growing in your faith. You inspire other young people to live saintly lives and prove that kids can be heroes too! Your youthful energy and innocent love for God light up the world!",
@@ -4091,6 +4148,8 @@ const SAINTS_QUIZZES_DATA = [
       "fun_fact": "The youngest saints in this series prove that God doesn't wait until you're older to call you to greatness!"
     },
     "contemplative_cuties": {
+      "name": "a Contemplative Cutie",
+      "series": "Contemplative Cuties",
       "series_name": "Contemplative Cuties",
       "icon_asset": "assets/luxlings_series/contemplative_cuties.png",
       "description": "You're a Contemplative Cutie! You're drawn to deep prayer, mystical experiences, and quiet time with God. Like Thérèse, Teresa of Avila, and Catherine of Siena, you find God in the silence and have profound spiritual insights. You're the prayer warrior who knows that time spent with God changes everything. Your contemplative heart brings heaven closer to earth!",
@@ -4099,6 +4158,8 @@ const SAINTS_QUIZZES_DATA = [
       "fun_fact": "Contemplative saints often had visions and mystical experiences that guided the whole Church!"
     },
     "founder_flames": {
+      "name": "a Founder Flame",
+      "series": "Founder Flames",
       "series_name": "Founder Flames",
       "icon_asset": "assets/luxlings_series/founder_flames.png",
       "description": "You're a Founder Flame! You're a natural-born leader and entrepreneur for God's kingdom. Like Francis, Dominic, and Ignatius, you see needs and create solutions that last for centuries. You don't just follow - you blaze new trails and start movements that help countless people. Your leadership creates lasting change in the world!",
@@ -4107,6 +4168,8 @@ const SAINTS_QUIZZES_DATA = [
       "fun_fact": "Many religious orders founded by these saints are still active today, centuries later!"
     },
     "pocket_patrons": {
+      "name": "a Pocket Patron",
+      "series": "Pocket Patrons",
       "series_name": "Pocket Patrons",
       "icon_asset": "assets/luxlings_series/pocket_patrons.png",
       "description": "You're a Pocket Patron! You're the go-to saint for everyday problems and practical help. Like Anthony (lost things), Blaise (throat problems), and Joseph (workers), you specialize in the daily struggles people face. You're reliable, helpful, and always there when people need you most. Your practical holiness makes faith accessible to everyone!",
@@ -4115,6 +4178,8 @@ const SAINTS_QUIZZES_DATA = [
       "fun_fact": "People still pray to Pocket Patron saints for help with specific needs like lost items, sore throats, and work problems!"
     },
     "super_sancti": {
+      "name": "a Super Sancti",
+      "series": "Super Sancti",
       "series_name": "Super Sancti",
       "icon_asset": "assets/luxlings_series/super_sancti.png",
       "description": "You're a Super Sancti! You're destined for amazing, dramatic feats that inspire awe and wonder. Like Joan of Arc, Maximilian Kolbe, and Oscar Romero, you perform incredible acts of courage, sacrifice, and miraculous power. You're the superhero saint whose story seems almost too amazing to believe. Your extraordinary life shows God's power!",
@@ -4123,6 +4188,8 @@ const SAINTS_QUIZZES_DATA = [
       "fun_fact": "Super Sancti saints often have the most dramatic conversion stories and incredible miracles!"
     },
     "sacred_circle": {
+      "name": "a Sacred Circle",
+      "series": "Sacred Circle",
       "series_name": "Sacred Circle",
       "icon_asset": "assets/luxlings_series/sacred_circle.png",
       "description": "You're part of the Sacred Circle! You're called to be in Jesus's inner circle like the apostles and closest disciples. Like Peter, John, and Mary Magdalene, you have a special intimacy with Jesus and help lay the foundation for others. You're a foundational saint whose faithfulness supports the whole Church. Your close relationship with Jesus is your greatest treasure!",
@@ -4131,6 +4198,8 @@ const SAINTS_QUIZZES_DATA = [
       "fun_fact": "The Sacred Circle saints were literally there with Jesus or were among the very first Christians!"
     },
     "learning_legends": {
+      "name": "a Learning Legend",
+      "series": "Learning Legends",
       "series_name": "Learning Legends",
       "icon_asset": "assets/luxlings_series/learning_legends.png",
       "description": "You're a Learning Legend! You're passionate about education, wisdom, and understanding God through study. Like Thomas Aquinas, Hildegard, and Elizabeth Seton, you believe that learning is a form of worship and that education can change the world. You're the scholar-saint whose mind serves God. Your love of learning lights up minds and hearts!",
@@ -4139,6 +4208,8 @@ const SAINTS_QUIZZES_DATA = [
       "fun_fact": "Many Learning Legends founded schools and universities that are still educating students today!"
     },
     "culture_carriers": {
+      "name": "a Culture Carrier",
+      "series": "Culture Carriers",
       "series_name": "Culture Carriers",
       "icon_asset": "assets/luxlings_series/culture_carriers.png",
       "description": "You're a Culture Carrier! You're the patron saint of your people, culture, or nation. Like Patrick (Ireland), George (England), and Guadalupe (Americas), you bridge different cultures and help entire peoples find God. You understand that God speaks through every culture and that diversity is beautiful. Your cultural pride serves God's universal love!",
@@ -4147,6 +4218,8 @@ const SAINTS_QUIZZES_DATA = [
       "fun_fact": "Culture Carrier saints often appeared to indigenous peoples in their own cultural dress and language!"
     },
     "regal_royals": {
+      "name": "a Regal Royal",
+      "series": "Regal Royals",
       "series_name": "Regal Royals",
       "icon_asset": "assets/luxlings_series/regal_royals.png",
       "description": "You're a Regal Royal! You're called to holy leadership and noble service. Like Louis IX, Helena, and Edward the Confessor, you use power and privilege to serve God and help others. You understand that true nobility comes from virtue, not birth. You're the king or queen whose crown is really a halo! Your royal example shows how to lead with holiness!",
@@ -4155,6 +4228,8 @@ const SAINTS_QUIZZES_DATA = [
       "fun_fact": "Many Regal Royal saints gave up earthly crowns for heavenly ones, choosing holiness over political power!"
     },
     "heavenly_helpers": {
+      "name": "a Heavenly Helper",
+      "series": "Heavenly Helpers",
       "series_name": "Heavenly Helpers",
       "icon_asset": "assets/luxlings_series/heavenly_helpers.png",
       "description": "You're a Heavenly Helper! You specialize in healing, miracles, and helping people with specific problems. Like Padre Pio, Bernadette, and Rita, you channel God's power to bring healing and hope to desperate situations. You're the miracle worker whose prayers make the impossible possible. Your heavenly help brings God's power to earth!",
@@ -4163,6 +4238,8 @@ const SAINTS_QUIZZES_DATA = [
       "fun_fact": "Heavenly Helper saints are often invoked for specific needs and are famous for miraculous answers to prayer!"
     },
     "desert_disciples": {
+      "name": "a Desert Disciple",
+      "series": "Desert Disciples",
       "series_name": "Desert Disciples",
       "icon_asset": "assets/luxlings_series/desert_disciples.png",
       "description": "You're a Desert Disciple! You're called to the hermit life of solitude, silence, and extreme devotion to God. Like Anthony the Great, Benedict, and Mary of Egypt, you find God in the wilderness and show that sometimes you have to leave everything behind to find everything in God. Your desert spirituality creates oases of holiness!",
@@ -4171,6 +4248,8 @@ const SAINTS_QUIZZES_DATA = [
       "fun_fact": "Desert Disciple saints often lived for decades in complete solitude but influenced thousands through their example!"
     },
     "virtue_vignettes": {
+      "name": "a Virtue Vignette",
+      "series": "Virtue Vignettes",
       "series_name": "Virtue Vignettes",
       "icon_asset": "assets/luxlings_series/virtue_vignettes.png",
       "description": "You're a Virtue Vignette! You're known for mastering specific virtues and character traits. Like Monica (patience), Philip Neri (joy), and Gianna Molla (sacrifice), you show what it looks like to perfect particular aspects of Christian character. You're the specialty saint whose virtue shines so brightly it inspires everyone. Your character is your superpower!",
@@ -4179,6 +4258,8 @@ const SAINTS_QUIZZES_DATA = [
       "fun_fact": "Virtue Vignette saints are often remembered for one particular virtue that they practiced to an extraordinary degree!"
     },
     "apostolic_allstars": {
+      "name": "an Apostolic All-Star",
+      "series": "Apostolic All-Stars",
       "series_name": "Apostolic All-Stars",
       "icon_asset": "assets/luxlings_series/apostolic_allstars.png",
       "description": "You're an Apostolic All-Star! You're called to build up the Church through leadership, teaching, and evangelization. Like Augustine, Jerome, and Gregory the Great, you're a Church Father whose work shapes Christianity for centuries. You're the theologian, pope, or church builder whose contributions become foundational. Your apostolic work builds the kingdom!",
@@ -4187,6 +4268,8 @@ const SAINTS_QUIZZES_DATA = [
       "fun_fact": "Apostolic All-Star saints wrote many of the books and created many of the practices that Christians still use today!"
     },
     "mini_marians": {
+      "name": "a Mini Marian",
+      "series": "Mini Marians",
       "series_name": "Mini Marians",
       "icon_asset": "assets/luxlings_series/mini_marians.png",
       "description": "You're a Mini Marian! Your spirituality centers around devotion to Mary and spreading her messages. Like the apparitions at Lourdes, Fatima, and Guadalupe, you help people understand Mary's role as mother and intercessor. You're the Marian devotee whose love for Mary draws others to Jesus. Your Marian heart reflects Mary's own loving spirit!",
@@ -4195,6 +4278,8 @@ const SAINTS_QUIZZES_DATA = [
       "fun_fact": "Mini Marian saints and apparitions often emphasize the Rosary and prayer as powerful weapons against evil!"
     },
     "faithful_families": {
+      "name": "a Faithful Family",
+      "series": "Faithful Families",
       "series_name": "Faithful Families",
       "icon_asset": "assets/luxlings_series/faithful_families.png",
       "description": "You're part of the Faithful Families! Your path to holiness goes through family life and helping loved ones become saints too. Like Sts. Louis and Zélie Martin or Anne and Joachim, you show that families can be schools of holiness where everyone helps everyone else get to heaven. Your family love reflects God's own family love!",
@@ -4203,6 +4288,8 @@ const SAINTS_QUIZZES_DATA = [
       "fun_fact": "Faithful Family saints often have multiple family members who become saints - holiness runs in the family!"
     },
     "cherub_chibis": {
+      "name": "a Cherub Chibi",
+      "series": "Cherub Chibis",
       "series_name": "Cherub Chibis",
       "icon_asset": "assets/luxlings_series/cherub_chibis.png",
       "description": "You're a Cherub Chibi! You're called to be God's warrior and messenger like the mighty archangels. Like Michael, Gabriel, and Raphael, you're a spiritual warrior who fights evil, delivers God's messages, and protects His people. You're the angelic saint whose mission comes directly from heaven's throne room. Your warrior spirit defends God's kingdom!",

@@ -21,7 +21,9 @@ export default function LuxDnaLab() {
   const [answers, setAnswers] = useState({});
   const [showQuizResult, setShowQuizResult] = useState(false);
   const [quizResult, setQuizResult] = useState(null);
-  const [isSaintQuizzesExpanded, setIsSaintQuizzesExpanded] = useState(true);
+  const [isSaintQuizzesExpanded, setIsSaintQuizzesExpanded] = useState(false);
+  const [showNavMenu, setShowNavMenu] = useState(false);
+  const [showStatsDropdown, setShowStatsDropdown] = useState(false);
 
   // Theme definitions (consistent with all other pages)
   const themes = useMemo(() => ({
@@ -107,6 +109,29 @@ export default function LuxDnaLab() {
     }
   }), []);
 
+  // Navigation menu items
+  const navMenuItems = useMemo(() => [
+    { name: 'Dashboard', path: '/student-dashboard', icon: '⌂' },
+    { name: 'Nominees', path: '/student-nominees', icon: '□' },
+    { name: 'Bookshelf', path: '/student-bookshelf', icon: '⚏' },
+    { name: 'Healthy Habits', path: '/student-healthy-habits', icon: '○' },
+    { name: 'Saints', path: '/student-saints', icon: '♔' },
+    { name: 'Stats', path: '/student-stats', icon: '△' },
+    { name: 'Settings', path: '/student-settings', icon: '⚙' }
+  ], []);
+
+  // Stats navigation options
+  const statsNavOptions = useMemo(() => [
+    { name: 'Stats Dashboard', path: '/student-stats', icon: '📊', description: 'Main overview' },
+    { name: 'My Stats', path: '/student-stats/my-stats', icon: '📈', description: 'Personal reading progress' },
+    { name: 'School Stats', path: '/student-stats/school-stats', icon: '🏫', description: 'School-wide progress' },
+    { name: 'Grade Stats', path: '/student-stats/grade-stats', icon: '🎓', description: 'Compare with classmates' },
+    { name: 'Diocese Stats', path: '/student-stats/diocese-stats', icon: '🌍', description: 'Coming soon!', disabled: true },
+    { name: 'Global Stats', path: '/student-stats/global-stats', icon: '🌎', description: 'Coming soon!', disabled: true },
+    { name: 'Lux DNA Lab', path: '/student-stats/lux-dna-lab', icon: '🧬', description: 'Discover your reading personality', current: true },
+    { name: 'Family Battle', path: '/student-stats/family-battle', icon: '👨‍👩‍👧‍👦', description: 'Coming soon!', disabled: true }
+  ], []);
+
   // Series colors for quiz results (same as saints collection)
   const seriesColors = useMemo(() => ({
     'Ultimate Redeemer': { bg: '#FFD700', text: '#2F1B14', border: '#FFA500', modalText: '#FFFFFF' },
@@ -147,6 +172,51 @@ export default function LuxDnaLab() {
       setQuizzes([]);
     }
   }, []);
+
+  // Close nav menus when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showNavMenu && !event.target.closest('.nav-menu-container')) {
+        setShowNavMenu(false);
+      }
+      if (showStatsDropdown && !event.target.closest('.stats-dropdown-container')) {
+        setShowStatsDropdown(false);
+      }
+    };
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        setShowNavMenu(false);
+        setShowStatsDropdown(false);
+      }
+    };
+
+    if (showNavMenu || showStatsDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscape);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [showNavMenu, showStatsDropdown]);
+
+  // Handle stats navigation
+  const handleStatsNavigation = (option) => {
+    setShowStatsDropdown(false);
+    
+    if (option.disabled) {
+      alert(`${option.name} is coming soon! 🚧`);
+      return;
+    }
+    
+    if (option.current) {
+      return; // Already on current page
+    }
+    
+    router.push(option.path);
+  };
 
   // Load student data for theme
   const loadData = useCallback(async () => {
@@ -347,7 +417,7 @@ export default function LuxDnaLab() {
         paddingBottom: '100px'
       }}>
         
-        {/* HEADER */}
+        {/* HEADER WITH DROPDOWN NAVIGATION */}
         <div style={{
           background: `linear-gradient(135deg, ${currentTheme.primary}F0, ${currentTheme.secondary}F0)`,
           backdropFilter: 'blur(20px)',
@@ -355,6 +425,7 @@ export default function LuxDnaLab() {
           position: 'relative',
           borderRadius: '0 0 25px 25px',
           boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+          zIndex: 100,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between'
@@ -374,6 +445,7 @@ export default function LuxDnaLab() {
               cursor: 'pointer',
               color: currentTheme.textPrimary,
               backdropFilter: 'blur(10px)',
+              flexShrink: 0,
               touchAction: 'manipulation',
               WebkitTapHighlightColor: 'transparent'
             }}
@@ -381,20 +453,215 @@ export default function LuxDnaLab() {
             ←
           </button>
 
-          <h1 style={{
-            fontSize: '24px',
-            fontWeight: '400',
-            color: currentTheme.textPrimary,
-            margin: '0',
-            letterSpacing: '1px',
-            fontFamily: 'Didot, "Times New Roman", serif',
-            textAlign: 'center',
-            flex: 1
-          }}>
-            🧬 Lux DNA Lab
-          </h1>
+          {/* STATS DROPDOWN */}
+          <div className="stats-dropdown-container" style={{ position: 'relative', flex: 1 }}>
+            <button
+              onClick={() => setShowStatsDropdown(!showStatsDropdown)}
+              style={{
+                backgroundColor: 'rgba(255,255,255,0.3)',
+                border: 'none',
+                borderRadius: '20px',
+                padding: '8px 16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                cursor: 'pointer',
+                color: currentTheme.textPrimary,
+                backdropFilter: 'blur(10px)',
+                fontSize: '16px',
+                fontWeight: '500',
+                minHeight: '40px',
+                margin: '0 auto',
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent'
+              }}
+            >
+              <span style={{ fontSize: '18px' }}>🧬</span>
+              <span style={{ fontFamily: 'Didot, "Times New Roman", serif' }}>Lux DNA Lab</span>
+              <span style={{ fontSize: '12px', transform: showStatsDropdown ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▼</span>
+            </button>
 
-          <div style={{ width: '44px' }} />
+            {showStatsDropdown && (
+              <div style={{
+                position: 'absolute',
+                top: '50px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                backgroundColor: currentTheme.surface,
+                borderRadius: '16px',
+                minWidth: '280px',
+                maxWidth: '320px',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+                backdropFilter: 'blur(20px)',
+                border: `2px solid ${currentTheme.primary}60`,
+                overflow: 'hidden',
+                zIndex: 9999
+              }}>
+                <div style={{
+                  padding: '16px',
+                  backgroundColor: `${currentTheme.primary}20`,
+                  borderBottom: `1px solid ${currentTheme.primary}40`
+                }}>
+                  <div style={{
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: currentTheme.textPrimary,
+                    textAlign: 'center'
+                  }}>
+                    📊 Stats Explorer
+                  </div>
+                </div>
+                
+                {statsNavOptions.map((option, index) => (
+                  <button
+                    key={option.name}
+                    onClick={() => handleStatsNavigation(option)}
+                    disabled={option.disabled}
+                    style={{
+                      width: '100%',
+                      padding: '14px 16px',
+                      backgroundColor: option.current ? `${currentTheme.primary}30` : 'transparent',
+                      border: 'none',
+                      borderBottom: index < statsNavOptions.length - 1 ? `1px solid ${currentTheme.primary}40` : 'none',
+                      cursor: option.disabled ? 'not-allowed' : option.current ? 'default' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      fontSize: '13px',
+                      color: option.disabled ? currentTheme.textSecondary : currentTheme.textPrimary,
+                      fontWeight: option.current ? '600' : '500',
+                      textAlign: 'left',
+                      touchAction: 'manipulation',
+                      WebkitTapHighlightColor: 'transparent',
+                      opacity: option.disabled ? 0.6 : 1,
+                      transition: 'background-color 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!option.disabled && !option.current) {
+                        e.target.style.backgroundColor = `${currentTheme.primary}20`;
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!option.disabled && !option.current) {
+                        e.target.style.backgroundColor = 'transparent';
+                      }
+                    }}
+                  >
+                    <span style={{ fontSize: '16px', flexShrink: 0 }}>{option.icon}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        marginBottom: '2px'
+                      }}>
+                        {option.name}
+                      </div>
+                      <div style={{
+                        fontSize: '11px',
+                        color: currentTheme.textSecondary,
+                        opacity: 0.8
+                      }}>
+                        {option.description}
+                      </div>
+                    </div>
+                    {option.current && (
+                      <span style={{ fontSize: '12px', color: currentTheme.primary }}>●</span>
+                    )}
+                    {option.disabled && (
+                      <span style={{
+                        fontSize: '9px',
+                        backgroundColor: '#FF9800',
+                        color: 'white',
+                        padding: '2px 6px',
+                        borderRadius: '8px',
+                        fontWeight: '600'
+                      }}>
+                        SOON
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Hamburger Menu */}
+          <div className="nav-menu-container" style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowNavMenu(!showNavMenu)}
+              style={{
+                backgroundColor: 'rgba(255,255,255,0.3)',
+                border: 'none',
+                borderRadius: '50%',
+                width: '44px',
+                height: '44px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '18px',
+                cursor: 'pointer',
+                color: currentTheme.textPrimary,
+                backdropFilter: 'blur(10px)',
+                flexShrink: 0,
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent'
+              }}
+            >
+              ☰
+            </button>
+
+            {showNavMenu && (
+              <div style={{
+                position: 'absolute',
+                top: '50px',
+                right: '0',
+                backgroundColor: currentTheme.surface,
+                borderRadius: '12px',
+                minWidth: '180px',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                backdropFilter: 'blur(20px)',
+                border: `2px solid ${currentTheme.primary}60`,
+                overflow: 'hidden',
+                zIndex: 9999
+              }}>
+                {navMenuItems.map((item, index) => (
+                  <button
+                    key={item.path}
+                    onClick={() => {
+                      setShowNavMenu(false);
+                      if (!item.current) {
+                        router.push(item.path);
+                      }
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      backgroundColor: item.current ? `${currentTheme.primary}30` : 'transparent',
+                      border: 'none',
+                      borderBottom: index < navMenuItems.length - 1 ? `1px solid ${currentTheme.primary}40` : 'none',
+                      cursor: item.current ? 'default' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      fontSize: '14px',
+                      color: currentTheme.textPrimary,
+                      fontWeight: item.current ? '600' : '500',
+                      textAlign: 'left',
+                      touchAction: 'manipulation',
+                      WebkitTapHighlightColor: 'transparent'
+                    }}
+                  >
+                    <span style={{ fontSize: '16px' }}>{item.icon}</span>
+                    <span>{item.name}</span>
+                    {item.current && (
+                      <span style={{ marginLeft: 'auto', fontSize: '12px', color: currentTheme.primary }}>●</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* MAIN CONTENT */}
