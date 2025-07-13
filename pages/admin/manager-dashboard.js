@@ -1142,7 +1142,7 @@ export default function EnhancedAdminDashboard() {
                         📚 What This Setup Does:
                       </h4>
                       <ul style={{ color: '#a7f3d0', lineHeight: '1.6', margin: 0, paddingLeft: '1.5rem' }}>
-                        <li><strong>Adds Status Field:</strong> Sets all existing books to "active"</li>
+                        <li><strong>Adds Status Field:</strong> Sets all existing books to &quot;active&quot;</li>
                         <li><strong>Enables Archiving:</strong> Allows books to be archived in future years</li>
                         <li><strong>Preserves Existing Data:</strong> No existing fields are modified</li>
                         <li><strong>Academic Year Already Set:</strong> Skips books that already have status</li>
