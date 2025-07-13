@@ -1115,7 +1115,7 @@ export default function MyStats() {
                   marginBottom: '8px',
                   fontFamily: 'Didot, "Times New Roman", serif'
                 }}>
-                  You're a {readingPersonality.name}!
+                  You&apos;re a {readingPersonality.name}!
                 </div>
                 <div style={{
                   fontSize: 'clamp(12px, 3.5vw, 14px)',
