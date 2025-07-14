@@ -4,7 +4,7 @@ import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
 import { db } from '../../lib/firebase'
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, orderBy } from 'firebase/firestore'
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, getDoc, query, where, orderBy } from 'firebase/firestore'
 
 export default function TeacherStudents() {
   const router = useRouter()
@@ -42,7 +42,9 @@ export default function TeacherStudents() {
   const [showEditModal, setShowEditModal] = useState(false)
   const [showBookSubmissionModal, setShowBookSubmissionModal] = useState(false)
   const [showStudentDetailModal, setShowStudentDetailModal] = useState(false)
+  const [showStudentBooksModal, setShowStudentBooksModal] = useState(false)
   const [selectedStudent, setSelectedStudent] = useState(null)
+  const [selectedStudentBooks, setSelectedStudentBooks] = useState([])
   const [isProcessing, setIsProcessing] = useState(false)
   const [showSuccess, setShowSuccess] = useState('')
   const [showTimeoutWarning, setShowTimeoutWarning] = useState(false)
@@ -498,6 +500,106 @@ export default function TeacherStudents() {
     return combined.sort((a, b) => a.firstName.localeCompare(b.firstName))
   }
 
+  // NEW: Load student's completed books
+  const loadStudentBooks = async (student) => {
+    try {
+      console.log('📚 Loading books for student:', student.firstName)
+      setSelectedStudent(student)
+      
+      if (student.type === 'manual') {
+        // For manual students, books are in booksSubmitted array
+        const books = student.booksSubmitted || []
+        console.log('📝 Manual student books:', books)
+        
+        // Get full book details for each submitted book
+        const booksWithDetails = await Promise.all(
+          books.map(async (submission) => {
+            try {
+              const bookDetails = teacherNominees.find(book => book.id === submission.bookId)
+              return {
+                ...submission,
+                bookDetails: bookDetails || { title: submission.bookTitle, authors: 'Unknown' }
+              }
+            } catch (error) {
+              return {
+                ...submission,
+                bookDetails: { title: submission.bookTitle || 'Unknown Book', authors: 'Unknown' }
+              }
+            }
+          })
+        )
+        
+        setSelectedStudentBooks(booksWithDetails)
+        
+      } else {
+        // For app students, load their bookshelf from Firebase
+        const studentRef = doc(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/students`, student.id)
+        const studentDoc = await getDoc(studentRef)
+        
+        if (studentDoc.exists()) {
+          const studentData = studentDoc.data()
+          const bookshelf = studentData.bookshelf || []
+          
+          // Filter for completed books only
+          const completedBooks = bookshelf.filter(book => book.completed === true)
+          
+          // Get full book details
+          const booksWithDetails = await Promise.all(
+            completedBooks.map(async (bookEntry) => {
+              try {
+                const bookDetails = teacherNominees.find(book => book.id === bookEntry.bookId)
+                return {
+                  ...bookEntry,
+                  bookDetails: bookDetails || { title: 'Unknown Book', authors: 'Unknown' }
+                }
+              } catch (error) {
+                return {
+                  ...bookEntry,
+                  bookDetails: { title: 'Unknown Book', authors: 'Unknown' }
+                }
+              }
+            })
+          )
+          
+          setSelectedStudentBooks(booksWithDetails)
+        } else {
+          setSelectedStudentBooks([])
+        }
+      }
+      
+      setShowStudentBooksModal(true)
+      
+    } catch (error) {
+      console.error('❌ Error loading student books:', error)
+      setShowSuccess('❌ Error loading student books')
+      setTimeout(() => setShowSuccess(''), 3000)
+    }
+  }
+
+  // NEW: Get available books for this student (filtering out already completed)
+  const getAvailableBooksForStudent = (student) => {
+    if (!student || !teacherNominees.length) return []
+    
+    const completedBookIds = new Set()
+    
+    if (student.type === 'manual') {
+      // For manual students, get completed book IDs from booksSubmitted
+      const submissions = student.booksSubmitted || []
+      submissions.forEach(submission => {
+        if (submission.bookId) {
+          completedBookIds.add(submission.bookId)
+        }
+      })
+    } else {
+      // For app students, we'd need to load their bookshelf, but for now
+      // we'll just return all books since we're focusing on manual students
+      // This could be enhanced later
+    }
+    
+    // Filter out books already completed by this student
+    return teacherNominees.filter(book => !completedBookIds.has(book.id))
+  }
+
   // NEW: Get available submission options for manual students (excluding quiz)
   const getAvailableSubmissionOptions = () => {
     const options = []
@@ -939,6 +1041,7 @@ export default function TeacherStudents() {
                 setSelectedStudent(student)
                 setShowStudentDetailModal(true)
               }}
+              onViewBooks={loadStudentBooks}
               isProcessing={isProcessing}
             />
           ) : activeTab === 'app' ? (
@@ -949,6 +1052,7 @@ export default function TeacherStudents() {
                 setSelectedStudent(student)
                 setShowStudentDetailModal(true)
               }}
+              onViewBooks={loadStudentBooks}
               isProcessing={isProcessing}
             />
           ) : (
@@ -964,6 +1068,7 @@ export default function TeacherStudents() {
                 setSelectedStudent(student)
                 setShowBookSubmissionModal(true)
               }}
+              onViewBooks={loadStudentBooks}
               isProcessing={isProcessing}
             />
           )}
@@ -1138,7 +1243,7 @@ export default function TeacherStudents() {
           </Modal>
         )}
 
-        {/* UPDATED: Book Submission Modal with dropdown and teacher submission options */}
+        {/* UPDATED: Book Submission Modal with filtered dropdown and teacher submission options */}
         {showBookSubmissionModal && selectedStudent && (
           <Modal
             title={`📚 Add Book for ${selectedStudent.firstName}`}
@@ -1158,7 +1263,8 @@ export default function TeacherStudents() {
                 <select
                   value={bookSubmission.bookId}
                   onChange={(e) => {
-                    const selectedBook = teacherNominees.find(book => book.id === e.target.value)
+                    const availableBooks = getAvailableBooksForStudent(selectedStudent)
+                    const selectedBook = availableBooks.find(book => book.id === e.target.value)
                     setBookSubmission(prev => ({ 
                       ...prev, 
                       bookId: e.target.value,
@@ -1175,19 +1281,32 @@ export default function TeacherStudents() {
                   }}
                 >
                   <option value="">Choose a book...</option>
-                  {teacherNominees.map(book => (
+                  {getAvailableBooksForStudent(selectedStudent).map(book => (
                     <option key={book.id} value={book.id}>
                       {book.title} by {book.authors}
                     </option>
                   ))}
                 </select>
-                {teacherNominees.length === 0 && (
+                {getAvailableBooksForStudent(selectedStudent).length === 0 ? (
                   <p style={{
                     fontSize: '0.75rem',
                     color: '#ef4444',
                     margin: '0.5rem 0 0 0'
                   }}>
-                    No books available. Please select books during teacher onboarding.
+                    {selectedStudent.type === 'manual' ? 
+                      'This student has completed all available books!' :
+                      'No books available. Please select books during teacher onboarding.'
+                    }
+                  </p>
+                ) : (
+                  <p style={{
+                    fontSize: '0.75rem',
+                    color: '#6b7280',
+                    margin: '0.5rem 0 0 0'
+                  }}>
+                    {selectedStudent.type === 'manual' && (selectedStudent.booksSubmitted?.length || 0) > 0 && (
+                      `Already completed: ${selectedStudent.booksSubmitted.length} book${selectedStudent.booksSubmitted.length !== 1 ? 's' : ''}`
+                    )}
                   </p>
                 )}
               </div>
@@ -1297,6 +1416,135 @@ export default function TeacherStudents() {
                   }}
                 >
                   {isProcessing ? 'Adding...' : 'Add Book'}
+                </button>
+              </div>
+            </div>
+          </Modal>
+        )}
+
+        {/* NEW: Student Books Modal */}
+        {showStudentBooksModal && selectedStudent && (
+          <Modal
+            title={`📖 Books for ${selectedStudent.firstName} ${selectedStudent.lastInitial}.`}
+            onClose={() => setShowStudentBooksModal(false)}
+          >
+            <div style={{ display: 'grid', gap: '1rem' }}>
+              {selectedStudentBooks.length === 0 ? (
+                <div style={{
+                  textAlign: 'center',
+                  padding: '2rem',
+                  color: '#6b7280'
+                }}>
+                  <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>📚</div>
+                  <p>No books completed yet.</p>
+                </div>
+              ) : (
+                <>
+                  <div style={{
+                    background: '#f8fafc',
+                    borderRadius: '0.5rem',
+                    padding: '1rem',
+                    border: '1px solid #e2e8f0'
+                  }}>
+                    <h4 style={{
+                      fontSize: '1rem',
+                      fontWeight: '600',
+                      color: '#223848',
+                      margin: '0 0 0.5rem 0'
+                    }}>
+                      📊 Summary
+                    </h4>
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+                      gap: '0.5rem',
+                      fontSize: '0.875rem',
+                      color: '#6b7280'
+                    }}>
+                      <div>Total Books: {selectedStudentBooks.length}</div>
+                      <div>Grade: {selectedStudent.grade}</div>
+                      <div>Goal: {selectedStudent.personalGoal} books</div>
+                      <div>Progress: {Math.round((selectedStudentBooks.length / selectedStudent.personalGoal) * 100)}%</div>
+                    </div>
+                  </div>
+                  
+                  <div style={{
+                    maxHeight: '400px',
+                    overflowY: 'auto',
+                    display: 'grid',
+                    gap: '0.75rem'
+                  }}>
+                    {selectedStudentBooks.map((bookEntry, index) => (
+                      <div
+                        key={index}
+                        style={{
+                          background: 'white',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '0.5rem',
+                          padding: '1rem',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'flex-start'
+                        }}
+                      >
+                        <div style={{ flex: 1 }}>
+                          <h5 style={{
+                            fontSize: '0.875rem',
+                            fontWeight: '600',
+                            color: '#223848',
+                            margin: '0 0 0.25rem 0'
+                          }}>
+                            {bookEntry.bookDetails?.title || bookEntry.bookTitle || 'Unknown Book'}
+                          </h5>
+                          <p style={{
+                            fontSize: '0.75rem',
+                            color: '#6b7280',
+                            margin: '0 0 0.25rem 0'
+                          }}>
+                            by {bookEntry.bookDetails?.authors || 'Unknown Author'}
+                          </p>
+                          <div style={{
+                            fontSize: '0.75rem',
+                            color: '#374151'
+                          }}>
+                            <span style={{
+                              background: '#e5e7eb',
+                              padding: '0.25rem 0.5rem',
+                              borderRadius: '0.25rem',
+                              marginRight: '0.5rem'
+                            }}>
+                              {bookEntry.submissionType || bookEntry.format || 'Completed'}
+                            </span>
+                            {bookEntry.submittedDate && (
+                              <span>{new Date(bookEntry.submittedDate.seconds ? bookEntry.submittedDate.seconds * 1000 : bookEntry.submittedDate).toLocaleDateString()}</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+              
+              <div style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                marginTop: '1rem'
+              }}>
+                <button
+                  onClick={() => setShowStudentBooksModal(false)}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    background: 'linear-gradient(135deg, #ADD4EA, #C3E0DE)',
+                    color: '#223848',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem',
+                    fontWeight: '600'
+                  }}
+                >
+                  Close
                 </button>
               </div>
             </div>
@@ -1472,7 +1720,7 @@ function StatCard({ icon, title, value, subtitle, color }) {
 }
 
 // NEW: All Students Section combining both types
-function AllStudentsSection({ students, onToggleAppStatus, onEditManualStudent, onDeleteManualStudent, onAddBookSubmission, onViewDetails, isProcessing }) {
+function AllStudentsSection({ students, onToggleAppStatus, onEditManualStudent, onDeleteManualStudent, onAddBookSubmission, onViewDetails, onViewBooks, isProcessing }) {
   if (students.length === 0) {
     return (
       <div style={{
@@ -1522,6 +1770,7 @@ function AllStudentsSection({ students, onToggleAppStatus, onEditManualStudent, 
             onEditStudent={() => onEditManualStudent(student)}
             onDeleteStudent={() => onDeleteManualStudent(student)}
             onAddBookSubmission={() => onAddBookSubmission(student)}
+            onViewBooks={() => onViewBooks(student)}
             isProcessing={isProcessing}
           />
         ))}
@@ -1530,7 +1779,7 @@ function AllStudentsSection({ students, onToggleAppStatus, onEditManualStudent, 
   )
 }
 
-function AppStudentsSection({ students, onToggleStatus, onViewDetails, isProcessing }) {
+function AppStudentsSection({ students, onToggleStatus, onViewDetails, onViewBooks, isProcessing }) {
   if (students.length === 0) {
     return (
       <div style={{
@@ -1577,6 +1826,7 @@ function AppStudentsSection({ students, onToggleStatus, onViewDetails, isProcess
             type="app"
             onToggleStatus={() => onToggleStatus(student)}
             onViewDetails={() => onViewDetails(student)}
+            onViewBooks={() => onViewBooks(student)}
             isProcessing={isProcessing}
           />
         ))}
@@ -1634,7 +1884,7 @@ function ManualStudentsSection({ students, onAddStudent, onEditStudent, onDelete
           color: '#6b7280'
         }}>
           <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>📝</div>
-          <p>No manual students yet. Add students who don&apos;t use the app!</p>
+          <p>No manual students yet. Add students who don't use the app!</p>
         </div>
       ) : (
         <div style={{
@@ -1658,7 +1908,7 @@ function ManualStudentsSection({ students, onAddStudent, onEditStudent, onDelete
   )
 }
 
-function StudentCard({ student, type, onToggleStatus, onViewDetails, onEditStudent, onDeleteStudent, onAddBookSubmission, isProcessing }) {
+function StudentCard({ student, type, onToggleStatus, onViewDetails, onEditStudent, onDeleteStudent, onAddBookSubmission, onViewBooks, isProcessing }) {
   const isActive = student.status !== 'inactive'
   
   return (
@@ -1746,22 +1996,38 @@ function StudentCard({ student, type, onToggleStatus, onViewDetails, onEditStude
               >
                 {isActive ? 'Deactivate' : 'Activate'}
               </button>
-              <button
-                onClick={onViewDetails}
-                style={{
-                  padding: '0.5rem 0.75rem',
-                  backgroundColor: '#ADD4EA',
-                  color: '#223848',
-                  border: 'none',
-                  borderRadius: '0.375rem',
-                  fontSize: '0.75rem',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  minWidth: '80px'
-                }}
-              >
-                View Details
-              </button>
+              <div style={{ display: 'flex', gap: '0.25rem' }}>
+                <button
+                  onClick={onViewDetails}
+                  style={{
+                    padding: '0.5rem 0.75rem',
+                    backgroundColor: '#ADD4EA',
+                    color: '#223848',
+                    border: 'none',
+                    borderRadius: '0.375rem',
+                    fontSize: '0.75rem',
+                    fontWeight: '600',
+                    cursor: 'pointer'
+                  }}
+                >
+                  📊 Details
+                </button>
+                <button
+                  onClick={onViewBooks}
+                  style={{
+                    padding: '0.5rem 0.75rem',
+                    backgroundColor: '#B6DFEB',
+                    color: '#223848',
+                    border: 'none',
+                    borderRadius: '0.375rem',
+                    fontSize: '0.75rem',
+                    fontWeight: '600',
+                    cursor: 'pointer'
+                  }}
+                >
+                  📚 Books
+                </button>
+              </div>
             </>
           ) : (
             <>
@@ -1781,6 +2047,24 @@ function StudentCard({ student, type, onToggleStatus, onViewDetails, onEditStude
               >
                 📚 Add Book
               </button>
+              <div style={{ display: 'flex', gap: '0.25rem', width: '100%' }}>
+                <button
+                  onClick={onViewBooks}
+                  style={{
+                    padding: '0.5rem 0.75rem',
+                    backgroundColor: '#B6DFEB',
+                    color: '#223848',
+                    border: 'none',
+                    borderRadius: '0.375rem',
+                    fontSize: '0.75rem',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    flex: 1
+                  }}
+                >
+                  📖 View Books
+                </button>
+              </div>
               <div style={{ display: 'flex', gap: '0.25rem' }}>
                 <button
                   onClick={onEditStudent}
