@@ -823,8 +823,8 @@ export default function StudentDashboard() {
               color: currentTheme.textSecondary,
               margin: '0 0 16px 0'
             }}>
-              You've completed all {completedBooks.length} books in your teacher's collection! 
-              You're officially a reading champion! 🏆
+              You&apos;ve completed all {completedBooks.length} books in your teacher&apos;s collection! 
+              You&apos;re officially a reading champion! 🏆
             </p>
             <button
               onClick={() => router.push('/student-stats')}
@@ -1802,7 +1802,7 @@ export default function StudentDashboard() {
             color: currentTheme.textSecondary,
             margin: '0 0 16px 0'
           }}>
-            You've completed all {completedBooks.length} books! 🏆
+            You&apos;ve completed all {completedBooks.length} books! 🏆
           </p>
           <button
             onClick={() => router.push('/student-stats')}
