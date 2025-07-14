@@ -1,4 +1,4 @@
-// pages/student-dashboard.js - UPDATED with fun animations and fixes
+// pages/student-dashboard.js - FULLY UPDATED with all code changes and fixes
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
@@ -33,12 +33,14 @@ export default function StudentDashboard() {
   const [actionItems, setActionItems] = useState([]);
   const [nextAchievement, setNextAchievement] = useState(null);
   const [smartRecommendations, setSmartRecommendations] = useState([]);
-  const [currentlyReading, setCurrentlyReading] = useState(null);
   const [latestSaintUnlock, setLatestSaintUnlock] = useState(null);
   const [readingStats, setReadingStats] = useState({ streak: 0, todayMinutes: 0 });
 
   // NEW: Expandable action items
   const [showAllActionItems, setShowAllActionItems] = useState(false);
+  
+  // NEW: Currently Reading state from first document
+  const [showAllCurrentlyReading, setShowAllCurrentlyReading] = useState(false);
 
   // NEW: Grade progression state
   const [showGradeUpdate, setShowGradeUpdate] = useState(false);
@@ -62,7 +64,7 @@ export default function StudentDashboard() {
     { name: 'Healthy Habits', path: '/student-healthy-habits', icon: '○' },
     { name: 'Saints', path: '/student-saints', icon: '♔' },
     { name: 'Stats', path: '/student-stats', icon: '△' },
-    { name: 'Settings', path: '/student-settings', icon: '⚙' } // MOVED BACK TO MENU
+    { name: 'Settings', path: '/student-settings', icon: '⚙' }
   ], []);
 
   // NEW: Book state management functions (copied from bookshelf)
@@ -304,7 +306,7 @@ export default function StudentDashboard() {
     }
   };
 
-  // UPDATED: Generate smart action items based on actual book states
+  // UPDATED: Generate smart action items based on actual book states - REMOVE continue_reading duplication
   const generateActionItems = (bookshelf = [], nominees = []) => {
     const actions = [];
     const now = new Date();
@@ -316,7 +318,7 @@ export default function StudentDashboard() {
     
     console.log('🔍 Generating action items for', bookshelf.length, 'books');
     
-    // 1. NEW: Teacher approvals (highest priority celebration)
+    // 1. Teacher approvals (highest priority celebration)
     const teacherApproved = bookshelf.filter(book => {
       const state = getBookState(book);
       return state === 'completed' && book.submissionType !== 'quiz' && 
@@ -378,26 +380,7 @@ export default function StudentDashboard() {
       });
     });
     
-    // 4. Books in progress (medium priority)
-    const inProgress = bookshelf.filter(book => {
-      const state = getBookState(book);
-      return state === 'in_progress' && book.currentProgress > 0;
-    });
-    
-    inProgress.slice(0, 2).forEach(book => {
-      const nominee = nominees.find(n => n.id === book.bookId);
-      const total = book.format === 'audiobook' ? (nominee?.totalMinutes || book.totalMinutes) : (nominee?.pages || nominee?.pageCount || book.totalPages);
-      const progressPercent = total > 0 ? Math.round((book.currentProgress / total) * 100) : 0;
-      
-      actions.push({
-        type: 'continue_reading',
-        bookId: book.bookId,
-        priority: 2,
-        emoji: '📖',
-        title: `Continue reading "${nominee?.title || 'Unknown Book'}"`,
-        subtitle: `${progressPercent}% complete - keep going!`
-      });
-    });
+    // 4. REMOVED: continue_reading - now handled by CurrentlyReadingSection
     
     // 5. Quiz failures with cooldown (show time remaining)
     const quizCooldown = bookshelf.filter(book => {
@@ -785,6 +768,308 @@ export default function StudentDashboard() {
     return [selectedRecommendation];
   };
 
+  // NEW: Currently Reading Section Component from first document
+  const CurrentlyReadingSection = ({ bookshelf, nominees, router, currentTheme }) => {
+    const getCurrentlyReadingBooks = (bookshelf, nominees) => {
+      const inProgressBooks = bookshelf.filter(book => {
+        const state = getBookState(book);
+        const nominee = nominees.find(n => n.id === book.bookId);
+        const total = book.format === 'audiobook' ? 
+          (nominee?.totalMinutes || book.totalMinutes) : 
+          (nominee?.pages || nominee?.pageCount || book.totalPages);
+        
+        return state === 'in_progress' && 
+               book.currentProgress > 0 && 
+               book.currentProgress < total && 
+               !book.completed;
+      });
+      
+      // Sort by lastUpdated (most recent first)
+      return inProgressBooks.sort((a, b) => (b.lastUpdated || 0) - (a.lastUpdated || 0));
+    };
+
+    const currentlyReadingBooks = getCurrentlyReadingBooks(bookshelf, nominees);
+    
+    // Get available books (not in bookshelf)
+    const inBookshelf = bookshelf.map(book => book.bookId);
+    const availableBooks = nominees.filter(book => !inBookshelf.includes(book.id));
+    const completedBooks = bookshelf.filter(book => book.completed);
+    
+    // Determine what to show
+    if (currentlyReadingBooks.length === 0) {
+      if (availableBooks.length === 0) {
+        // All books are complete - show completion message
+        return (
+          <div style={{
+            backgroundColor: currentTheme.surface,
+            borderRadius: '16px',
+            padding: '20px',
+            marginBottom: '20px',
+            textAlign: 'center',
+            border: `2px solid ${currentTheme.primary}30`,
+            animation: 'slideInUp 0.8s ease-out 0.8s both'
+          }}>
+            <div style={{ fontSize: '64px', marginBottom: '16px' }}>🎉</div>
+            <h3 style={{
+              fontSize: '20px',
+              fontWeight: 'bold',
+              color: currentTheme.textPrimary,
+              margin: '0 0 8px 0'
+            }}>
+              Incredible Achievement!
+            </h3>
+            <p style={{
+              fontSize: '14px',
+              color: currentTheme.textSecondary,
+              margin: '0 0 16px 0'
+            }}>
+              You've completed all {completedBooks.length} books in your teacher's collection! 
+              You're officially a reading champion! 🏆
+            </p>
+            <button
+              onClick={() => router.push('/student-stats')}
+              style={{
+                backgroundColor: currentTheme.primary,
+                color: currentTheme.textPrimary,
+                border: 'none',
+                borderRadius: '12px',
+                padding: '12px 24px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease'
+              }}
+              onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
+              onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+            >
+              View Your Stats
+            </button>
+          </div>
+        );
+      } else {
+        // Has available books but none in progress - encourage to start
+        return (
+          <div style={{
+            backgroundColor: currentTheme.surface,
+            borderRadius: '16px',
+            padding: '20px',
+            marginBottom: '20px',
+            border: `2px solid ${currentTheme.primary}30`,
+            animation: 'slideInUp 0.8s ease-out 0.8s both'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              marginBottom: '16px'
+            }}>
+              <span style={{ fontSize: '24px' }}>🚀</span>
+              <h3 style={{
+                fontSize: '18px',
+                fontWeight: 'bold',
+                color: currentTheme.textPrimary,
+                margin: 0
+              }}>
+                Ready for Your Next Adventure?
+              </h3>
+            </div>
+            
+            <p style={{
+              fontSize: '14px',
+              color: currentTheme.textSecondary,
+              margin: '0 0 16px 0'
+            }}>
+              Great job on your progress! You have {availableBooks.length} more books waiting to be explored.
+            </p>
+            
+            <button
+              onClick={() => router.push('/student-nominees')}
+              style={{
+                backgroundColor: currentTheme.primary,
+                color: currentTheme.textPrimary,
+                border: 'none',
+                borderRadius: '12px',
+                padding: '12px 24px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease'
+              }}
+              onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
+              onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+            >
+              Browse Books
+            </button>
+          </div>
+        );
+      }
+    }
+    
+    // Show currently reading books
+    const booksToShow = showAllCurrentlyReading ? currentlyReadingBooks : currentlyReadingBooks.slice(0, 1);
+    
+    return (
+      <div style={{
+        backgroundColor: currentTheme.surface,
+        borderRadius: '16px',
+        padding: '20px',
+        marginBottom: '20px',
+        border: `1px solid ${currentTheme.primary}30`,
+        animation: 'slideInUp 0.8s ease-out 1.2s both'
+      }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '16px'
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <span style={{ fontSize: '20px' }}>📖</span>
+            <h3 style={{
+              fontSize: '18px',
+              fontWeight: 'bold',
+              color: currentTheme.textPrimary,
+              margin: 0
+            }}>
+              Currently Reading
+            </h3>
+          </div>
+          
+          {currentlyReadingBooks.length > 1 && (
+            <button
+              onClick={() => setShowAllCurrentlyReading(!showAllCurrentlyReading)}
+              style={{
+                backgroundColor: `${currentTheme.primary}20`,
+                border: 'none',
+                borderRadius: '8px',
+                padding: '6px 12px',
+                color: currentTheme.textPrimary,
+                fontSize: '12px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
+              onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+            >
+              {showAllCurrentlyReading ? 'Show Less' : `+${currentlyReadingBooks.length - 1} More`}
+            </button>
+          )}
+        </div>
+        
+        {booksToShow.map((book, index) => {
+          const nominee = nominees.find(n => n.id === book.bookId);
+          const total = book.format === 'audiobook' ? 
+            (nominee?.totalMinutes || book.totalMinutes) : 
+            (nominee?.pages || nominee?.pageCount || book.totalPages);
+          const progressPercent = total > 0 ? Math.round((book.currentProgress / total) * 100) : 0;
+          
+          return (
+            <button
+              key={book.bookId}
+              onClick={() => router.push('/student-bookshelf')}
+              style={{
+                width: '100%',
+                backgroundColor: `${currentTheme.primary}20`,
+                border: 'none',
+                borderRadius: '12px',
+                padding: '12px',
+                marginBottom: index < booksToShow.length - 1 ? '8px' : '0',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              <div style={{
+                width: '40px',
+                height: '60px',
+                backgroundColor: `${currentTheme.primary}50`,
+                borderRadius: '6px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '20px',
+                overflow: 'hidden'
+              }}>
+                {nominee?.coverImageUrl ? (
+                  <img 
+                    src={nominee.coverImageUrl} 
+                    alt={nominee.title}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      borderRadius: '4px'
+                    }}
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.nextElementSibling.style.display = 'block';
+                    }}
+                  />
+                ) : (
+                  <span style={{ fontSize: '20px' }}>📚</span>
+                )}
+                <span style={{ 
+                  fontSize: '20px',
+                  display: 'none'
+                }}>📚</span>
+              </div>
+              
+              <div style={{ flex: 1, textAlign: 'left' }}>
+                <p style={{
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: currentTheme.textPrimary,
+                  margin: '0 0 4px 0'
+                }}>
+                  {nominee?.title || 'Unknown Book'}
+                </p>
+                <p style={{
+                  fontSize: '12px',
+                  color: currentTheme.textSecondary,
+                  margin: 0
+                }}>
+                  {progressPercent}% complete • {book.format}
+                </p>
+              </div>
+              
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <div style={{
+                  width: '30px',
+                  height: '30px',
+                  borderRadius: '50%',
+                  backgroundColor: `${currentTheme.primary}40`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  color: currentTheme.textPrimary
+                }}>
+                  {progressPercent}%
+                </div>
+                <span style={{ 
+                  color: currentTheme.primary, 
+                  fontSize: '16px'
+                }}>→</span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    );
+  };
+
   useEffect(() => {
     if (!authLoading && isAuthenticated && user) {
       loadEnhancedDashboardData();
@@ -880,13 +1165,6 @@ export default function StudentDashboard() {
       // UPDATED: Calculate dashboard data with proper goals based on teacher's nominees
       const bookshelf = firebaseStudentData.bookshelf || [];
       const completedBooks = bookshelf.filter(book => book.completed);
-      const inProgressBooks = bookshelf.filter(book => !book.completed && book.currentProgress > 0);
-      
-      // Find currently reading book (most recently updated in progress book)
-      const currentlyReadingBook = inProgressBooks.length > 0 ? 
-        inProgressBooks.sort((a, b) => (b.lastUpdated || 0) - (a.lastUpdated || 0))[0] : null;
-      
-      setCurrentlyReading(currentlyReadingBook);
       
       // Calculate goals based on teacher's selected nominees
       const teacherNomineesCount = firebaseStudentData.teacherNominees?.length || 0;
@@ -1024,7 +1302,6 @@ export default function StudentDashboard() {
       case 'ready_submit':
       case 'retry_quiz':
       case 'take_quiz':
-      case 'continue_reading':
         router.push(`/student-bookshelf?book=${action.bookId}`);
         break;
       case 'waiting_parent':
@@ -1048,12 +1325,6 @@ export default function StudentDashboard() {
   const handleRecommendationClick = (book) => {
     // Navigate to nominees page with the specific book
     router.push(`/student-nominees?book=${book.id}`);
-  };
-
-  const getCurrentlyReadingTitle = () => {
-    if (!currentlyReading) return null;
-    const book = nominees.find(n => n.id === currentlyReading.bookId);
-    return book ? book.title : 'Unknown Book';
   };
 
   // Show loading while data loads
@@ -1480,127 +1751,262 @@ export default function StudentDashboard() {
             </div>
           )}
 
-          {/* UPDATED: Currently Reading with ANIMATIONS */}
-          {currentlyReading && (
-            <div style={{
-              backgroundColor: currentTheme.surface,
-              borderRadius: '16px',
-              padding: '16px',
-              marginBottom: '20px',
-              border: `1px solid ${currentTheme.primary}30`,
-              animation: 'slideInUp 0.8s ease-out 1.2s both'
+          {/* FIXED: Currently Reading with separate button - inline calculation */}
+{(() => {
+  // Calculate currently reading books inline
+  const currentlyReadingBooks = (studentData.bookshelf || []).filter(book => {
+    const state = getBookState(book);
+    const nominee = nominees.find(n => n.id === book.bookId);
+    const total = book.format === 'audiobook' ? 
+      (nominee?.totalMinutes || book.totalMinutes) : 
+      (nominee?.pages || nominee?.pageCount || book.totalPages);
+    
+    return state === 'in_progress' && 
+           book.currentProgress > 0 && 
+           book.currentProgress < total && 
+           !book.completed;
+  }).sort((a, b) => (b.lastUpdated || 0) - (a.lastUpdated || 0));
+
+  const currentlyReading = currentlyReadingBooks[0]; // Get the most recent
+  
+  // Get available books (not in bookshelf)
+  const inBookshelf = (studentData.bookshelf || []).map(book => book.bookId);
+  const availableBooks = nominees.filter(book => !inBookshelf.includes(book.id));
+  const completedBooks = (studentData.bookshelf || []).filter(book => book.completed);
+  
+  // If no book in progress, show empty states
+  if (!currentlyReading) {
+    if (availableBooks.length === 0) {
+      // All books complete
+      return (
+        <div style={{
+          backgroundColor: currentTheme.surface,
+          borderRadius: '16px',
+          padding: '20px',
+          marginBottom: '20px',
+          textAlign: 'center',
+          border: `2px solid ${currentTheme.primary}30`,
+          animation: 'slideInUp 0.8s ease-out 1.2s both'
+        }}>
+          <div style={{ fontSize: '64px', marginBottom: '16px' }}>🎉</div>
+          <h3 style={{
+            fontSize: '20px',
+            fontWeight: 'bold',
+            color: currentTheme.textPrimary,
+            margin: '0 0 8px 0'
+          }}>
+            Incredible Achievement!
+          </h3>
+          <p style={{
+            fontSize: '14px',
+            color: currentTheme.textSecondary,
+            margin: '0 0 16px 0'
+          }}>
+            You've completed all {completedBooks.length} books! 🏆
+          </p>
+          <button
+            onClick={() => router.push('/student-stats')}
+            style={{
+              backgroundColor: currentTheme.primary,
+              color: currentTheme.textPrimary,
+              border: 'none',
+              borderRadius: '12px',
+              padding: '12px 24px',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer'
+            }}
+          >
+            View Your Stats
+          </button>
+        </div>
+      );
+    } else {
+      // Has available books but none in progress
+      return (
+        <div style={{
+          backgroundColor: currentTheme.surface,
+          borderRadius: '16px',
+          padding: '20px',
+          marginBottom: '20px',
+          border: `2px solid ${currentTheme.primary}30`,
+          animation: 'slideInUp 0.8s ease-out 1.2s both'
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            marginBottom: '16px'
+          }}>
+            <span style={{ fontSize: '24px' }}>🚀</span>
+            <h3 style={{
+              fontSize: '18px',
+              fontWeight: 'bold',
+              color: currentTheme.textPrimary,
+              margin: 0
             }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                marginBottom: '12px'
-              }}>
-                <span style={{ 
-                  fontSize: '20px'
-                }}>📖</span>
-                <h3 style={{
-                  fontSize: '16px',
-                  fontWeight: 'bold',
-                  color: currentTheme.textPrimary,
-                  margin: 0
-                }}>
-                  Currently Reading
-                </h3>
-              </div>
-              
-              <button
-                onClick={() => router.push(`/student-bookshelf?book=${currentlyReading.bookId}`)}
-                style={{
-                  width: '100%',
-                  backgroundColor: `${currentTheme.primary}20`,
-                  border: 'none',
-                  borderRadius: '12px',
-                  padding: '12px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  transition: 'all 0.3s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.transform = 'scale(1.02)';
-                  e.target.style.backgroundColor = `${currentTheme.primary}30`;
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.transform = 'scale(1)';
-                  e.target.style.backgroundColor = `${currentTheme.primary}20`;
-                }}
-              >
-                <div style={{
-                  width: '40px',
-                  height: '60px',
-                  backgroundColor: `${currentTheme.primary}50`,
-                  borderRadius: '6px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '20px',
-                  animation: 'pulseGlow 2s ease-in-out infinite',
-                  overflow: 'hidden'
-                }}>
-                  {(() => {
-                    const book = nominees.find(n => n.id === currentlyReading.bookId);
-                    return book?.coverImageUrl ? (
-                      <img 
-                        src={book.coverImageUrl} 
-                        alt={book.title}
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover',
-                          borderRadius: '4px'
-                        }}
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                          e.target.nextElementSibling.style.display = 'block';
-                        }}
-                      />
-                    ) : (
-                      <span style={{ fontSize: '20px' }}>📚</span>
-                    );
-                  })()}
-                  <span style={{ 
-                    fontSize: '20px',
-                    display: 'none'
-                  }}>📚</span>
-                </div>
-                <div style={{ flex: 1, textAlign: 'left' }}>
-                  <p style={{
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: currentTheme.textPrimary,
-                    margin: '0 0 4px 0'
-                  }}>
-                    {getCurrentlyReadingTitle()}
-                  </p>
-                  <p style={{
-                    fontSize: '12px',
-                    color: currentTheme.textSecondary,
-                    margin: 0
-                  }}>
-                    {(() => {
-                      const book = nominees.find(n => n.id === currentlyReading.bookId);
-                      const total = currentlyReading.format === 'audiobook' ? 
-                        (book?.totalMinutes || currentlyReading.totalMinutes) : 
-                        (book?.pages || book?.pageCount || currentlyReading.totalPages);
-                      const progress = total > 0 ? Math.round((currentlyReading.currentProgress / total) * 100) : 0;
-                      return `${progress}% complete - Tap to continue`;
-                    })()}
-                  </p>
-                </div>
-                <span style={{ 
-                  color: currentTheme.primary, 
-                  fontSize: '16px'
-                }}>→</span>
-              </button>
-            </div>
+              Ready for Your Next Adventure?
+            </h3>
+          </div>
+          <p style={{
+            fontSize: '14px',
+            color: currentTheme.textSecondary,
+            margin: '0 0 16px 0'
+          }}>
+            You have {availableBooks.length} more books waiting!
+          </p>
+          <button
+            onClick={() => router.push('/student-nominees')}
+            style={{
+              backgroundColor: currentTheme.primary,
+              color: currentTheme.textPrimary,
+              border: 'none',
+              borderRadius: '12px',
+              padding: '12px 24px',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer'
+            }}
+          >
+            Browse Books
+          </button>
+        </div>
+      );
+    }
+  }
+
+  // Show currently reading book with separate button
+  const nominee = nominees.find(n => n.id === currentlyReading.bookId);
+  const total = currentlyReading.format === 'audiobook' ? 
+    (nominee?.totalMinutes || currentlyReading.totalMinutes) : 
+    (nominee?.pages || nominee?.pageCount || currentlyReading.totalPages);
+  const progressPercent = total > 0 ? Math.round((currentlyReading.currentProgress / total) * 100) : 0;
+
+  return (
+    <div style={{
+      backgroundColor: currentTheme.surface,
+      borderRadius: '16px',
+      padding: '16px',
+      marginBottom: '20px',
+      border: `1px solid ${currentTheme.primary}30`,
+      animation: 'slideInUp 0.8s ease-out 1.2s both'
+    }}>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        marginBottom: '12px'
+      }}>
+        <span style={{ fontSize: '20px' }}>📖</span>
+        <h3 style={{
+          fontSize: '16px',
+          fontWeight: 'bold',
+          color: currentTheme.textPrimary,
+          margin: 0
+        }}>
+          Currently Reading
+        </h3>
+      </div>
+      
+      {/* NON-CLICKABLE book display */}
+      <div style={{
+        width: '100%',
+        backgroundColor: `${currentTheme.primary}20`,
+        borderRadius: '12px',
+        padding: '12px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        marginBottom: '12px'
+      }}>
+        <div style={{
+          width: '40px',
+          height: '60px',
+          backgroundColor: `${currentTheme.primary}50`,
+          borderRadius: '6px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '20px',
+          overflow: 'hidden'
+        }}>
+          {nominee?.coverImageUrl ? (
+            <img 
+              src={nominee.coverImageUrl} 
+              alt={nominee.title}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                borderRadius: '4px'
+              }}
+              onError={(e) => {
+                e.target.style.display = 'none';
+                e.target.nextElementSibling.style.display = 'block';
+              }}
+            />
+          ) : (
+            <span style={{ fontSize: '20px' }}>📚</span>
           )}
+          <span style={{ 
+            fontSize: '20px',
+            display: 'none'
+          }}>📚</span>
+        </div>
+        <div style={{ flex: 1, textAlign: 'left' }}>
+          <p style={{
+            fontSize: '14px',
+            fontWeight: '600',
+            color: currentTheme.textPrimary,
+            margin: '0 0 4px 0'
+          }}>
+            {nominee?.title || 'Unknown Book'}
+          </p>
+          <p style={{
+            fontSize: '12px',
+            color: currentTheme.textSecondary,
+            margin: 0
+          }}>
+            {progressPercent}% complete
+          </p>
+        </div>
+        <div style={{
+          fontSize: '24px',
+          color: currentTheme.primary,
+          opacity: 0.6
+        }}>
+          📖
+        </div>
+      </div>
+      
+      {/* SEPARATE BUTTON */}
+      <button
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('🔗 Continue Reading clicked for:', currentlyReading.bookId);
+          router.push('/student-bookshelf');
+        }}
+        style={{
+          width: '100%',
+          backgroundColor: currentTheme.primary,
+          color: currentTheme.textPrimary,
+          border: 'none',
+          borderRadius: '8px',
+          padding: '12px',
+          fontSize: '14px',
+          fontWeight: '600',
+          cursor: 'pointer',
+          transition: 'all 0.3s ease'
+        }}
+        onMouseEnter={(e) => e.target.style.transform = 'scale(1.02)'}
+        onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+      >
+        Continue Reading
+      </button>
+    </div>
+  );
+})()}
 
           {/* UPDATED: Smart Book Recommendations with ANIMATIONS */}
           {smartRecommendations.length > 0 && (
@@ -1610,7 +2016,7 @@ export default function StudentDashboard() {
               padding: '20px',
               marginBottom: '20px',
               boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              animation: 'slideInUp 0.8s ease-out 1.4s both'
+              animation: 'slideInUp 0.8s ease-out 1.0s both'
             }}>
               <h3 style={{
                 fontSize: '18px',
@@ -1753,7 +2159,7 @@ export default function StudentDashboard() {
               padding: '20px',
               marginBottom: '20px',
               boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              animation: 'slideInUp 0.8s ease-out 1.6s both'
+              animation: 'slideInUp 0.8s ease-out 1.2s both'
             }}>
               <h3 style={{
                 fontSize: '18px',
@@ -1825,10 +2231,10 @@ export default function StudentDashboard() {
             justifyContent: 'center',
             gap: '12px',
             marginBottom: '20px',
-            animation: 'slideInUp 0.8s ease-out 1.8s both'
+            animation: 'slideInUp 0.8s ease-out 1.4s both'
           }}>
             <div style={{ 
-              animation: 'slideInLeft 0.6s ease-out 2.0s both',
+              animation: 'slideInLeft 0.6s ease-out 1.5s both',
               flex: '1',
               maxWidth: '200px'
             }}>
@@ -1840,7 +2246,7 @@ export default function StudentDashboard() {
               />
             </div>
             <div style={{ 
-              animation: 'slideInRight 0.6s ease-out 2.1s both',
+              animation: 'slideInRight 0.6s ease-out 1.6s both',
               flex: '1',
               maxWidth: '200px'
             }}>
@@ -1860,7 +2266,7 @@ export default function StudentDashboard() {
             padding: '20px',
             marginBottom: '100px',
             boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            animation: 'slideInUp 0.8s ease-out 2.2s both'
+            animation: 'slideInUp 0.8s ease-out 1.8s both'
           }}>
             <h3 style={{
               fontSize: '18px',

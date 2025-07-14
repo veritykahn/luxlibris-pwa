@@ -19,6 +19,7 @@ export default function StudentBookshelf() {
   const [tempProgress, setTempProgress] = useState(0);
   const [tempRating, setTempRating] = useState(0);
   const [tempNotes, setTempNotes] = useState('');
+const [textareaHeight, setTextareaHeight] = useState(50);
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState('');
   
@@ -644,6 +645,19 @@ export default function StudentBookshelf() {
     setSelectedBook(null);
   };
 
+  const handleTextareaChange = (e) => {
+  const textarea = e.target;
+  setTempNotes(textarea.value);
+  
+  // Reset height to auto to get the scrollHeight
+  textarea.style.height = 'auto';
+  
+  // Set height based on content, with min 50px and max 120px
+  const newHeight = Math.min(Math.max(textarea.scrollHeight, 50), 120);
+  textarea.style.height = newHeight + 'px';
+  setTextareaHeight(newHeight);
+};
+
   // NEW: Navigate to timer with book context
   const startReadingSession = (book) => {
     const bookDetails = getBookDetails(book.bookId);
@@ -654,66 +668,35 @@ export default function StudentBookshelf() {
     router.push(`/student-healthy-habits?bookId=${book.bookId}&bookTitle=${bookTitle}`);
   };
 
-  const saveBookProgress = async () => {
-    if (!selectedBook || !studentData) return;
+ // FIXED: Save book progress - allows rating/notes even when locked
+const saveBookProgress = async () => {
+  if (!selectedBook || !studentData) return;
+  
+  setIsSaving(true);
+  try {
+    const total = getBookTotal(selectedBook);
+    const isNowCompleted = tempProgress >= total && total > 0;
+    const wasAlreadyCompleted = selectedBook.completed;
     
-    setIsSaving(true);
-    try {
-      const total = getBookTotal(selectedBook);
-      const isNowCompleted = tempProgress >= total && total > 0;
-      const wasAlreadyCompleted = selectedBook.completed;
+    // 🔒 Get current book state from studentData for accurate lock status
+    const currentBookInShelf = studentData.bookshelf.find(book => book.bookId === selectedBook.bookId);
+    const currentBookState = currentBookInShelf ? getBookState(currentBookInShelf) : 'in_progress';
+    const isCurrentlyLocked = ['pending_admin_approval', 'pending_parent_quiz_unlock', 'quiz_cooldown', 'admin_cooldown', 'completed'].includes(currentBookState);
+    
+    // 🆕 NEW LOGIC: Check if this is ONLY a rating/notes update (no progress change)
+    const isOnlyRatingNotesUpdate = tempProgress === selectedBook.currentProgress;
+    
+    // 📝 ALLOW rating and notes updates even when locked
+    if (isOnlyRatingNotesUpdate) {
+      console.log('📝 Saving rating/notes update only');
       
-      // 🔒 COOLDOWN FIX: Check current book state from studentData, not selectedBook
-      const currentBookInShelf = studentData.bookshelf.find(book => book.bookId === selectedBook.bookId);
-      const currentBookState = currentBookInShelf ? getBookState(currentBookInShelf) : 'in_progress';
-      const isCurrentlyLocked = ['pending_admin_approval', 'pending_parent_quiz_unlock', 'quiz_cooldown', 'admin_cooldown', 'completed'].includes(currentBookState);
-      
-      // Check if this is a new completion (hitting 100% for first time)
-      if (isNowCompleted && !wasAlreadyCompleted && !isCurrentlyLocked) {
-        // Save the progress first
-        const updatedBookshelf = studentData.bookshelf.map(book => {
-          if (book.bookId === selectedBook.bookId) {
-            return {
-              ...book,
-              currentProgress: tempProgress,
-              rating: tempRating,
-              notes: tempNotes,
-              completed: false  // Keep as incomplete until submission
-            };
-          }
-          return book;
-        });
-        
-        await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
-          bookshelf: updatedBookshelf
-        });
-        
-        setStudentData({ ...studentData, bookshelf: updatedBookshelf });
-        
-        // Show submission popup
-        setShowSubmissionPopup(true);
-        setIsSaving(false);
-        return;
-      }
-      
-      // 🚫 BLOCK submission if book is in cooldown
-      if (isNowCompleted && isCurrentlyLocked) {
-        const stateMessage = getBookStateMessage(currentBookInShelf);
-        setShowSuccess(stateMessage ? `🚫 ${stateMessage.message}` : '🚫 Cannot submit while book is locked');
-        setTimeout(() => setShowSuccess(''), 3000);
-        setIsSaving(false);
-        return;
-      }
-      
-      // Regular progress save (not at 100% or already completed)
       const updatedBookshelf = studentData.bookshelf.map(book => {
         if (book.bookId === selectedBook.bookId) {
           return {
             ...book,
-            currentProgress: tempProgress,
             rating: tempRating,
-            notes: tempNotes,
-            completed: book.completed
+            notes: tempNotes
+            // Don't change progress, completed, or status
           };
         }
         return book;
@@ -724,19 +707,80 @@ export default function StudentBookshelf() {
       });
       
       setStudentData({ ...studentData, bookshelf: updatedBookshelf });
-      setShowSuccess('📚 Progress saved!');
+      setShowSuccess('⭐ Rating and notes saved!');
       
       closeBookModal();
       setTimeout(() => setShowSuccess(''), 3000);
-      
-    } catch (error) {
-      console.error('❌ Error saving progress:', error);
-      setShowSuccess('❌ Error saving. Please try again.');
-      setTimeout(() => setShowSuccess(''), 3000);
+      setIsSaving(false);
+      return;
     }
     
-    setIsSaving(false);
-  };
+    // 🚫 BLOCK progress changes that would trigger completion when locked
+    if (isNowCompleted && isCurrentlyLocked) {
+      const stateMessage = getBookStateMessage(currentBookInShelf);
+      setShowSuccess(stateMessage ? `🚫 ${stateMessage.message}` : '🚫 Cannot submit while book is locked');
+      setTimeout(() => setShowSuccess(''), 3000);
+      setIsSaving(false);
+      return;
+    }
+    
+    // 🎉 NEW completion (hitting 100% for first time) - show submission popup
+    if (isNowCompleted && !wasAlreadyCompleted && !isCurrentlyLocked) {
+      const updatedBookshelf = studentData.bookshelf.map(book => {
+        if (book.bookId === selectedBook.bookId) {
+          return {
+            ...book,
+            currentProgress: tempProgress,
+            rating: tempRating,
+            notes: tempNotes,
+            completed: false  // Keep as incomplete until submission
+          };
+        }
+        return book;
+      });
+      
+      await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
+        bookshelf: updatedBookshelf
+      });
+      
+      setStudentData({ ...studentData, bookshelf: updatedBookshelf });
+      setShowSubmissionPopup(true);
+      setIsSaving(false);
+      return;
+    }
+    
+    // 📚 Regular progress save (not at 100% or already completed)
+    const updatedBookshelf = studentData.bookshelf.map(book => {
+      if (book.bookId === selectedBook.bookId) {
+        return {
+          ...book,
+          currentProgress: tempProgress,
+          rating: tempRating,
+          notes: tempNotes,
+          completed: book.completed // Don't change completion status
+        };
+      }
+      return book;
+    });
+    
+    await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
+      bookshelf: updatedBookshelf
+    });
+    
+    setStudentData({ ...studentData, bookshelf: updatedBookshelf });
+    setShowSuccess('📚 Progress saved!');
+    
+    closeBookModal();
+    setTimeout(() => setShowSuccess(''), 3000);
+    
+  } catch (error) {
+    console.error('❌ Error saving progress:', error);
+    setShowSuccess('❌ Error saving. Please try again.');
+    setTimeout(() => setShowSuccess(''), 3000);
+  }
+  
+  setIsSaving(false);
+};
 
   const deleteBook = async (bookId) => {
     if (!studentData) return;
@@ -1874,11 +1918,13 @@ export default function StudentBookshelf() {
                   <div style={{ marginBottom: '15px' }}>
                     <textarea
                       value={tempNotes}
-                      onChange={(e) => setTempNotes(e.target.value)}
+                      onChange={handleTextareaChange}
                       placeholder="Notes..."
                       style={{
                         width: '100%',
-                        height: '50px',
+                        height: `${textareaHeight}px`,
+                        minHeight: '50px',
+                        maxHeight: '120px',
                         padding: '8px',
                         border: `1px solid ${colorPalette.primary}40`,
                         borderRadius: '6px',
@@ -1887,7 +1933,17 @@ export default function StudentBookshelf() {
                         color: colorPalette.textPrimary,
                         fontFamily: 'inherit',
                         boxSizing: 'border-box',
-                        outline: 'none'
+                        outline: 'none',
+                        resize: 'none',
+                        overflow: 'hidden',
+                        transition: 'height 0.1s ease'
+                      }}
+                      onInput={(e) => {
+                        if (e.target.scrollHeight > 120) {
+                          e.target.style.overflow = 'auto';
+                        } else {
+                          e.target.style.overflow = 'hidden';
+                        }
                       }}
                     />
                   </div>

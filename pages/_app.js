@@ -1,13 +1,14 @@
-// pages/_app.js - RESTORED
-import { AuthProvider } from '../contexts/AuthContext'
-import '../styles/globals.css'
+// pages/_app.js
+import { AuthProvider } from '../contexts/AuthContext';
+import { TimerProvider } from '../contexts/TimerContext';
+import '../styles/globals.css';
 
-function MyApp({ Component, pageProps }) {
+export default function App({ Component, pageProps }) {
   return (
     <AuthProvider>
-      <Component {...pageProps} />
+      <TimerProvider>
+        <Component {...pageProps} />
+      </TimerProvider>
     </AuthProvider>
-  )
+  );
 }
-
-export default MyApp

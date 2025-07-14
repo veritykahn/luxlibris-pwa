@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
+import { useTimer } from '../contexts/TimerContext';
 import { getStudentDataEntities, updateStudentDataEntities } from '../lib/firebase';
 import { collection, addDoc, query, where, getDocs, orderBy, limit, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -13,60 +14,32 @@ import {
   getLevelProgress 
 } from '../lib/badge-system';
 
-// GLOBAL TIMER STATE MANAGER - Persists across page navigations
-const GlobalTimerState = {
-  isActive: false,
-  isPaused: false,
-  timeRemaining: null,
-  timerDuration: null,
-  startTime: null,
-  lastUpdateTime: null,
-  wakeLockActive: false,
-  
-  save(state) {
-    this.isActive = state.isActive;
-    this.isPaused = state.isPaused;
-    this.timeRemaining = state.timeRemaining;
-    this.timerDuration = state.timerDuration;
-    this.startTime = state.startTime;
-    this.lastUpdateTime = Date.now();
-    this.wakeLockActive = state.wakeLockActive;
-    console.log('Timer state saved:', this);
-  },
-  
-  restore() {
-    // If timer was active, calculate elapsed time since last update
-    if (this.isActive && !this.isPaused && this.lastUpdateTime) {
-      const elapsedSinceUpdate = Math.floor((Date.now() - this.lastUpdateTime) / 1000);
-      this.timeRemaining = Math.max(0, this.timeRemaining - elapsedSinceUpdate);
-      console.log('Timer state restored with elapsed time:', elapsedSinceUpdate);
-    }
-    
-    return {
-      isActive: this.isActive,
-      isPaused: this.isPaused,
-      timeRemaining: this.timeRemaining,
-      timerDuration: this.timerDuration,
-      startTime: this.startTime,
-      wakeLockActive: this.wakeLockActive
-    };
-  },
-  
-  clear() {
-    this.isActive = false;
-    this.isPaused = false;
-    this.timeRemaining = null;
-    this.timerDuration = null;
-    this.startTime = null;
-    this.lastUpdateTime = null;
-    this.wakeLockActive = false;
-    console.log('Timer state cleared');
-  }
-};
-
 export default function StudentHealthyHabits() {
   const router = useRouter();
   const { user, isAuthenticated, loading } = useAuth();
+  
+  // USE TIMER CONTEXT INSTEAD OF LOCAL STATE
+  const {
+    timerDuration,
+    timeRemaining,
+    isTimerActive,
+    isTimerPaused,
+    wakeLock,
+    currentBookId,
+    currentBookTitle,
+    isOnHealthyHabitsPage,
+    startTimer,
+    pauseTimer,
+    resumeTimer,
+    resetTimer,
+    updateTimerDuration,
+    setCurrentBookId,
+    setCurrentBookTitle,
+    getTimerProgress,
+    getMinutesRead,
+    formatTime
+  } = useTimer();
+
   const [studentData, setStudentData] = useState(null);
   const [currentTheme, setCurrentTheme] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -75,13 +48,6 @@ export default function StudentHealthyHabits() {
   const [showNavMenu, setShowNavMenu] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [notificationProcessing, setNotificationProcessing] = useState(false);
-
-  // Timer states
-  const [timerDuration, setTimerDuration] = useState(20 * 60); // seconds
-  const [timeRemaining, setTimeRemaining] = useState(20 * 60);
-  const [isTimerActive, setIsTimerActive] = useState(false);
-  const [isTimerPaused, setIsTimerPaused] = useState(false);
-  const timerRef = useRef(null);
 
   // Progress states
   const [todaysSessions, setTodaysSessions] = useState([]);
@@ -95,75 +61,21 @@ export default function StudentHealthyHabits() {
   const [showSuccess, setShowSuccess] = useState('');
   const [showCompletionCelebration, setShowCompletionCelebration] = useState(false);
   const [showBookProgressModal, setShowBookProgressModal] = useState(false);
-  const [currentBookId, setCurrentBookId] = useState(null);
-  const [currentBookTitle, setCurrentBookTitle] = useState('');
 
   // XP SYSTEM STATE VARIABLES
   const [showXPReward, setShowXPReward] = useState(false);
   const [xpReward, setXPReward] = useState({ amount: 0, reason: '', total: 0 });
 
-  // Wake lock state
-  const [wakeLock, setWakeLock] = useState(null);
-
-  // SAVE TIMER STATE BEFORE NAVIGATION
-  const saveTimerState = useCallback(() => {
-    if (isTimerActive || isTimerPaused) {
-      GlobalTimerState.save({
-        isActive: isTimerActive,
-        isPaused: isTimerPaused,
-        timeRemaining: timeRemaining,
-        timerDuration: timerDuration,
-        startTime: Date.now(),
-        wakeLockActive: !!wakeLock
-      });
-    }
-  }, [isTimerActive, isTimerPaused, timeRemaining, timerDuration, wakeLock]);
-
-  // RESTORE TIMER STATE ON MOUNT
-  const restoreTimerState = useCallback(async () => {
-    const savedState = GlobalTimerState.restore();
-    
-    if (savedState.isActive || savedState.isPaused) {
-      console.log('Restoring timer state:', savedState);
-      
-      // Restore timer state
-      setTimerDuration(savedState.timerDuration);
-      setTimeRemaining(savedState.timeRemaining);
-      setIsTimerActive(savedState.isActive);
-      setIsTimerPaused(savedState.isPaused);
-      
-      // Restore wake lock if it was active
-      if (savedState.wakeLockActive && savedState.isActive && !savedState.isPaused) {
-        try {
-          if ('wakeLock' in navigator) {
-            const lock = await navigator.wakeLock.request('screen');
-            setWakeLock(lock);
-            lock.addEventListener('release', () => {
-              setWakeLock(null);
-            });
-            console.log('Wake lock restored');
-          }
-        } catch (err) {
-          console.log('Could not restore wake lock:', err);
-        }
-      }
-      
-      // Optionally show a more user-friendly message, or remove entirely
-      // setShowSuccess('⏰ Your reading session is still active');
-      // setTimeout(() => setShowSuccess(''), 2000);
-    }
-  }, []);
-
   // 🍔 NAVIGATION MENU ITEMS (Healthy Habits page is current)
   const navMenuItems = useMemo(() => [
-  { name: 'Dashboard', path: '/student-dashboard', icon: '⌂' },
-  { name: 'Nominees', path: '/student-nominees', icon: '□' },
-  { name: 'Bookshelf', path: '/student-bookshelf', icon: '⚏' },
-  { name: 'Healthy Habits', path: '/student-healthy-habits', icon: '○', current: true },
-  { name: 'Saints', path: '/student-saints', icon: '♔' },
-  { name: 'Stats', path: '/student-stats', icon: '△' },
-  { name: 'Settings', path: '/student-settings', icon: '⚙' }
-], []);
+    { name: 'Dashboard', path: '/student-dashboard', icon: '⌂' },
+    { name: 'Nominees', path: '/student-nominees', icon: '□' },
+    { name: 'Bookshelf', path: '/student-bookshelf', icon: '⚏' },
+    { name: 'Healthy Habits', path: '/student-healthy-habits', icon: '○', current: true },
+    { name: 'Saints', path: '/student-saints', icon: '♔' },
+    { name: 'Stats', path: '/student-stats', icon: '△' },
+    { name: 'Settings', path: '/student-settings', icon: '⚙' }
+  ], []);
 
   // 🍔 NOTIFICATION FUNCTIONS
   const requestNotificationPermission = useCallback(async () => {
@@ -367,27 +279,6 @@ export default function StudentHealthyHabits() {
   }, []);
 
   // Notification functions
-  const requestWakeLock = async () => {
-    try {
-      if ('wakeLock' in navigator) {
-        const lock = await navigator.wakeLock.request('screen');
-        setWakeLock(lock);
-        lock.addEventListener('release', () => {
-          setWakeLock(null);
-        });
-      }
-    } catch (err) {
-      console.log('Wake lock not supported on this device');
-    }
-  };
-
-  const releaseWakeLock = () => {
-    if (wakeLock) {
-      wakeLock.release();
-      setWakeLock(null);
-    }
-  };
-
   const playNotificationSound = () => {
     try {
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -475,25 +366,6 @@ export default function StudentHealthyHabits() {
       Notification.requestPermission();
     }
   }, []);
-
-  // SAVE TIMER STATE BEFORE NAVIGATION
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      saveTimerState();
-    };
-
-    const handleRouteChangeStart = () => {
-      saveTimerState();
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    router.events.on('routeChangeStart', handleRouteChangeStart);
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      router.events.off('routeChangeStart', handleRouteChangeStart);
-    };
-  }, [saveTimerState, router.events]);
 
   // Load streak data with smart calculation and timeline calendar
   const loadStreakData = useCallback(async (studentData) => {
@@ -776,9 +648,6 @@ export default function StudentHealthyHabits() {
         await calculateReadingLevel(studentData);
       }
 
-      // Clear timer state after successful save
-      GlobalTimerState.clear();
-
       setShowSuccess(completed ? 
         `🎉 Reading session completed! +${sessionXP} XP earned!` : 
         `📖 Progress saved! +${sessionXP} XP earned!`
@@ -804,19 +673,9 @@ export default function StudentHealthyHabits() {
       const selectedTheme = themes[selectedThemeKey];
       setCurrentTheme(selectedTheme);
 
+      // Update timer duration in context
       const defaultDuration = firebaseStudentData.readingSettings?.defaultTimerDuration || 20;
-      const defaultDurationSeconds = defaultDuration * 60;
-      
-      // Check if timer should be restored first, otherwise use defaults
-      const savedState = GlobalTimerState.restore();
-      if (savedState.isActive || savedState.isPaused) {
-        // Timer state will be restored in restoreTimerState()
-        console.log('Timer state will be restored');
-      } else {
-        // Set default timer duration
-        setTimerDuration(defaultDurationSeconds);
-        setTimeRemaining(defaultDurationSeconds);
-      }
+      updateTimerDuration(defaultDuration);
 
       await loadReadingData(firebaseStudentData);
     } catch (error) {
@@ -824,7 +683,7 @@ export default function StudentHealthyHabits() {
       router.push('/student-dashboard');
     }
     setIsLoading(false);
-  }, [user, router, themes, loadReadingData]);
+  }, [user, router, themes, loadReadingData, updateTimerDuration]);
 
   // Load student data and reading data
   useEffect(() => {
@@ -838,19 +697,14 @@ export default function StudentHealthyHabits() {
         setCurrentBookTitle(decodeURIComponent(bookTitle));
       }
 
-      loadHealthyHabitsData().then(() => {
-        // Restore timer state after data is loaded
-        restoreTimerState();
-      });
+      loadHealthyHabitsData();
     } else if (!loading && !isAuthenticated) {
       router.push('/role-selector');
     }
-  }, [loading, isAuthenticated, user, router, loadHealthyHabitsData, restoreTimerState]);
+  }, [loading, isAuthenticated, user, router, loadHealthyHabitsData]);
 
+  // Handle timer completion
   const handleTimerComplete = useCallback(async () => {
-    setIsTimerActive(false);
-    setIsTimerPaused(false);
-    releaseWakeLock();
     playNotificationSound();
     vibrateNotification();
     showBrowserNotification();
@@ -862,94 +716,39 @@ export default function StudentHealthyHabits() {
         setShowBookProgressModal(true);
       }
     }, 3000);
-    setTimeRemaining(timerDuration);
   }, [timerDuration, saveReadingSession, currentBookId, currentBookTitle]);
 
-  // Handle page visibility for proper timer pause/resume
+  // Watch for timer completion
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.hidden && isTimerActive && !isTimerPaused) {
-        console.log('Page hidden, pausing timer');
-        setIsTimerPaused(true);
-        saveTimerState(); // Save state when page becomes hidden
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [isTimerActive, isTimerPaused, timeRemaining, saveTimerState]);
-
-  // Timer effect
-  useEffect(() => {
-    if (isTimerActive && !isTimerPaused && timeRemaining > 0) {
-      timerRef.current = setInterval(() => {
-        setTimeRemaining(prev => {
-          const newTime = prev - 1;
-          // Update global state periodically
-          GlobalTimerState.save({
-            isActive: isTimerActive,
-            isPaused: isTimerPaused,
-            timeRemaining: newTime,
-            timerDuration: timerDuration,
-            startTime: Date.now(),
-            wakeLockActive: !!wakeLock
-          });
-          
-          if (newTime <= 0) {
-            handleTimerComplete();
-            return 0;
-          }
-          return newTime;
-        });
-      }, 1000);
-    } else {
-      clearInterval(timerRef.current);
+    if (timeRemaining === 0 && isTimerActive) {
+      handleTimerComplete();
     }
+  }, [timeRemaining, isTimerActive, handleTimerComplete]);
 
-    return () => clearInterval(timerRef.current);
-  }, [isTimerActive, isTimerPaused, timeRemaining, handleTimerComplete, timerDuration, wakeLock]);
-
-  // Cleanup wake lock on unmount
-  useEffect(() => {
-    return () => {
-      if (wakeLock) {
-        wakeLock.release();
-      }
-    };
-  }, [wakeLock]);
-
+  // Timer control handlers
   const handleStartTimer = () => {
-    setIsTimerActive(true);
-    setIsTimerPaused(false);
-    requestWakeLock();
+    startTimer();
   };
 
   const handlePauseTimer = () => {
-    setIsTimerPaused(true);
-    releaseWakeLock();
-    saveTimerState(); // Save state when manually paused
+    pauseTimer();
   };
 
   const handleResumeTimer = () => {
-    setIsTimerPaused(false);
-    requestWakeLock();
+    resumeTimer();
   };
 
-  // UPDATED HANDLE BANK SESSION WITH 5 MINUTE MINIMUM
+  // Handle banking session
   const handleBankSession = async () => {
-    const minutesRead = Math.floor((timerDuration - timeRemaining) / 60);
+    const minutesRead = getMinutesRead();
     
-    // NEW: Minimum 5 minutes to bank
     if (minutesRead < 5) {
       setShowSuccess('⏱️ Read for at least 5 minutes to bank progress');
       setTimeout(() => setShowSuccess(''), 3000);
       return;
     }
 
-    setIsTimerActive(false);
-    setIsTimerPaused(false);
-    releaseWakeLock();
-
+    resetTimer();
     const isCompleted = minutesRead >= 20;
     await saveReadingSession(minutesRead, isCompleted);
 
@@ -957,7 +756,6 @@ export default function StudentHealthyHabits() {
       setShowBookProgressModal(true);
     }
 
-    setTimeRemaining(timerDuration);
     setShowSuccess(isCompleted ?
       `🎉 Session banked! +${minutesRead} XP + streak earned!` :
       `📖 ${minutesRead} minutes banked! +${minutesRead} XP earned`
@@ -965,14 +763,13 @@ export default function StudentHealthyHabits() {
     setTimeout(() => setShowSuccess(''), 4000);
   };
 
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const getTimerProgress = () => {
-    return ((timerDuration - timeRemaining) / timerDuration) * 100;
+  // Get timer status display
+  const getTimerStatus = () => {
+    if (!isTimerActive) return 'READY';
+    if (isTimerPaused) {
+      return isOnHealthyHabitsPage ? 'PAUSED' : 'PAUSED (Away)';
+    }
+    return 'READING';
   };
 
   const getSvgSize = () => {
@@ -1101,9 +898,9 @@ export default function StudentHealthyHabits() {
         }}>
           <button
             onClick={() => {
-  console.log('Back button clicked, going back');
-  router.back();
-}}
+              console.log('Back button clicked, going back');
+              router.back();
+            }}
             style={{
               backgroundColor: 'rgba(255,255,255,0.3)',
               border: 'none',
@@ -1190,8 +987,6 @@ export default function StudentHealthyHabits() {
                       console.log('Clicking:', item.path, 'Current:', item.current, 'Item:', item);
                       setShowNavMenu(false);
                       if (!item.current) {
-                        // Save timer state before navigation
-                        saveTimerState();
                         setTimeout(() => {
                           console.log('Navigating to:', item.path);
                           router.push(item.path);
@@ -1359,7 +1154,7 @@ export default function StudentHealthyHabits() {
                   color: currentTheme.textSecondary,
                   fontWeight: '500'
                 }}>
-                  {isTimerActive ? (isTimerPaused ? 'PAUSED' : 'READING') : 'READY'}
+                  {getTimerStatus()}
                 </div>
                 {wakeLock && (
                   <div style={{
@@ -1453,6 +1248,21 @@ export default function StudentHealthyHabits() {
                 </>
               )}
             </div>
+
+            {/* Show helpful message if timer is paused due to navigation */}
+            {isTimerActive && isTimerPaused && !isOnHealthyHabitsPage && (
+              <div style={{
+                backgroundColor: `${currentTheme.primary}20`,
+                borderRadius: '8px',
+                padding: '8px 12px',
+                marginBottom: '16px',
+                fontSize: '12px',
+                color: currentTheme.textSecondary,
+                textAlign: 'center'
+              }}>
+                ⏸️ Timer paused while away from this page
+              </div>
+            )}
 
             <button
               onClick={() => router.push('/student-settings')}

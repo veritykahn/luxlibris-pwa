@@ -282,6 +282,32 @@ export default function StudentNominees() {
     }
   }, [loading, isAuthenticated, user]);
 
+  // Add this useEffect to handle book navigation from dashboard recommendations
+useEffect(() => {
+  // Wait for router to be ready and nominees to be loaded
+  if (!router.isReady || nominees.length === 0) return;
+  
+  const { book: bookId } = router.query;
+  
+  // If there's a book ID in the query params, navigate to that card
+  if (bookId) {
+    console.log('📍 Navigating to book from URL:', bookId);
+    
+    // Find the index of the book in the nominees array
+    const bookIndex = nominees.findIndex(nominee => nominee.id === bookId);
+    
+    if (bookIndex !== -1) {
+      console.log('✅ Found book at index:', bookIndex, 'Book title:', nominees[bookIndex].title);
+      setCurrentCardIndex(bookIndex);
+      
+      // Optional: Clear the query parameter after navigation
+      router.replace('/student-nominees', undefined, { shallow: true });
+    } else {
+      console.log('❌ Book not found in nominees:', bookId);
+    }
+  }
+}, [router.isReady, router.query, nominees, router]);
+
   // UPDATED: Keyboard navigation with circular wrapping
   useEffect(() => {
     const handleKeyDown = (e) => {
