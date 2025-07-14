@@ -1032,7 +1032,7 @@ export default function StudentHealthyHabits() {
                 overflow: 'hidden',
                 zIndex: 9999
               }}>
-                {navMenuItems.filter(item => !item.current).map((item, index) => (
+                {navMenuItems.map((item, index) => (
                   <button
                     key={item.path}
                     onClick={(e) => {

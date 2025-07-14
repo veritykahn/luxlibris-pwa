@@ -1151,7 +1151,7 @@ const loadSaintsData = useCallback(async () => {
                 overflow: 'hidden',
                 zIndex: 9999
               }}>
-                {navMenuItems.filter(item => !item.current).map((item, index) => (
+                {navMenuItems.map((item, index) => (
                   <button
                     key={item.path}
                     onClick={(e) => {
@@ -1911,11 +1911,11 @@ const loadSaintsData = useCallback(async () => {
                     lineHeight: '1.6',
                     textAlign: 'center'
                   }}>
-                    <div style={{ marginBottom: '4px' }}>🔥 7-day streak → Common saints</div>
+                    <div style={{ marginBottom: '4px' }}>🔥 14-day streak → Common saints</div>
                     <div style={{ marginBottom: '4px' }}>🎓 First book → Grade saint</div>
                     <div style={{ marginBottom: '4px' }}>🌟 30-day streak → Rare saints</div>
                     <div style={{ marginBottom: '4px' }}>⚡ 90-day streak → Legendary saints</div>
-                    <div style={{ marginBottom: '4px' }}>📖 20 books → Marian apparitions</div>
+                    <div style={{ marginBottom: '4px' }}>📖 End of Program → Marian apparitions</div>
                     <div>🏆 100 books → Ultimate goal!</div>
                   </div>
                 </div>

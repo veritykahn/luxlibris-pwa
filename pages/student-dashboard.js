@@ -1,4 +1,4 @@
-// pages/student-dashboard.js - UPDATED with fixes
+// pages/student-dashboard.js - UPDATED with fun animations and fixes
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
@@ -65,7 +65,50 @@ export default function StudentDashboard() {
     { name: 'Settings', path: '/student-settings', icon: '⚙' } // MOVED BACK TO MENU
   ], []);
 
-  // 🍔 NOTIFICATION FUNCTIONS
+  // NEW: Book state management functions (copied from bookshelf)
+  const getBookState = (book) => {
+    const now = new Date();
+    
+    // Check if completed
+    if (book.completed && book.status === 'completed') {
+      return 'completed';
+    }
+    
+    // Check for pending states
+    if (book.status === 'pending_approval' || book.status === 'pending_admin_approval') {
+      return 'pending_admin_approval';
+    }
+    
+    if (book.status === 'pending_parent_quiz_unlock') {
+      return 'pending_parent_quiz_unlock';
+    }
+    
+    // Check for failed quiz with cooldown
+    if (book.status === 'quiz_failed' && book.failedAt) {
+      // Handle Firebase Timestamp properly
+      const failedTime = book.failedAt?.toDate ? book.failedAt.toDate() : new Date(book.failedAt);
+      const cooldownEnd = new Date(failedTime.getTime() + 24 * 60 * 60 * 1000);
+      if (now < cooldownEnd) {
+        return 'quiz_cooldown';
+      } else {
+        return 'quiz_ready'; // Cooldown complete
+      }
+    }
+    
+    // Check for admin rejection with cooldown
+    if (book.status === 'admin_rejected' && book.rejectedAt) {
+      // Handle Firebase Timestamp properly
+      const rejectedTime = book.rejectedAt?.toDate ? book.rejectedAt.toDate() : new Date(book.rejectedAt);
+      const cooldownEnd = new Date(rejectedTime.getTime() + 24 * 60 * 60 * 1000);
+      if (now < cooldownEnd) {
+        return 'admin_cooldown';
+      }
+    }
+    
+    return 'in_progress';
+  };
+
+  // 🔔 NOTIFICATION FUNCTIONS
   const requestNotificationPermission = useCallback(async () => {
     console.log('Starting notification permission request...');
     
@@ -261,7 +304,7 @@ export default function StudentDashboard() {
     }
   };
 
-  // UPDATED: Generate smart action items based on bookshelf status
+  // UPDATED: Generate smart action items based on actual book states
   const generateActionItems = (bookshelf = [], nominees = []) => {
     const actions = [];
     const now = new Date();
@@ -271,10 +314,36 @@ export default function StudentDashboard() {
       return actions;
     }
     
-    // 1. Books ready to submit (highest priority)
-    const readyToSubmit = bookshelf.filter(book => 
-      book.status === 'completed' && !book.submitted
-    );
+    console.log('🔍 Generating action items for', bookshelf.length, 'books');
+    
+    // 1. NEW: Teacher approvals (highest priority celebration)
+    const teacherApproved = bookshelf.filter(book => {
+      const state = getBookState(book);
+      return state === 'completed' && book.submissionType !== 'quiz' && 
+             book.status === 'completed' && book.submittedAt;
+    });
+    
+    teacherApproved.forEach(book => {
+      const nominee = nominees.find(n => n.id === book.bookId);
+      actions.push({
+        type: 'teacher_approved',
+        bookId: book.bookId,
+        priority: 1,
+        emoji: '🎉',
+        title: `"${nominee?.title || 'Book'}" Approved!`,
+        subtitle: 'Your teacher approved your submission! 🏆'
+      });
+    });
+    
+    // 2. Books ready to submit (completed, not submitted)
+    const readyToSubmit = bookshelf.filter(book => {
+      const state = getBookState(book);
+      const total = book.format === 'audiobook' ? 
+        (nominees.find(n => n.id === book.bookId)?.totalMinutes || book.totalMinutes) : 
+        (nominees.find(n => n.id === book.bookId)?.pages || nominees.find(n => n.id === book.bookId)?.pageCount || book.totalPages);
+      
+      return !book.completed && !book.submitted && book.currentProgress >= total && total > 0 && state === 'in_progress';
+    });
     
     readyToSubmit.forEach(book => {
       const nominee = nominees.find(n => n.id === book.bookId);
@@ -288,28 +357,32 @@ export default function StudentDashboard() {
       });
     });
     
-    // 2. Quizzes available to take
-    const quizReady = bookshelf.filter(book => 
-      book.status === 'pending_parent_quiz_unlock' || 
-      book.status === 'quiz_available'
-    );
+    // 3. Quizzes available to take (including retry after cooldown)
+    const quizReady = bookshelf.filter(book => {
+      const state = getBookState(book);
+      return state === 'pending_parent_quiz_unlock' || state === 'quiz_available' || state === 'quiz_ready';
+    });
     
     quizReady.forEach(book => {
       const nominee = nominees.find(n => n.id === book.bookId);
+      const state = getBookState(book);
+      const isRetry = state === 'quiz_ready';
+      
       actions.push({
-        type: 'take_quiz',
+        type: isRetry ? 'retry_quiz' : 'take_quiz',
         bookId: book.bookId,
         priority: 1,
-        emoji: '📝',
-        title: `Take quiz for "${nominee?.title || 'Unknown Book'}"`,
-        subtitle: 'Quiz unlocked - complete it to submit your book!'
+        emoji: isRetry ? '🔄' : '📝',
+        title: `${isRetry ? 'Retry' : 'Take'} quiz for "${nominee?.title || 'Unknown Book'}"`,
+        subtitle: isRetry ? 'Cooldown complete - you can try again!' : 'Quiz unlocked - complete it to submit your book!'
       });
     });
     
-    // 3. Books in progress (medium priority)
-    const inProgress = bookshelf.filter(book => 
-      book.status === 'in_progress' && book.currentProgress > 0
-    );
+    // 4. Books in progress (medium priority)
+    const inProgress = bookshelf.filter(book => {
+      const state = getBookState(book);
+      return state === 'in_progress' && book.currentProgress > 0;
+    });
     
     inProgress.slice(0, 2).forEach(book => {
       const nominee = nominees.find(n => n.id === book.bookId);
@@ -326,42 +399,33 @@ export default function StudentDashboard() {
       });
     });
     
-    // 4. Quiz failures with cooldown
-    const quizCooldown = bookshelf.filter(book => 
-      book.status === 'quiz_failed' || book.status === 'quiz_cooldown'
-    );
+    // 5. Quiz failures with cooldown (show time remaining)
+    const quizCooldown = bookshelf.filter(book => {
+      const state = getBookState(book);
+      return state === 'quiz_cooldown';
+    });
     
     quizCooldown.forEach(book => {
       const nominee = nominees.find(n => n.id === book.bookId);
-      const failedAt = book.failedAt ? new Date(book.failedAt) : now;
+      const failedAt = book.failedAt ? (book.failedAt?.toDate ? book.failedAt.toDate() : new Date(book.failedAt)) : now;
       const cooldownEnd = new Date(failedAt.getTime() + 24 * 60 * 60 * 1000);
       const hoursRemaining = Math.max(0, Math.ceil((cooldownEnd - now) / (1000 * 60 * 60)));
       
-      if (hoursRemaining > 0) {
-        actions.push({
-          type: 'quiz_cooldown',
-          bookId: book.bookId,
-          priority: 3,
-          emoji: '⏰',
-          title: `Quiz available in ${hoursRemaining}h`,
-          subtitle: `"${nominee?.title || 'Unknown Book'}" - Try again soon`
-        });
-      } else {
-        actions.push({
-          type: 'retry_quiz',
-          bookId: book.bookId,
-          priority: 1,
-          emoji: '🔄',
-          title: `Retry quiz for "${nominee?.title || 'Unknown Book'}"`,
-          subtitle: 'Cooldown complete - you can try again!'
-        });
-      }
+      actions.push({
+        type: 'quiz_cooldown',
+        bookId: book.bookId,
+        priority: 3,
+        emoji: '⏰',
+        title: `Quiz available in ${hoursRemaining}h`,
+        subtitle: `"${nominee?.title || 'Unknown Book'}" - Try again soon`
+      });
     });
     
-    // 5. Waiting for approvals
-    const pendingAdmin = bookshelf.filter(book => 
-      book.status === 'pending_admin_approval'
-    );
+    // 6. Waiting for approvals (lower priority)
+    const pendingAdmin = bookshelf.filter(book => {
+      const state = getBookState(book);
+      return state === 'pending_admin_approval';
+    });
     
     pendingAdmin.forEach(book => {
       const nominee = nominees.find(n => n.id === book.bookId);
@@ -375,9 +439,10 @@ export default function StudentDashboard() {
       });
     });
     
-    const pendingParent = bookshelf.filter(book => 
-      book.status === 'pending_parent_approval'
-    );
+    const pendingParent = bookshelf.filter(book => {
+      const state = getBookState(book);
+      return state === 'pending_parent_quiz_unlock';
+    });
     
     pendingParent.forEach(book => {
       const nominee = nominees.find(n => n.id === book.bookId);
@@ -394,7 +459,7 @@ export default function StudentDashboard() {
     // Sort by priority
     actions.sort((a, b) => a.priority - b.priority);
     
-    console.log(`✨ Generated ${actions.length} action items`);
+    console.log(`✨ Generated ${actions.length} action items:`, actions.map(a => a.type));
     return actions;
   };
 
@@ -499,7 +564,7 @@ export default function StudentDashboard() {
     }
   };
 
-  // UPDATED: Load latest saint unlock
+  // FIXED: Load latest saint unlock with full saint data (no time restriction)
   const loadLatestSaintUnlock = async (studentData) => {
     try {
       if (!studentData.unlockedSaints || studentData.unlockedSaints.length === 0) {
@@ -509,24 +574,30 @@ export default function StudentDashboard() {
       
       // Get the latest saint from the timestamps
       const timestamps = studentData.newlyUnlockedSaintsWithTimestamp || {};
-      let latestSaint = null;
+      let latestSaintId = null;
       let latestTime = 0;
       
       Object.keys(timestamps).forEach(saintId => {
         const timestamp = new Date(timestamps[saintId].timestamp).getTime();
         if (timestamp > latestTime) {
           latestTime = timestamp;
-          latestSaint = {
-            id: saintId,
-            name: timestamps[saintId].name,
-            timestamp: timestamp
-          };
+          latestSaintId = saintId;
         }
       });
       
-      // Only show if unlocked within last 7 days
-      if (latestSaint && (Date.now() - latestTime) < (7 * 24 * 60 * 60 * 1000)) {
-        setLatestSaintUnlock(latestSaint);
+      // Show the most recent saint unlock (no time restriction)
+      if (latestSaintId) {
+        // 🔧 FIX: Fetch the full saint data from Firebase
+        const saintRef = doc(db, 'saints', latestSaintId);
+        const saintDoc = await getDoc(saintRef);
+        
+        if (saintDoc.exists()) {
+          const fullSaintData = { id: saintDoc.id, ...saintDoc.data() };
+          setLatestSaintUnlock(fullSaintData);
+        } else {
+          console.warn(`Saint ${latestSaintId} not found in saints collection`);
+          setLatestSaintUnlock(null);
+        }
       } else {
         setLatestSaintUnlock(null);
       }
@@ -537,23 +608,24 @@ export default function StudentDashboard() {
     }
   };
 
-  // UPDATED: Generate smart book recommendations with proper categories
+  // UPDATED: Random single-book recommendations that avoid bookshelf duplicates
   const generateSmartRecommendations = (nominees, studentData) => {
     if (!nominees.length) return [];
     
     const bookshelf = studentData.bookshelf || [];
-    const completedBooks = bookshelf.filter(book => book.completed);
     const inBookshelf = bookshelf.map(book => book.bookId);
     
-    // Get available books (not in bookshelf or completed)
+    // Get available books (not already in bookshelf)
     const availableBooks = nominees.filter(book => !inBookshelf.includes(book.id));
+    
+    console.log(`📚 Recommendations: ${availableBooks.length} books available (${inBookshelf.length} already in bookshelf)`);
     
     if (availableBooks.length === 0) {
       return [{
         type: 'completed',
-        title: 'All books completed!',
+        title: 'Amazing Achievement!',
         books: [],
-        message: 'Amazing! You\'ve added all available books to your bookshelf!'
+        message: 'You\'ve explored every book in your teacher\'s collection! 🎉📚'
       }];
     }
     
@@ -568,57 +640,97 @@ export default function StudentDashboard() {
       return gradeLevels.includes(grade?.toString());
     };
     
-    // 1. Quick Reads (under 150 pages)
+    // 1. Quick Victory (under 150 pages) - 1 book
     const quickReads = availableBooks
       .filter(book => {
         const pages = getPageCount(book);
         return pages > 0 && pages <= 150;
       })
-      .sort((a, b) => getPageCount(a) - getPageCount(b))
-      .slice(0, 3);
+      .sort((a, b) => getPageCount(a) - getPageCount(b));
     
     if (quickReads.length > 0) {
       recommendations.push({
         type: 'quick',
-        title: 'Quick Reads',
-        books: quickReads,
-        subtitle: 'Short & sweet victories'
+        title: 'Quick Victory',
+        books: [quickReads[0]], // Just 1 book
+        subtitle: 'A short & sweet read'
       });
     }
     
-    // 2. Perfect for Your Grade
+    // 2. Perfect for Your Grade - 1 book
     const gradeBooks = availableBooks
-      .filter(book => matchesGrade(book, studentData.grade))
-      .slice(0, 3);
+      .filter(book => matchesGrade(book, studentData.grade));
     
     if (gradeBooks.length > 0) {
       recommendations.push({
         type: 'grade',
         title: `Perfect for Grade ${studentData.grade}`,
-        books: gradeBooks,
+        books: [gradeBooks[0]], // Just 1 book
         subtitle: 'Just right for you'
       });
     }
     
-    // 3. Long Adventures (over 300 pages)
+    // 3. Epic Adventure (over 300 pages) - 1 book
     const longBooks = availableBooks
       .filter(book => {
         const pages = getPageCount(book);
         return pages > 300;
       })
-      .sort((a, b) => getPageCount(b) - getPageCount(a))
-      .slice(0, 3);
+      .sort((a, b) => getPageCount(b) - getPageCount(a));
     
     if (longBooks.length > 0) {
       recommendations.push({
         type: 'long',
-        title: 'Epic Adventures',
-        books: longBooks,
-        subtitle: 'Dive deep into great stories'
+        title: 'Epic Adventure',
+        books: [longBooks[0]], // Just 1 book
+        subtitle: 'Dive deep into a great story'
       });
     }
     
-    // 4. If they've completed books, recommend similar categories
+    // 4. Catholic/Faith-based books - 1 book
+    const catholicBooks = availableBooks.filter(book =>
+      book.displayCategory?.includes('Catholic') || book.internalCategory?.includes('Catholic')
+    );
+    
+    if (catholicBooks.length > 0) {
+      recommendations.push({
+        type: 'catholic',
+        title: 'Faith & Inspiration',
+        books: [catholicBooks[0]], // Just 1 book
+        subtitle: 'Strengthen your faith'
+      });
+    }
+    
+    // 5. Graphic novels - 1 book
+    const graphicBooks = availableBooks.filter(book =>
+      book.displayCategory?.includes('Graphic') || book.internalCategory?.includes('Graphic')
+    );
+    
+    if (graphicBooks.length > 0) {
+      recommendations.push({
+        type: 'graphic',
+        title: 'Visual Adventure',
+        books: [graphicBooks[0]], // Just 1 book
+        subtitle: 'Stories through art'
+      });
+    }
+    
+    // 6. Chapter books - 1 book
+    const chapterBooks = availableBooks.filter(book =>
+      book.displayCategory?.includes('Chapter') || book.internalCategory?.includes('Chapter')
+    );
+    
+    if (chapterBooks.length > 0) {
+      recommendations.push({
+        type: 'chapter',
+        title: 'Chapter Adventure',
+        books: [chapterBooks[0]], // Just 1 book
+        subtitle: 'Dive into chapters'
+      });
+    }
+    
+    // 7. If they've completed books, recommend similar categories - 1 book
+    const completedBooks = bookshelf.filter(book => book.completed);
     if (completedBooks.length > 0) {
       const completedCategories = completedBooks.map(book => {
         const nominee = nominees.find(n => n.id === book.bookId);
@@ -629,46 +741,48 @@ export default function StudentDashboard() {
         completedCategories.some(cat => 
           book.displayCategory?.includes(cat) || book.internalCategory?.includes(cat)
         )
-      ).slice(0, 3);
+      );
       
       if (categoryMatches.length > 0) {
         recommendations.push({
           type: 'similar',
           title: 'More Like Your Favorites',
-          books: categoryMatches,
+          books: [categoryMatches[0]], // Just 1 book
           subtitle: 'Based on what you\'ve read'
         });
       }
     }
     
-    // If no specific recommendations, show popular categories
-    if (recommendations.length === 0) {
-      const categoryOrder = [
-        'Chapter Books',
-        'Picture Books', 
-        'Graphic',
-        'Catholic',
-        'Classic'
-      ];
-      
-      for (const category of categoryOrder) {
-        const categoryBooks = availableBooks.filter(book =>
-          book.displayCategory?.includes(category) || book.internalCategory?.includes(category)
-        ).slice(0, 3);
-        
-        if (categoryBooks.length > 0) {
-          recommendations.push({
-            type: 'category',
-            title: `Explore ${category}`,
-            books: categoryBooks,
-            subtitle: 'Popular with readers like you'
-          });
-          break;
-        }
-      }
+    // 8. Random discovery - 1 book
+    if (availableBooks.length > 0) {
+      const randomBook = availableBooks[Math.floor(Math.random() * availableBooks.length)];
+      recommendations.push({
+        type: 'discovery',
+        title: 'Random Discovery',
+        books: [randomBook], // Just 1 book
+        subtitle: 'Something new to explore'
+      });
     }
     
-    return recommendations.slice(0, 1); // Show only 1 recommendation section to save space
+    // 🎲 RANDOM SELECTION: Pick one recommendation type that has books
+    const availableRecommendations = recommendations.filter(rec => rec.books.length > 0);
+    
+    if (availableRecommendations.length === 0) {
+      return [{
+        type: 'completed',
+        title: 'Amazing Achievement!',
+        books: [],
+        message: 'You\'ve explored every book in your teacher\'s collection! 🎉📚'
+      }];
+    }
+    
+    // Randomly pick one recommendation to show
+    const randomIndex = Math.floor(Math.random() * availableRecommendations.length);
+    const selectedRecommendation = availableRecommendations[randomIndex];
+    
+    console.log(`🎲 Randomly selected "${selectedRecommendation.title}" from ${availableRecommendations.length} options`);
+    
+    return [selectedRecommendation];
   };
 
   useEffect(() => {
@@ -763,7 +877,7 @@ export default function StudentDashboard() {
         console.log('🎯 All dashboard data loaded successfully!');
       }
       
-      // UPDATED: Calculate dashboard data with proper goals
+      // UPDATED: Calculate dashboard data with proper goals based on teacher's nominees
       const bookshelf = firebaseStudentData.bookshelf || [];
       const completedBooks = bookshelf.filter(book => book.completed);
       const inProgressBooks = bookshelf.filter(book => !book.completed && book.currentProgress > 0);
@@ -774,12 +888,29 @@ export default function StudentDashboard() {
       
       setCurrentlyReading(currentlyReadingBook);
       
+      // Calculate goals based on teacher's selected nominees
+      const teacherNomineesCount = firebaseStudentData.teacherNominees?.length || 0;
+      const studentPersonalGoal = firebaseStudentData.personalGoal || firebaseStudentData.currentYearGoal || 10;
+      
+      // Current year goal: student's personal goal, but capped at teacher's nominees count
+      const currentYearGoal = Math.min(studentPersonalGoal, teacherNomineesCount || 10);
+      
+      // Lifetime goal: 5x teacher's nominees count (or fallback if no teacher data)
+      const lifetimeGoal = teacherNomineesCount > 0 ? teacherNomineesCount * 5 : 100;
+      
+      console.log('📊 Dashboard Goals Calculated:', {
+        teacherNomineesCount,
+        studentPersonalGoal,
+        currentYearGoal,
+        lifetimeGoal
+      });
+      
       setDashboardData({
         booksReadThisYear: firebaseStudentData.booksSubmittedThisYear || 0,
         totalBooksRead: firebaseStudentData.lifetimeBooksSubmitted || 0,
         saintCount: firebaseStudentData.unlockedSaints?.length || 0,
-        currentYearGoal: firebaseStudentData.currentYearGoal || 10,  // Use student's actual goal
-        lifetimeGoal: firebaseStudentData.lifetimeGoal || 100       // Use student's actual goal
+        currentYearGoal: currentYearGoal,
+        lifetimeGoal: lifetimeGoal
       });
 
     } catch (error) {
@@ -886,6 +1017,10 @@ export default function StudentDashboard() {
   // UPDATED: Better action item handling
   const handleActionItemClick = (action) => {
     switch (action.type) {
+      case 'teacher_approved':
+        setShowComingSoon('🎉 Congratulations! Your hard work paid off!');
+        setTimeout(() => setShowComingSoon(''), 4000);
+        break;
       case 'ready_submit':
       case 'retry_quiz':
       case 'take_quiz':
@@ -898,6 +1033,10 @@ export default function StudentDashboard() {
         break;
       case 'pending_admin':
         setShowComingSoon('Your teacher is reviewing your submission! 👩‍🏫');
+        setTimeout(() => setShowComingSoon(''), 3000);
+        break;
+      case 'quiz_cooldown':
+        setShowComingSoon('Quiz cooldown active - please wait before retrying! ⏰');
         setTimeout(() => setShowComingSoon(''), 3000);
         break;
       default:
@@ -1153,7 +1292,8 @@ export default function StudentDashboard() {
             borderRadius: '16px',
             padding: '20px',
             boxShadow: `0 8px 24px ${currentTheme.primary}30`,
-            marginBottom: '16px'
+            marginBottom: '16px',
+            animation: 'slideInDown 0.8s ease-out'
           }}>
             <h2 style={{
               fontSize: '24px',
@@ -1179,9 +1319,13 @@ export default function StudentDashboard() {
               padding: '12px',
               display: 'flex',
               alignItems: 'center',
-              gap: '8px'
+              gap: '8px',
+              animation: 'slideInUp 0.6s ease-out 0.3s both'
             }}>
-              <span style={{ fontSize: '16px' }}>🏆</span>
+              <span style={{ 
+                fontSize: '16px',
+                animation: 'bounce 2s infinite'
+              }}>🏆</span>
               <div style={{ flex: 1 }}>
                 <div style={{ 
                   fontSize: '14px', 
@@ -1200,34 +1344,38 @@ export default function StudentDashboard() {
             </div>
           </div>
 
-          {/* MOVED TO TOP: Progress Wheels */}
+          {/* MOVED TO TOP: Progress Wheels with ANIMATIONS */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: '1fr 1fr',
             gap: '16px',
             marginBottom: '20px'
           }}>
-            <ProgressWheel
-              title="This Year"
-              current={dashboardData.booksReadThisYear}
-              goal={dashboardData.currentYearGoal}
-              color={currentTheme.primary}
-              emoji="📖"
-            />
-            <ProgressWheel
-              title="Lifetime Journey"
-              current={dashboardData.totalBooksRead}
-              goal={dashboardData.lifetimeGoal}
-              color={currentTheme.accent}
-              emoji="🏆"
-            />
+            <div style={{ animation: 'slideInLeft 0.8s ease-out 0.4s both' }}>
+              <ProgressWheel
+                title="This Year"
+                current={dashboardData.booksReadThisYear}
+                goal={dashboardData.currentYearGoal}
+                color={currentTheme.primary}
+                emoji="📖"
+              />
+            </div>
+            <div style={{ animation: 'slideInRight 0.8s ease-out 0.5s both' }}>
+              <ProgressWheel
+                title="Lifetime Journey"
+                current={dashboardData.totalBooksRead}
+                goal={dashboardData.lifetimeGoal}
+                color={currentTheme.accent}
+                emoji="🏆"
+              />
+            </div>
           </div>
         </div>
 
         {/* CONTENT */}
         <div style={{ padding: '0 20px 20px' }}>
           
-          {/* UPDATED: Action Items - Expandable */}
+          {/* UPDATED: Action Items - Expandable with ANIMATIONS */}
           {actionItems.length > 0 && (
             <div style={{
               backgroundColor: currentTheme.surface,
@@ -1235,7 +1383,8 @@ export default function StudentDashboard() {
               padding: '20px',
               marginBottom: '20px',
               boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              border: `2px solid ${currentTheme.primary}30`
+              border: `2px solid ${currentTheme.primary}30`,
+              animation: 'slideInUp 0.8s ease-out 0.6s both'
             }}>
               <div style={{
                 display: 'flex',
@@ -1252,7 +1401,10 @@ export default function StudentDashboard() {
                   alignItems: 'center',
                   gap: '8px'
                 }}>
-                  ✨ What should I do next?
+                  <span style={{
+                    animation: actionItems.some(item => item.priority === 1) ? 'bounce 2s infinite' : 'sparkle 1.5s ease-in-out infinite'
+                  }}>✨</span> 
+                  What should I do next?
                 </h3>
                 {actionItems.length > 1 && (
                   <button
@@ -1265,15 +1417,18 @@ export default function StudentDashboard() {
                       color: currentTheme.textPrimary,
                       fontSize: '12px',
                       fontWeight: '600',
-                      cursor: 'pointer'
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease'
                     }}
+                    onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
+                    onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
                   >
                     {showAllActionItems ? 'Show Less' : `+${actionItems.length - 1} More`}
                   </button>
                 )}
               </div>
               
-              {/* Show first action item or all if expanded */}
+              {/* Show first action item or all if expanded with staggered animations */}
               {(showAllActionItems ? actionItems : actionItems.slice(0, 1)).map((action, index) => (
                 <div 
                   key={index}
@@ -1288,12 +1443,22 @@ export default function StudentDashboard() {
                     gap: '12px',
                     cursor: 'pointer',
                     border: action.priority === 1 ? `2px solid ${currentTheme.primary}` : 'none',
-                    transition: 'transform 0.2s ease'
+                    transition: 'all 0.3s ease',
+                    animation: `slideInUp 0.6s ease-out ${0.8 + (index * 0.1)}s both`
                   }}
-                  onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
-                  onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.transform = action.priority === 1 ? 'scale(1.03)' : 'scale(1.02)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
                 >
-                  <span style={{ fontSize: '20px' }}>{action.emoji}</span>
+                  <span style={{ 
+                    fontSize: '20px',
+                    animation: 'pulseGlow 2s ease-in-out infinite'
+                  }}>{action.emoji}</span>
                   <div style={{ flex: 1 }}>
                     <div style={{
                       fontSize: '14px',
@@ -1309,20 +1474,24 @@ export default function StudentDashboard() {
                       {action.subtitle}
                     </div>
                   </div>
-                  <span style={{ color: currentTheme.primary, fontSize: '16px' }}>→</span>
+                  <span style={{ 
+                    color: currentTheme.primary, 
+                    fontSize: '16px'
+                  }}>→</span>
                 </div>
               ))}
             </div>
           )}
 
-          {/* UPDATED: Currently Reading - Properly wired */}
+          {/* UPDATED: Currently Reading with ANIMATIONS */}
           {currentlyReading && (
             <div style={{
               backgroundColor: currentTheme.surface,
               borderRadius: '16px',
               padding: '16px',
               marginBottom: '20px',
-              border: `1px solid ${currentTheme.primary}30`
+              border: `1px solid ${currentTheme.primary}30`,
+              animation: 'slideInUp 0.8s ease-out 1.2s both'
             }}>
               <div style={{
                 display: 'flex',
@@ -1330,7 +1499,9 @@ export default function StudentDashboard() {
                 gap: '8px',
                 marginBottom: '12px'
               }}>
-                <span style={{ fontSize: '20px' }}>📖</span>
+                <span style={{ 
+                  fontSize: '20px'
+                }}>📖</span>
                 <h3 style={{
                   fontSize: '16px',
                   fontWeight: 'bold',
@@ -1352,7 +1523,16 @@ export default function StudentDashboard() {
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '12px'
+                  gap: '12px',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.transform = 'scale(1.02)';
+                  e.target.style.backgroundColor = `${currentTheme.primary}30`;
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.transform = 'scale(1)';
+                  e.target.style.backgroundColor = `${currentTheme.primary}20`;
                 }}
               >
                 <div style={{
@@ -1363,9 +1543,35 @@ export default function StudentDashboard() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '20px'
+                  fontSize: '20px',
+                  animation: 'pulseGlow 2s ease-in-out infinite',
+                  overflow: 'hidden'
                 }}>
-                  📚
+                  {(() => {
+                    const book = nominees.find(n => n.id === currentlyReading.bookId);
+                    return book?.coverImageUrl ? (
+                      <img 
+                        src={book.coverImageUrl} 
+                        alt={book.title}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          borderRadius: '4px'
+                        }}
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          e.target.nextElementSibling.style.display = 'block';
+                        }}
+                      />
+                    ) : (
+                      <span style={{ fontSize: '20px' }}>📚</span>
+                    );
+                  })()}
+                  <span style={{ 
+                    fontSize: '20px',
+                    display: 'none'
+                  }}>📚</span>
                 </div>
                 <div style={{ flex: 1, textAlign: 'left' }}>
                   <p style={{
@@ -1391,19 +1597,23 @@ export default function StudentDashboard() {
                     })()}
                   </p>
                 </div>
-                <span style={{ color: currentTheme.primary, fontSize: '16px' }}>→</span>
+                <span style={{ 
+                  color: currentTheme.primary, 
+                  fontSize: '16px'
+                }}>→</span>
               </button>
             </div>
           )}
 
-          {/* UPDATED: Smart Book Recommendations */}
+          {/* UPDATED: Smart Book Recommendations with ANIMATIONS */}
           {smartRecommendations.length > 0 && (
             <div style={{
               backgroundColor: currentTheme.surface,
               borderRadius: '16px',
               padding: '20px',
               marginBottom: '20px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              animation: 'slideInUp 0.8s ease-out 1.4s both'
             }}>
               <h3 style={{
                 fontSize: '18px',
@@ -1414,11 +1624,14 @@ export default function StudentDashboard() {
                 alignItems: 'center',
                 gap: '8px'
               }}>
-                🎯 Recommended for You
+                🎯
+                Recommended for You
               </h3>
               
               {smartRecommendations.map((rec, recIndex) => (
-                <div key={recIndex} style={{ marginBottom: recIndex < smartRecommendations.length - 1 ? '16px' : '0' }}>
+                <div key={recIndex} style={{ 
+                  marginBottom: recIndex < smartRecommendations.length - 1 ? '16px' : '0'
+                }}>
                   <h4 style={{
                     fontSize: '14px',
                     fontWeight: '600',
@@ -1430,16 +1643,15 @@ export default function StudentDashboard() {
                   <p style={{
                     fontSize: '12px',
                     color: currentTheme.textSecondary,
-                    margin: '0 0 8px 0'
+                    margin: '0 0 12px 0'
                   }}>
                     {rec.subtitle || rec.message}
                   </p>
                   
                   {rec.books.length > 0 ? (
                     <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(3, 1fr)', // Always 3 columns
-                      gap: '8px'
+                      display: 'flex',
+                      justifyContent: 'center'
                     }}>
                       {rec.books.map((book, bookIndex) => (
                         <button
@@ -1447,26 +1659,34 @@ export default function StudentDashboard() {
                           onClick={() => handleRecommendationClick(book)}
                           style={{
                             backgroundColor: currentTheme.surface,
-                            border: `2px solid ${currentTheme.primary}40`,
-                            borderRadius: '8px',
-                            padding: '8px',
+                            border: `2px solid ${currentTheme.primary}`,
+                            borderRadius: '12px',
+                            padding: '12px',
                             cursor: 'pointer',
-                            transition: 'all 0.2s ease',
-                            textAlign: 'center'
+                            transition: 'all 0.3s ease',
+                            textAlign: 'center',
+                            maxWidth: '200px',
+                            width: '100%'
                           }}
-                          onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-                          onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                          onMouseOver={(e) => {
+                            e.currentTarget.style.transform = 'scale(1.05)';
+                            e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.15)';
+                          }}
+                          onMouseOut={(e) => {
+                            e.currentTarget.style.transform = 'scale(1)';
+                            e.currentTarget.style.boxShadow = 'none';
+                          }}
                         >
                           <div style={{
                             width: '100%',
-                            height: '80px',
-                            borderRadius: '4px',
+                            height: '120px',
+                            borderRadius: '8px',
                             overflow: 'hidden',
                             backgroundColor: `${currentTheme.primary}10`,
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            marginBottom: '4px'
+                            marginBottom: '8px'
                           }}>
                             {book.coverImageUrl ? (
                               <img 
@@ -1475,20 +1695,33 @@ export default function StudentDashboard() {
                                 style={{
                                   width: '100%',
                                   height: '100%',
-                                  objectFit: 'cover'
+                                  objectFit: 'cover',
+                                  transition: 'transform 0.3s ease'
                                 }}
+                                onMouseOver={(e) => e.target.style.transform = 'scale(1.1)'}
+                                onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
                               />
                             ) : (
-                              <span style={{ fontSize: '24px' }}>📚</span>
+                              <span style={{ 
+                                fontSize: '36px'
+                              }}>📚</span>
                             )}
                           </div>
                           <div style={{
-                            fontSize: '10px',
+                            fontSize: '12px',
                             fontWeight: '600',
                             color: currentTheme.textPrimary,
-                            lineHeight: '1.2'
+                            lineHeight: '1.3',
+                            marginBottom: '4px'
                           }}>
-                            {book.title.length > 30 ? `${book.title.substring(0, 30)}...` : book.title}
+                            {book.title}
+                          </div>
+                          <div style={{
+                            fontSize: '10px',
+                            color: currentTheme.textSecondary,
+                            fontStyle: 'italic'
+                          }}>
+                            by {book.authors}
                           </div>
                         </button>
                       ))}
@@ -1496,10 +1729,17 @@ export default function StudentDashboard() {
                   ) : (
                     <div style={{
                       textAlign: 'center',
-                      padding: '20px',
-                      color: currentTheme.textSecondary,
-                      fontSize: '14px'
+                      padding: '30px 20px',
+                      color: currentTheme.textPrimary,
+                      fontSize: '14px',
+                      backgroundColor: `${currentTheme.primary}10`,
+                      borderRadius: '12px',
+                      border: `2px solid ${currentTheme.primary}30`
                     }}>
+                      <div style={{ 
+                        fontSize: '32px', 
+                        marginBottom: '8px'
+                      }}>🎉</div>
                       {rec.message}
                     </div>
                   )}
@@ -1508,14 +1748,15 @@ export default function StudentDashboard() {
             </div>
           )}
 
-          {/* Achievement Progress */}
+          {/* Achievement Progress with ANIMATIONS */}
           {nextAchievement && (
             <div style={{
               backgroundColor: currentTheme.surface,
               borderRadius: '16px',
               padding: '20px',
               marginBottom: '20px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              animation: 'slideInUp 0.8s ease-out 1.6s both'
             }}>
               <h3 style={{
                 fontSize: '18px',
@@ -1565,7 +1806,7 @@ export default function StudentDashboard() {
                     backgroundColor: currentTheme.primary,
                     height: '100%',
                     width: `${Math.min(nextAchievement.progress, 100)}%`,
-                    transition: 'width 1s ease'
+                    transition: 'width 2s ease'
                   }} />
                 </div>
                 
@@ -1581,34 +1822,40 @@ export default function StudentDashboard() {
             </div>
           )}
 
-          {/* Quick Action Buttons */}
+          {/* Quick Action Buttons with ANIMATIONS */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: '1fr 1fr',
             gap: '12px',
-            marginBottom: '20px'
+            marginBottom: '20px',
+            animation: 'slideInUp 0.8s ease-out 1.8s both'
           }}>
-            <QuickActionButton
-              emoji="🎴"
-              label="Browse Books"
-              onClick={() => router.push('/student-nominees')}
-              theme={currentTheme}
-            />
-            <QuickActionButton
-              emoji="📂" // Changed from 📚 to 📂
-              label="My Bookshelf"
-              onClick={() => router.push('/student-bookshelf')}
-              theme={currentTheme}
-            />
+            <div style={{ animation: 'slideInLeft 0.6s ease-out 2.0s both' }}>
+              <QuickActionButton
+                emoji="🎴"
+                label="Browse Books"
+                onClick={() => router.push('/student-nominees')}
+                theme={currentTheme}
+              />
+            </div>
+            <div style={{ animation: 'slideInRight 0.6s ease-out 2.1s both' }}>
+              <QuickActionButton
+                emoji="📂"
+                label="My Bookshelf"
+                onClick={() => router.push('/student-bookshelf')}
+                theme={currentTheme}
+              />
+            </div>
           </div>
 
-          {/* UPDATED: Reading Habits with latest saint */}
+          {/* UPDATED: Reading Habits with SPARKLING saint unlock! */}
           <div style={{
             backgroundColor: currentTheme.surface,
             borderRadius: '16px',
             padding: '20px',
             marginBottom: '100px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            animation: 'slideInUp 0.8s ease-out 2.2s both'
           }}>
             <h3 style={{
               fontSize: '18px',
@@ -1634,8 +1881,7 @@ export default function StudentDashboard() {
               gap: '12px'
             }}>
               <span style={{ 
-                fontSize: '32px',
-                animation: readingStats.streak >= 7 ? 'pulse 1.5s infinite' : 'none'
+                fontSize: '32px'
               }}>
                 {readingStats.streak >= 7 ? '🔥' : '📖'}
               </span>
@@ -1667,14 +1913,24 @@ export default function StudentDashboard() {
                   color: currentTheme.textPrimary,
                   fontSize: '12px',
                   fontWeight: '600',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  animation: 'pulseGlow 2s ease-in-out infinite'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.transform = 'scale(1.05)';
+                  e.target.style.backgroundColor = 'rgba(255,255,255,0.3)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.transform = 'scale(1)';
+                  e.target.style.backgroundColor = 'rgba(255,255,255,0.2)';
                 }}
               >
                 Start Session
               </button>
             </div>
 
-            {/* Today's Progress + Latest Saint */}
+            {/* Today's Progress + Latest Saint with SPARKLES! */}
             <div style={{
               display: 'grid',
               gridTemplateColumns: latestSaintUnlock ? '1fr 1fr 1fr' : '1fr 1fr',
@@ -1700,12 +1956,30 @@ export default function StudentDashboard() {
                   minutes today
                 </div>
               </div>
-              <div style={{
-                backgroundColor: `${currentTheme.primary}20`,
-                borderRadius: '8px',
-                padding: '8px',
-                textAlign: 'center'
-              }}>
+              
+              {/* Saints Count - Clickable */}
+              <button
+                onClick={() => router.push('/student-saints')}
+                style={{
+                  backgroundColor: `${currentTheme.primary}20`,
+                  border: `2px solid ${currentTheme.primary}60`,
+                  borderRadius: '8px',
+                  padding: '8px',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.backgroundColor = `${currentTheme.primary}30`;
+                  e.currentTarget.style.borderColor = currentTheme.primary;
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.backgroundColor = `${currentTheme.primary}20`;
+                  e.currentTarget.style.borderColor = `${currentTheme.primary}60`;
+                  e.currentTarget.style.transform = 'scale(1)';
+                }}
+              >
                 <div style={{
                   fontSize: '16px',
                   fontWeight: 'bold',
@@ -1719,49 +1993,101 @@ export default function StudentDashboard() {
                 }}>
                   saints unlocked
                 </div>
-              </div>
+              </button>
               
-              {/* Latest Saint Unlock */}
+              {/* ✨🌟 SPARKLING SAINT UNLOCK! 🌟✨ */}
               {latestSaintUnlock && (
                 <button
                   onClick={() => router.push('/student-saints')}
                   style={{
-                    backgroundColor: `${currentTheme.primary}30`,
-                    border: `2px solid ${currentTheme.primary}`,
+                    backgroundColor: `${currentTheme.primary}20`,
+                    border: `2px solid ${currentTheme.primary}60`,
                     borderRadius: '8px',
-                    padding: '4px',
+                    padding: '8px',
                     cursor: 'pointer',
                     textAlign: 'center',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '2px'
+                    transition: 'all 0.3s ease',
+                    position: 'relative',
+                    overflow: 'hidden'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.backgroundColor = `${currentTheme.primary}30`;
+                    e.currentTarget.style.borderColor = currentTheme.primary;
+                    e.currentTarget.style.transform = 'scale(1.05)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.backgroundColor = `${currentTheme.primary}20`;
+                    e.currentTarget.style.borderColor = `${currentTheme.primary}60`;
+                    e.currentTarget.style.transform = 'scale(1)';
                   }}
                 >
-                  <img 
-                    src={`/saints/${latestSaintUnlock.id}.png`}
-                    alt={latestSaintUnlock.name}
-                    style={{
-                      width: '20px',
-                      height: '20px',
-                      objectFit: 'contain'
-                    }}
-                    onError={(e) => {
-                      e.target.style.display = 'none';
-                      e.target.nextSibling.style.display = 'block';
-                    }}
-                  />
-                  <span style={{ 
-                    fontSize: '16px', 
-                    display: 'none' 
-                  }}>♔</span>
+                  {/* SPARKLING MAGIC! ✨⭐ */}
                   <div style={{
-                    fontSize: '8px',
-                    color: currentTheme.textPrimary,
-                    fontWeight: 'bold',
-                    lineHeight: '1'
+                    position: 'absolute',
+                    top: '2px',
+                    right: '2px',
+                    fontSize: '12px',
+                    animation: 'sparkle 1.5s ease-in-out infinite',
+                    pointerEvents: 'none'
                   }}>
-                    Latest Saint
+                    ✨
+                  </div>
+                  <div style={{
+                    position: 'absolute',
+                    bottom: '2px',
+                    left: '2px',
+                    fontSize: '8px',
+                    animation: 'sparkle 1.5s ease-in-out infinite 0.5s',
+                    pointerEvents: 'none'
+                  }}>
+                    ⭐
+                  </div>
+                  <div style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '2px',
+                    fontSize: '6px',
+                    animation: 'sparkle 1.5s ease-in-out infinite 1s',
+                    pointerEvents: 'none'
+                  }}>
+                    ✨
+                  </div>
+                  
+                  <div style={{
+                    fontSize: '16px',
+                    fontWeight: 'bold',
+                    color: currentTheme.textPrimary,
+                    marginBottom: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '20px'
+                  }}>
+                    <img 
+                      src={latestSaintUnlock.icon_asset?.replace('assets/', '/') || `/saints/${latestSaintUnlock.id}.png`}
+                      alt={latestSaintUnlock.name}
+                      style={{
+                        width: '20px',
+                        height: '20px',
+                        objectFit: 'contain'
+                      }}
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextElementSibling.style.display = 'block';
+                      }}
+                    />
+                    <span style={{ 
+                      fontSize: '16px',
+                      display: 'none'
+                    }}>
+                      {latestSaintUnlock.name.replace('St. ', '').replace('Our Lady of ', '').replace('Bl. ', '').split(' ')[0]}
+                    </span>
+                  </div>
+                  <div style={{
+                    fontSize: '10px',
+                    color: currentTheme.textSecondary
+                  }}>
+                    recently unlocked
                   </div>
                 </button>
               )}
@@ -2001,9 +2327,106 @@ export default function StudentDashboard() {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
           }
-          @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
+          
+          @keyframes slideInDown {
+            from { 
+              opacity: 0; 
+              transform: translateY(-30px); 
+            }
+            to { 
+              opacity: 1; 
+              transform: translateY(0); 
+            }
+          }
+          
+          @keyframes slideInUp {
+            from { 
+              opacity: 0; 
+              transform: translateY(30px); 
+            }
+            to { 
+              opacity: 1; 
+              transform: translateY(0); 
+            }
+          }
+          
+          @keyframes slideInLeft {
+            from { 
+              opacity: 0; 
+              transform: translateX(-30px); 
+            }
+            to { 
+              opacity: 1; 
+              transform: translateX(0); 
+            }
+          }
+          
+          @keyframes slideInRight {
+            from { 
+              opacity: 0; 
+              transform: translateX(30px); 
+            }
+            to { 
+              opacity: 1; 
+              transform: translateX(0); 
+            }
+          }
+          
+          @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {
+              transform: translateY(0);
+            }
+            40% {
+              transform: translateY(-8px);
+            }
+            60% {
+              transform: translateY(-4px);
+            }
+          }
+          
+          @keyframes sparkle {
+            0%, 100% {
+              opacity: 1;
+              transform: scale(1) rotate(0deg);
+            }
+            25% {
+              opacity: 0.7;
+              transform: scale(1.2) rotate(90deg);
+            }
+            50% {
+              opacity: 0.4;
+              transform: scale(0.8) rotate(180deg);
+            }
+            75% {
+              opacity: 0.7;
+              transform: scale(1.1) rotate(270deg);
+            }
+          }
+          
+          @keyframes pulseGlow {
+            0%, 100% {
+              opacity: 1;
+              filter: brightness(1);
+            }
+            50% {
+              opacity: 0.8;
+              filter: brightness(1.2);
+            }
+          }
+          
+          button {
+            -webkit-tap-highlight-color: transparent;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+            touch-action: manipulation;
+          }
+          
+          * {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
           }
         `}</style>
       </div>
@@ -2023,7 +2446,8 @@ function ProgressWheel({ title, current, goal, color, emoji }) {
       borderRadius: '16px',
       padding: '20px',
       textAlign: 'center',
-      boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+      boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+      transition: 'all 0.3s ease'
     }}>
       <p style={{
         fontSize: '14px',
@@ -2053,7 +2477,9 @@ function ProgressWheel({ title, current, goal, color, emoji }) {
             strokeWidth="6"
             strokeDasharray={strokeDasharray}
             strokeLinecap="round"
-            style={{ transition: 'stroke-dasharray 1s ease-in-out' }}
+            style={{ 
+              transition: 'stroke-dasharray 2s ease-in-out'
+            }}
           />
         </svg>
         <div style={{
@@ -2063,7 +2489,12 @@ function ProgressWheel({ title, current, goal, color, emoji }) {
           transform: 'translate(-50%, -50%)',
           textAlign: 'center'
         }}>
-          <div style={{ fontSize: '16px', marginBottom: '2px' }}>{emoji}</div>
+          <div style={{ 
+            fontSize: '16px', 
+            marginBottom: '2px'
+          }}>
+            {emoji}
+          </div>
           <div style={{
             fontSize: '18px',
             fontWeight: 'bold',
@@ -2085,7 +2516,7 @@ function ProgressWheel({ title, current, goal, color, emoji }) {
   );
 }
 
-// Quick Action Button Component - KEEP AS-IS
+// Quick Action Button Component - ENHANCED with hover animations
 function QuickActionButton({ emoji, label, onClick, theme }) {
   return (
     <button
@@ -2100,18 +2531,26 @@ function QuickActionButton({ emoji, label, onClick, theme }) {
         flexDirection: 'column',
         alignItems: 'center',
         gap: '8px',
-        transition: 'all 0.2s ease'
+        transition: 'all 0.3s ease',
+        transform: 'translateY(0)'
       }}
       onMouseOver={(e) => {
         e.currentTarget.style.backgroundColor = `${theme.primary}20`;
-        e.currentTarget.style.transform = 'scale(1.02)';
+        e.currentTarget.style.transform = 'translateY(-4px) scale(1.03)';
+        e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.15)';
+        e.currentTarget.style.borderColor = theme.primary;
       }}
       onMouseOut={(e) => {
         e.currentTarget.style.backgroundColor = theme.surface;
-        e.currentTarget.style.transform = 'scale(1)';
+        e.currentTarget.style.transform = 'translateY(0) scale(1)';
+        e.currentTarget.style.boxShadow = 'none';
+        e.currentTarget.style.borderColor = `${theme.primary}30`;
       }}
     >
-      <span style={{ fontSize: '24px' }}>{emoji}</span>
+      <span style={{ 
+        fontSize: '24px',
+        transition: 'transform 0.3s ease'
+      }}>{emoji}</span>
       <span style={{
         fontSize: '12px',
         fontWeight: '600',
