@@ -661,7 +661,7 @@ export default function TeacherSubmissions() {
                           margin: '0 0 0.5rem 0',
                           fontWeight: '500'
                         }}>
-                          "{submission.bookTitle}"
+                          &quot;{submission.bookTitle}&quot;
                         </p>
                         
                         <div style={{
@@ -798,7 +798,7 @@ export default function TeacherSubmissions() {
                   margin: '0 0 0.5rem 0',
                   fontWeight: '500'
                 }}>
-                  <strong>{selectedSubmission.studentName}</strong> - "{selectedSubmission.bookTitle}"
+                  <strong>{selectedSubmission.studentName}</strong> - &quot;{selectedSubmission.bookTitle}&quot;
                 </p>
                 <p style={{
                   fontSize: '0.75rem',
