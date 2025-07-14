@@ -1,4 +1,4 @@
-// pages/student-dashboard.js - FULLY UPDATED with all code changes and fixes
+// pages/student-dashboard.js - FULLY UPDATED with revision handling and all code changes
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
@@ -94,6 +94,17 @@ export default function StudentDashboard() {
         return 'quiz_cooldown';
       } else {
         return 'quiz_ready'; // Cooldown complete
+      }
+    }
+    
+    // Check for revision request with cooldown
+    if (book.status === 'revision_requested' && book.revisionRequestedAt) {
+      const revisionTime = book.revisionRequestedAt?.toDate ? book.revisionRequestedAt.toDate() : new Date(book.revisionRequestedAt);
+      const cooldownEnd = new Date(revisionTime.getTime() + 24 * 60 * 60 * 1000);
+      if (now < cooldownEnd) {
+        return 'revision_cooldown';
+      } else {
+        return 'revision_ready'; // Cooldown complete, ready to resubmit
       }
     }
     
@@ -306,7 +317,7 @@ export default function StudentDashboard() {
     }
   };
 
-  // UPDATED: Generate smart action items based on actual book states - REMOVE continue_reading duplication
+  // UPDATED: Generate smart action items based on actual book states - NOW WITH REVISION HANDLING
   const generateActionItems = (bookshelf = [], nominees = []) => {
     const actions = [];
     const now = new Date();
@@ -358,8 +369,26 @@ export default function StudentDashboard() {
         subtitle: 'Book completed - ready for teacher review!'
       });
     });
+
+    // 3. NEW: Books ready for revision resubmission (highest priority - encouraging!)
+    const revisionReady = bookshelf.filter(book => {
+      const state = getBookState(book);
+      return state === 'revision_ready';
+    });
     
-    // 3. Quizzes available to take (including retry after cooldown)
+    revisionReady.forEach(book => {
+      const nominee = nominees.find(n => n.id === book.bookId);
+      actions.push({
+        type: 'revision_ready',
+        bookId: book.bookId,
+        priority: 1,
+        emoji: '✏️',
+        title: `Ready to resubmit "${nominee?.title || 'Unknown Book'}"`,
+        subtitle: 'Revisions complete - submit your improved work!'
+      });
+    });
+    
+    // 4. Quizzes available to take (including retry after cooldown)
     const quizReady = bookshelf.filter(book => {
       const state = getBookState(book);
       return state === 'pending_parent_quiz_unlock' || state === 'quiz_available' || state === 'quiz_ready';
@@ -380,9 +409,31 @@ export default function StudentDashboard() {
       });
     });
     
-    // 4. REMOVED: continue_reading - now handled by CurrentlyReadingSection
+    // 5. REMOVED: continue_reading - now handled by CurrentlyReadingSection
     
-    // 5. Quiz failures with cooldown (show time remaining)
+    // 6. NEW: Revision cooldowns (show time remaining with helpful message)
+    const revisionCooldown = bookshelf.filter(book => {
+      const state = getBookState(book);
+      return state === 'revision_cooldown';
+    });
+    
+    revisionCooldown.forEach(book => {
+      const nominee = nominees.find(n => n.id === book.bookId);
+      const revisionAt = book.revisionRequestedAt ? (book.revisionRequestedAt?.toDate ? book.revisionRequestedAt.toDate() : new Date(book.revisionRequestedAt)) : now;
+      const cooldownEnd = new Date(revisionAt.getTime() + 24 * 60 * 60 * 1000);
+      const hoursRemaining = Math.max(0, Math.ceil((cooldownEnd - now) / (1000 * 60 * 60)));
+      
+      actions.push({
+        type: 'revision_cooldown',
+        bookId: book.bookId,
+        priority: 3,
+        emoji: '📝',
+        title: `Revisions available in ${hoursRemaining}h`,
+        subtitle: `"${nominee?.title || 'Unknown Book'}" - Feedback available in My Bookshelf`
+      });
+    });
+    
+    // 7. Quiz failures with cooldown (show time remaining)
     const quizCooldown = bookshelf.filter(book => {
       const state = getBookState(book);
       return state === 'quiz_cooldown';
@@ -404,7 +455,7 @@ export default function StudentDashboard() {
       });
     });
     
-    // 6. Waiting for approvals (lower priority)
+    // 8. Waiting for approvals (lower priority)
     const pendingAdmin = bookshelf.filter(book => {
       const state = getBookState(book);
       return state === 'pending_admin_approval';
@@ -1292,7 +1343,7 @@ export default function StudentDashboard() {
     }
   };
 
-  // UPDATED: Better action item handling
+  // UPDATED: Better action item handling - NOW WITH REVISION SUPPORT
   const handleActionItemClick = (action) => {
     switch (action.type) {
       case 'teacher_approved':
@@ -1302,6 +1353,7 @@ export default function StudentDashboard() {
       case 'ready_submit':
       case 'retry_quiz':
       case 'take_quiz':
+      case 'revision_ready': // NEW: Handle revision ready - navigate to bookshelf
         router.push(`/student-bookshelf?book=${action.bookId}`);
         break;
       case 'waiting_parent':
@@ -1314,6 +1366,10 @@ export default function StudentDashboard() {
         break;
       case 'quiz_cooldown':
         setShowComingSoon('Quiz cooldown active - please wait before retrying! ⏰');
+        setTimeout(() => setShowComingSoon(''), 3000);
+        break;
+      case 'revision_cooldown': // NEW: Handle revision cooldown
+        setShowComingSoon('Revision cooldown active - check My Bookshelf for teacher feedback! 📝');
         setTimeout(() => setShowComingSoon(''), 3000);
         break;
       default:
