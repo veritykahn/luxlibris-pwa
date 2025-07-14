@@ -1268,7 +1268,7 @@ export default function MyStats() {
             </>
           ) : (
             <>
-              🎉 <strong>All achievements unlocked!</strong> You're a reading champion! 🏆
+              🎉 <strong>All achievements unlocked!</strong> You&apos;re a reading champion! 🏆
             </>
           )}
         </div>
