@@ -19,7 +19,7 @@ export default function StudentBookshelf() {
   const [tempProgress, setTempProgress] = useState(0);
   const [tempRating, setTempRating] = useState(0);
   const [tempNotes, setTempNotes] = useState('');
-const [textareaHeight, setTextareaHeight] = useState(50);
+  const [textareaHeight, setTextareaHeight] = useState(50);
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState('');
   
@@ -44,14 +44,14 @@ const [textareaHeight, setTextareaHeight] = useState(50);
 
   // 🍔 NAVIGATION MENU ITEMS (Bookshelf page is current)
   const navMenuItems = useMemo(() => [
-  { name: 'Dashboard', path: '/student-dashboard', icon: '⌂' },
-  { name: 'Nominees', path: '/student-nominees', icon: '□' },
-  { name: 'Bookshelf', path: '/student-bookshelf', icon: '⚏', current: true },
-  { name: 'Healthy Habits', path: '/student-healthy-habits', icon: '○' },
-  { name: 'Saints', path: '/student-saints', icon: '♔' },
-  { name: 'Stats', path: '/student-stats', icon: '△' },
-  { name: 'Settings', path: '/student-settings', icon: '⚙' }
-], []);
+    { name: 'Dashboard', path: '/student-dashboard', icon: '⌂' },
+    { name: 'Nominees', path: '/student-nominees', icon: '□' },
+    { name: 'Bookshelf', path: '/student-bookshelf', icon: '⚏', current: true },
+    { name: 'Healthy Habits', path: '/student-healthy-habits', icon: '○' },
+    { name: 'Saints', path: '/student-saints', icon: '♔' },
+    { name: 'Stats', path: '/student-stats', icon: '△' },
+    { name: 'Settings', path: '/student-settings', icon: '⚙' }
+  ], []);
 
   // 🍔 NOTIFICATION FUNCTIONS
   const requestNotificationPermission = useCallback(async () => {
@@ -308,7 +308,7 @@ const [textareaHeight, setTextareaHeight] = useState(50);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // NEW: Book state management functions
+  // UPDATED: Book state management functions with revision handling
   const getBookState = (book) => {
     const now = new Date();
     
@@ -326,9 +326,20 @@ const [textareaHeight, setTextareaHeight] = useState(50);
       return 'pending_parent_quiz_unlock';
     }
     
+    // NEW: Check for revision requested with cooldown
+    if (book.status === 'revision_requested' && book.revisionRequestedAt) {
+      const revisionTime = book.revisionRequestedAt?.toDate ? book.revisionRequestedAt.toDate() : new Date(book.revisionRequestedAt);
+      const cooldownEnd = new Date(revisionTime.getTime() + 24 * 60 * 60 * 1000);
+      if (now < cooldownEnd) {
+        return 'revision_cooldown';
+      } else {
+        // Cooldown expired, student can resubmit
+        return 'revision_ready';
+      }
+    }
+    
     // Check for failed quiz with cooldown
     if (book.status === 'quiz_failed' && book.failedAt) {
-      // 🔧 FIX: Handle Firebase Timestamp properly
       const failedTime = book.failedAt?.toDate ? book.failedAt.toDate() : new Date(book.failedAt);
       const cooldownEnd = new Date(failedTime.getTime() + 24 * 60 * 60 * 1000);
       if (now < cooldownEnd) {
@@ -338,7 +349,6 @@ const [textareaHeight, setTextareaHeight] = useState(50);
     
     // Check for admin rejection with cooldown
     if (book.status === 'admin_rejected' && book.rejectedAt) {
-      // 🔧 FIX: Handle Firebase Timestamp properly
       const rejectedTime = book.rejectedAt?.toDate ? book.rejectedAt.toDate() : new Date(book.rejectedAt);
       const cooldownEnd = new Date(rejectedTime.getTime() + 24 * 60 * 60 * 1000);
       if (now < cooldownEnd) {
@@ -355,17 +365,41 @@ const [textareaHeight, setTextareaHeight] = useState(50);
     
     switch (state) {
       case 'completed':
-        return { message: '🎉 Book completed!', color: '#4CAF50' };
+        return { 
+          message: book.teacherNotes 
+            ? `🎉 Approved! ${book.teacherNotes}` 
+            : '🎉 Book completed!', 
+          color: '#4CAF50' 
+        };
       
       case 'pending_admin_approval':
-        return { message: '⏳ Waiting for admin approval', color: '#FF9800' };
+        return { message: '⏳ Waiting for teacher approval', color: '#FF9800' };
       
       case 'pending_parent_quiz_unlock':
         return { message: '🔒 Waiting for parent to unlock quiz', color: '#2196F3' };
       
+      case 'revision_cooldown':
+        if (book.revisionRequestedAt) {
+          const revisionTime = book.revisionRequestedAt?.toDate ? book.revisionRequestedAt.toDate() : new Date(book.revisionRequestedAt);
+          const cooldownEnd = new Date(revisionTime.getTime() + 24 * 60 * 60 * 1000);
+          const hoursLeft = Math.ceil((cooldownEnd - now) / (1000 * 60 * 60));
+          const baseMessage = `📝 Revisions requested - try again in ${hoursLeft} hours`;
+          return { 
+            message: book.teacherNotes ? `${baseMessage}: ${book.teacherNotes}` : baseMessage, 
+            color: '#FF9800' 
+          };
+        }
+        break;
+      
+      case 'revision_ready':
+        const baseMessage = '✏️ Ready to resubmit - revisions requested';
+        return { 
+          message: book.teacherNotes ? `${baseMessage}: ${book.teacherNotes}` : baseMessage, 
+          color: '#2196F3' 
+        };
+      
       case 'quiz_cooldown':
         if (book.failedAt) {
-          // 🔧 FIX: Handle Firebase Timestamp properly
           const failedTime = book.failedAt?.toDate ? book.failedAt.toDate() : new Date(book.failedAt);
           const cooldownEnd = new Date(failedTime.getTime() + 24 * 60 * 60 * 1000);
           const hoursLeft = Math.ceil((cooldownEnd - now) / (1000 * 60 * 60));
@@ -375,7 +409,6 @@ const [textareaHeight, setTextareaHeight] = useState(50);
       
       case 'admin_cooldown':
         if (book.rejectedAt) {
-          // 🔧 FIX: Handle Firebase Timestamp properly
           const rejectedTime = book.rejectedAt?.toDate ? book.rejectedAt.toDate() : new Date(book.rejectedAt);
           const cooldownEnd = new Date(rejectedTime.getTime() + 24 * 60 * 60 * 1000);
           const hoursLeft = Math.ceil((cooldownEnd - now) / (1000 * 60 * 60));
@@ -390,17 +423,17 @@ const [textareaHeight, setTextareaHeight] = useState(50);
 
   const isBookLocked = (book) => {
     const state = getBookState(book);
-    return ['pending_admin_approval', 'pending_parent_quiz_unlock', 'quiz_cooldown', 'admin_cooldown', 'completed'].includes(state);
+    return ['pending_admin_approval', 'pending_parent_quiz_unlock', 'quiz_cooldown', 'admin_cooldown', 'revision_cooldown', 'completed'].includes(state);
   };
 
   const shouldShowReadingButton = (book) => {
     const state = getBookState(book);
-    return state !== 'completed';
+    return !['completed'].includes(state);
   };
 
   const shouldShowRemoveButton = (book) => {
     const state = getBookState(book);
-    return state !== 'completed';
+    return !['completed'].includes(state);
   };
 
   useEffect(() => {
@@ -646,17 +679,17 @@ const [textareaHeight, setTextareaHeight] = useState(50);
   };
 
   const handleTextareaChange = (e) => {
-  const textarea = e.target;
-  setTempNotes(textarea.value);
-  
-  // Reset height to auto to get the scrollHeight
-  textarea.style.height = 'auto';
-  
-  // Set height based on content, with min 50px and max 120px
-  const newHeight = Math.min(Math.max(textarea.scrollHeight, 50), 120);
-  textarea.style.height = newHeight + 'px';
-  setTextareaHeight(newHeight);
-};
+    const textarea = e.target;
+    setTempNotes(textarea.value);
+    
+    // Reset height to auto to get the scrollHeight
+    textarea.style.height = 'auto';
+    
+    // Set height based on content, with min 50px and max 120px
+    const newHeight = Math.min(Math.max(textarea.scrollHeight, 50), 120);
+    textarea.style.height = newHeight + 'px';
+    setTextareaHeight(newHeight);
+  };
 
   // NEW: Navigate to timer with book context
   const startReadingSession = (book) => {
@@ -668,64 +701,94 @@ const [textareaHeight, setTextareaHeight] = useState(50);
     router.push(`/student-healthy-habits?bookId=${book.bookId}&bookTitle=${bookTitle}`);
   };
 
- // FIXED: Save book progress - allows rating/notes even when locked
-const saveBookProgress = async () => {
-  if (!selectedBook || !studentData) return;
-  
-  setIsSaving(true);
-  try {
-    const total = getBookTotal(selectedBook);
-    const isNowCompleted = tempProgress >= total && total > 0;
-    const wasAlreadyCompleted = selectedBook.completed;
+  // UPDATED: Save book progress with revision handling
+  const saveBookProgress = async () => {
+    if (!selectedBook || !studentData) return;
     
-    // 🔒 Get current book state from studentData for accurate lock status
-    const currentBookInShelf = studentData.bookshelf.find(book => book.bookId === selectedBook.bookId);
-    const currentBookState = currentBookInShelf ? getBookState(currentBookInShelf) : 'in_progress';
-    const isCurrentlyLocked = ['pending_admin_approval', 'pending_parent_quiz_unlock', 'quiz_cooldown', 'admin_cooldown', 'completed'].includes(currentBookState);
-    
-    // 🆕 NEW LOGIC: Check if this is ONLY a rating/notes update (no progress change)
-    const isOnlyRatingNotesUpdate = tempProgress === selectedBook.currentProgress;
-    
-    // 📝 ALLOW rating and notes updates even when locked
-    if (isOnlyRatingNotesUpdate) {
-      console.log('📝 Saving rating/notes update only');
+    setIsSaving(true);
+    try {
+      const total = getBookTotal(selectedBook);
+      const isNowCompleted = tempProgress >= total && total > 0;
+      const wasAlreadyCompleted = selectedBook.completed;
       
-      const updatedBookshelf = studentData.bookshelf.map(book => {
-        if (book.bookId === selectedBook.bookId) {
-          return {
-            ...book,
-            rating: tempRating,
-            notes: tempNotes
-            // Don't change progress, completed, or status
-          };
-        }
-        return book;
-      });
+      const currentBookInShelf = studentData.bookshelf.find(book => book.bookId === selectedBook.bookId);
+      const currentBookState = currentBookInShelf ? getBookState(currentBookInShelf) : 'in_progress';
+      const isCurrentlyLocked = ['pending_admin_approval', 'pending_parent_quiz_unlock', 'quiz_cooldown', 'admin_cooldown', 'revision_cooldown', 'completed'].includes(currentBookState);
       
-      await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
-        bookshelf: updatedBookshelf
-      });
+      // Allow resubmission if in revision_ready state
+      const canResubmit = currentBookState === 'revision_ready';
       
-      setStudentData({ ...studentData, bookshelf: updatedBookshelf });
-      setShowSuccess('⭐ Rating and notes saved!');
+      const isOnlyRatingNotesUpdate = tempProgress === selectedBook.currentProgress;
       
-      closeBookModal();
-      setTimeout(() => setShowSuccess(''), 3000);
-      setIsSaving(false);
-      return;
-    }
-    
-    // 🚫 BLOCK progress changes that would trigger completion when locked
-    if (isNowCompleted && isCurrentlyLocked) {
-      const stateMessage = getBookStateMessage(currentBookInShelf);
-      setShowSuccess(stateMessage ? `🚫 ${stateMessage.message}` : '🚫 Cannot submit while book is locked');
-      setTimeout(() => setShowSuccess(''), 3000);
-      setIsSaving(false);
-      return;
-    }
-    
-    // 🎉 NEW completion (hitting 100% for first time) - show submission popup
-    if (isNowCompleted && !wasAlreadyCompleted && !isCurrentlyLocked) {
+      // Allow rating and notes updates even when locked
+      if (isOnlyRatingNotesUpdate) {
+        console.log('📝 Saving rating/notes update only');
+        
+        const updatedBookshelf = studentData.bookshelf.map(book => {
+          if (book.bookId === selectedBook.bookId) {
+            return {
+              ...book,
+              rating: tempRating,
+              notes: tempNotes
+            };
+          }
+          return book;
+        });
+        
+        await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
+          bookshelf: updatedBookshelf
+        });
+        
+        setStudentData({ ...studentData, bookshelf: updatedBookshelf });
+        setShowSuccess('⭐ Rating and notes saved!');
+        
+        closeBookModal();
+        setTimeout(() => setShowSuccess(''), 3000);
+        setIsSaving(false);
+        return;
+      }
+      
+      // Block progress changes that would trigger completion when locked (unless ready for resubmission)
+      if (isNowCompleted && isCurrentlyLocked && !canResubmit) {
+        const stateMessage = getBookStateMessage(currentBookInShelf);
+        setShowSuccess(stateMessage ? `🚫 ${stateMessage.message}` : '🚫 Cannot submit while book is locked');
+        setTimeout(() => setShowSuccess(''), 3000);
+        setIsSaving(false);
+        return;
+      }
+      
+      // NEW completion (hitting 100% for first time) OR resubmission after revisions
+      if (isNowCompleted && (!wasAlreadyCompleted || canResubmit)) {
+        const updatedBookshelf = studentData.bookshelf.map(book => {
+          if (book.bookId === selectedBook.bookId) {
+            return {
+              ...book,
+              currentProgress: tempProgress,
+              rating: tempRating,
+              notes: tempNotes,
+              completed: false,  // Keep as incomplete until submission
+              // Clear previous revision/rejection data when resubmitting
+              ...(canResubmit && {
+                status: 'in_progress',
+                revisionRequestedAt: null,
+                teacherNotes: null
+              })
+            };
+          }
+          return book;
+        });
+        
+        await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
+          bookshelf: updatedBookshelf
+        });
+        
+        setStudentData({ ...studentData, bookshelf: updatedBookshelf });
+        setShowSubmissionPopup(true);
+        setIsSaving(false);
+        return;
+      }
+      
+      // Regular progress save (not at 100% or already completed)
       const updatedBookshelf = studentData.bookshelf.map(book => {
         if (book.bookId === selectedBook.bookId) {
           return {
@@ -733,7 +796,7 @@ const saveBookProgress = async () => {
             currentProgress: tempProgress,
             rating: tempRating,
             notes: tempNotes,
-            completed: false  // Keep as incomplete until submission
+            completed: book.completed
           };
         }
         return book;
@@ -744,43 +807,19 @@ const saveBookProgress = async () => {
       });
       
       setStudentData({ ...studentData, bookshelf: updatedBookshelf });
-      setShowSubmissionPopup(true);
-      setIsSaving(false);
-      return;
+      setShowSuccess('📚 Progress saved!');
+      
+      closeBookModal();
+      setTimeout(() => setShowSuccess(''), 3000);
+      
+    } catch (error) {
+      console.error('❌ Error saving progress:', error);
+      setShowSuccess('❌ Error saving. Please try again.');
+      setTimeout(() => setShowSuccess(''), 3000);
     }
     
-    // 📚 Regular progress save (not at 100% or already completed)
-    const updatedBookshelf = studentData.bookshelf.map(book => {
-      if (book.bookId === selectedBook.bookId) {
-        return {
-          ...book,
-          currentProgress: tempProgress,
-          rating: tempRating,
-          notes: tempNotes,
-          completed: book.completed // Don't change completion status
-        };
-      }
-      return book;
-    });
-    
-    await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
-      bookshelf: updatedBookshelf
-    });
-    
-    setStudentData({ ...studentData, bookshelf: updatedBookshelf });
-    setShowSuccess('📚 Progress saved!');
-    
-    closeBookModal();
-    setTimeout(() => setShowSuccess(''), 3000);
-    
-  } catch (error) {
-    console.error('❌ Error saving progress:', error);
-    setShowSuccess('❌ Error saving. Please try again.');
-    setTimeout(() => setShowSuccess(''), 3000);
-  }
-  
-  setIsSaving(false);
-};
+    setIsSaving(false);
+  };
 
   const deleteBook = async (bookId) => {
     if (!studentData) return;
@@ -1210,9 +1249,9 @@ const saveBookProgress = async () => {
         }}>
           <button
             onClick={() => {
-  console.log('Back button clicked, going back');
-  router.back();
-}}
+              console.log('Back button clicked, going back');
+              router.back();
+            }}
             style={{
               backgroundColor: 'rgba(255,255,255,0.3)',
               border: 'none',
@@ -1579,6 +1618,27 @@ const saveBookProgress = async () => {
                               </div>
                             )}
                             
+                            {/* Revision Requested Icon */}
+                            {(bookState === 'revision_cooldown' || bookState === 'revision_ready') && (
+                              <div style={{
+                                position: 'absolute',
+                                top: '2px',
+                                right: book.format === 'audiobook' ? '18px' : '2px',
+                                backgroundColor: bookState === 'revision_ready' ? 'rgba(33,150,243,0.9)' : 'rgba(255,152,0,0.9)',
+                                color: 'white',
+                                borderRadius: '50%',
+                                width: '14px',
+                                height: '14px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '7px',
+                                animation: bookState === 'revision_ready' ? 'pulse 2s infinite' : 'none'
+                              }}>
+                                📝
+                              </div>
+                            )}
+                            
                             {/* Sand Timer for Pending/Cooldown States */}
                             {(bookState === 'pending_admin_approval' || 
                               bookState === 'pending_parent_quiz_unlock' || 
@@ -1800,20 +1860,52 @@ const saveBookProgress = async () => {
                       by {selectedBook.details.authors}
                     </p>
 
-                    {/* Status Message */}
+                    {/* Enhanced Status Message with Teacher Notes */}
                     {stateMessage && (
                       <div style={{
                         backgroundColor: stateMessage.color,
                         color: 'white',
-                        padding: '8px 12px',
+                        padding: '12px 16px',
                         borderRadius: '16px',
                         fontSize: '12px',
                         fontWeight: '500',
                         margin: '0 0 12px 0',
-                        fontFamily: 'Avenir, system-ui, sans-serif'
+                        fontFamily: 'Avenir, system-ui, sans-serif',
+                        lineHeight: '1.4',
+                        maxHeight: '80px',
+                        overflowY: 'auto'
                       }}>
                         {stateMessage.message}
                       </div>
+                    )}
+
+                    {/* Resubmission Button for Revision Ready */}
+                    {bookState === 'revision_ready' && (
+                      <button
+                        onClick={() => {
+                          // Allow student to complete and resubmit
+                          const total = getBookTotal(selectedBook);
+                          setTempProgress(total); // Set to completed
+                          setShowSuccess('📝 Ready to resubmit! Update any details and save.');
+                          setTimeout(() => setShowSuccess(''), 3000);
+                        }}
+                        style={{
+                          backgroundColor: '#2196F3',
+                          color: 'white',
+                          border: 'none',
+                          padding: '8px 16px',
+                          borderRadius: '16px',
+                          fontSize: '12px',
+                          fontWeight: '500',
+                          cursor: 'pointer',
+                          width: '100%',
+                          minHeight: '44px',
+                          fontFamily: 'system-ui, -apple-system, sans-serif',
+                          marginBottom: '12px'
+                        }}
+                      >
+                        📝 Ready to Resubmit
+                      </button>
                     )}
 
                     {/* Start Reading Session Button - Only show if not completed and not locked */}

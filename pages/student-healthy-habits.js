@@ -479,7 +479,14 @@ export default function StudentHealthyHabits() {
       else if (averageMinutesPerDay >= 21) targetLevel = 'bright_beacon';
 
       let newLevel = currentLevel;
-      let newDaysAtLevel = daysAtCurrentLevel + 1;
+      const today = getLocalDateString(new Date());
+const lastCalculationDate = studentData.lastReadingLevelCalculation;
+
+// Only increment days if it's actually a new day
+let newDaysAtLevel = daysAtCurrentLevel;
+if (lastCalculationDate !== today) {
+  newDaysAtLevel = daysAtCurrentLevel + 1;
+}
       let newDaysBelowCount = daysBelowThresholdCount;
 
       const currentLevelData = levels[currentLevel];
@@ -510,10 +517,11 @@ export default function StudentHealthyHabits() {
       }
 
       await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
-        currentReadingLevel: newLevel,
-        daysAtCurrentLevel: newDaysAtLevel,
-        daysBelowThresholdCount: newDaysBelowCount
-      });
+  currentReadingLevel: newLevel,
+  daysAtCurrentLevel: newDaysAtLevel,
+  daysBelowThresholdCount: newDaysBelowCount,
+  lastReadingLevelCalculation: today  // Add this line
+});
 
       setReadingLevel(levels[newLevel]);
     } catch (error) {

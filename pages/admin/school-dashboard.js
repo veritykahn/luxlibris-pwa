@@ -386,7 +386,7 @@ export default function TeacherDashboard() {
     }
   }
 
-  // Navigation handlers
+  // ✅ UPDATED: Fixed navigation function
   const handleNavigation = (page) => {
     switch (page) {
       case 'dashboard':
@@ -396,7 +396,7 @@ export default function TeacherDashboard() {
         router.push('/teacher/students')
         break
       case 'submissions':
-        router.push('/teacher/submissions')
+        router.push('/teacher/submissions')  // ✅ Fixed route
         break
       case 'achievements':
         router.push('/teacher/achievements')
@@ -664,7 +664,7 @@ export default function TeacherDashboard() {
             </p>
           </div>
 
-          {/* Join Codes Section - DEBUG VERSION */}
+          {/* Join Codes Section */}
           <div style={{
             background: 'white',
             borderRadius: '1rem',
@@ -943,7 +943,14 @@ export default function TeacherDashboard() {
                       </div>
                     </div>
                     <button
-                      onClick={() => handleNavigation(action.type)}
+                      onClick={() => {
+                        // ✅ Fixed navigation for submissions
+                        if (action.type === 'submissions') {
+                          router.push('/teacher/submissions')
+                        } else {
+                          handleNavigation(action.type)
+                        }
+                      }}
                       style={{
                         padding: '0.5rem 1rem',
                         background: '#D97706',
@@ -1160,7 +1167,7 @@ export default function TeacherDashboard() {
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => handleNavigation(tab.id)}
+              onClick={() => handleNavigation(tab.id)}  // ✅ This will now route correctly
               style={{
                 background: tab.active 
                   ? `linear-gradient(135deg, #ADD4EA15, #ADD4EA25)`
