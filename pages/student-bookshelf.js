@@ -155,6 +155,23 @@ export default function StudentBookshelf() {
     }
   }, [notificationsEnabled]);
 
+  const sendRevisionRequestNotification = useCallback((bookTitle) => {
+    if (!notificationsEnabled || Notification.permission !== 'granted') return;
+
+    try {
+      new Notification('📝 Revisions Requested', {
+        body: `Your teacher has provided feedback on "${bookTitle}". Check your bookshelf to see what to revise!`,
+        icon: '/images/lux_libris_logo.png',
+        badge: '/images/lux_libris_logo.png',
+        tag: 'revision-request',
+        requireInteraction: true,
+        silent: false
+      });
+    } catch (error) {
+      console.log('Revision request notification failed:', error);
+    }
+  }, [notificationsEnabled]);
+
   // Theme definitions
   const themes = {
     classic_lux: {
@@ -502,6 +519,11 @@ export default function StudentBookshelf() {
                   currentBook.status !== 'pending_parent_quiz_unlock') {
                 sendQuizUnlockNotification(bookTitle);
               }
+              
+              // NEW: Check for revision requests (pending_approval -> revision_requested)
+              if (previousBook.status === 'pending_approval' && currentBook.status === 'revision_requested') {
+                sendRevisionRequestNotification(bookTitle);
+              }
             }
           });
         } catch (error) {
@@ -514,7 +536,7 @@ export default function StudentBookshelf() {
     };
 
     checkForStatusChanges();
-  }, [studentData, notificationsEnabled, sendTeacherApprovalNotification, sendQuizUnlockNotification]);
+  }, [studentData, notificationsEnabled, sendTeacherApprovalNotification, sendQuizUnlockNotification, sendRevisionRequestNotification]);
 
   const loadBookshelfData = async () => {
     try {
