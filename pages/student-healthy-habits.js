@@ -13,6 +13,57 @@ import {
   getLevelProgress 
 } from '../lib/badge-system';
 
+// GLOBAL TIMER STATE MANAGER - Persists across page navigations
+const GlobalTimerState = {
+  isActive: false,
+  isPaused: false,
+  timeRemaining: null,
+  timerDuration: null,
+  startTime: null,
+  lastUpdateTime: null,
+  wakeLockActive: false,
+  
+  save(state) {
+    this.isActive = state.isActive;
+    this.isPaused = state.isPaused;
+    this.timeRemaining = state.timeRemaining;
+    this.timerDuration = state.timerDuration;
+    this.startTime = state.startTime;
+    this.lastUpdateTime = Date.now();
+    this.wakeLockActive = state.wakeLockActive;
+    console.log('Timer state saved:', this);
+  },
+  
+  restore() {
+    // If timer was active, calculate elapsed time since last update
+    if (this.isActive && !this.isPaused && this.lastUpdateTime) {
+      const elapsedSinceUpdate = Math.floor((Date.now() - this.lastUpdateTime) / 1000);
+      this.timeRemaining = Math.max(0, this.timeRemaining - elapsedSinceUpdate);
+      console.log('Timer state restored with elapsed time:', elapsedSinceUpdate);
+    }
+    
+    return {
+      isActive: this.isActive,
+      isPaused: this.isPaused,
+      timeRemaining: this.timeRemaining,
+      timerDuration: this.timerDuration,
+      startTime: this.startTime,
+      wakeLockActive: this.wakeLockActive
+    };
+  },
+  
+  clear() {
+    this.isActive = false;
+    this.isPaused = false;
+    this.timeRemaining = null;
+    this.timerDuration = null;
+    this.startTime = null;
+    this.lastUpdateTime = null;
+    this.wakeLockActive = false;
+    console.log('Timer state cleared');
+  }
+};
+
 export default function StudentHealthyHabits() {
   const router = useRouter();
   const { user, isAuthenticated, loading } = useAuth();
@@ -53,6 +104,55 @@ export default function StudentHealthyHabits() {
 
   // Wake lock state
   const [wakeLock, setWakeLock] = useState(null);
+
+  // SAVE TIMER STATE BEFORE NAVIGATION
+  const saveTimerState = useCallback(() => {
+    if (isTimerActive || isTimerPaused) {
+      GlobalTimerState.save({
+        isActive: isTimerActive,
+        isPaused: isTimerPaused,
+        timeRemaining: timeRemaining,
+        timerDuration: timerDuration,
+        startTime: Date.now(),
+        wakeLockActive: !!wakeLock
+      });
+    }
+  }, [isTimerActive, isTimerPaused, timeRemaining, timerDuration, wakeLock]);
+
+  // RESTORE TIMER STATE ON MOUNT
+  const restoreTimerState = useCallback(async () => {
+    const savedState = GlobalTimerState.restore();
+    
+    if (savedState.isActive || savedState.isPaused) {
+      console.log('Restoring timer state:', savedState);
+      
+      // Restore timer state
+      setTimerDuration(savedState.timerDuration);
+      setTimeRemaining(savedState.timeRemaining);
+      setIsTimerActive(savedState.isActive);
+      setIsTimerPaused(savedState.isPaused);
+      
+      // Restore wake lock if it was active
+      if (savedState.wakeLockActive && savedState.isActive && !savedState.isPaused) {
+        try {
+          if ('wakeLock' in navigator) {
+            const lock = await navigator.wakeLock.request('screen');
+            setWakeLock(lock);
+            lock.addEventListener('release', () => {
+              setWakeLock(null);
+            });
+            console.log('Wake lock restored');
+          }
+        } catch (err) {
+          console.log('Could not restore wake lock:', err);
+        }
+      }
+      
+      // Optionally show a more user-friendly message, or remove entirely
+      // setShowSuccess('⏰ Your reading session is still active');
+      // setTimeout(() => setShowSuccess(''), 2000);
+    }
+  }, []);
 
   // 🍔 NAVIGATION MENU ITEMS (Healthy Habits page is current)
   const navMenuItems = useMemo(() => [
@@ -376,6 +476,25 @@ export default function StudentHealthyHabits() {
     }
   }, []);
 
+  // SAVE TIMER STATE BEFORE NAVIGATION
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      saveTimerState();
+    };
+
+    const handleRouteChangeStart = () => {
+      saveTimerState();
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    router.events.on('routeChangeStart', handleRouteChangeStart);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      router.events.off('routeChangeStart', handleRouteChangeStart);
+    };
+  }, [saveTimerState, router.events]);
+
   // Load streak data with smart calculation and timeline calendar
   const loadStreakData = useCallback(async (studentData) => {
     try {
@@ -657,6 +776,9 @@ export default function StudentHealthyHabits() {
         await calculateReadingLevel(studentData);
       }
 
+      // Clear timer state after successful save
+      GlobalTimerState.clear();
+
       setShowSuccess(completed ? 
         `🎉 Reading session completed! +${sessionXP} XP earned!` : 
         `📖 Progress saved! +${sessionXP} XP earned!`
@@ -683,8 +805,18 @@ export default function StudentHealthyHabits() {
       setCurrentTheme(selectedTheme);
 
       const defaultDuration = firebaseStudentData.readingSettings?.defaultTimerDuration || 20;
-      setTimerDuration(defaultDuration * 60);
-      setTimeRemaining(defaultDuration * 60);
+      const defaultDurationSeconds = defaultDuration * 60;
+      
+      // Check if timer should be restored first, otherwise use defaults
+      const savedState = GlobalTimerState.restore();
+      if (savedState.isActive || savedState.isPaused) {
+        // Timer state will be restored in restoreTimerState()
+        console.log('Timer state will be restored');
+      } else {
+        // Set default timer duration
+        setTimerDuration(defaultDurationSeconds);
+        setTimeRemaining(defaultDurationSeconds);
+      }
 
       await loadReadingData(firebaseStudentData);
     } catch (error) {
@@ -706,11 +838,14 @@ export default function StudentHealthyHabits() {
         setCurrentBookTitle(decodeURIComponent(bookTitle));
       }
 
-      loadHealthyHabitsData();
+      loadHealthyHabitsData().then(() => {
+        // Restore timer state after data is loaded
+        restoreTimerState();
+      });
     } else if (!loading && !isAuthenticated) {
       router.push('/role-selector');
     }
-  }, [loading, isAuthenticated, user, router, loadHealthyHabitsData]);
+  }, [loading, isAuthenticated, user, router, loadHealthyHabitsData, restoreTimerState]);
 
   const handleTimerComplete = useCallback(async () => {
     setIsTimerActive(false);
@@ -734,24 +869,37 @@ export default function StudentHealthyHabits() {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden && isTimerActive && !isTimerPaused) {
+        console.log('Page hidden, pausing timer');
         setIsTimerPaused(true);
+        saveTimerState(); // Save state when page becomes hidden
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [isTimerActive, isTimerPaused, timeRemaining]);
+  }, [isTimerActive, isTimerPaused, timeRemaining, saveTimerState]);
 
   // Timer effect
   useEffect(() => {
     if (isTimerActive && !isTimerPaused && timeRemaining > 0) {
       timerRef.current = setInterval(() => {
         setTimeRemaining(prev => {
-          if (prev <= 1) {
+          const newTime = prev - 1;
+          // Update global state periodically
+          GlobalTimerState.save({
+            isActive: isTimerActive,
+            isPaused: isTimerPaused,
+            timeRemaining: newTime,
+            timerDuration: timerDuration,
+            startTime: Date.now(),
+            wakeLockActive: !!wakeLock
+          });
+          
+          if (newTime <= 0) {
             handleTimerComplete();
             return 0;
           }
-          return prev - 1;
+          return newTime;
         });
       }, 1000);
     } else {
@@ -759,7 +907,7 @@ export default function StudentHealthyHabits() {
     }
 
     return () => clearInterval(timerRef.current);
-  }, [isTimerActive, isTimerPaused, timeRemaining, handleTimerComplete]);
+  }, [isTimerActive, isTimerPaused, timeRemaining, handleTimerComplete, timerDuration, wakeLock]);
 
   // Cleanup wake lock on unmount
   useEffect(() => {
@@ -779,6 +927,7 @@ export default function StudentHealthyHabits() {
   const handlePauseTimer = () => {
     setIsTimerPaused(true);
     releaseWakeLock();
+    saveTimerState(); // Save state when manually paused
   };
 
   const handleResumeTimer = () => {
@@ -1041,6 +1190,8 @@ export default function StudentHealthyHabits() {
                       console.log('Clicking:', item.path, 'Current:', item.current, 'Item:', item);
                       setShowNavMenu(false);
                       if (!item.current) {
+                        // Save timer state before navigation
+                        saveTimerState();
                         setTimeout(() => {
                           console.log('Navigating to:', item.path);
                           router.push(item.path);
