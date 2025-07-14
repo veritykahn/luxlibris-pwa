@@ -1401,10 +1401,7 @@ export default function StudentDashboard() {
                   alignItems: 'center',
                   gap: '8px'
                 }}>
-                  <span style={{
-                    animation: actionItems.some(item => item.priority === 1) ? 'bounce 2s infinite' : 'sparkle 1.5s ease-in-out infinite'
-                  }}>✨</span> 
-                  What should I do next?
+                  ✨ What should I do next?
                 </h3>
                 {actionItems.length > 1 && (
                   <button
@@ -1624,7 +1621,7 @@ export default function StudentDashboard() {
                 alignItems: 'center',
                 gap: '8px'
               }}>
-                🎯
+                <span>🎯</span>
                 Recommended for You
               </h3>
               
@@ -1822,15 +1819,19 @@ export default function StudentDashboard() {
             </div>
           )}
 
-          {/* Quick Action Buttons with ANIMATIONS */}
+          {/* Quick Action Buttons - Fixed centering */}
           <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
+            display: 'flex',
+            justifyContent: 'center',
             gap: '12px',
             marginBottom: '20px',
             animation: 'slideInUp 0.8s ease-out 1.8s both'
           }}>
-            <div style={{ animation: 'slideInLeft 0.6s ease-out 2.0s both' }}>
+            <div style={{ 
+              animation: 'slideInLeft 0.6s ease-out 2.0s both',
+              flex: '1',
+              maxWidth: '200px'
+            }}>
               <QuickActionButton
                 emoji="🎴"
                 label="Browse Books"
@@ -1838,7 +1839,11 @@ export default function StudentDashboard() {
                 theme={currentTheme}
               />
             </div>
-            <div style={{ animation: 'slideInRight 0.6s ease-out 2.1s both' }}>
+            <div style={{ 
+              animation: 'slideInRight 0.6s ease-out 2.1s both',
+              flex: '1',
+              maxWidth: '200px'
+            }}>
               <QuickActionButton
                 emoji="📂"
                 label="My Bookshelf"
@@ -1936,12 +1941,29 @@ export default function StudentDashboard() {
               gridTemplateColumns: latestSaintUnlock ? '1fr 1fr 1fr' : '1fr 1fr',
               gap: '8px'
             }}>
-              <div style={{
-                backgroundColor: `${currentTheme.primary}20`,
-                borderRadius: '8px',
-                padding: '8px',
-                textAlign: 'center'
-              }}>
+              {/* Today's Minutes - Now Clickable */}
+              <button
+                onClick={() => router.push('/student-healthy-habits')}
+                style={{
+                  backgroundColor: `${currentTheme.primary}20`,
+                  border: `2px solid ${currentTheme.primary}60`,
+                  borderRadius: '8px',
+                  padding: '8px',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.backgroundColor = `${currentTheme.primary}30`;
+                  e.currentTarget.style.borderColor = currentTheme.primary;
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.backgroundColor = `${currentTheme.primary}20`;
+                  e.currentTarget.style.borderColor = `${currentTheme.primary}60`;
+                  e.currentTarget.style.transform = 'scale(1)';
+                }}
+              >
                 <div style={{
                   fontSize: '16px',
                   fontWeight: 'bold',
@@ -1955,7 +1977,7 @@ export default function StudentDashboard() {
                 }}>
                   minutes today
                 </div>
-              </div>
+              </button>
               
               {/* Saints Count - Clickable */}
               <button
@@ -2516,7 +2538,7 @@ function ProgressWheel({ title, current, goal, color, emoji }) {
   );
 }
 
-// Quick Action Button Component - ENHANCED with hover animations
+// Quick Action Button Component - ENHANCED with full width
 function QuickActionButton({ emoji, label, onClick, theme }) {
   return (
     <button
@@ -2532,7 +2554,8 @@ function QuickActionButton({ emoji, label, onClick, theme }) {
         alignItems: 'center',
         gap: '8px',
         transition: 'all 0.3s ease',
-        transform: 'translateY(0)'
+        transform: 'translateY(0)',
+        width: '100%'
       }}
       onMouseOver={(e) => {
         e.currentTarget.style.backgroundColor = `${theme.primary}20`;
