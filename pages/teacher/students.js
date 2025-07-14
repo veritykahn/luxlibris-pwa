@@ -867,11 +867,11 @@ export default function TeacherStudents() {
           padding: '1rem'
         }}>
 
-          {/* Stats Cards */}
+          {/* Stats Cards - Compact Version */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '1rem',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+            gap: '0.75rem',
             marginBottom: '1.5rem'
           }}>
             <StatCard
@@ -1662,9 +1662,9 @@ function StatCard({ icon, title, value, subtitle, color }) {
   return (
     <div style={{
       background: 'white',
-      borderRadius: '0.75rem',
-      padding: '1.25rem',
-      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+      borderRadius: '0.5rem',
+      padding: '0.75rem',
+      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
       border: `1px solid ${color}20`,
       position: 'relative'
     }}>
@@ -1672,12 +1672,12 @@ function StatCard({ icon, title, value, subtitle, color }) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: '0.5rem'
+        marginBottom: '0.25rem'
       }}>
-        <span style={{ fontSize: '1.5rem' }}>{icon}</span>
+        <span style={{ fontSize: '1.25rem' }}>{icon}</span>
         <div style={{
-          width: '2rem',
-          height: '2rem',
+          width: '1.5rem',
+          height: '1.5rem',
           background: `${color}15`,
           borderRadius: '50%',
           display: 'flex',
@@ -1693,15 +1693,15 @@ function StatCard({ icon, title, value, subtitle, color }) {
         </div>
       </div>
       <h3 style={{
-        fontSize: '1.5rem',
+        fontSize: '1.25rem',
         fontWeight: 'bold',
         color: '#223848',
-        margin: '0 0 0.25rem 0'
+        margin: '0 0 0.125rem 0'
       }}>
         {value}
       </h3>
       <p style={{
-        fontSize: '0.75rem',
+        fontSize: '0.7rem',
         color: '#6b7280',
         margin: 0,
         fontWeight: '600'
@@ -1709,9 +1709,9 @@ function StatCard({ icon, title, value, subtitle, color }) {
         {title}
       </p>
       <p style={{
-        fontSize: '0.65rem',
+        fontSize: '0.6rem',
         color: '#9ca3af',
-        margin: '0.125rem 0 0 0'
+        margin: '0.06rem 0 0 0'
       }}>
         {subtitle}
       </p>
@@ -1884,7 +1884,7 @@ function ManualStudentsSection({ students, onAddStudent, onEditStudent, onDelete
           color: '#6b7280'
         }}>
           <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>📝</div>
-          <p>No manual students yet. Add students who don&apos;t use the app!</p>
+          <p>No manual students yet. Add students who don't use the app!</p>
         </div>
       ) : (
         <div style={{
@@ -1996,47 +1996,12 @@ function StudentCard({ student, type, onToggleStatus, onViewDetails, onEditStude
               >
                 {isActive ? 'Deactivate' : 'Activate'}
               </button>
-              <div style={{ display: 'flex', gap: '0.25rem' }}>
-                <button
-                  onClick={onViewDetails}
-                  style={{
-                    padding: '0.5rem 0.75rem',
-                    backgroundColor: '#ADD4EA',
-                    color: '#223848',
-                    border: 'none',
-                    borderRadius: '0.375rem',
-                    fontSize: '0.75rem',
-                    fontWeight: '600',
-                    cursor: 'pointer'
-                  }}
-                >
-                  📊 Details
-                </button>
-                <button
-                  onClick={onViewBooks}
-                  style={{
-                    padding: '0.5rem 0.75rem',
-                    backgroundColor: '#B6DFEB',
-                    color: '#223848',
-                    border: 'none',
-                    borderRadius: '0.375rem',
-                    fontSize: '0.75rem',
-                    fontWeight: '600',
-                    cursor: 'pointer'
-                  }}
-                >
-                  📚 Books
-                </button>
-              </div>
-            </>
-          ) : (
-            <>
               <button
-                onClick={onAddBookSubmission}
+                onClick={onViewBooks}
                 style={{
                   padding: '0.5rem 0.75rem',
-                  backgroundColor: '#4CAF50',
-                  color: 'white',
+                  backgroundColor: '#B6DFEB',
+                  color: '#223848',
                   border: 'none',
                   borderRadius: '0.375rem',
                   fontSize: '0.75rem',
@@ -2045,9 +2010,29 @@ function StudentCard({ student, type, onToggleStatus, onViewDetails, onEditStude
                   minWidth: '80px'
                 }}
               >
-                📚 Add Book
+                📖 View Books
               </button>
+            </>
+          ) : (
+            <>
+              {/* Row 1: Book actions */}
               <div style={{ display: 'flex', gap: '0.25rem', width: '100%' }}>
+                <button
+                  onClick={onAddBookSubmission}
+                  style={{
+                    padding: '0.5rem 0.75rem',
+                    backgroundColor: '#4CAF50',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.375rem',
+                    fontSize: '0.75rem',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    flex: 1
+                  }}
+                >
+                  📚 Add Book
+                </button>
                 <button
                   onClick={onViewBooks}
                   style={{
@@ -2065,6 +2050,7 @@ function StudentCard({ student, type, onToggleStatus, onViewDetails, onEditStude
                   📖 View Books
                 </button>
               </div>
+              {/* Row 2: Edit/Delete actions */}
               <div style={{ display: 'flex', gap: '0.25rem' }}>
                 <button
                   onClick={onEditStudent}
