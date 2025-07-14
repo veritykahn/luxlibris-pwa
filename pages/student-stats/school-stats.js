@@ -120,15 +120,15 @@ export default function SchoolStats() {
 
   // Stats navigation options
   const statsNavOptions = useMemo(() => [
-    { name: 'Stats Dashboard', path: '/student-stats', icon: '📊', description: 'Main overview' },
-    { name: 'My Stats', path: '/student-stats/my-stats', icon: '📈', description: 'Personal reading progress' },
-    { name: 'School Stats', path: '/student-stats/school-stats', icon: '🏫', description: 'School-wide progress', current: true },
-    { name: 'Grade Stats', path: '/student-stats/grade-stats', icon: '🎓', description: 'Compare with classmates' },
-    { name: 'Diocese Stats', path: '/student-stats/diocese-stats', icon: '🌍', description: 'Coming soon!', disabled: true },
-    { name: 'Global Stats', path: '/student-stats/global-stats', icon: '🌎', description: 'Coming soon!', disabled: true },
-    { name: 'Lux DNA Lab', path: '/student-stats/lux-dna-lab', icon: '🧬', description: 'Discover your reading personality' },
-    { name: 'Family Battle', path: '/student-stats/family-battle', icon: '👨‍👩‍👧‍👦', description: 'Coming soon!', disabled: true }
-  ], []);
+  { name: 'Stats Dashboard', path: '/student-stats', icon: '📊', description: 'Fun overview' },
+  { name: 'My Stats', path: '/student-stats/my-stats', icon: '📈', description: 'Personal deep dive' },
+  { name: 'Grade Stats', path: '/student-stats/grade-stats', icon: '🎓', description: 'Compare with classmates' },
+  { name: 'School Stats', path: '/student-stats/school-stats', icon: '🏫', description: 'School-wide progress', current: true },
+  { name: 'Diocese Stats', path: '/student-stats/diocese-stats', icon: '🌍', description: 'Coming soon!', disabled: true },
+  { name: 'Global Stats', path: '/student-stats/global-stats', icon: '🌎', description: 'Coming soon!', disabled: true },
+  { name: 'Lux DNA Lab', path: '/student-stats/lux-dna-lab', icon: '🧬', description: 'Discover your reading personality' },
+  { name: 'Family Battle', path: '/student-stats/family-battle', icon: '👨‍👩‍👧‍👦', description: 'Coming soon!', disabled: true }
+], []);
 
   // Close nav menus when clicking outside
   useEffect(() => {

@@ -1,4 +1,4 @@
-// pages/student-stats/index.js - Enhanced Stats Dashboard with Certificate Generation Removed
+// pages/student-stats/index.js - Enhanced Stats Dashboard with Dynamic Celebrations
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
@@ -6,7 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { getStudentDataEntities } from '../../lib/firebase';
 import { getCurrentWeekBadge, getBadgeProgress, getEarnedBadges, getLevelProgress } from '../../lib/badge-system';
 import { calculateReadingPersonality, shouldShowFirstBookCelebration, unlockCertificate } from '../../lib/reading-personality';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import Head from 'next/head';
 
@@ -19,12 +19,15 @@ export default function StudentStatsMain() {
   const [showNavMenu, setShowNavMenu] = useState(false);
   const [showStatsDropdown, setShowStatsDropdown] = useState(false);
   const [showFirstBookCelebration, setShowFirstBookCelebration] = useState(false);
+  const [showBraggingRights, setShowBraggingRights] = useState(false);
+  
+  // Light overview data
   const [quickStats, setQuickStats] = useState(null);
-  const [readingPersonality, setReadingPersonality] = useState(null);
-  const [badgeProgress, setBadgeProgress] = useState(null);
   const [earnedBadges, setEarnedBadges] = useState([]);
   const [levelProgress, setLevelProgress] = useState(null);
   const [currentWeekBadge, setCurrentWeekBadge] = useState(null);
+  const [funTidbits, setFunTidbits] = useState([]);
+  const [weeklyXP, setWeeklyXP] = useState(0);
 
   // Theme definitions
   const themes = useMemo(() => ({
@@ -129,12 +132,12 @@ export default function StudentStatsMain() {
     { name: 'Settings', path: '/student-settings', icon: '⚙' }
   ], []);
 
-  // Stats navigation options
+  // REORDERED Stats navigation options
   const statsNavOptions = useMemo(() => [
-    { name: 'Stats Dashboard', path: '/student-stats', icon: '📊', description: 'Main overview', current: true },
-    { name: 'My Stats', path: '/student-stats/my-stats', icon: '📈', description: 'Personal reading progress' },
-    { name: 'School Stats', path: '/student-stats/school-stats', icon: '🏫', description: 'School-wide progress' },
+    { name: 'Stats Dashboard', path: '/student-stats', icon: '📊', description: 'Fun overview', current: true },
+    { name: 'My Stats', path: '/student-stats/my-stats', icon: '📈', description: 'Personal deep dive' },
     { name: 'Grade Stats', path: '/student-stats/grade-stats', icon: '🎓', description: 'Compare with classmates' },
+    { name: 'School Stats', path: '/student-stats/school-stats', icon: '🏫', description: 'School-wide progress' },
     { name: 'Diocese Stats', path: '/student-stats/diocese-stats', icon: '🌍', description: 'Coming soon!', disabled: true },
     { name: 'Global Stats', path: '/student-stats/global-stats', icon: '🌎', description: 'Coming soon!', disabled: true },
     { name: 'Lux DNA Lab', path: '/student-stats/lux-dna-lab', icon: '🧬', description: 'Discover your reading personality' },
@@ -157,10 +160,11 @@ export default function StudentStatsMain() {
         setShowNavMenu(false);
         setShowStatsDropdown(false);
         setShowFirstBookCelebration(false);
+        setShowBraggingRights(false);
       }
     };
 
-    if (showNavMenu || showStatsDropdown || showFirstBookCelebration) {
+    if (showNavMenu || showStatsDropdown || showFirstBookCelebration || showBraggingRights) {
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('keydown', handleEscape);
     }
@@ -169,18 +173,216 @@ export default function StudentStatsMain() {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscape);
     };
-  }, [showNavMenu, showStatsDropdown, showFirstBookCelebration]);
+  }, [showNavMenu, showStatsDropdown, showFirstBookCelebration, showBraggingRights]);
 
-  // Calculate quick stats for dashboard overview
+  // Generate dynamic celebration messages based on performance
+  const generateCelebrationMessages = useCallback((stats) => {
+    const messages = {
+      books: '',
+      streak: '',
+      saints: '',
+      readingTime: ''
+    };
+
+    // Books celebration
+    // Books celebration
+const books = stats.booksThisYear;
+if (books >= 10) {
+  messages.books = 'Books CONQUERED!';
+} else if (books >= 5) {
+  messages.books = 'Books MASTERED!';
+} else if (books >= 1) {
+  messages.books = `${books === 1 ? 'Book' : 'Books'} DISCOVERED!`;
+} else {
+  messages.books = 'Ready to Read!';
+}
+
+    // Streak celebration  
+    const streak = stats.currentStreak;
+    if (streak >= 30) {
+      messages.streak = 'LEGENDARY Streak!';
+    } else if (streak >= 14) {
+      messages.streak = 'AMAZING Streak!';
+    } else if (streak >= 7) {
+      messages.streak = 'Great Streak!';
+    } else if (streak >= 3) {
+      messages.streak = 'Building Momentum!';
+    } else {
+      messages.streak = 'Day Streak';
+    }
+
+    // Saints celebration
+    const saints = stats.saintsUnlocked;
+    if (saints >= 20) {
+      messages.saints = 'Saint Master!';
+    } else if (saints >= 10) {
+      messages.saints = 'Saint Collector!';
+    } else if (saints >= 5) {
+      messages.saints = 'Saint Seeker!';
+    } else {
+      messages.saints = 'Saints';
+    }
+
+    // Reading time fun facts
+    const minutes = stats.totalReadingMinutes;
+    if (minutes >= 300) {
+      messages.readingTime = `${stats.readingHours} hours = Your brain built thousands of new connections! 🧠`;
+    } else if (minutes >= 120) {
+      messages.readingTime = `${Math.round(minutes)} minutes = Like a full brain workout session! 💪`;
+    } else if (minutes >= 60) {
+      messages.readingTime = `${Math.round(minutes)} minutes = Your vocabulary grew stronger! 📚`;
+    } else if (minutes >= 20) {
+      messages.readingTime = `${Math.round(minutes)} minutes = That's how long it takes your brain to create new pathways! ⚡`;
+    } else if (minutes > 0) {
+      messages.readingTime = `${Math.round(minutes)} minutes = Great start building reading muscles! 🌱`;
+    } else {
+      messages.readingTime = 'Ready to start your reading adventure!';
+    }
+
+    return messages;
+  }, []);
+
+  // Determine which stat should be the "hero" (most impressive)
+  const getHeroStat = useCallback((stats) => {
+    const scores = {
+      books: stats.booksThisYear >= 10 ? 100 : stats.booksThisYear >= 5 ? 80 : stats.booksThisYear >= 1 ? 60 : 20,
+      streak: stats.currentStreak >= 30 ? 95 : stats.currentStreak >= 14 ? 85 : stats.currentStreak >= 7 ? 70 : stats.currentStreak >= 3 ? 50 : 20,
+      saints: stats.saintsUnlocked >= 20 ? 90 : stats.saintsUnlocked >= 10 ? 75 : stats.saintsUnlocked >= 5 ? 55 : 30
+    };
+
+    return Object.entries(scores).reduce((a, b) => scores[a[0]] > scores[b[0]] ? a : b)[0];
+  }, []);
+
+  // Generate enhanced fun tidbits with brain science and achievements
+  const generateFunTidbits = useCallback(async (studentData) => {
+    try {
+      const tidbits = [];
+      const entityId = studentData.entityId;
+      const schoolId = studentData.schoolId;
+      const currentGrade = studentData.grade;
+      
+      // Get grade data for tidbits
+      const studentsRef = collection(db, `entities/${entityId}/schools/${schoolId}/students`);
+      const gradeQuery = query(studentsRef, where('grade', '==', currentGrade));
+      const gradeSnapshot = await getDocs(gradeQuery);
+      
+      let gradeStudents = 0;
+      let gradeTotalBooks = 0;
+      let studentRankInGrade = 1;
+      const studentBooks = studentData.booksSubmittedThisYear || 0;
+      
+      gradeSnapshot.forEach(doc => {
+        const student = doc.data();
+        gradeStudents++;
+        gradeTotalBooks += student.booksSubmittedThisYear || 0;
+        
+        if ((student.booksSubmittedThisYear || 0) > studentBooks) {
+          studentRankInGrade++;
+        }
+      });
+      
+      // Enhanced grade ranking with celebration
+      if (studentRankInGrade <= 3 && gradeStudents > 3) {
+        tidbits.push(`🏆 SUPERSTAR ALERT! You're #${studentRankInGrade} in Grade ${currentGrade}!`);
+      } else if (studentBooks > 0) {
+        tidbits.push(`🌟 Amazing! Grade ${currentGrade} has powered through ${gradeTotalBooks} ${gradeTotalBooks === 1 ? 'book' : 'books'} together!`);
+      }
+      
+      // Brain science facts based on reading
+      const readingMinutes = quickStats?.totalReadingMinutes || 0;
+      if (readingMinutes >= 200) {
+        tidbits.push(`🧠 Science fact: You've strengthened your brain like an athlete trains muscles!`);
+      } else if (readingMinutes >= 100) {
+        tidbits.push(`⚡ Your brain created new neural pathways with every reading session!`);
+      } else if (readingMinutes >= 30) {
+        tidbits.push(`🌱 Reading grows your brain's vocabulary center every day!`);
+      }
+      
+      // Enhanced badge celebration
+      if (earnedBadges.length >= 5) {
+        const latestBadge = earnedBadges[earnedBadges.length - 1];
+        tidbits.push(`🎯 Badge Champion! Latest: ${latestBadge.emoji} ${latestBadge.name}!`);
+      } else if (earnedBadges.length > 0) {
+        const latestBadge = earnedBadges[earnedBadges.length - 1];
+        tidbits.push(`🏅 Achievement unlocked: ${latestBadge.emoji} ${latestBadge.name}!`);
+      }
+      
+      // School community impact
+      const schoolSnapshot = await getDocs(studentsRef);
+      let schoolTotalBooks = 0;
+      let schoolStudents = 0;
+      
+      schoolSnapshot.forEach(doc => {
+        const student = doc.data();
+        schoolStudents++;
+        schoolTotalBooks += student.booksSubmittedThisYear || 0;
+      });
+      
+      if (schoolTotalBooks >= 100) {
+        tidbits.push(`🚀 WOW! ${studentData.schoolName} has CRUSHED ${schoolTotalBooks} books this year!`);
+      } else if (schoolTotalBooks > 0) {
+        tidbits.push(`📚 ${studentData.schoolName} is building an amazing reading community with ${schoolTotalBooks} ${schoolTotalBooks === 1 ? 'book' : 'books'}!`);
+      }
+      
+      // Streak momentum with celebration
+      const currentStreak = quickStats?.currentStreak || 0;
+      if (currentStreak >= 14) {
+        tidbits.push(`🔥 You're ON FIRE! ${currentStreak} days of reading excellence!`);
+      } else if (currentStreak >= 7) {
+        tidbits.push(`⚡ Incredible! ${currentStreak}-day streak building your reading superpowers!`);
+      } else if (currentStreak >= 3) {
+        tidbits.push(`🌟 Awesome momentum with your ${currentStreak}-day streak!`);
+      }
+      
+      // Level achievement with power language
+      if (levelProgress && levelProgress.level >= 5) {
+        tidbits.push(`⭐ POWER READER Level ${levelProgress.level} with ${levelProgress.progress + levelProgress.currentThreshold} XP!`);
+      } else if (levelProgress && levelProgress.level >= 2) {
+        tidbits.push(`📈 Rising star! Level ${levelProgress.level} reader gaining strength!`);
+      }
+      
+      // Saints collection with adventure language
+      const saintsCount = (studentData.unlockedSaints || []).length;
+      if (saintsCount >= 15) {
+        tidbits.push(`♔ LEGENDARY collection: ${saintsCount} saints in your spiritual army!`);
+      } else if (saintsCount >= 8) {
+        tidbits.push(`⚔️ Mighty collection: ${saintsCount} saints by your side!`);
+      } else if (saintsCount >= 3) {
+        tidbits.push(`🛡️ Building your saint squad: ${saintsCount} holy heroes unlocked!`);
+      }
+      
+      // Motivational fallbacks with energy
+      if (tidbits.length === 0) {
+        tidbits.push(`🚀 You're building INCREDIBLE reading habits!`);
+        tidbits.push(`💪 Every page makes your brain stronger!`);
+        tidbits.push(`🌟 You're part of an AMAZING reading community!`);
+      }
+      
+      // Select the most exciting tidbits
+      const selectedTidbits = tidbits.slice(0, Math.min(4, tidbits.length));
+      setFunTidbits(selectedTidbits);
+      
+    } catch (error) {
+      console.error('Error generating fun tidbits:', error);
+      setFunTidbits(['🚀 Keep building those reading superpowers!', '💪 Every book makes you stronger!']);
+    }
+  }, [earnedBadges, levelProgress, quickStats]);
+
+  // Calculate light overview stats
   const calculateQuickStats = useCallback(async (studentData) => {
     try {
-      // Get reading sessions for streak calculation
+      // Get reading sessions for basic stats
       const sessionsRef = collection(db, `entities/${studentData.entityId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
       const sessionsSnapshot = await getDocs(sessionsRef);
       
       let totalReadingMinutes = 0;
       let completedSessions = 0;
       const completedSessionsByDate = {};
+      let thisWeekXP = 0;
+      
+      // Calculate this week's XP (simplified)
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
       
       sessionsSnapshot.forEach(doc => {
         const session = doc.data();
@@ -188,10 +390,16 @@ export default function StudentStatsMain() {
         if (session.completed) {
           completedSessions++;
           completedSessionsByDate[session.date] = true;
+          
+          // Calculate weekly XP
+          const sessionDate = session.startTime?.toDate ? session.startTime.toDate() : new Date(session.startTime);
+          if (sessionDate && sessionDate >= oneWeekAgo) {
+            thisWeekXP += Math.max(1, Math.floor(session.duration || 0));
+          }
         }
       });
 
-      // Calculate current streak (simplified logic)
+      // Calculate current streak (simplified)
       const today = new Date();
       const todayStr = today.toISOString().split('T')[0];
       const yesterday = new Date(today);
@@ -211,24 +419,10 @@ export default function StudentStatsMain() {
         }
       }
 
-      // Calculate progress toward goal
       const booksThisYear = studentData.booksSubmittedThisYear || 0;
       const personalGoal = studentData.personalGoal || 15;
       const goalProgress = Math.min(100, Math.round((booksThisYear / personalGoal) * 100));
 
-      // Get achievement tiers
-      const achievementTiers = studentData.achievementTiers || [];
-      const nextTier = achievementTiers.find(tier => booksThisYear < tier.books);
-      
-      // Calculate badge and level stats
-      const badges = getEarnedBadges(studentData);
-      const badgeStats = getBadgeProgress(studentData);
-      const levelInfo = getLevelProgress(studentData.totalXP || 0);
-
-      setEarnedBadges(badges);
-      setBadgeProgress(badgeStats);
-      setLevelProgress(levelInfo);
-      
       setQuickStats({
         booksThisYear,
         personalGoal,
@@ -237,12 +431,10 @@ export default function StudentStatsMain() {
         totalReadingMinutes,
         readingHours: Math.round(totalReadingMinutes / 60),
         saintsUnlocked: (studentData.unlockedSaints || []).length,
-        completedSessions,
-        nextTier,
-        currentReadingLevel: studentData.currentReadingLevel || 'faithful_flame',
-        averageSessionLength: completedSessions > 0 ? Math.round(totalReadingMinutes / completedSessions) : 0,
         totalXP: studentData.totalXP || 0
       });
+      
+      setWeeklyXP(thisWeekXP);
       
     } catch (error) {
       console.error('Error calculating quick stats:', error);
@@ -254,14 +446,70 @@ export default function StudentStatsMain() {
         totalReadingMinutes: 0,
         readingHours: 0,
         saintsUnlocked: 0,
-        completedSessions: 0,
-        nextTier: null,
-        currentReadingLevel: 'faithful_flame',
-        averageSessionLength: 0,
         totalXP: studentData.totalXP || 0
       });
+      setWeeklyXP(0);
     }
   }, []);
+
+  // Generate bragging rights data (simplified for this page)
+  const generateBraggingRights = useCallback(() => {
+    const achievements = [];
+    
+    // Badge achievements
+    if (earnedBadges.length >= 10) {
+      achievements.push(`🏆 Badge Hunter - ${earnedBadges.length} badges earned!`);
+    } else if (earnedBadges.length >= 5) {
+      achievements.push(`🏅 Badge Starter - ${earnedBadges.length} badges collected!`);
+    }
+    
+    // Reading achievements
+    if (quickStats) {
+      if (quickStats.booksThisYear >= quickStats.personalGoal) {
+        achievements.push(`🎯 Goal Crusher - ${quickStats.booksThisYear}/${quickStats.personalGoal} books!`);
+      } else if (quickStats.booksThisYear >= 5) {
+        achievements.push(`📚 Active Reader - ${quickStats.booksThisYear} books completed!`);
+      }
+      
+      if (quickStats.currentStreak >= 14) {
+        achievements.push(`🔥 ${quickStats.currentStreak}-Day Reading Streak!`);
+      } else if (quickStats.currentStreak >= 7) {
+        achievements.push(`✨ ${quickStats.currentStreak}-Day Streak Keeper!`);
+      }
+    }
+    
+    // XP achievements
+    if (levelProgress && levelProgress.level >= 5) {
+      achievements.push(`⭐ Level ${levelProgress.level} Reader!`);
+    }
+    
+    // Saints achievements
+    if (quickStats && quickStats.saintsUnlocked >= 20) {
+      achievements.push(`♔ Saint Collector - ${quickStats.saintsUnlocked} saints!`);
+    } else if (quickStats && quickStats.saintsUnlocked >= 10) {
+      achievements.push(`♔ Saint Seeker - ${quickStats.saintsUnlocked} saints!`);
+    }
+    
+    // Ensure we have some achievements
+    if (achievements.length < 3) {
+      achievements.push(`🌟 Active Reader this year!`);
+      achievements.push(`📚 Building great reading habits!`);
+      if (earnedBadges.length > 0) {
+        achievements.push(`🏆 Badge earner - ${earnedBadges.length} collected!`);
+      }
+    }
+    
+    return {
+      topAchievements: achievements.slice(0, 6),
+      studentName: `${studentData.firstName} ${studentData.lastInitial}`,
+      grade: studentData.grade,
+      totalXP: quickStats?.totalXP || 0,
+      level: levelProgress?.level || 1,
+      badgesEarned: earnedBadges.length,
+      featuredBadge: earnedBadges.length > 0 ? earnedBadges[earnedBadges.length - 1] : null,
+      specialBadges: earnedBadges.filter(badge => badge.xp >= 100).slice(0, 3)
+    };
+  }, [studentData, earnedBadges, quickStats, levelProgress]);
 
   // Load student data and calculate stats
   const loadStatsData = useCallback(async () => {
@@ -282,12 +530,15 @@ export default function StudentStatsMain() {
       const weekBadge = getCurrentWeekBadge();
       setCurrentWeekBadge(weekBadge);
       
+      // Get earned badges and level progress
+      const badges = getEarnedBadges(firebaseStudentData);
+      const levelInfo = getLevelProgress(firebaseStudentData.totalXP || 0);
+      
+      setEarnedBadges(badges);
+      setLevelProgress(levelInfo);
+      
       // Calculate quick stats for overview
       await calculateQuickStats(firebaseStudentData);
-      
-      // Calculate reading personality
-      const personality = await calculateReadingPersonality(firebaseStudentData);
-      setReadingPersonality(personality);
       
       // Check for first book celebration
       if (shouldShowFirstBookCelebration(firebaseStudentData)) {
@@ -301,6 +552,13 @@ export default function StudentStatsMain() {
     
     setIsLoading(false);
   }, [user, router, themes, calculateQuickStats]);
+
+  // Generate fun tidbits after data loads
+  useEffect(() => {
+    if (studentData && quickStats && earnedBadges && levelProgress) {
+      generateFunTidbits(studentData);
+    }
+  }, [studentData, quickStats, earnedBadges, levelProgress, generateFunTidbits]);
 
   // Load initial data
   useEffect(() => {
@@ -372,7 +630,7 @@ export default function StudentStatsMain() {
     <>
       <Head>
         <title>Stats Dashboard - Lux Libris</title>
-        <meta name="description" content="Your complete reading stats dashboard" />
+        <meta name="description" content="Your fun reading stats overview" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
         <link rel="icon" href="/images/lux_libris_logo.png" />
       </Head>
@@ -384,7 +642,7 @@ export default function StudentStatsMain() {
         paddingBottom: '100px'
       }}>
         
-        {/* HEADER WITH DROPDOWN NAVIGATION */}
+        {/* HEADER WITH REORDERED DROPDOWN NAVIGATION */}
         <div style={{
           background: `linear-gradient(135deg, ${currentTheme.primary}F0, ${currentTheme.secondary}F0)`,
           backdropFilter: 'blur(20px)',
@@ -420,7 +678,7 @@ export default function StudentStatsMain() {
             ←
           </button>
 
-          {/* STATS DROPDOWN */}
+          {/* STATS DROPDOWN - REORDERED */}
           <div className="stats-dropdown-container" style={{ position: 'relative', flex: 1 }}>
             <button
               onClick={() => setShowStatsDropdown(!showStatsDropdown)}
@@ -631,141 +889,217 @@ export default function StudentStatsMain() {
           </div>
         </div>
 
-        {/* MAIN CONTENT - UPDATED LAYOUT */}
+        {/* MAIN CONTENT - ENHANCED WITH CELEBRATIONS */}
         <div style={{ padding: 'clamp(16px, 5vw, 20px)', maxWidth: '400px', margin: '0 auto' }}>
           
-          {/* THIS WEEK'S CHALLENGE + XP (PROMINENT AT TOP) */}
+          {/* SMALL PILL: THIS WEEK'S CHALLENGE */}
           {currentWeekBadge && (
             <div style={{
               backgroundColor: currentTheme.surface,
-              borderRadius: '20px',
-              padding: '20px',
+              borderRadius: '50px',
+              padding: '12px 20px',
               marginBottom: '20px',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-              textAlign: 'center'
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              textAlign: 'center',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px'
             }}>
-              <div style={{
-                fontSize: '14px',
-                fontWeight: '600',
-                color: currentTheme.textPrimary,
-                marginBottom: '16px'
-              }}>
-                {currentWeekBadge.week === 0 ? '🚀 Coming Soon' : '🎯 This Week\'s Challenge'}
-              </div>
-              
-              <div style={{
-                backgroundColor: `${currentTheme.primary}20`,
-                borderRadius: '16px',
-                padding: '16px',
-                marginBottom: '16px'
-              }}>
-                <div style={{ fontSize: 'clamp(32px, 10vw, 40px)', marginBottom: '12px' }}>
-                  {currentWeekBadge.emoji}
+              <span style={{ fontSize: '20px' }}>{currentWeekBadge.emoji}</span>
+              <div>
+                <div style={{
+                  fontSize: 'clamp(12px, 3.5vw, 14px)',
+                  fontWeight: '600',
+                  color: currentTheme.textPrimary
+                }}>
+                  {currentWeekBadge.week === 0 ? 'Challenge Starting Soon!' : 'This Week\'s Challenge'}
                 </div>
                 <div style={{
-                  fontSize: 'clamp(16px, 5vw, 18px)',
-                  fontWeight: 'bold',
-                  color: currentTheme.textPrimary,
-                  marginBottom: '8px'
+                  fontSize: 'clamp(10px, 3vw, 11px)',
+                  color: currentTheme.textSecondary
                 }}>
                   {currentWeekBadge.name}
                 </div>
-                <div style={{
-                  fontSize: 'clamp(12px, 3.5vw, 14px)',
-                  color: currentTheme.textSecondary,
-                  marginBottom: currentWeekBadge.week === 0 ? '0' : '12px'
-                }}>
-                  {currentWeekBadge.description}
-                </div>
-                
-                {currentWeekBadge.week > 0 && (
-                  <div style={{
-                    fontSize: 'clamp(14px, 4vw, 16px)',
-                    fontWeight: '600',
-                    color: currentTheme.primary
-                  }}>
-                    🏆 {currentWeekBadge.xp} XP Reward
-                  </div>
-                )}
               </div>
-              
-              {/* PROMINENT XP DISPLAY */}
+            </div>
+          )}
+          
+          {/* ENHANCED READING JOURNEY WITH DYNAMIC MESSAGING */}
+          {(() => {
+            const celebrationMessages = generateCelebrationMessages(quickStats);
+            const heroStat = getHeroStat(quickStats);
+            
+            return (
               <div style={{
                 backgroundColor: currentTheme.surface,
-                borderRadius: '16px',
-                padding: '16px',
-                marginBottom: '16px',
-                border: `2px solid ${currentTheme.primary}60`
+                borderRadius: '20px',
+                padding: '20px',
+                marginBottom: '20px',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+                textAlign: 'center'
               }}>
                 <div style={{
-                  fontSize: 'clamp(28px, 10vw, 36px)',
-                  fontWeight: 'bold',
+                  fontSize: '14px',
+                  fontWeight: '600',
                   color: currentTheme.textPrimary,
-                  marginBottom: '8px'
+                  marginBottom: '16px'
                 }}>
-                  ⚡ {quickStats.totalXP || 0} XP
+                  🚀 Your Reading Adventure
                 </div>
                 
-                {levelProgress && (
-                  <>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr 1fr',
+                  gap: '16px',
+                  marginBottom: '16px'
+                }}>
+                  {/* Books Stat */}
+                  <div style={{
+                    transform: heroStat === 'books' ? 'scale(1.05)' : 'scale(1)',
+                    transition: 'transform 0.3s ease',
+                    animation: 'statsSlideIn 0.6s ease-out 0.1s both'
+                  }}>
                     <div style={{
-                      fontSize: 'clamp(14px, 4vw, 16px)',
-                      fontWeight: '600',
-                      color: currentTheme.textPrimary,
-                      marginBottom: '12px',
-                      fontFamily: 'Didot, "Times New Roman", serif'
+                      fontSize: heroStat === 'books' ? 'clamp(24px, 7vw, 28px)' : 'clamp(20px, 6vw, 24px)',
+                      fontWeight: 'bold',
+                      color: heroStat === 'books' ? currentTheme.primary : currentTheme.textPrimary,
+                      transition: 'all 0.3s ease',
+                      textShadow: heroStat === 'books' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
                     }}>
-                      Level {levelProgress.level}
+                      {quickStats.booksThisYear}
                     </div>
-                    
                     <div style={{
+                      fontSize: 'clamp(10px, 3vw, 11px)',
+                      color: heroStat === 'books' ? currentTheme.primary : currentTheme.textSecondary,
+                      fontWeight: heroStat === 'books' ? '600' : '500'
+                    }}>
+                      {celebrationMessages.books}
+                    </div>
+                  </div>
+                  
+                  {/* Streak Stat */}
+                  <div style={{
+                    transform: heroStat === 'streak' ? 'scale(1.05)' : 'scale(1)',
+                    transition: 'transform 0.3s ease',
+                    animation: 'statsSlideIn 0.6s ease-out 0.2s both'
+                  }}>
+                    <div style={{
+                      fontSize: heroStat === 'streak' ? 'clamp(24px, 7vw, 28px)' : 'clamp(20px, 6vw, 24px)',
+                      fontWeight: 'bold',
+                      color: heroStat === 'streak' ? currentTheme.primary : currentTheme.textPrimary,
+                      transition: 'all 0.3s ease',
+                      textShadow: heroStat === 'streak' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
+                    }}>
+                      {quickStats.currentStreak}
+                    </div>
+                    <div style={{
+                      fontSize: 'clamp(10px, 3vw, 11px)',
+                      color: heroStat === 'streak' ? currentTheme.primary : currentTheme.textSecondary,
+                      fontWeight: heroStat === 'streak' ? '600' : '500'
+                    }}>
+                      {celebrationMessages.streak}
+                    </div>
+                  </div>
+                  
+                  {/* Saints Stat */}
+                  <div style={{
+                    transform: heroStat === 'saints' ? 'scale(1.05)' : 'scale(1)',
+                    transition: 'transform 0.3s ease',
+                    animation: 'statsSlideIn 0.6s ease-out 0.3s both'
+                  }}>
+                    <div style={{
+                      fontSize: heroStat === 'saints' ? 'clamp(24px, 7vw, 28px)' : 'clamp(20px, 6vw, 24px)',
+                      fontWeight: 'bold',
+                      color: heroStat === 'saints' ? currentTheme.primary : currentTheme.textPrimary,
+                      transition: 'all 0.3s ease',
+                      textShadow: heroStat === 'saints' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
+                    }}>
+                      {quickStats.saintsUnlocked}
+                    </div>
+                    <div style={{
+                      fontSize: 'clamp(10px, 3vw, 11px)',
+                      color: heroStat === 'saints' ? currentTheme.primary : currentTheme.textSecondary,
+                      fontWeight: heroStat === 'saints' ? '600' : '500'
+                    }}>
+                      {celebrationMessages.saints}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Reading Time Celebration */}
+                <div style={{
+                  backgroundColor: `${currentTheme.secondary}20`,
+                  borderRadius: '12px',
+                  padding: '12px',
+                  marginBottom: '16px',
+                  fontSize: 'clamp(11px, 3vw, 12px)',
+                  color: currentTheme.textPrimary,
+                  fontWeight: '500',
+                  animation: 'statsSlideIn 0.6s ease-out 0.4s both'
+                }}>
+                  {celebrationMessages.readingTime}
+                </div>
+
+                {/* ENHANCED XP DISPLAY WITH CELEBRATION */}
+                <div style={{
+                  backgroundColor: `${currentTheme.primary}20`,
+                  borderRadius: '12px',
+                  padding: '12px',
+                  marginBottom: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  animation: 'statsSlideIn 0.6s ease-out 0.5s both'
+                }}>
+                  <div>
+                    <div style={{
+                      fontSize: 'clamp(16px, 5vw, 18px)',
+                      fontWeight: 'bold',
+                      color: currentTheme.textPrimary,
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'space-between',
-                      marginBottom: '8px'
+                      gap: '4px'
                     }}>
-                      <div style={{
-                        fontSize: 'clamp(11px, 3vw, 12px)',
-                        color: currentTheme.textSecondary
-                      }}>
-                        {levelProgress.progress} XP
-                      </div>
-                      <div style={{
-                        fontSize: 'clamp(11px, 3vw, 12px)',
-                        color: currentTheme.textSecondary
-                      }}>
-                        {levelProgress.toNext} XP to Level {levelProgress.level + 1}
-                      </div>
+                      <span style={{
+                        fontSize: 'clamp(18px, 5.5vw, 20px)',
+                        animation: weeklyXP > 50 ? 'bounce 2s infinite' : 'none'
+                      }}>⚡</span>
+                      {quickStats.totalXP} XP
+                      {quickStats.totalXP >= 500 && (
+                        <span style={{
+                          fontSize: '12px',
+                          marginLeft: '4px',
+                          animation: 'sparkle 1.5s ease-in-out infinite'
+                        }}>✨</span>
+                      )}
                     </div>
-                    
+                    {levelProgress && (
+                      <div style={{
+                        fontSize: 'clamp(11px, 3vw, 12px)',
+                        color: currentTheme.textSecondary
+                      }}>
+                        {levelProgress.level >= 5 ? `POWER Level ${levelProgress.level}!` : `Level ${levelProgress.level}`}
+                      </div>
+                    )}
+                  </div>
+                  {weeklyXP > 0 && (
                     <div style={{
-                      height: '8px',
-                      backgroundColor: '#E0E0E0',
-                      borderRadius: '4px',
-                      overflow: 'hidden'
+                      fontSize: 'clamp(11px, 3vw, 12px)',
+                      color: currentTheme.primary,
+                      fontWeight: '600',
+                      animation: 'pulseGlow 2s ease-in-out infinite'
                     }}>
-                      <div style={{
-                        height: '100%',
-                        width: `${levelProgress.percentage}%`,
-                        background: `linear-gradient(90deg, ${currentTheme.primary}, ${currentTheme.secondary})`,
-                        borderRadius: '4px',
-                        transition: 'width 0.5s ease'
-                      }} />
+                      {weeklyXP >= 100 ? `🔥 +${weeklyXP} XP this week!` : 
+                       weeklyXP >= 50 ? `⚡ +${weeklyXP} XP this week!` : 
+                       `+${weeklyXP} XP this week`}
                     </div>
-                  </>
-                )}
-              </div>
-              
-              {currentWeekBadge.week === 0 ? (
-                <div style={{
-                  fontSize: 'clamp(11px, 3vw, 12px)',
-                  color: currentTheme.textSecondary
-                }}>
-                  The 39-week badge challenge starts with the new school year!
+                  )}
                 </div>
-              ) : (
+
+                {/* ENHANCED BRAGGING RIGHTS BUTTON */}
                 <button
-                  onClick={() => router.push('/student-healthy-habits')}
+                  onClick={() => setShowBraggingRights(true)}
                   style={{
                     backgroundColor: currentTheme.primary,
                     color: currentTheme.textPrimary,
@@ -782,201 +1116,73 @@ export default function StudentStatsMain() {
                     width: '100%',
                     minHeight: '44px',
                     touchAction: 'manipulation',
-                    WebkitTapHighlightColor: 'transparent'
+                    WebkitTapHighlightColor: 'transparent',
+                    animation: 'statsSlideIn 0.6s ease-out 0.6s both',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    transform: 'translateY(0)',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.transform = 'translateY(-2px)';
+                    e.target.style.boxShadow = '0 6px 20px rgba(0,0,0,0.2)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.transform = 'translateY(0)';
+                    e.target.style.boxShadow = 'none';
                   }}
                 >
-                  📖 Start Reading Session
+                  <span style={{
+                    fontSize: 'clamp(16px, 4vw, 18px)',
+                    animation: earnedBadges.length >= 5 ? 'bounce 2s ease-in-out infinite' : 'none'
+                  }}>🏆</span>
+                  {earnedBadges.length >= 10 ? 'CHAMPION Bragging Rights!' :
+                   earnedBadges.length >= 5 ? 'SUPERSTAR Bragging Rights!' :
+                   'Bragging Rights'}
                 </button>
-              )}
+              </div>
+            );
+          })()}
+
+          {/* ENHANCED FUN TIDBITS SECTION */}
+          {funTidbits.length > 0 && (
+            <div style={{
+              backgroundColor: currentTheme.surface,
+              borderRadius: '16px',
+              padding: '20px',
+              marginBottom: '20px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+            }}>
+              <h3 style={{
+                fontSize: 'clamp(14px, 4vw, 16px)',
+                fontWeight: '600',
+                color: currentTheme.textPrimary,
+                margin: '0 0 16px 0'
+              }}>
+                ✨ Exciting Updates
+              </h3>
+              
+              {funTidbits.map((tidbit, index) => (
+                <div
+                  key={index}
+                  style={{
+                    backgroundColor: `${currentTheme.primary}15`,
+                    borderRadius: '12px',
+                    padding: '12px',
+                    marginBottom: index < funTidbits.length - 1 ? '8px' : '0',
+                    fontSize: 'clamp(12px, 3.5vw, 14px)',
+                    color: currentTheme.textPrimary,
+                    fontWeight: '500',
+                    animation: `statsSlideIn 0.6s ease-out ${0.7 + (index * 0.1)}s both`
+                  }}
+                >
+                  {tidbit}
+                </div>
+              ))}
             </div>
           )}
-          
-          {/* OVERVIEW CARDS */}
-          <div style={{
-            backgroundColor: currentTheme.surface,
-            borderRadius: '20px',
-            padding: '20px',
-            marginBottom: '20px',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-            textAlign: 'center'
-          }}>
-            <div style={{
-              fontSize: '14px',
-              fontWeight: '600',
-              color: currentTheme.textPrimary,
-              marginBottom: '16px'
-            }}>
-              📚 Your Reading Overview
-            </div>
-            
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr 1fr',
-              gap: '16px',
-              marginBottom: '16px'
-            }}>
-              <div>
-                <div style={{
-                  fontSize: 'clamp(20px, 6vw, 24px)',
-                  fontWeight: 'bold',
-                  color: currentTheme.textPrimary
-                }}>
-                  {quickStats.booksThisYear}
-                </div>
-                <div style={{
-                  fontSize: 'clamp(10px, 3vw, 11px)',
-                  color: currentTheme.textSecondary
-                }}>
-                  Books Read
-                </div>
-              </div>
-              <div>
-                <div style={{
-                  fontSize: 'clamp(20px, 6vw, 24px)',
-                  fontWeight: 'bold',
-                  color: currentTheme.textPrimary
-                }}>
-                  {quickStats.currentStreak}
-                </div>
-                <div style={{
-                  fontSize: 'clamp(10px, 3vw, 11px)',
-                  color: currentTheme.textSecondary
-                }}>
-                  Day Streak
-                </div>
-              </div>
-              <div>
-                <div style={{
-                  fontSize: 'clamp(20px, 6vw, 24px)',
-                  fontWeight: 'bold',
-                  color: currentTheme.textPrimary
-                }}>
-                  {quickStats.saintsUnlocked}
-                </div>
-                <div style={{
-                  fontSize: 'clamp(10px, 3vw, 11px)',
-                  color: currentTheme.textSecondary
-                }}>
-                  Saints
-                </div>
-              </div>
-            </div>
 
-            {/* Goal Progress */}
-            <div style={{
-              backgroundColor: `${currentTheme.primary}20`,
-              borderRadius: '12px',
-              padding: '12px',
-              marginBottom: '16px'
-            }}>
-              <div style={{
-                fontSize: 'clamp(11px, 3vw, 12px)',
-                color: currentTheme.textSecondary,
-                marginBottom: '8px'
-              }}>
-                Goal Progress: {quickStats.booksThisYear}/{quickStats.personalGoal}
-              </div>
-              <div style={{
-                height: '8px',
-                backgroundColor: '#E0E0E0',
-                borderRadius: '4px',
-                overflow: 'hidden'
-              }}>
-                <div style={{
-                  height: '100%',
-                  width: `${quickStats.goalProgress}%`,
-                  backgroundColor: currentTheme.primary,
-                  transition: 'width 0.3s ease'
-                }} />
-              </div>
-              {quickStats.goalProgress >= 100 && (
-                <div style={{
-                  fontSize: 'clamp(11px, 3vw, 12px)',
-                  color: '#4CAF50',
-                  fontWeight: '600',
-                  marginTop: '8px'
-                }}>
-                  🎉 Goal achieved!
-                </div>
-              )}
-            </div>
-
-            {/* Quick Stats Grid */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: '12px',
-              marginBottom: '16px'
-            }}>
-              <div style={{
-                backgroundColor: `${currentTheme.secondary}20`,
-                borderRadius: '12px',
-                padding: '12px',
-                textAlign: 'center'
-              }}>
-                <div style={{
-                  fontSize: 'clamp(16px, 5vw, 18px)',
-                  fontWeight: 'bold',
-                  color: currentTheme.textPrimary
-                }}>
-                  {quickStats.readingHours}
-                </div>
-                <div style={{
-                  fontSize: 'clamp(10px, 3vw, 11px)',
-                  color: currentTheme.textSecondary
-                }}>
-                  Hours Read
-                </div>
-              </div>
-              <div style={{
-                backgroundColor: `${currentTheme.secondary}20`,
-                borderRadius: '12px',
-                padding: '12px',
-                textAlign: 'center'
-              }}>
-                <div style={{
-                  fontSize: 'clamp(16px, 5vw, 18px)',
-                  fontWeight: 'bold',
-                  color: currentTheme.textPrimary
-                }}>
-                  {quickStats.averageSessionLength}
-                </div>
-                <div style={{
-                  fontSize: 'clamp(10px, 3vw, 11px)',
-                  color: currentTheme.textSecondary
-                }}>
-                  Avg Minutes
-                </div>
-              </div>
-            </div>
-
-            {/* Next Goal */}
-            {quickStats.nextTier && (
-              <div style={{
-                backgroundColor: `${currentTheme.accent}20`,
-                borderRadius: '12px',
-                padding: '12px',
-                textAlign: 'center'
-              }}>
-                <div style={{
-                  fontSize: 'clamp(11px, 3vw, 12px)',
-                  color: currentTheme.textSecondary,
-                  marginBottom: '4px'
-                }}>
-                  Next Goal: {quickStats.nextTier.books - quickStats.booksThisYear} more books
-                </div>
-                <div style={{
-                  fontSize: 'clamp(12px, 3.5vw, 13px)',
-                  fontWeight: '600',
-                  color: currentTheme.textPrimary
-                }}>
-                  🎯 {quickStats.nextTier.reward}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* CALL TO ACTION */}
+          {/* EXPLORE MORE FOOTER */}
           <div style={{
             backgroundColor: currentTheme.surface,
             borderRadius: '16px',
@@ -1123,10 +1329,332 @@ export default function StudentStatsMain() {
           </div>
         )}
 
+        {/* BRAGGING RIGHTS MODAL */}
+        {showBraggingRights && (() => {
+          const braggingData = generateBraggingRights();
+          
+          return (
+            <div style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0,0,0,0.85)',
+              zIndex: 1000,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '20px'
+            }}>
+              <div style={{
+                backgroundColor: '#FFFFFF',
+                borderRadius: '20px',
+                maxWidth: '380px',
+                width: '100%',
+                maxHeight: '85vh',
+                overflowY: 'auto',
+                position: 'relative',
+                boxShadow: '0 20px 40px rgba(0,0,0,0.3)'
+              }}>
+                <button
+                  onClick={() => setShowBraggingRights(false)}
+                  style={{
+                    position: 'absolute',
+                    top: '12px',
+                    right: '12px',
+                    backgroundColor: 'rgba(0,0,0,0.7)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '36px',
+                    height: '36px',
+                    fontSize: '16px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 10,
+                    touchAction: 'manipulation',
+                    WebkitTapHighlightColor: 'transparent'
+                  }}
+                >
+                  ✕
+                </button>
+
+                {/* Header */}
+                <div style={{
+                  background: `linear-gradient(135deg, ${currentTheme.primary}, ${currentTheme.secondary})`,
+                  borderRadius: '20px 20px 0 0',
+                  padding: '20px',
+                  textAlign: 'center',
+                  color: 'white'
+                }}>
+                  <div style={{ fontSize: 'clamp(40px, 12vw, 48px)', marginBottom: '12px' }}>🏆</div>
+                  <h2 style={{
+                    fontSize: 'clamp(18px, 5vw, 20px)',
+                    fontWeight: '600',
+                    margin: '0 0 8px 0',
+                    fontFamily: 'Didot, "Times New Roman", serif'
+                  }}>
+                    Reading Achievement Certificate
+                  </h2>
+                  <p style={{
+                    fontSize: 'clamp(12px, 3.5vw, 14px)',
+                    opacity: 0.9,
+                    margin: '0'
+                  }}>
+                    {braggingData?.studentName} • Grade {braggingData?.grade}
+                  </p>
+                </div>
+
+                <div style={{ padding: '20px' }}>
+                  {/* Stats Summary */}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(3, 1fr)',
+                    gap: '12px',
+                    marginBottom: '20px'
+                  }}>
+                    <div style={{
+                      backgroundColor: '#FFFFFF',
+                      border: `2px solid ${currentTheme.primary}`,
+                      borderRadius: '12px',
+                      padding: '12px',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{
+                        fontSize: 'clamp(16px, 5vw, 18px)',
+                        fontWeight: 'bold',
+                        color: '#000000'
+                      }}>
+                        {braggingData?.level || 1}
+                      </div>
+                      <div style={{
+                        fontSize: 'clamp(9px, 2.5vw, 10px)',
+                        color: '#666666'
+                      }}>
+                        Level
+                      </div>
+                    </div>
+                    <div style={{
+                      backgroundColor: '#FFFFFF',
+                      border: `2px solid ${currentTheme.primary}`,
+                      borderRadius: '12px',
+                      padding: '12px',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{
+                        fontSize: 'clamp(16px, 5vw, 18px)',
+                        fontWeight: 'bold',
+                        color: '#000000'
+                      }}>
+                        {braggingData?.totalXP || 0}
+                      </div>
+                      <div style={{
+                        fontSize: 'clamp(9px, 2.5vw, 10px)',
+                        color: '#666666'
+                      }}>
+                        XP
+                      </div>
+                    </div>
+                    <div style={{
+                      backgroundColor: '#FFFFFF',
+                      border: `2px solid ${currentTheme.primary}`,
+                      borderRadius: '12px',
+                      padding: '12px',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{
+                        fontSize: 'clamp(16px, 5vw, 18px)',
+                        fontWeight: 'bold',
+                        color: '#000000'
+                      }}>
+                        {braggingData?.badgesEarned || 0}
+                      </div>
+                      <div style={{
+                        fontSize: 'clamp(9px, 2.5vw, 10px)',
+                        color: '#666666'
+                      }}>
+                        Badges
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Featured Badge */}
+                  {braggingData?.featuredBadge && (
+                    <div style={{
+                      backgroundColor: `${currentTheme.primary}10`,
+                      borderRadius: '12px',
+                      padding: '12px',
+                      marginBottom: '16px',
+                      textAlign: 'center',
+                      border: `2px solid ${currentTheme.primary}60`
+                    }}>
+                      <div style={{ fontSize: '24px', marginBottom: '8px' }}>
+                        {braggingData.featuredBadge.emoji}
+                      </div>
+                      <div style={{
+                        fontSize: 'clamp(11px, 3vw, 12px)',
+                        color: currentTheme.textSecondary,
+                        marginBottom: '4px'
+                      }}>
+                        Latest Badge
+                      </div>
+                      <div style={{
+                        fontSize: 'clamp(12px, 3.5vw, 14px)',
+                        fontWeight: '600',
+                        color: currentTheme.textPrimary
+                      }}>
+                        {braggingData.featuredBadge.name}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Top Achievements */}
+                  <div style={{
+                    marginBottom: '20px'
+                  }}>
+                    <div style={{
+                      fontSize: 'clamp(12px, 3.5vw, 14px)',
+                      fontWeight: '600',
+                      color: currentTheme.textPrimary,
+                      marginBottom: '12px',
+                      textAlign: 'center'
+                    }}>
+                      🌟 Your Amazing Achievements 🌟
+                    </div>
+                    
+                    {braggingData?.topAchievements.map((achievement, index) => (
+                      <div
+                        key={index}
+                        style={{
+                          backgroundColor: '#FFFFFF',
+                          border: `1px solid ${currentTheme.primary}60`,
+                          borderRadius: '12px',
+                          padding: '10px',
+                          marginBottom: '6px',
+                          fontSize: 'clamp(11px, 3vw, 12px)',
+                          fontWeight: '500',
+                          color: '#000000',
+                          textAlign: 'left'
+                        }}
+                      >
+                        {achievement}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Special Badges - with emojis only */}
+                  {braggingData?.specialBadges && braggingData.specialBadges.length > 0 && (
+                    <div style={{
+                      backgroundColor: `${currentTheme.secondary}20`,
+                      borderRadius: '12px',
+                      padding: '12px',
+                      marginBottom: '16px',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{
+                        fontSize: 'clamp(11px, 3vw, 12px)',
+                        color: currentTheme.textSecondary,
+                        marginBottom: '8px'
+                      }}>
+                        ⚡ Special Badges Earned
+                      </div>
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        gap: '8px'
+                      }}>
+                        {braggingData.specialBadges.map((badge, index) => (
+                          <div key={index} style={{
+                            fontSize: '20px',
+                            padding: '4px'
+                          }}>
+                            {badge.emoji}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Screenshot hint */}
+                  <div style={{
+                    backgroundColor: `${currentTheme.primary}20`,
+                    borderRadius: '12px',
+                    padding: '16px',
+                    textAlign: 'center',
+                    marginTop: '16px'
+                  }}>
+                    <div style={{
+                      fontSize: 'clamp(14px, 4vw, 16px)',
+                      fontWeight: '600',
+                      color: currentTheme.textPrimary,
+                      marginBottom: '8px'
+                    }}>
+                      📸 Want to share this?
+                    </div>
+                    <div style={{
+                      fontSize: 'clamp(11px, 3vw, 12px)',
+                      color: currentTheme.textSecondary
+                    }}>
+                      Take a screenshot to share your achievements with family and friends!
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
         <style jsx>{`
           @keyframes spin {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
+          }
+          
+          @keyframes statsSlideIn {
+            from { 
+              opacity: 0; 
+              transform: translateY(20px); 
+            }
+            to { 
+              opacity: 1; 
+              transform: translateY(0); 
+            }
+          }
+          
+          @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {
+              transform: translateY(0);
+            }
+            40% {
+              transform: translateY(-8px);
+            }
+            60% {
+              transform: translateY(-4px);
+            }
+          }
+          
+          @keyframes sparkle {
+            0%, 100% {
+              opacity: 1;
+              transform: scale(1);
+            }
+            50% {
+              opacity: 0.6;
+              transform: scale(1.2);
+            }
+          }
+          
+          @keyframes pulseGlow {
+            0%, 100% {
+              opacity: 1;
+            }
+            50% {
+              opacity: 0.7;
+            }
           }
           
           button {
