@@ -25,11 +25,10 @@ export const TimerProvider = ({ children }) => {
   const [currentBookTitle, setCurrentBookTitle] = useState('');
   const [isOnHealthyHabitsPage, setIsOnHealthyHabitsPage] = useState(false);
   
-  // NEW: Completion callback
-  const [onTimerComplete, setOnTimerComplete] = useState(null);
-  
   const timerRef = useRef(null);
   const lastActiveTimeRef = useRef(Date.now());
+  // NEW: Use ref instead of state for callback (safer)
+  const onTimerCompleteRef = useRef(null);
 
   // Wake lock functions
   const requestWakeLock = async () => {
@@ -98,19 +97,19 @@ export const TimerProvider = ({ children }) => {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [isTimerActive, isTimerPaused, isOnHealthyHabitsPage]);
 
-  // Main timer effect - UPDATED to call completion callback
+  // Main timer effect - UPDATED with callback
   useEffect(() => {
     if (isTimerActive && !isTimerPaused && timeRemaining > 0) {
       timerRef.current = setInterval(() => {
         setTimeRemaining(prev => {
           if (prev <= 1) {
-            // Timer completed - call the callback BEFORE updating state
-            if (onTimerComplete) {
+            // FIXED: Call callback using ref (much safer)
+            if (onTimerCompleteRef.current) {
               console.log('🎯 Timer completed - calling completion callback');
-              onTimerComplete();
+              onTimerCompleteRef.current();
             }
             
-            // Now update state
+            // Timer completed
             setIsTimerActive(false);
             setIsTimerPaused(false);
             releaseWakeLock();
@@ -124,7 +123,7 @@ export const TimerProvider = ({ children }) => {
     }
 
     return () => clearInterval(timerRef.current);
-  }, [isTimerActive, isTimerPaused, timeRemaining, onTimerComplete]);
+  }, [isTimerActive, isTimerPaused, timeRemaining]); // No dependency on callback needed with ref
 
   // Timer control functions
   const startTimer = () => {
@@ -166,9 +165,9 @@ export const TimerProvider = ({ children }) => {
     }
   };
 
-  // NEW: Function to set the completion callback
+  // NEW: Simple function to set callback using ref (much safer)
   const setTimerCompleteCallback = (callback) => {
-    setOnTimerComplete(() => callback);
+    onTimerCompleteRef.current = callback;
   };
 
   // Cleanup on unmount
@@ -200,7 +199,7 @@ export const TimerProvider = ({ children }) => {
     updateTimerDuration,
     setCurrentBookId,
     setCurrentBookTitle,
-    setTimerCompleteCallback, // NEW: Add callback setter
+    setTimerCompleteCallback, // SAFE: Simple ref assignment
     
     // Utilities
     getTimerProgress: () => ((timerDuration - timeRemaining) / timerDuration) * 100,
