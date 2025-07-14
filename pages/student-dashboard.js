@@ -1,4 +1,4 @@
-// pages/student-dashboard.js - UPDATED with hamburger menu
+// pages/student-dashboard.js - UPDATED with fixes
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
@@ -29,38 +29,40 @@ export default function StudentDashboard() {
   const [notificationProcessing, setNotificationProcessing] = useState(false);
 
   // Enhanced dashboard data
-  const [gradeStats, setGradeStats] = useState(null);
-  const [schoolStats, setSchoolStats] = useState(null);
   const [achievementTiers, setAchievementTiers] = useState([]);
   const [actionItems, setActionItems] = useState([]);
-  const [todayReadingStats, setTodayReadingStats] = useState(null);
   const [nextAchievement, setNextAchievement] = useState(null);
   const [smartRecommendations, setSmartRecommendations] = useState([]);
+  const [currentlyReading, setCurrentlyReading] = useState(null);
+  const [latestSaintUnlock, setLatestSaintUnlock] = useState(null);
+  const [readingStats, setReadingStats] = useState({ streak: 0, todayMinutes: 0 });
 
-// NEW: Grade progression state
-const [showGradeUpdate, setShowGradeUpdate] = useState(false);
-const [selectedGrade, setSelectedGrade] = useState(null);
-const [isUpdatingGrade, setIsUpdatingGrade] = useState(false);
+  // NEW: Expandable action items
+  const [showAllActionItems, setShowAllActionItems] = useState(false);
+
+  // NEW: Grade progression state
+  const [showGradeUpdate, setShowGradeUpdate] = useState(false);
+  const [selectedGrade, setSelectedGrade] = useState(null);
+  const [isUpdatingGrade, setIsUpdatingGrade] = useState(false);
 
   // Real dashboard data from Firebase
   const [dashboardData, setDashboardData] = useState({
     booksReadThisYear: 0,
     totalBooksRead: 0,
     saintCount: 0,
-    readingStreak: 0,
-    currentlyReading: null,
-    recentlyCompleted: []
+    currentYearGoal: 10, // Default goal
+    lifetimeGoal: 100    // Default lifetime goal
   });
 
-  // 🍔 NAVIGATION MENU ITEMS (Dashboard page is current, but we don't hide it since we have bottom nav too)
+  // 🍔 NAVIGATION MENU ITEMS (Dashboard page is current, now includes Settings)
   const navMenuItems = useMemo(() => [
     { name: 'Dashboard', path: '/student-dashboard', icon: '⌂', current: true },
     { name: 'Nominees', path: '/student-nominees', icon: '□' },
     { name: 'Bookshelf', path: '/student-bookshelf', icon: '⚏' },
     { name: 'Healthy Habits', path: '/student-healthy-habits', icon: '○' },
     { name: 'Saints', path: '/student-saints', icon: '♔' },
-    { name: 'Stats', path: '/student-stats', icon: '△' }
-    // Note: Settings removed from hamburger menu since Dashboard has dedicated settings button
+    { name: 'Stats', path: '/student-stats', icon: '△' },
+    { name: 'Settings', path: '/student-settings', icon: '⚙' } // MOVED BACK TO MENU
   ], []);
 
   // 🍔 NOTIFICATION FUNCTIONS
@@ -239,94 +241,6 @@ const [isUpdatingGrade, setIsUpdatingGrade] = useState(false);
     };
   }, [showNavMenu]);
 
-  // INTEGRATED HELPER FUNCTIONS (keeping all existing functions...)
-  
-  // Get aggregated grade stats for social competition
-  const getGradeStats = async (entityId, schoolId, grade) => {
-    try {
-      console.log(`📊 Loading grade ${grade} stats for school ${schoolId}`);
-      
-      const studentsRef = collection(db, 'entities', entityId, 'schools', schoolId, 'students');
-      const gradeQuery = query(studentsRef, where('grade', '==', grade));
-      const gradeSnapshot = await getDocs(gradeQuery);
-      
-      let totalBooksSubmitted = 0;
-      let studentsWhoCompletedFirst5 = 0;
-      let totalStudents = gradeSnapshot.size;
-      
-      gradeSnapshot.forEach(doc => {
-        const studentData = doc.data();
-        const booksThisYear = studentData.booksSubmittedThisYear || 0;
-        totalBooksSubmitted += booksThisYear;
-        
-        if (booksThisYear >= 5) {
-          studentsWhoCompletedFirst5++;
-        }
-      });
-      
-      const averageBooksPerStudent = totalStudents > 0 
-        ? Math.round((totalBooksSubmitted / totalStudents) * 10) / 10
-        : 0;
-      
-      return {
-        grade,
-        totalStudents,
-        totalBooksSubmitted,
-        studentsWhoCompletedFirst5,
-        averageBooksPerStudent
-      };
-    } catch (error) {
-      console.error('❌ Error loading grade stats:', error);
-      return null;
-    }
-  };
-
-  // Get aggregated school stats for school pride
-  const getSchoolStats = async (entityId, schoolId) => {
-    try {
-      console.log(`🏫 Loading school stats for ${schoolId}`);
-      
-      const studentsRef = collection(db, 'entities', entityId, 'schools', schoolId, 'students');
-      const studentsSnapshot = await getDocs(studentsRef);
-      
-      let totalBooksSubmitted = 0;
-      let totalStudents = studentsSnapshot.size;
-      let gradeStats = {};
-      
-      studentsSnapshot.forEach(doc => {
-        const studentData = doc.data();
-        const booksThisYear = studentData.booksSubmittedThisYear || 0;
-        const grade = studentData.grade;
-        
-        totalBooksSubmitted += booksThisYear;
-        
-        if (!gradeStats[grade]) {
-          gradeStats[grade] = { books: 0, students: 0 };
-        }
-        gradeStats[grade].books += booksThisYear;
-        gradeStats[grade].students++;
-      });
-      
-      // Find top performing grade
-      let topGrade = { grade: 'N/A', books: 0 };
-      for (const grade in gradeStats) {
-        if (gradeStats[grade].books > topGrade.books) {
-          topGrade = { grade: grade, books: gradeStats[grade].books };
-        }
-      }
-      
-      return {
-        totalStudents,
-        totalBooksSubmitted,
-        topGrade,
-        gradeBreakdown: gradeStats
-      };
-    } catch (error) {
-      console.error('❌ Error loading school stats:', error);
-      return null;
-    }
-  };
-
   // Get school's achievement tiers configuration
   const getSchoolAchievementTiers = async (entityId, schoolId) => {
     try {
@@ -347,7 +261,7 @@ const [isUpdatingGrade, setIsUpdatingGrade] = useState(false);
     }
   };
 
-  // Generate smart action items based on bookshelf status
+  // UPDATED: Generate smart action items based on bookshelf status
   const generateActionItems = (bookshelf = [], nominees = []) => {
     const actions = [];
     const now = new Date();
@@ -399,7 +313,8 @@ const [isUpdatingGrade, setIsUpdatingGrade] = useState(false);
     
     inProgress.slice(0, 2).forEach(book => {
       const nominee = nominees.find(n => n.id === book.bookId);
-      const progressPercent = Math.round((book.currentProgress / (book.totalPages || book.totalMinutes || 1)) * 100);
+      const total = book.format === 'audiobook' ? (nominee?.totalMinutes || book.totalMinutes) : (nominee?.pages || nominee?.pageCount || book.totalPages);
+      const progressPercent = total > 0 ? Math.round((book.currentProgress / total) * 100) : 0;
       
       actions.push({
         type: 'continue_reading',
@@ -506,9 +421,11 @@ const [isUpdatingGrade, setIsUpdatingGrade] = useState(false);
     };
   };
 
-  // Calculate days until competition ends (March 31st, 2025)
+  // UPDATED: Calculate days until actual competition end (not hardcoded)
   const getDaysUntilCompetitionEnd = () => {
-    const competitionEnd = new Date('2025-03-31T23:59:59');
+    // This should be configurable from school settings, but for now using March 31st, 2026
+    // FIXED: Use 2026 since it's July 2025 now
+    const competitionEnd = new Date('2026-03-31T23:59:59');
     const now = new Date();
     const timeDiff = competitionEnd.getTime() - now.getTime();
     const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
@@ -516,25 +433,242 @@ const [isUpdatingGrade, setIsUpdatingGrade] = useState(false);
     return Math.max(0, daysDiff);
   };
 
-  // Get today's reading session stats
-  const getTodayReadingStats = async (entityId, schoolId, studentId) => {
+  // UPDATED: Load reading stats properly
+  const loadReadingStats = async (studentData) => {
     try {
-      // TODO: Integrate with actual reading sessions collection
-      return {
-        sessionsCompleted: 1,
-        minutesToday: 25,
-        goalMinutes: 30,
-        streakDays: 5
-      };
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      
+      const sessionsRef = collection(db, `entities/${studentData.entityId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
+      
+      // Get today's sessions for minutes
+      const todayQuery = query(sessionsRef, where('date', '==', todayStr));
+      const todaySnapshot = await getDocs(todayQuery);
+      
+      let todayMinutes = 0;
+      todaySnapshot.forEach(doc => {
+        const session = doc.data();
+        todayMinutes += session.duration || 0;
+      });
+      
+      // Get recent sessions for streak calculation
+      const sixWeeksAgo = new Date();
+      sixWeeksAgo.setDate(today.getDate() - 42);
+      const sixWeeksAgoStr = `${sixWeeksAgo.getFullYear()}-${String(sixWeeksAgo.getMonth() + 1).padStart(2, '0')}-${String(sixWeeksAgo.getDate()).padStart(2, '0')}`;
+      
+      const recentQuery = query(sessionsRef, where('date', '>=', sixWeeksAgoStr));
+      const recentSnapshot = await getDocs(recentQuery);
+      
+      const completedSessionsByDate = {};
+      recentSnapshot.forEach(doc => {
+        const session = doc.data();
+        if (session.completed === true) {
+          completedSessionsByDate[session.date] = true;
+        }
+      });
+      
+      // Calculate smart streak
+      let streakCount = 0;
+      let checkDate = new Date(today);
+      const yesterdayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate() - 1).padStart(2, '0')}`;
+      
+      // Start from today if completed, otherwise start from yesterday
+      if (!completedSessionsByDate[todayStr] && completedSessionsByDate[yesterdayStr]) {
+        checkDate.setDate(checkDate.getDate() - 1);
+      }
+      
+      // Count consecutive days backwards
+      while (streakCount < 365) {
+        const dateStr = `${checkDate.getFullYear()}-${String(checkDate.getMonth() + 1).padStart(2, '0')}-${String(checkDate.getDate()).padStart(2, '0')}`;
+        if (completedSessionsByDate[dateStr]) {
+          streakCount++;
+          checkDate.setDate(checkDate.getDate() - 1);
+        } else {
+          break;
+        }
+      }
+      
+      setReadingStats({
+        streak: streakCount,
+        todayMinutes: todayMinutes
+      });
+      
     } catch (error) {
-      console.error('❌ Error loading today reading stats:', error);
-      return {
-        sessionsCompleted: 0,
-        minutesToday: 0,
-        goalMinutes: 30,
-        streakDays: 0
-      };
+      console.error('❌ Error loading reading stats:', error);
+      setReadingStats({ streak: 0, todayMinutes: 0 });
     }
+  };
+
+  // UPDATED: Load latest saint unlock
+  const loadLatestSaintUnlock = async (studentData) => {
+    try {
+      if (!studentData.unlockedSaints || studentData.unlockedSaints.length === 0) {
+        setLatestSaintUnlock(null);
+        return;
+      }
+      
+      // Get the latest saint from the timestamps
+      const timestamps = studentData.newlyUnlockedSaintsWithTimestamp || {};
+      let latestSaint = null;
+      let latestTime = 0;
+      
+      Object.keys(timestamps).forEach(saintId => {
+        const timestamp = new Date(timestamps[saintId].timestamp).getTime();
+        if (timestamp > latestTime) {
+          latestTime = timestamp;
+          latestSaint = {
+            id: saintId,
+            name: timestamps[saintId].name,
+            timestamp: timestamp
+          };
+        }
+      });
+      
+      // Only show if unlocked within last 7 days
+      if (latestSaint && (Date.now() - latestTime) < (7 * 24 * 60 * 60 * 1000)) {
+        setLatestSaintUnlock(latestSaint);
+      } else {
+        setLatestSaintUnlock(null);
+      }
+      
+    } catch (error) {
+      console.error('❌ Error loading latest saint unlock:', error);
+      setLatestSaintUnlock(null);
+    }
+  };
+
+  // UPDATED: Generate smart book recommendations with proper categories
+  const generateSmartRecommendations = (nominees, studentData) => {
+    if (!nominees.length) return [];
+    
+    const bookshelf = studentData.bookshelf || [];
+    const completedBooks = bookshelf.filter(book => book.completed);
+    const inBookshelf = bookshelf.map(book => book.bookId);
+    
+    // Get available books (not in bookshelf or completed)
+    const availableBooks = nominees.filter(book => !inBookshelf.includes(book.id));
+    
+    if (availableBooks.length === 0) {
+      return [{
+        type: 'completed',
+        title: 'All books completed!',
+        books: [],
+        message: 'Amazing! You\'ve added all available books to your bookshelf!'
+      }];
+    }
+    
+    const recommendations = [];
+    
+    // Helper function to get book page count
+    const getPageCount = (book) => book.pages || book.pageCount || 0;
+    
+    // Helper function to check if book matches grade
+    const matchesGrade = (book, grade) => {
+      const gradeLevels = book.gradeLevels || '';
+      return gradeLevels.includes(grade?.toString());
+    };
+    
+    // 1. Quick Reads (under 150 pages)
+    const quickReads = availableBooks
+      .filter(book => {
+        const pages = getPageCount(book);
+        return pages > 0 && pages <= 150;
+      })
+      .sort((a, b) => getPageCount(a) - getPageCount(b))
+      .slice(0, 3);
+    
+    if (quickReads.length > 0) {
+      recommendations.push({
+        type: 'quick',
+        title: 'Quick Reads',
+        books: quickReads,
+        subtitle: 'Short & sweet victories'
+      });
+    }
+    
+    // 2. Perfect for Your Grade
+    const gradeBooks = availableBooks
+      .filter(book => matchesGrade(book, studentData.grade))
+      .slice(0, 3);
+    
+    if (gradeBooks.length > 0) {
+      recommendations.push({
+        type: 'grade',
+        title: `Perfect for Grade ${studentData.grade}`,
+        books: gradeBooks,
+        subtitle: 'Just right for you'
+      });
+    }
+    
+    // 3. Long Adventures (over 300 pages)
+    const longBooks = availableBooks
+      .filter(book => {
+        const pages = getPageCount(book);
+        return pages > 300;
+      })
+      .sort((a, b) => getPageCount(b) - getPageCount(a))
+      .slice(0, 3);
+    
+    if (longBooks.length > 0) {
+      recommendations.push({
+        type: 'long',
+        title: 'Epic Adventures',
+        books: longBooks,
+        subtitle: 'Dive deep into great stories'
+      });
+    }
+    
+    // 4. If they've completed books, recommend similar categories
+    if (completedBooks.length > 0) {
+      const completedCategories = completedBooks.map(book => {
+        const nominee = nominees.find(n => n.id === book.bookId);
+        return nominee?.displayCategory || nominee?.internalCategory;
+      }).filter(Boolean);
+      
+      const categoryMatches = availableBooks.filter(book => 
+        completedCategories.some(cat => 
+          book.displayCategory?.includes(cat) || book.internalCategory?.includes(cat)
+        )
+      ).slice(0, 3);
+      
+      if (categoryMatches.length > 0) {
+        recommendations.push({
+          type: 'similar',
+          title: 'More Like Your Favorites',
+          books: categoryMatches,
+          subtitle: 'Based on what you\'ve read'
+        });
+      }
+    }
+    
+    // If no specific recommendations, show popular categories
+    if (recommendations.length === 0) {
+      const categoryOrder = [
+        'Chapter Books',
+        'Picture Books', 
+        'Graphic',
+        'Catholic',
+        'Classic'
+      ];
+      
+      for (const category of categoryOrder) {
+        const categoryBooks = availableBooks.filter(book =>
+          book.displayCategory?.includes(category) || book.internalCategory?.includes(category)
+        ).slice(0, 3);
+        
+        if (categoryBooks.length > 0) {
+          recommendations.push({
+            type: 'category',
+            title: `Explore ${category}`,
+            books: categoryBooks,
+            subtitle: 'Popular with readers like you'
+          });
+          break;
+        }
+      }
+    }
+    
+    return recommendations.slice(0, 1); // Show only 1 recommendation section to save space
   };
 
   useEffect(() => {
@@ -613,21 +747,6 @@ const [isUpdatingGrade, setIsUpdatingGrade] = useState(false);
         const nextGoal = getNextAchievement(currentBooks, tiers);
         setNextAchievement(nextGoal);
         
-        // Load grade stats
-        const gradeData = await getGradeStats(
-          firebaseStudentData.entityId,
-          firebaseStudentData.schoolId,
-          firebaseStudentData.grade
-        );
-        setGradeStats(gradeData);
-        
-        // Load school stats
-        const schoolData = await getSchoolStats(
-          firebaseStudentData.entityId,
-          firebaseStudentData.schoolId
-        );
-        setSchoolStats(schoolData);
-        
         // Generate action items
         const actions = generateActionItems(
           firebaseStudentData.bookshelf || [],
@@ -635,29 +754,32 @@ const [isUpdatingGrade, setIsUpdatingGrade] = useState(false);
         );
         setActionItems(actions);
         
-        // Load today's reading stats
-        const todayStats = await getTodayReadingStats(
-          firebaseStudentData.entityId,
-          firebaseStudentData.schoolId,
-          firebaseStudentData.id
-        );
-        setTodayReadingStats(todayStats);
+        // Load reading stats
+        await loadReadingStats(firebaseStudentData);
+        
+        // Load latest saint unlock
+        await loadLatestSaintUnlock(firebaseStudentData);
         
         console.log('🎯 All dashboard data loaded successfully!');
       }
       
-      // Calculate dashboard data
+      // UPDATED: Calculate dashboard data with proper goals
       const bookshelf = firebaseStudentData.bookshelf || [];
       const completedBooks = bookshelf.filter(book => book.completed);
       const inProgressBooks = bookshelf.filter(book => !book.completed && book.currentProgress > 0);
       
+      // Find currently reading book (most recently updated in progress book)
+      const currentlyReadingBook = inProgressBooks.length > 0 ? 
+        inProgressBooks.sort((a, b) => (b.lastUpdated || 0) - (a.lastUpdated || 0))[0] : null;
+      
+      setCurrentlyReading(currentlyReadingBook);
+      
       setDashboardData({
         booksReadThisYear: firebaseStudentData.booksSubmittedThisYear || 0,
         totalBooksRead: firebaseStudentData.lifetimeBooksSubmitted || 0,
-        saintCount: firebaseStudentData.saintUnlocks?.length || 0,
-        readingStreak: firebaseStudentData.readingStreaks?.current || 0,
-        currentlyReading: inProgressBooks.length > 0 ? inProgressBooks[0] : null,
-        recentlyCompleted: completedBooks.slice(-3).reverse()
+        saintCount: firebaseStudentData.unlockedSaints?.length || 0,
+        currentYearGoal: firebaseStudentData.currentYearGoal || 10,  // Use student's actual goal
+        lifetimeGoal: firebaseStudentData.lifetimeGoal || 100       // Use student's actual goal
       });
 
     } catch (error) {
@@ -666,102 +788,6 @@ const [isUpdatingGrade, setIsUpdatingGrade] = useState(false);
     }
     
     setIsLoading(false);
-  };
-
-  // Generate smart book recommendations
-  const generateSmartRecommendations = (nominees, studentData) => {
-    if (!nominees.length) return [];
-    
-    const bookshelf = studentData.bookshelf || [];
-    const completedBooks = bookshelf.filter(book => book.completed);
-    const inBookshelf = bookshelf.map(book => book.bookId);
-    
-    // Get available books (not in bookshelf)
-    const availableBooks = nominees.filter(book => !inBookshelf.includes(book.id));
-    
-    if (availableBooks.length === 0) return [];
-    
-    // Smart recommendation logic
-    const recommendations = [];
-    
-    // 1. If they've completed books, recommend similar categories
-    if (completedBooks.length > 0) {
-      const completedCategories = completedBooks.map(book => {
-        const nominee = nominees.find(n => n.id === book.bookId);
-        return nominee?.displayCategory || nominee?.internalCategory;
-      }).filter(Boolean);
-      
-      // Find books in same categories
-      const categoryMatches = availableBooks.filter(book => 
-        completedCategories.some(cat => 
-          book.displayCategory?.includes(cat) || book.internalCategory?.includes(cat)
-        )
-      );
-      
-      if (categoryMatches.length > 0) {
-        recommendations.push({
-          type: 'similar',
-          title: 'More like what you\'ve read',
-          books: categoryMatches.slice(0, 3)
-        });
-      }
-    }
-    
-    // 2. Grade-appropriate recommendations
-    const gradeBooks = availableBooks.filter(book => {
-      const gradeLevels = book.gradeLevels || '';
-      return gradeLevels.includes(studentData.grade?.toString());
-    });
-    
-    if (gradeBooks.length > 0) {
-      recommendations.push({
-        type: 'grade',
-        title: `Perfect for ${studentData.grade}th graders`,
-        books: gradeBooks.slice(0, 3)
-      });
-    }
-    
-    // 3. Quick reads (shorter books)
-    const quickReads = availableBooks.filter(book => {
-      const pages = book.pages || book.pageCount || 0;
-      return pages > 0 && pages <= 200;
-    }).sort((a, b) => (a.pages || a.pageCount || 0) - (b.pages || b.pageCount || 0));
-    
-    if (quickReads.length > 0) {
-      recommendations.push({
-        type: 'quick',
-        title: 'Quick victories',
-        books: quickReads.slice(0, 3)
-      });
-    }
-    
-    // 4. If no specific recommendations, show popular categories
-    if (recommendations.length === 0) {
-      const categoryOrder = [
-        'Chapter Books',
-        'Picture Books', 
-        'Graphic',
-        'Catholic',
-        'Classic'
-      ];
-      
-      for (const category of categoryOrder) {
-        const categoryBooks = availableBooks.filter(book =>
-          book.displayCategory?.includes(category) || book.internalCategory?.includes(category)
-        );
-        
-        if (categoryBooks.length > 0) {
-          recommendations.push({
-            type: 'category',
-            title: `Explore ${category.toLowerCase()}`,
-            books: categoryBooks.slice(0, 3)
-          });
-          break;
-        }
-      }
-    }
-    
-    return recommendations.slice(0, 2); // Max 2 recommendation sections
   };
 
   const getTimeBasedGreeting = () => {
@@ -775,13 +801,14 @@ const [isUpdatingGrade, setIsUpdatingGrade] = useState(false);
     return `Night owl, ${firstName}!`;
   };
 
+  // UPDATED: Better motivational messages
   const getMotivationalMessage = () => {
-    const { booksReadThisYear, readingStreak } = dashboardData;
-    const { currentYearGoal } = studentData || {};
+    const { booksReadThisYear, currentYearGoal } = dashboardData;
+    const { streak } = readingStats;
     const daysUntilEnd = getDaysUntilCompetitionEnd();
 
-    if (daysUntilEnd <= 7) {
-      return '🏆 Final week! Every book counts for the championship!';
+    if (daysUntilEnd <= 30) {
+      return `📅 ${daysUntilEnd} days left in the reading challenge!`;
     }
     if (booksReadThisYear >= currentYearGoal) {
       return '🎉 Goal conquered! You\'re officially a reading champion!';
@@ -789,10 +816,10 @@ const [isUpdatingGrade, setIsUpdatingGrade] = useState(false);
     if (booksReadThisYear >= currentYearGoal * 0.9) {
       return '⚡ SO close to your goal! One more book might do it!';
     }
-    if (readingStreak >= 14) {
+    if (streak >= 14) {
       return '🔥 Two week streak! You\'re absolutely unstoppable!';
     }
-    if (readingStreak >= 7) {
+    if (streak >= 7) {
       return '🔥 One week streak! The reading force is strong with you!';
     }
     if (actionItems.some(item => item.type === 'ready_submit')) {
@@ -802,64 +829,66 @@ const [isUpdatingGrade, setIsUpdatingGrade] = useState(false);
   };
 
   // NEW: Handle grade update
-const handleGradeUpdate = async () => {
-  if (!selectedGrade || !studentData) return;
-  
-  setIsUpdatingGrade(true);
-  try {
-    const { updateStudentGrade } = await import('../lib/firebase');
+  const handleGradeUpdate = async () => {
+    if (!selectedGrade || !studentData) return;
     
-    const result = await updateStudentGrade(
-      studentData.id,
-      studentData.entityId, 
-      studentData.schoolId,
-      selectedGrade
-    );
-    
-    if (result.success) {
-      // Refresh student data
-      await loadEnhancedDashboardData();
-      setShowGradeUpdate(false);
+    setIsUpdatingGrade(true);
+    try {
+      const { updateStudentGrade } = await import('../lib/firebase');
       
-      if (result.isAlumni) {
-        setShowComingSoon('🎓 Congratulations! You\'ve graduated to Alumni status!');
-      } else {
-        setShowComingSoon(`📈 Welcome to Grade ${result.newGrade}! Ready for a new year of reading!`);
+      const result = await updateStudentGrade(
+        studentData.id,
+        studentData.entityId, 
+        studentData.schoolId,
+        selectedGrade
+      );
+      
+      if (result.success) {
+        // Refresh student data
+        await loadEnhancedDashboardData();
+        setShowGradeUpdate(false);
+        
+        if (result.isAlumni) {
+          setShowComingSoon('🎓 Congratulations! You\'ve graduated to Alumni status!');
+        } else {
+          setShowComingSoon(`📈 Welcome to Grade ${result.newGrade}! Ready for a new year of reading!`);
+        }
+        
+        setTimeout(() => setShowComingSoon(''), 4000);
       }
       
-      setTimeout(() => setShowComingSoon(''), 4000);
+    } catch (error) {
+      console.error('Error updating grade:', error);
+      setShowComingSoon('❌ Error updating grade. Please try again.');
+      setTimeout(() => setShowComingSoon(''), 3000);
     }
     
-  } catch (error) {
-    console.error('Error updating grade:', error);
-    setShowComingSoon('❌ Error updating grade. Please try again.');
-    setTimeout(() => setShowComingSoon(''), 3000);
-  }
-  
-  setIsUpdatingGrade(false);
-};
+    setIsUpdatingGrade(false);
+  };
   
   const handleTabClick = (tabName) => {
-  if (tabName === 'Dashboard') {
-    setShowComingSoon('You\'re already here! 📍');
-    setTimeout(() => setShowComingSoon(''), 1500);
-  } else if (tabName === 'Nominees') {
-    router.push('/student-nominees');
-  } else if (tabName === 'Bookshelf') {
-    router.push('/student-bookshelf');
-  } else if (tabName === 'Habits') {
-    router.push('/student-healthy-habits');
-  } else if (tabName === 'Saints') {
-    router.push('/student-saints');
-  } else if (tabName === 'Stats') {
-    router.push('/student-stats');
-  }
-};
+    if (tabName === 'Dashboard') {
+      setShowComingSoon('You\'re already here! 📍');
+      setTimeout(() => setShowComingSoon(''), 1500);
+    } else if (tabName === 'Nominees') {
+      router.push('/student-nominees');
+    } else if (tabName === 'Bookshelf') {
+      router.push('/student-bookshelf');
+    } else if (tabName === 'Habits') {
+      router.push('/student-healthy-habits');
+    } else if (tabName === 'Saints') {
+      router.push('/student-saints');
+    } else if (tabName === 'Stats') {
+      router.push('/student-stats');
+    }
+  };
 
+  // UPDATED: Better action item handling
   const handleActionItemClick = (action) => {
     switch (action.type) {
       case 'ready_submit':
       case 'retry_quiz':
+      case 'take_quiz':
       case 'continue_reading':
         router.push(`/student-bookshelf?book=${action.bookId}`);
         break;
@@ -876,13 +905,17 @@ const handleGradeUpdate = async () => {
     }
   };
 
-  const getCurrentlyReadingTitle = () => {
-    if (!dashboardData.currentlyReading) return null;
-    const book = nominees.find(n => n.id === dashboardData.currentlyReading.bookId);
-    return book ? book.title : 'Unknown Book';
+  // UPDATED: Handle recommendation clicks
+  const handleRecommendationClick = (book) => {
+    // Navigate to nominees page with the specific book
+    router.push(`/student-nominees?book=${book.id}`);
   };
 
-  const getDaysUntilEnd = getDaysUntilCompetitionEnd();
+  const getCurrentlyReadingTitle = () => {
+    if (!currentlyReading) return null;
+    const book = nominees.find(n => n.id === currentlyReading.bookId);
+    return book ? book.title : 'Unknown Book';
+  };
 
   // Show loading while data loads
   if (authLoading || isLoading || !studentData || !currentTheme) {
@@ -929,7 +962,7 @@ const handleGradeUpdate = async () => {
         paddingBottom: '80px'
       }}>
         
-        {/* 🍔 UPDATED HEADER WITH HAMBURGER MENU */}
+        {/* UPDATED HEADER - Settings removed, only hamburger menu */}
         <div style={{
           background: `linear-gradient(135deg, ${currentTheme.primary}F0, ${currentTheme.secondary}F0)`,
           backdropFilter: 'blur(20px)',
@@ -940,203 +973,179 @@ const handleGradeUpdate = async () => {
           zIndex: 100,
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between'
+          justifyContent: 'center'
         }}>
-          {/* Settings Button - moved to left side */}
-<button
-  onClick={() => router.push('/student-settings')}
-  style={{
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    border: 'none',
-    borderRadius: '50%',
-    width: '44px',
-    height: '44px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '18px',
-    cursor: 'pointer',
-    color: currentTheme.textPrimary,
-    backdropFilter: 'blur(10px)',
-    flexShrink: 0,
-    touchAction: 'manipulation',
-    WebkitTapHighlightColor: 'transparent'
-  }}
->
-  ⚙️
-</button>
+          {/* CENTERED TITLE */}
+          <h1 style={{
+            fontSize: '24px',
+            fontWeight: '400',
+            color: currentTheme.textPrimary,
+            margin: '0',
+            letterSpacing: '1px',
+            fontFamily: 'Didot, "Times New Roman", serif',
+            textAlign: 'center'
+          }}>
+            Dashboard
+          </h1>
 
-<h1 style={{
-  fontSize: '24px',
-  fontWeight: '400',
-  color: currentTheme.textPrimary,
-  margin: '0',
-  letterSpacing: '1px',
-  fontFamily: 'Didot, "Times New Roman", serif',
-  textAlign: 'center',
-  flex: 1
-}}>
-  Dashboard
-</h1>
+          {/* 🍔 Hamburger Menu - now includes Settings */}
+          <div className="nav-menu-container" style={{ position: 'absolute', right: '20px' }}>
+            <button
+              onClick={() => {
+                console.log('Hamburger clicked, current state:', showNavMenu);
+                setShowNavMenu(!showNavMenu);
+              }}
+              style={{
+                backgroundColor: 'rgba(255,255,255,0.3)',
+                border: 'none',
+                borderRadius: '50%',
+                width: '44px',
+                height: '44px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '18px',
+                cursor: 'pointer',
+                color: currentTheme.textPrimary,
+                backdropFilter: 'blur(10px)',
+                flexShrink: 0,
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent'
+              }}
+            >
+              ☰
+            </button>
 
-{/* 🍔 Hamburger Menu - now alone on the right */}
-<div className="nav-menu-container" style={{ position: 'relative' }}>
-              <button
-                onClick={() => {
-                  console.log('Hamburger clicked, current state:', showNavMenu);
-                  setShowNavMenu(!showNavMenu);
-                }}
-                style={{
-                  backgroundColor: 'rgba(255,255,255,0.3)',
-                  border: 'none',
-                  borderRadius: '50%',
-                  width: '44px',
-                  height: '44px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '18px',
-                  cursor: 'pointer',
-                  color: currentTheme.textPrimary,
-                  backdropFilter: 'blur(10px)',
-                  flexShrink: 0,
-                  touchAction: 'manipulation',
-                  WebkitTapHighlightColor: 'transparent'
-                }}
-              >
-                ☰
-              </button>
-
-              {/* Dropdown Menu */}
-              {showNavMenu && (
+            {/* Dropdown Menu */}
+            {showNavMenu && (
+              <div style={{
+                position: 'absolute',
+                top: '50px',
+                right: '0',
+                backgroundColor: currentTheme.surface,
+                borderRadius: '12px',
+                minWidth: '180px',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                backdropFilter: 'blur(20px)',
+                border: `2px solid ${currentTheme.primary}60`,
+                overflow: 'hidden',
+                zIndex: 9999
+              }}>
+                {navMenuItems.map((item, index) => (
+                  <button
+                    key={item.path}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      console.log('Clicking:', item.path, 'Current:', item.current, 'Item:', item);
+                      setShowNavMenu(false);
+                      if (!item.current) {
+                        setTimeout(() => {
+                          console.log('Navigating to:', item.path);
+                          router.push(item.path);
+                        }, 100);
+                      } else {
+                        console.log('Already on current page, not navigating');
+                      }
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      backgroundColor: item.current ? `${currentTheme.primary}30` : 'transparent',
+                      border: 'none',
+                      borderBottom: index < navMenuItems.length - 1 ? `1px solid ${currentTheme.primary}40` : 'none',
+                      cursor: item.current ? 'default' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      fontSize: '14px',
+                      color: currentTheme.textPrimary,
+                      fontWeight: item.current ? '600' : '500',
+                      textAlign: 'left',
+                      touchAction: 'manipulation',
+                      WebkitTapHighlightColor: 'transparent',
+                      transition: 'background-color 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!item.current) {
+                        e.target.style.backgroundColor = `${currentTheme.primary}20`;
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!item.current) {
+                        e.target.style.backgroundColor = 'transparent';
+                      }
+                    }}
+                  >
+                    <span style={{ fontSize: '16px' }}>{item.icon}</span>
+                    <span>{item.name}</span>
+                    {item.current && (
+                      <span style={{ marginLeft: 'auto', fontSize: '12px', color: currentTheme.primary }}>●</span>
+                    )}
+                  </button>
+                ))}
+                
+                {/* 🔔 Notification Toggle */}
                 <div style={{
-                  position: 'absolute',
-                  top: '50px',
-                  right: '0',
-                  backgroundColor: currentTheme.surface,
-                  borderRadius: '12px',
-                  minWidth: '180px',
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-                  backdropFilter: 'blur(20px)',
-                  border: `2px solid ${currentTheme.primary}60`,
-                  overflow: 'hidden',
-                  zIndex: 9999
+                  padding: '12px 16px',
+                  borderTop: `1px solid ${currentTheme.primary}40`,
+                  backgroundColor: `${currentTheme.primary}10`
                 }}>
-                  {navMenuItems.map((item, index) => (
-                    <button
-                      key={item.path}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        console.log('Clicking:', item.path, 'Current:', item.current, 'Item:', item);
-                        setShowNavMenu(false);
-                        if (!item.current) {
-                          setTimeout(() => {
-                            console.log('Navigating to:', item.path);
-                            router.push(item.path);
-                          }, 100);
-                        } else {
-                          console.log('Already on current page, not navigating');
-                        }
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '12px 16px',
-                        backgroundColor: item.current ? `${currentTheme.primary}30` : 'transparent',
-                        border: 'none',
-                        borderBottom: index < navMenuItems.length - 1 ? `1px solid ${currentTheme.primary}40` : 'none',
-                        cursor: item.current ? 'default' : 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        fontSize: '14px',
-                        color: currentTheme.textPrimary,
-                        fontWeight: item.current ? '600' : '500',
-                        textAlign: 'left',
-                        touchAction: 'manipulation',
-                        WebkitTapHighlightColor: 'transparent',
-                        transition: 'background-color 0.2s ease'
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!item.current) {
-                          e.target.style.backgroundColor = `${currentTheme.primary}20`;
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!item.current) {
-                          e.target.style.backgroundColor = 'transparent';
-                        }
-                      }}
-                    >
-                      <span style={{ fontSize: '16px' }}>{item.icon}</span>
-                      <span>{item.name}</span>
-                      {item.current && (
-                        <span style={{ marginLeft: 'auto', fontSize: '12px', color: currentTheme.primary }}>●</span>
-                      )}
-                    </button>
-                  ))}
-                  
-                  {/* 🔔 Notification Toggle */}
-                  <div style={{
-                    padding: '12px 16px',
-                    borderTop: `1px solid ${currentTheme.primary}40`,
-                    backgroundColor: `${currentTheme.primary}10`
-                  }}>
-                    <button
-                      onClick={async (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        
-                        if (notificationProcessing) return;
-                        
-                        setNotificationProcessing(true);
-                        console.log('Requesting notifications...');
-                        
-                        try {
-                          const enabled = await requestNotificationPermission();
-                          console.log('Notifications enabled:', enabled);
-                        } catch (error) {
-                          console.error('Notification error:', error);
-                        } finally {
-                          setNotificationProcessing(false);
-                          setTimeout(() => {
-                            setShowNavMenu(false);
-                          }, 1000);
-                        }
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        backgroundColor: notificationsEnabled ? `${currentTheme.primary}30` : currentTheme.surface,
-                        border: `2px solid ${notificationsEnabled ? currentTheme.primary : currentTheme.textSecondary}60`,
-                        borderRadius: '8px',
-                        cursor: notificationProcessing ? 'wait' : 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        fontSize: '12px',
-                        color: currentTheme.textPrimary,
-                        fontWeight: '600',
-                        touchAction: 'manipulation',
-                        WebkitTapHighlightColor: 'transparent',
-                        transition: 'all 0.2s ease',
-                        opacity: notificationProcessing ? 0.7 : 1
-                      }}
-                    >
-                      <span>
-                        {notificationProcessing ? '⏳' : (notificationsEnabled ? '🔔' : '🔕')}
-                      </span>
-                      <span>
-                        {notificationProcessing ? 'Processing...' : (notificationsEnabled ? 'Notifications On' : 'Enable Notifications')}
-                      </span>
-                    </button>
-                  </div>
+                  <button
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      
+                      if (notificationProcessing) return;
+                      
+                      setNotificationProcessing(true);
+                      console.log('Requesting notifications...');
+                      
+                      try {
+                        const enabled = await requestNotificationPermission();
+                        console.log('Notifications enabled:', enabled);
+                      } catch (error) {
+                        console.error('Notification error:', error);
+                      } finally {
+                        setNotificationProcessing(false);
+                        setTimeout(() => {
+                          setShowNavMenu(false);
+                        }, 1000);
+                      }
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      backgroundColor: notificationsEnabled ? `${currentTheme.primary}30` : currentTheme.surface,
+                      border: `2px solid ${notificationsEnabled ? currentTheme.primary : currentTheme.textSecondary}60`,
+                      borderRadius: '8px',
+                      cursor: notificationProcessing ? 'wait' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      fontSize: '12px',
+                      color: currentTheme.textPrimary,
+                      fontWeight: '600',
+                      touchAction: 'manipulation',
+                      WebkitTapHighlightColor: 'transparent',
+                      transition: 'all 0.2s ease',
+                      opacity: notificationProcessing ? 0.7 : 1
+                    }}
+                  >
+                    <span>
+                      {notificationProcessing ? '⏳' : (notificationsEnabled ? '🔔' : '🔕')}
+                    </span>
+                    <span>
+                      {notificationProcessing ? 'Processing...' : (notificationsEnabled ? 'Notifications On' : 'Enable Notifications')}
+                    </span>
+                  </button>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
+        </div>
 
-        {/* WELCOME SECTION - Updated styling to match other pages */}
+        {/* WELCOME SECTION */}
         <div style={{ padding: '20px' }}>
           {/* Welcome Card with Competition Countdown */}
           <div style={{
@@ -1179,7 +1188,7 @@ const handleGradeUpdate = async () => {
                   fontWeight: '600',
                   color: currentTheme.textPrimary 
                 }}>
-                  Lux Libris Challenge ends in {getDaysUntilEnd} days!
+                  Lux Libris Award ends in {getDaysUntilCompetitionEnd()} days!
                 </div>
                 <div style={{ 
                   fontSize: '12px',
@@ -1190,12 +1199,35 @@ const handleGradeUpdate = async () => {
               </div>
             </div>
           </div>
+
+          {/* MOVED TO TOP: Progress Wheels */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '16px',
+            marginBottom: '20px'
+          }}>
+            <ProgressWheel
+              title="This Year"
+              current={dashboardData.booksReadThisYear}
+              goal={dashboardData.currentYearGoal}
+              color={currentTheme.primary}
+              emoji="📖"
+            />
+            <ProgressWheel
+              title="Lifetime Journey"
+              current={dashboardData.totalBooksRead}
+              goal={dashboardData.lifetimeGoal}
+              color={currentTheme.accent}
+              emoji="🏆"
+            />
+          </div>
         </div>
 
-        {/* CONTENT - keeping all existing content sections... */}
+        {/* CONTENT */}
         <div style={{ padding: '0 20px 20px' }}>
           
-          {/* Action Items - What Should I Do Next? */}
+          {/* UPDATED: Action Items - Expandable */}
           {actionItems.length > 0 && (
             <div style={{
               backgroundColor: currentTheme.surface,
@@ -1205,19 +1237,44 @@ const handleGradeUpdate = async () => {
               boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
               border: `2px solid ${currentTheme.primary}30`
             }}>
-              <h3 style={{
-                fontSize: '18px',
-                fontWeight: '600',
-                color: currentTheme.textPrimary,
-                margin: '0 0 16px 0',
+              <div style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px'
+                justifyContent: 'space-between',
+                marginBottom: '16px'
               }}>
-                ✨ What should I do next?
-              </h3>
+                <h3 style={{
+                  fontSize: '18px',
+                  fontWeight: '600',
+                  color: currentTheme.textPrimary,
+                  margin: '0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  ✨ What should I do next?
+                </h3>
+                {actionItems.length > 1 && (
+                  <button
+                    onClick={() => setShowAllActionItems(!showAllActionItems)}
+                    style={{
+                      backgroundColor: `${currentTheme.primary}20`,
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '6px 12px',
+                      color: currentTheme.textPrimary,
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {showAllActionItems ? 'Show Less' : `+${actionItems.length - 1} More`}
+                  </button>
+                )}
+              </div>
               
-              {actionItems.slice(0, 3).map((action, index) => (
+              {/* Show first action item or all if expanded */}
+              {(showAllActionItems ? actionItems : actionItems.slice(0, 1)).map((action, index) => (
                 <div 
                   key={index}
                   onClick={() => handleActionItemClick(action)}
@@ -1225,7 +1282,7 @@ const handleGradeUpdate = async () => {
                     backgroundColor: action.priority === 1 ? `${currentTheme.primary}20` : `${currentTheme.accent}10`,
                     borderRadius: '12px',
                     padding: '12px',
-                    marginBottom: index < 2 ? '8px' : '0',
+                    marginBottom: index < (showAllActionItems ? actionItems.length - 1 : 0) ? '8px' : '0',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '12px',
@@ -1258,8 +1315,8 @@ const handleGradeUpdate = async () => {
             </div>
           )}
 
-          {/* Currently Reading - Smart Link to Bookshelf */}
-          {dashboardData.currentlyReading && (
+          {/* UPDATED: Currently Reading - Properly wired */}
+          {currentlyReading && (
             <div style={{
               backgroundColor: currentTheme.surface,
               borderRadius: '16px',
@@ -1285,7 +1342,7 @@ const handleGradeUpdate = async () => {
               </div>
               
               <button
-                onClick={() => router.push(`/student-bookshelf?book=${dashboardData.currentlyReading.bookId}`)}
+                onClick={() => router.push(`/student-bookshelf?book=${currentlyReading.bookId}`)}
                 style={{
                   width: '100%',
                   backgroundColor: `${currentTheme.primary}20`,
@@ -1324,7 +1381,14 @@ const handleGradeUpdate = async () => {
                     color: currentTheme.textSecondary,
                     margin: 0
                   }}>
-                    {Math.round((dashboardData.currentlyReading.currentProgress / (dashboardData.currentlyReading.totalPages || dashboardData.currentlyReading.totalMinutes || 1)) * 100)}% complete - Tap to continue
+                    {(() => {
+                      const book = nominees.find(n => n.id === currentlyReading.bookId);
+                      const total = currentlyReading.format === 'audiobook' ? 
+                        (book?.totalMinutes || currentlyReading.totalMinutes) : 
+                        (book?.pages || book?.pageCount || currentlyReading.totalPages);
+                      const progress = total > 0 ? Math.round((currentlyReading.currentProgress / total) * 100) : 0;
+                      return `${progress}% complete - Tap to continue`;
+                    })()}
                   </p>
                 </div>
                 <span style={{ color: currentTheme.primary, fontSize: '16px' }}>→</span>
@@ -1332,7 +1396,7 @@ const handleGradeUpdate = async () => {
             </div>
           )}
 
-          {/* Smart Book Recommendations */}
+          {/* UPDATED: Smart Book Recommendations */}
           {smartRecommendations.length > 0 && (
             <div style={{
               backgroundColor: currentTheme.surface,
@@ -1341,39 +1405,17 @@ const handleGradeUpdate = async () => {
               marginBottom: '20px',
               boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
             }}>
-              <div style={{
+              <h3 style={{
+                fontSize: '18px',
+                fontWeight: '600',
+                color: currentTheme.textPrimary,
+                margin: '0 0 16px 0',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'space-between',
-                marginBottom: '16px'
+                gap: '8px'
               }}>
-                <h3 style={{
-                  fontSize: '18px',
-                  fontWeight: '600',
-                  color: currentTheme.textPrimary,
-                  margin: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}>
-                  🎯 Recommended for You
-                </h3>
-                <button
-                  onClick={() => router.push('/student-nominees')}
-                  style={{
-                    backgroundColor: `${currentTheme.primary}20`,
-                    border: 'none',
-                    borderRadius: '8px',
-                    padding: '6px 12px',
-                    color: currentTheme.textPrimary,
-                    fontSize: '12px',
-                    fontWeight: '600',
-                    cursor: 'pointer'
-                  }}
-                >
-                  View All
-                </button>
-              </div>
+                🎯 Recommended for You
+              </h3>
               
               {smartRecommendations.map((rec, recIndex) => (
                 <div key={recIndex} style={{ marginBottom: recIndex < smartRecommendations.length - 1 ? '16px' : '0' }}>
@@ -1381,54 +1423,86 @@ const handleGradeUpdate = async () => {
                     fontSize: '14px',
                     fontWeight: '600',
                     color: currentTheme.textPrimary,
-                    margin: '0 0 8px 0'
+                    margin: '0 0 4px 0'
                   }}>
                     {rec.title}
                   </h4>
-                  <div style={{
-                    display: 'flex',
-                    gap: '8px',
-                    overflowX: 'auto',
-                    paddingBottom: '8px'
+                  <p style={{
+                    fontSize: '12px',
+                    color: currentTheme.textSecondary,
+                    margin: '0 0 8px 0'
                   }}>
-                    {rec.books.map((book, bookIndex) => (
-                      <button
-                        key={bookIndex}
-                        onClick={() => router.push('/student-nominees')}
-                        style={{
-                          flexShrink: 0,
-                          width: '60px',
-                          height: '90px',
-                          borderRadius: '6px',
-                          border: `2px solid ${currentTheme.primary}40`,
-                          cursor: 'pointer',
-                          overflow: 'hidden',
-                          backgroundColor: currentTheme.surface,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '16px',
-                          transition: 'all 0.2s ease'
-                        }}
-                        onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-                        onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                      >
-                        {book.coverImageUrl ? (
-                          <img 
-                            src={book.coverImageUrl} 
-                            alt={book.title}
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'cover'
-                            }}
-                          />
-                        ) : (
-                          '📚'
-                        )}
-                      </button>
-                    ))}
-                  </div>
+                    {rec.subtitle || rec.message}
+                  </p>
+                  
+                  {rec.books.length > 0 ? (
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(3, 1fr)', // Always 3 columns
+                      gap: '8px'
+                    }}>
+                      {rec.books.map((book, bookIndex) => (
+                        <button
+                          key={bookIndex}
+                          onClick={() => handleRecommendationClick(book)}
+                          style={{
+                            backgroundColor: currentTheme.surface,
+                            border: `2px solid ${currentTheme.primary}40`,
+                            borderRadius: '8px',
+                            padding: '8px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            textAlign: 'center'
+                          }}
+                          onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                          onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                        >
+                          <div style={{
+                            width: '100%',
+                            height: '80px',
+                            borderRadius: '4px',
+                            overflow: 'hidden',
+                            backgroundColor: `${currentTheme.primary}10`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            marginBottom: '4px'
+                          }}>
+                            {book.coverImageUrl ? (
+                              <img 
+                                src={book.coverImageUrl} 
+                                alt={book.title}
+                                style={{
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: 'cover'
+                                }}
+                              />
+                            ) : (
+                              <span style={{ fontSize: '24px' }}>📚</span>
+                            )}
+                          </div>
+                          <div style={{
+                            fontSize: '10px',
+                            fontWeight: '600',
+                            color: currentTheme.textPrimary,
+                            lineHeight: '1.2'
+                          }}>
+                            {book.title.length > 30 ? `${book.title.substring(0, 30)}...` : book.title}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{
+                      textAlign: 'center',
+                      padding: '20px',
+                      color: currentTheme.textSecondary,
+                      fontSize: '14px'
+                    }}>
+                      {rec.message}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -1507,145 +1581,6 @@ const handleGradeUpdate = async () => {
             </div>
           )}
 
-          {/* Progress Wheels */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '16px',
-            marginBottom: '20px'
-          }}>
-            <ProgressWheel
-              title="This Year"
-              current={dashboardData.booksReadThisYear}
-              goal={studentData.currentYearGoal}
-              color={currentTheme.primary}
-              emoji="📖"
-            />
-            <ProgressWheel
-              title="Lifetime Journey"
-              current={dashboardData.totalBooksRead}
-              goal={100}
-              color={currentTheme.accent}
-              emoji="🏆"
-            />
-          </div>
-
-          {/* Grade Competition */}
-          {gradeStats && (
-            <div style={{
-              backgroundColor: currentTheme.surface,
-              borderRadius: '16px',
-              padding: '20px',
-              marginBottom: '20px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-            }}>
-              <h3 style={{
-                fontSize: '18px',
-                fontWeight: '600',
-                color: currentTheme.textPrimary,
-                margin: '0 0 16px 0',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}>
-                🥇 Your {studentData.grade}th Grade Stats
-              </h3>
-              
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(2, 1fr)',
-                gap: '12px',
-                marginBottom: '12px'
-              }}>
-                <StatChip 
-                  emoji="📚" 
-                  value={gradeStats.totalBooksSubmitted}
-                  label="books read"
-                  color={currentTheme.primary}
-                />
-                <StatChip 
-                  emoji="👥" 
-                  value={`${gradeStats.studentsWhoCompletedFirst5}/${gradeStats.totalStudents}`}
-                  label="earned certificates"
-                  color={currentTheme.accent}
-                />
-              </div>
-              
-              <div style={{
-                backgroundColor: `${currentTheme.primary}10`,
-                borderRadius: '8px',
-                padding: '12px',
-                textAlign: 'center'
-              }}>
-                <span style={{
-                  fontSize: '14px',
-                  color: currentTheme.textPrimary,
-                  fontWeight: '500'
-                }}>
-                  🔥 Your grade averages {gradeStats.averageBooksPerStudent} books per student!
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* School Pride */}
-          {schoolStats && (
-            <div style={{
-              backgroundColor: currentTheme.surface,
-              borderRadius: '16px',
-              padding: '20px',
-              marginBottom: '20px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-            }}>
-              <h3 style={{
-                fontSize: '18px',
-                fontWeight: '600',
-                color: currentTheme.textPrimary,
-                margin: '0 0 16px 0',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}>
-                🏫 School Pride
-              </h3>
-              
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(2, 1fr)',
-                gap: '12px',
-                marginBottom: '12px'
-              }}>
-                <StatChip 
-                  emoji="📖" 
-                  value={schoolStats.totalBooksSubmitted}
-                  label="total books"
-                  color={currentTheme.secondary}
-                />
-                <StatChip 
-                  emoji="👥" 
-                  value={schoolStats.totalStudents}
-                  label="students"
-                  color={currentTheme.accent}
-                />
-              </div>
-              
-              <div style={{
-                backgroundColor: `${currentTheme.secondary}20`,
-                borderRadius: '8px',
-                padding: '12px',
-                textAlign: 'center'
-              }}>
-                <span style={{
-                  fontSize: '14px',
-                  color: currentTheme.textPrimary,
-                  fontWeight: '500'
-                }}>
-                  🎉 {schoolStats.topGrade.grade}th grade is leading with {schoolStats.topGrade.books} books!
-                </span>
-              </div>
-            </div>
-          )}
-
           {/* Quick Action Buttons */}
           <div style={{
             display: 'grid',
@@ -1660,14 +1595,14 @@ const handleGradeUpdate = async () => {
               theme={currentTheme}
             />
             <QuickActionButton
-              emoji="📚"
+              emoji="📂" // Changed from 📚 to 📂
               label="My Bookshelf"
               onClick={() => router.push('/student-bookshelf')}
               theme={currentTheme}
             />
           </div>
 
-          {/* Reading Streak with Today's Stats */}
+          {/* UPDATED: Reading Habits with latest saint */}
           <div style={{
             backgroundColor: currentTheme.surface,
             borderRadius: '16px',
@@ -1688,7 +1623,7 @@ const handleGradeUpdate = async () => {
             </h3>
             
             <div style={{
-              background: dashboardData.readingStreak >= 7 
+              background: readingStats.streak >= 7 
                 ? 'linear-gradient(135deg, #FF6B35, #F7931E)'
                 : `linear-gradient(135deg, ${currentTheme.accent}80, ${currentTheme.primary}80)`,
               borderRadius: '12px',
@@ -1700,9 +1635,9 @@ const handleGradeUpdate = async () => {
             }}>
               <span style={{ 
                 fontSize: '32px',
-                animation: dashboardData.readingStreak >= 7 ? 'pulse 1.5s infinite' : 'none'
+                animation: readingStats.streak >= 7 ? 'pulse 1.5s infinite' : 'none'
               }}>
-                {dashboardData.readingStreak >= 7 ? '🔥' : '📖'}
+                {readingStats.streak >= 7 ? '🔥' : '📖'}
               </span>
               <div style={{ flex: 1 }}>
                 <div style={{
@@ -1711,13 +1646,13 @@ const handleGradeUpdate = async () => {
                   color: currentTheme.textPrimary,
                   marginBottom: '4px'
                 }}>
-                  {dashboardData.readingStreak > 0 ? `${dashboardData.readingStreak} Day Streak!` : 'Start Your Streak'}
+                  {readingStats.streak > 0 ? `${readingStats.streak} Day Streak!` : 'Start Your Streak'}
                 </div>
                 <div style={{
                   fontSize: '12px',
                   color: `${currentTheme.textPrimary}CC`
                 }}>
-                  {dashboardData.readingStreak >= 7 
+                  {readingStats.streak >= 7 
                     ? '🎉 Amazing! Keep the fire burning!' 
                     : 'Read daily to unlock saints!'}
                 </div>
@@ -1739,55 +1674,98 @@ const handleGradeUpdate = async () => {
               </button>
             </div>
 
-            {/* Today's Progress */}
-            {todayReadingStats && (
+            {/* Today's Progress + Latest Saint */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: latestSaintUnlock ? '1fr 1fr 1fr' : '1fr 1fr',
+              gap: '8px'
+            }}>
               <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(2, 1fr)',
-                gap: '8px'
+                backgroundColor: `${currentTheme.primary}20`,
+                borderRadius: '8px',
+                padding: '8px',
+                textAlign: 'center'
               }}>
                 <div style={{
-                  backgroundColor: `${currentTheme.primary}20`,
-                  borderRadius: '8px',
-                  padding: '8px',
-                  textAlign: 'center'
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  color: currentTheme.textPrimary
                 }}>
-                  <div style={{
-                    fontSize: '16px',
-                    fontWeight: 'bold',
-                    color: currentTheme.textPrimary
-                  }}>
-                    {todayReadingStats.sessionsCompleted}
-                  </div>
-                  <div style={{
-                    fontSize: '10px',
-                    color: currentTheme.textSecondary
-                  }}>
-                    sessions today
-                  </div>
+                  {readingStats.todayMinutes}
                 </div>
                 <div style={{
-                  backgroundColor: `${currentTheme.primary}20`,
-                  borderRadius: '8px',
-                  padding: '8px',
-                  textAlign: 'center'
+                  fontSize: '10px',
+                  color: currentTheme.textSecondary
                 }}>
-                  <div style={{
-                    fontSize: '16px',
-                    fontWeight: 'bold',
-                    color: currentTheme.textPrimary
-                  }}>
-                    {todayReadingStats.minutesToday}
-                  </div>
-                  <div style={{
-                    fontSize: '10px',
-                    color: currentTheme.textSecondary
-                  }}>
-                    minutes today
-                  </div>
+                  minutes today
                 </div>
               </div>
-            )}
+              <div style={{
+                backgroundColor: `${currentTheme.primary}20`,
+                borderRadius: '8px',
+                padding: '8px',
+                textAlign: 'center'
+              }}>
+                <div style={{
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  color: currentTheme.textPrimary
+                }}>
+                  {dashboardData.saintCount}
+                </div>
+                <div style={{
+                  fontSize: '10px',
+                  color: currentTheme.textSecondary
+                }}>
+                  saints unlocked
+                </div>
+              </div>
+              
+              {/* Latest Saint Unlock */}
+              {latestSaintUnlock && (
+                <button
+                  onClick={() => router.push('/student-saints')}
+                  style={{
+                    backgroundColor: `${currentTheme.primary}30`,
+                    border: `2px solid ${currentTheme.primary}`,
+                    borderRadius: '8px',
+                    padding: '4px',
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '2px'
+                  }}
+                >
+                  <img 
+                    src={`/saints/${latestSaintUnlock.id}.png`}
+                    alt={latestSaintUnlock.name}
+                    style={{
+                      width: '20px',
+                      height: '20px',
+                      objectFit: 'contain'
+                    }}
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.nextSibling.style.display = 'block';
+                    }}
+                  />
+                  <span style={{ 
+                    fontSize: '16px', 
+                    display: 'none' 
+                  }}>♔</span>
+                  <div style={{
+                    fontSize: '8px',
+                    color: currentTheme.textPrimary,
+                    fontWeight: 'bold',
+                    lineHeight: '1'
+                  }}>
+                    Latest Saint
+                  </div>
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -1859,144 +1837,166 @@ const handleGradeUpdate = async () => {
               )}
             </button>
           ))}
-      </div>
+        </div>
 
-      {/* Grade Update Modal - ADD THIS HERE */}
-      {showGradeUpdate && studentData && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.8)',
-          zIndex: 1000,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '20px'
-        }}>
+        {/* Grade Update Modal */}
+        {showGradeUpdate && studentData && (
           <div style={{
-            backgroundColor: currentTheme.surface,
-            borderRadius: '20px',
-            maxWidth: '400px',
-            width: '100%',
-            padding: '30px',
-            textAlign: 'center',
-            boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
-            border: `2px solid ${currentTheme.primary}`
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
           }}>
-            <div style={{ fontSize: '64px', marginBottom: '20px' }}>🎒</div>
-            
-            <h2 style={{
-              fontSize: '24px',
-              fontWeight: '600',
-              color: currentTheme.textPrimary,
-              marginBottom: '10px',
-              fontFamily: 'Didot, "Times New Roman", serif'
-            }}>
-              Welcome Back, {studentData.firstName}!
-            </h2>
-            
-            <p style={{
-              fontSize: '16px',
-              color: currentTheme.textSecondary,
-              marginBottom: '20px',
-              lineHeight: '1.5'
-            }}>
-              It&apos;s a new school year! What grade are you in now?
-            </p>
-            
             <div style={{
-              background: `${currentTheme.primary}20`,
-              borderRadius: '12px',
-              padding: '15px',
-              marginBottom: '20px',
-              border: `1px solid ${currentTheme.primary}40`
+              backgroundColor: currentTheme.surface,
+              borderRadius: '20px',
+              maxWidth: '400px',
+              width: '100%',
+              padding: '30px',
+              textAlign: 'center',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+              border: `2px solid ${currentTheme.primary}`
             }}>
-              <p style={{ 
-                fontSize: '14px', 
-                color: currentTheme.textPrimary,
-                margin: '0 0 10px 0',
-                fontWeight: '600'
-              }}>
-                Last year: Grade {studentData.grade}
-              </p>
-              <p style={{ 
-                fontSize: '14px', 
-                color: currentTheme.textSecondary,
-                margin: 0
-              }}>
-                Suggested: Grade {studentData.suggestedGrade}
-              </p>
-            </div>
-            
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{
-                display: 'block',
-                fontSize: '14px',
+              <div style={{ fontSize: '64px', marginBottom: '20px' }}>🎒</div>
+              
+              <h2 style={{
+                fontSize: '24px',
                 fontWeight: '600',
                 color: currentTheme.textPrimary,
-                marginBottom: '10px'
+                marginBottom: '10px',
+                fontFamily: 'Didot, "Times New Roman", serif'
               }}>
-                Select your current grade:
-              </label>
+                Welcome Back, {studentData.firstName}!
+              </h2>
               
-              <select
-                value={selectedGrade || ''}
-                onChange={(e) => setSelectedGrade(parseInt(e.target.value))}
+              <p style={{
+                fontSize: '16px',
+                color: currentTheme.textSecondary,
+                marginBottom: '20px',
+                lineHeight: '1.5'
+              }}>
+                It&apos;s a new school year! What grade are you in now?
+              </p>
+              
+              <div style={{
+                background: `${currentTheme.primary}20`,
+                borderRadius: '12px',
+                padding: '15px',
+                marginBottom: '20px',
+                border: `1px solid ${currentTheme.primary}40`
+              }}>
+                <p style={{ 
+                  fontSize: '14px', 
+                  color: currentTheme.textPrimary,
+                  margin: '0 0 10px 0',
+                  fontWeight: '600'
+                }}>
+                  Last year: Grade {studentData.grade}
+                </p>
+                <p style={{ 
+                  fontSize: '14px', 
+                  color: currentTheme.textSecondary,
+                  margin: 0
+                }}>
+                  Suggested: Grade {studentData.suggestedGrade}
+                </p>
+              </div>
+              
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: currentTheme.textPrimary,
+                  marginBottom: '10px'
+                }}>
+                  Select your current grade:
+                </label>
+                
+                <select
+                  value={selectedGrade || ''}
+                  onChange={(e) => setSelectedGrade(parseInt(e.target.value))}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    borderRadius: '8px',
+                    border: `2px solid ${currentTheme.primary}`,
+                    fontSize: '16px',
+                    backgroundColor: currentTheme.surface,
+                    color: currentTheme.textPrimary
+                  }}
+                >
+                  <option value="">Choose your grade...</option>
+                  {[4, 5, 6, 7, 8].map(grade => (
+                    <option key={grade} value={grade}>
+                      Grade {grade}
+                      {grade === studentData.suggestedGrade && ' (Suggested)'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <button
+                onClick={handleGradeUpdate}
+                disabled={!selectedGrade || isUpdatingGrade}
                 style={{
                   width: '100%',
-                  padding: '12px',
-                  borderRadius: '8px',
-                  border: `2px solid ${currentTheme.primary}`,
+                  backgroundColor: selectedGrade ? currentTheme.primary : '#E0E0E0',
+                  color: selectedGrade ? currentTheme.textPrimary : '#999',
+                  border: 'none',
+                  padding: '15px',
+                  borderRadius: '12px',
                   fontSize: '16px',
-                  backgroundColor: currentTheme.surface,
-                  color: currentTheme.textPrimary
+                  fontWeight: '600',
+                  cursor: selectedGrade ? 'pointer' : 'not-allowed',
+                  marginBottom: '10px'
                 }}
               >
-                <option value="">Choose your grade...</option>
-                {[4, 5, 6, 7, 8].map(grade => (
-                  <option key={grade} value={grade}>
-                    Grade {grade}
-                    {grade === studentData.suggestedGrade && ' (Suggested)'}
-                  </option>
-                ))}
-              </select>
+                {isUpdatingGrade ? '⏳ Updating...' : '🚀 Start New School Year!'}
+              </button>
+              
+              <p style={{
+                fontSize: '12px',
+                color: currentTheme.textSecondary,
+                margin: 0,
+                fontStyle: 'italic'
+              }}>
+                Your reading progress and saints will be preserved!
+              </p>
             </div>
-            
-            <button
-              onClick={handleGradeUpdate}
-              disabled={!selectedGrade || isUpdatingGrade}
-              style={{
-                width: '100%',
-                backgroundColor: selectedGrade ? currentTheme.primary : '#E0E0E0',
-                color: selectedGrade ? currentTheme.textPrimary : '#999',
-                border: 'none',
-                padding: '15px',
-                borderRadius: '12px',
-                fontSize: '16px',
-                fontWeight: '600',
-                cursor: selectedGrade ? 'pointer' : 'not-allowed',
-                marginBottom: '10px'
-              }}
-            >
-              {isUpdatingGrade ? '⏳ Updating...' : '🚀 Start New School Year!'}
-            </button>
-            
-            <p style={{
-              fontSize: '12px',
-              color: currentTheme.textSecondary,
-              margin: 0,
-              fontStyle: 'italic'
-            }}>
-              Your reading progress and saints will be preserved!
-            </p>
           </div>
-        </div>
-      )}
+        )}
 
-      <style jsx>{`
+        {/* Coming Soon Message */}
+        {showComingSoon && (
+          <div style={{
+            position: 'fixed',
+            bottom: '30px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: currentTheme.primary,
+            color: currentTheme.textPrimary,
+            padding: '12px 24px',
+            borderRadius: '24px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+            zIndex: 1001,
+            fontSize: '14px',
+            fontWeight: '600',
+            maxWidth: '90vw',
+            textAlign: 'center'
+          }}>
+            {showComingSoon}
+          </div>
+        )}
+
+        <style jsx>{`
           @keyframes spin {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
@@ -2011,7 +2011,7 @@ const handleGradeUpdate = async () => {
   );
 }
 
-// Progress Wheel Component - KEEP AS-IS
+// Progress Wheel Component - UPDATED with proper goals
 function ProgressWheel({ title, current, goal, color, emoji }) {
   const progress = goal > 0 ? Math.min(current / goal, 1.0) : 0;
   const circumference = 2 * Math.PI * 35;
@@ -2120,33 +2120,5 @@ function QuickActionButton({ emoji, label, onClick, theme }) {
         {label}
       </span>
     </button>
-  );
-}
-
-// Stat Chip Component - KEEP AS-IS
-function StatChip({ emoji, value, label, color }) {
-  return (
-    <div style={{
-      backgroundColor: `${color}20`,
-      borderRadius: '8px',
-      padding: '8px',
-      textAlign: 'center'
-    }}>
-      <div style={{ fontSize: '16px', marginBottom: '4px' }}>{emoji}</div>
-      <div style={{
-        fontSize: '12px',
-        fontWeight: 'bold',
-        color: '#223848',
-        marginBottom: '2px'
-      }}>
-        {value}
-      </div>
-      <div style={{
-        fontSize: '9px',
-        color: '#556B7A'
-      }}>
-        {label}
-      </div>
-    </div>
   );
 }

@@ -1,4 +1,4 @@
-// pages/student-stats/school-stats.js - Enhanced School-Wide Stats with Real Achievement Tiers
+// pages/student-stats/school-stats.js - Enhanced School-Wide Stats with Expandable Real Achievement Tiers
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../contexts/AuthContext';
@@ -20,8 +20,11 @@ export default function SchoolStats() {
   const [schoolOverview, setSchoolOverview] = useState(null);
   const [gradeComparison, setGradeComparison] = useState(null);
   const [readingCulture, setReadingCulture] = useState(null);
-  const [schoolRealRewards, setSchoolRealRewards] = useState(null); // NEW!
+  const [schoolRealRewards, setSchoolRealRewards] = useState(null);
   const [readingHabits, setReadingHabits] = useState(null);
+  
+  // NEW: Expandable state for school real rewards (copied from grade stats)
+  const [expandedSchoolRewards, setExpandedSchoolRewards] = useState(false);
 
   // Theme definitions (consistent)
   const themes = useMemo(() => ({
@@ -124,7 +127,7 @@ export default function SchoolStats() {
   { name: 'My Stats', path: '/student-stats/my-stats', icon: '📈', description: 'Personal deep dive' },
   { name: 'Grade Stats', path: '/student-stats/grade-stats', icon: '🎓', description: 'Compare with classmates' },
   { name: 'School Stats', path: '/student-stats/school-stats', icon: '🏫', description: 'School-wide progress', current: true },
-  { name: 'Diocese Stats', path: '/student-stats/diocese-stats', icon: '🌍', description: 'Coming soon!', disabled: true },
+  { name: 'Diocese Stats', path: '/student-stats/diocese-stats', icon: '⛪', description: 'Coming soon!', disabled: true },
   { name: 'Global Stats', path: '/student-stats/global-stats', icon: '🌎', description: 'Coming soon!', disabled: true },
   { name: 'Lux DNA Lab', path: '/student-stats/lux-dna-lab', icon: '🧬', description: 'Discover your reading personality' },
   { name: 'Family Battle', path: '/student-stats/family-battle', icon: '👨‍👩‍👧‍👦', description: 'Coming soon!', disabled: true }
@@ -145,6 +148,7 @@ export default function SchoolStats() {
       if (event.key === 'Escape') {
         setShowNavMenu(false);
         setShowStatsDropdown(false);
+        setExpandedSchoolRewards(false); // NEW: Added school rewards to escape handling
       }
     };
 
@@ -175,7 +179,7 @@ export default function SchoolStats() {
     router.push(option.path);
   };
 
-  // NEW: Calculate School-Wide Real Rewards Tracker (PRIVACY-FIRST)
+  // Calculate School-Wide Real Rewards Tracker (PRIVACY-FIRST) - Updated to match grade stats structure
   const calculateSchoolRealRewards = useCallback(async (studentData) => {
     try {
       const entityId = studentData.entityId;
@@ -204,7 +208,8 @@ export default function SchoolStats() {
                 type: tier.type || 'basic',
                 count: 0,
                 percentage: 0,
-                gradeBreakdown: {}
+                gradeBreakdown: {},
+                hasStudentsEarned: false // NEW: Track if any students have earned this
               });
             }
           });
@@ -226,6 +231,7 @@ export default function SchoolStats() {
         allAchievementTiers.forEach((tier, key) => {
           if (studentBooksCount >= tier.books) {
             tier.count++;
+            tier.hasStudentsEarned = true; // NEW: Mark that students have earned this
             
             // Track grade breakdown
             if (!tier.gradeBreakdown[studentGrade]) {
@@ -249,7 +255,10 @@ export default function SchoolStats() {
       const tierArray = Array.from(allAchievementTiers.values())
         .map(tier => ({
           ...tier,
-          percentage: totalSchoolStudents > 0 ? Math.round((tier.count / totalSchoolStudents) * 100) : 0
+          percentage: totalSchoolStudents > 0 ? Math.round((tier.count / totalSchoolStudents) * 100) : 0,
+          isStudentEarned: studentEarnedTiers.some(earned => 
+            earned.books === tier.books && earned.reward === tier.reward
+          )
         }))
         .sort((a, b) => a.books - b.books);
       
@@ -257,7 +266,7 @@ export default function SchoolStats() {
       studentEarnedTiers.sort((a, b) => a.books - b.books);
       
       setSchoolRealRewards({
-        schoolTiers: tierArray,
+        schoolTiers: tierArray, // Renamed to match grade stats pattern
         totalSchoolStudents,
         studentEarnedTiers,
         studentBooks,
@@ -281,6 +290,14 @@ export default function SchoolStats() {
       const studentsRef = collection(db, `entities/${entityId}/schools/${schoolId}/students`);
       const schoolSnapshot = await getDocs(studentsRef);
       
+      // Get all nominees for favorite book calculation
+      const nomineesRef = collection(db, 'masterNominees');
+      const nomineesSnapshot = await getDocs(nomineesRef);
+      const allNominees = {};
+      nomineesSnapshot.forEach(doc => {
+        allNominees[doc.id] = { id: doc.id, ...doc.data() };
+      });
+      
       // Aggregate anonymous statistics
       let totalStudents = 0;
       let totalBooksCompleted = 0;
@@ -289,11 +306,35 @@ export default function SchoolStats() {
       let studentsWithNotes = 0;
       let studentsTrackingProgress = 0;
       let studentsWithStreaks = 0;
+      
+      // NEW: School-wide Smart Superpower Tracking (same as grade stats)
+      let studentsWithAudiobooks = 0;
+      let studentsWhoSpeedRead = 0;
+      let studentsExploringGenres = 0;
+      let studentsDiscussing = 0;
+      let studentsCollecting = 0;
+      let studentsFiveStars = 0;
+      
       const gradeBreakdown = {};
       const ratingDistribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
       let totalRatings = 0;
       let totalRatingSum = 0;
       let readingLevelDistribution = {};
+      
+      // NEW: Favorite Books Tracking (same as grade stats)
+      const bookRatings = {}; // bookId -> { totalRating: X, count: Y, book: data }
+      
+      // Student's personal engagement for "YOU TOO!" messages
+      const studentBooks = studentData.booksSubmittedThisYear || 0;
+      const studentBookshelf = studentData.bookshelf || [];
+      const studentHasRated = studentBookshelf.some(book => book.rating > 0);
+      const studentHasNotes = studentBookshelf.some(book => book.notes?.trim());
+      const studentTracksProgress = studentBookshelf.some(book => book.currentProgress > 0);
+      const studentCurrentStreak = studentData.currentStreak || 0;
+      const studentUsesAudiobooks = studentBookshelf.some(book => book.format === 'audiobook');
+      const studentGenres = new Set(studentBookshelf.map(book => allNominees[book.bookId]?.displayCategory).filter(Boolean));
+      const studentIsCollecting = studentBookshelf.filter(book => !book.completed).length >= 3;
+      const studentGivesFiveStars = studentBookshelf.some(book => book.rating === 5);
       
       // Process each student anonymously
       schoolSnapshot.forEach(doc => {
@@ -321,29 +362,88 @@ export default function SchoolStats() {
         const readingLevel = student.currentReadingLevel || 'faithful_flame';
         readingLevelDistribution[readingLevel] = (readingLevelDistribution[readingLevel] || 0) + 1;
         
-        // Reading engagement metrics
+        // Analyze bookshelf for superpowers (same logic as grade stats)
         const bookshelf = student.bookshelf || [];
-        const hasRatings = bookshelf.some(book => book.rating > 0);
-        const hasNotes = bookshelf.some(book => book.notes?.trim());
-        const tracksProgress = bookshelf.some(book => book.currentProgress > 0);
         
+        // ⭐ Book Rating Stars
+        const hasRatings = bookshelf.some(book => book.rating > 0);
         if (hasRatings) studentsWithRatings++;
+        
+        // 📝 Thoughtful Notes
+        const hasNotes = bookshelf.some(book => book.notes?.trim());
         if (hasNotes) studentsWithNotes++;
+        
+        // 📊 Progress Tracking
+        const tracksProgress = bookshelf.some(book => book.currentProgress > 0);
         if (tracksProgress) studentsTrackingProgress++;
         
-        // Collect ratings for distribution
+        // 🔥 Daily Reading Fire (7+ day streak)
+        const currentStreak = student.currentStreak || 0;
+        if (currentStreak >= 7) studentsWithStreaks++;
+        
+        // 🎧 Audiobook Champions
+        const usesAudiobooks = bookshelf.some(book => book.format === 'audiobook');
+        if (usesAudiobooks) studentsWithAudiobooks++;
+        
+        // 🏃‍♂️ Speed Readers (completed book in <7 days)
+        const speedReads = bookshelf.some(book => {
+          if (!book.completed || !book.addedAt || !book.submittedAt) return false;
+          const addedDate = book.addedAt?.toDate ? book.addedAt.toDate() : new Date(book.addedAt);
+          const submittedDate = book.submittedAt?.toDate ? book.submittedAt.toDate() : new Date(book.submittedAt);
+          const daysDiff = (submittedDate - addedDate) / (1000 * 60 * 60 * 24);
+          return daysDiff <= 7;
+        });
+        if (speedReads) studentsWhoSpeedRead++;
+        
+        // 🌈 Genre Explorers (3+ different categories)
+        const studentGenres = new Set();
+        bookshelf.forEach(book => {
+          const bookData = allNominees[book.bookId];
+          if (bookData?.displayCategory) {
+            studentGenres.add(bookData.displayCategory);
+          }
+        });
+        if (studentGenres.size >= 3) studentsExploringGenres++;
+        
+        // 🗣️ Discussion Masters (uses presentation/discussion submissions)
+        const discusses = bookshelf.some(book => 
+          book.submissionType && ['presentToTeacher', 'discussWithLibrarian'].includes(book.submissionType)
+        );
+        if (discusses) studentsDiscussing++;
+        
+        // 📚 Book Collectors (3+ books in progress)
+        const booksInProgress = bookshelf.filter(book => !book.completed).length;
+        if (booksInProgress >= 3) studentsCollecting++;
+        
+        // ⭐ Five-Star Finders (gives 5-star ratings)
+        const givesFiveStars = bookshelf.some(book => book.rating === 5);
+        if (givesFiveStars) studentsFiveStars++;
+        
+        // Collect ratings for distribution and favorite book calculation
         bookshelf.forEach(book => {
           if (book.rating && book.rating >= 1 && book.rating <= 5) {
             ratingDistribution[book.rating]++;
             totalRatings++;
             totalRatingSum += book.rating;
+            
+            // Collect for favorite book calculation
+            const bookData = allNominees[book.bookId];
+            if (bookData) {
+              if (!bookRatings[book.bookId]) {
+                bookRatings[book.bookId] = { 
+                  totalRating: 0, 
+                  count: 0, 
+                  book: bookData 
+                };
+              }
+              bookRatings[book.bookId].totalRating += book.rating;
+              bookRatings[book.bookId].count++;
+            }
           }
         });
         
         // Reading streaks
-        const currentStreak = student.currentStreak || 0;
         if (currentStreak >= 3) {
-          studentsWithStreaks++;
           gradeBreakdown[grade].activeReaders++;
         }
       });
@@ -357,6 +457,108 @@ export default function SchoolStats() {
       
       const schoolAverage = totalStudents > 0 ? Math.round((totalBooksCompleted / totalStudents) * 10) / 10 : 0;
       const averageRating = totalRatings > 0 ? Math.round((totalRatingSum / totalRatings) * 10) / 10 : 0;
+      
+      // NEW: Calculate School's Favorite Book (min 5 ratings for school-wide)
+      let schoolFavoriteBook = null;
+      let highestRating = 0;
+      
+      Object.values(bookRatings).forEach(bookData => {
+        if (bookData.count >= 5) { // Higher threshold for school-wide
+          const averageRating = bookData.totalRating / bookData.count;
+          if (averageRating > highestRating) {
+            highestRating = averageRating;
+            schoolFavoriteBook = {
+              ...bookData.book,
+              averageRating: Math.round(averageRating * 10) / 10,
+              ratingCount: bookData.count
+            };
+          }
+        }
+      });
+      
+      // NEW: School-wide Smart Superpowers (25% threshold for school-wide)
+      const superpowers = [];
+      const threshold = 0.25; // 25% for school-wide (lower than grade's 30%)
+      
+      if ((studentsWithRatings / totalStudents) >= threshold) {
+        superpowers.push({ 
+          name: "⭐ Book Rating Stars!", 
+          description: "We love sharing opinions!", 
+          hasIt: studentHasRated 
+        });
+      }
+      
+      if ((studentsWithNotes / totalStudents) >= threshold) {
+        superpowers.push({ 
+          name: "📝 Thoughtful Note Writers!", 
+          description: "We capture our thoughts!", 
+          hasIt: studentHasNotes 
+        });
+      }
+      
+      if ((studentsTrackingProgress / totalStudents) >= threshold) {
+        superpowers.push({ 
+          name: "📊 Progress Trackers!", 
+          description: "We love seeing growth!", 
+          hasIt: studentTracksProgress 
+        });
+      }
+      
+      if ((studentsWithStreaks / totalStudents) >= threshold) {
+        superpowers.push({ 
+          name: "🔥 Daily Reading Fire!", 
+          description: "We read every day!", 
+          hasIt: studentCurrentStreak >= 7 
+        });
+      }
+      
+      if ((studentsWithAudiobooks / totalStudents) >= threshold) {
+        superpowers.push({ 
+          name: "🎧 Audiobook Champions!", 
+          description: "We love listening to stories!", 
+          hasIt: studentUsesAudiobooks 
+        });
+      }
+      
+      if ((studentsWhoSpeedRead / totalStudents) >= threshold) {
+        superpowers.push({ 
+          name: "🏃‍♂️ Speed Readers!", 
+          description: "We devour books quickly!", 
+          hasIt: false // TODO: calculate for student
+        });
+      }
+      
+      if ((studentsExploringGenres / totalStudents) >= threshold) {
+        superpowers.push({ 
+          name: "🌈 Genre Explorers!", 
+          description: "We read everything!", 
+          hasIt: studentGenres.size >= 3 
+        });
+      }
+      
+      if ((studentsDiscussing / totalStudents) >= threshold) {
+        superpowers.push({ 
+          name: "🗣️ Discussion Masters!", 
+          description: "We love talking about books!", 
+          hasIt: false // TODO: check student submission types
+        });
+      }
+      
+      if ((studentsCollecting / totalStudents) >= threshold) {
+        superpowers.push({ 
+          name: "📚 Book Collectors!", 
+          description: "We always have books going!", 
+          hasIt: studentIsCollecting 
+        });
+      }
+      
+      if ((studentsFiveStars / totalStudents) >= threshold) {
+        superpowers.push({ 
+          name: "⭐ Five-Star Finders!", 
+          description: "We find amazing books!", 
+          hasIt: studentGivesFiveStars 
+        });
+      }
       
       setSchoolOverview({
         totalStudents,
@@ -379,7 +581,10 @@ export default function SchoolStats() {
         activeReaders: Math.round((studentsWithStreaks / totalStudents) * 100),
         averageRating,
         ratingDistribution,
-        readingLevelDistribution
+        readingLevelDistribution,
+        superpowers, // NEW: Add calculated superpowers
+        schoolFavoriteBook, // NEW: Add calculated favorite book
+        totalStudents
       });
       
       // Calculate reading habits patterns
@@ -463,7 +668,7 @@ export default function SchoolStats() {
       // Calculate school statistics
       await calculateSchoolStats(firebaseStudentData);
       
-      // NEW: Calculate school-wide real rewards
+      // Calculate school-wide real rewards
       await calculateSchoolRealRewards(firebaseStudentData);
       
     } catch (error) {
@@ -877,7 +1082,7 @@ export default function SchoolStats() {
             </div>
           )}
 
-          {/* NEW: SCHOOL-WIDE REAL REWARDS TRACKER */}
+          {/* EXPANDABLE SCHOOL-WIDE REAL REWARDS TRACKER (COPIED FROM GRADE STATS) */}
           {schoolRealRewards && schoolRealRewards.schoolTiers.length > 0 && (
             <div style={{
               backgroundColor: currentTheme.surface,
@@ -886,14 +1091,45 @@ export default function SchoolStats() {
               marginBottom: '20px',
               boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
             }}>
-              <h3 style={{
-                fontSize: 'clamp(14px, 4vw, 16px)',
-                fontWeight: '600',
-                color: currentTheme.textPrimary,
-                margin: '0 0 16px 0'
-              }}>
-                🎯 School-Wide Real Rewards Tracker
-              </h3>
+              <div 
+                onClick={() => setExpandedSchoolRewards(!expandedSchoolRewards)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: '16px',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  borderRadius: '8px',
+                  transition: 'background-color 0.2s ease',
+                  touchAction: 'manipulation',
+                  WebkitTapHighlightColor: 'transparent'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = `${currentTheme.primary}10`;
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = 'transparent';
+                }}
+              >
+                <h3 style={{
+                  fontSize: 'clamp(14px, 4vw, 16px)',
+                  fontWeight: '600',
+                  color: currentTheme.textPrimary,
+                  margin: 0,
+                  pointerEvents: 'none'
+                }}>
+                  🎯 School-Wide Real Rewards
+                </h3>
+                <div style={{
+                  color: currentTheme.primary,
+                  fontSize: 'clamp(12px, 3vw, 14px)',
+                  fontWeight: '600',
+                  pointerEvents: 'none'
+                }}>
+                  {expandedSchoolRewards ? '▼ Show Less' : '▶ Show All'}
+                </div>
+              </div>
               
               <div style={{
                 textAlign: 'center',
@@ -908,90 +1144,118 @@ export default function SchoolStats() {
                   {schoolRealRewards.encouragingMessage}
                 </div>
               </div>
-              
-              {schoolRealRewards.schoolTiers.map((tier, index) => {
-                const isStudentEarned = schoolRealRewards.studentEarnedTiers.some(earned => 
-                  earned.books === tier.books && earned.reward === tier.reward
-                );
+
+              {(() => {
+                const earnedTiers = schoolRealRewards.schoolTiers.filter(tier => tier.hasStudentsEarned);
+                const unearnedTiers = schoolRealRewards.schoolTiers.filter(tier => !tier.hasStudentsEarned);
+                
+                // Find the next tier (lowest book requirement among unearned)
+                const nextTier = unearnedTiers.length > 0 
+                  ? unearnedTiers.reduce((next, current) => 
+                      current.books < next.books ? current : next
+                    )
+                  : null;
+                
+                const displayedTiers = expandedSchoolRewards 
+                  ? schoolRealRewards.schoolTiers 
+                  : earnedTiers.slice(0, 3);
                 
                 return (
-                  <div
-                    key={index}
-                    style={{
-                      backgroundColor: isStudentEarned ? 
-                        `${currentTheme.primary}30` : 
-                        tier.count > 0 ? `${currentTheme.primary}20` : `${currentTheme.primary}10`,
-                      borderRadius: '12px',
-                      padding: '12px',
-                      marginBottom: index < schoolRealRewards.schoolTiers.length - 1 ? '8px' : '0',
-                      border: isStudentEarned ? `2px solid ${currentTheme.primary}` : 'none',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between'
-                    }}
-                  >
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{
-                        fontSize: 'clamp(12px, 3.5vw, 14px)',
-                        fontWeight: '600',
-                        color: currentTheme.textPrimary,
-                        marginBottom: '2px'
-                      }}>
-                        {tier.reward}
-                      </div>
-                      <div style={{
-                        fontSize: 'clamp(10px, 3vw, 12px)',
-                        color: currentTheme.textSecondary,
-                        marginBottom: '4px'
-                      }}>
-                        {tier.books} books to unlock
-                        {isStudentEarned && (
-                          <span style={{
-                            color: currentTheme.primary,
+                  <>
+                    {displayedTiers.map((tier, index) => (
+                      <div
+                        key={index}
+                        style={{
+                          backgroundColor: tier.isStudentEarned ? 
+                            `${currentTheme.primary}30` : 
+                            tier.hasStudentsEarned ? `${currentTheme.primary}20` : `${currentTheme.primary}10`,
+                          borderRadius: '12px',
+                          padding: '12px',
+                          marginBottom: index < displayedTiers.length - 1 ? '8px' : '0',
+                          border: tier.isStudentEarned ? 
+                            `2px solid ${currentTheme.primary}` : 
+                            tier.hasStudentsEarned ? 'none' : `1px dashed ${currentTheme.primary}60`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between'
+                        }}
+                      >
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{
+                            fontSize: 'clamp(12px, 3.5vw, 14px)',
                             fontWeight: '600',
-                            marginLeft: '8px'
+                            color: currentTheme.textPrimary,
+                            marginBottom: '2px'
                           }}>
-                            - YOU EARNED THIS! 🎉
-                          </span>
-                        )}
+                            {tier.reward}
+                          </div>
+                          <div style={{
+                            fontSize: 'clamp(10px, 3vw, 12px)',
+                            color: currentTheme.textSecondary,
+                            marginBottom: '4px'
+                          }}>
+                            {tier.books} books to unlock
+                            {tier.isStudentEarned && (
+                              <span style={{
+                                color: currentTheme.primary,
+                                fontWeight: '600',
+                                marginLeft: '8px'
+                              }}>
+                                - YOU EARNED THIS! 🎉
+                              </span>
+                            )}
+                          </div>
+                          <div style={{
+                            fontSize: 'clamp(11px, 3vw, 12px)',
+                            fontWeight: '600',
+                            color: tier.count > 0 ? '#4CAF50' : currentTheme.textSecondary
+                          }}>
+                            {tier.count > 0 ? '🎯' : '⭕'} {tier.count} of {schoolRealRewards.totalSchoolStudents} students earned this ({tier.percentage}%)
+                          </div>
+                        </div>
+                        
+                        <div style={{
+                          minWidth: '40px',
+                          textAlign: 'center'
+                        }}>
+                          <div style={{
+                            fontSize: 'clamp(20px, 6vw, 24px)'
+                          }}>
+                            {tier.isStudentEarned ? '🏆' : tier.count > 0 ? '🎯' : '⭕'}
+                          </div>
+                        </div>
                       </div>
+                    ))}
+                    
+                    {/* SMART STATUS MESSAGE */}
+                    {!expandedSchoolRewards && (
                       <div style={{
                         fontSize: 'clamp(11px, 3vw, 12px)',
-                        fontWeight: '600',
-                        color: tier.count > 0 ? '#4CAF50' : currentTheme.textSecondary
+                        color: currentTheme.textSecondary,
+                        textAlign: 'center',
+                        marginTop: '12px',
+                        padding: '8px',
+                        backgroundColor: `${currentTheme.primary}10`,
+                        borderRadius: '8px'
                       }}>
-                        🎯 {tier.count} of {schoolRealRewards.totalSchoolStudents} students earned this ({tier.percentage}%)
+                        {nextTier ? (
+                          <>
+                            📚 Next school milestone: <strong>{nextTier.books} books for {nextTier.reward}</strong>
+                          </>
+                        ) : earnedTiers.length > 0 ? (
+                          <>
+                            🎉 <strong>Our school has earned all available rewards!</strong> What an amazing reading community! 🏆
+                          </>
+                        ) : (
+                          <>
+                            🌟 <strong>Our school is just getting started!</strong> Work together to earn your first rewards! 📖
+                          </>
+                        )}
                       </div>
-                    </div>
-                    
-                    <div style={{
-                      minWidth: '40px',
-                      textAlign: 'center'
-                    }}>
-                      <div style={{
-                        fontSize: 'clamp(20px, 6vw, 24px)'
-                      }}>
-                        {isStudentEarned ? '🏆' : tier.count > 0 ? '🎯' : '⭕'}
-                      </div>
-                    </div>
-                  </div>
+                    )}
+                  </>
                 );
-              })}
-              
-              <div style={{
-                backgroundColor: `${currentTheme.secondary}20`,
-                borderRadius: '8px',
-                padding: '12px',
-                marginTop: '12px',
-                textAlign: 'center'
-              }}>
-                <div style={{
-                  fontSize: 'clamp(11px, 3vw, 12px)',
-                  color: currentTheme.textSecondary
-                }}>
-                  These are the REAL rewards your teachers give out across our entire school! 🌟
-                </div>
-              </div>
+              })()}
             </div>
           )}
 

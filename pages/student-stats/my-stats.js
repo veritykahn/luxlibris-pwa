@@ -157,7 +157,7 @@ export default function MyStats() {
     { name: 'My Stats', path: '/student-stats/my-stats', icon: '📈', description: 'Personal deep dive', current: true },
     { name: 'Grade Stats', path: '/student-stats/grade-stats', icon: '🎓', description: 'Compare with classmates' },
     { name: 'School Stats', path: '/student-stats/school-stats', icon: '🏫', description: 'School-wide progress' },
-    { name: 'Diocese Stats', path: '/student-stats/diocese-stats', icon: '🌍', description: 'Coming soon!', disabled: true },
+    { name: 'Diocese Stats', path: '/student-stats/diocese-stats', icon: '⛪', description: 'Coming soon!', disabled: true },
     { name: 'Global Stats', path: '/student-stats/global-stats', icon: '🌎', description: 'Coming soon!', disabled: true },
     { name: 'Lux DNA Lab', path: '/student-stats/lux-dna-lab', icon: '🧬', description: 'Discover your reading personality' },
     { name: 'Family Battle', path: '/student-stats/family-battle', icon: '👨‍👩‍👧‍👦', description: 'Coming soon!', disabled: true }
@@ -1177,76 +1177,105 @@ export default function MyStats() {
                 </div>
               </div>
               
-              {(expandedAchievements ? realWorldAchievements : realWorldAchievements.filter(a => a.earned).slice(0, 3)).map((achievement, index) => (
-                <div
-                  key={index}
-                  style={{
-                    backgroundColor: achievement.earned ? 
-                      `${currentTheme.primary}30` : `${currentTheme.primary}10`,
-                    borderRadius: '12px',
-                    padding: '12px',
-                    marginBottom: index < realWorldAchievements.length - 1 ? '8px' : '0',
-                    border: achievement.earned ? `2px solid ${currentTheme.primary}` : `1px dashed ${currentTheme.primary}60`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between'
-                  }}
-                >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{
-                      fontSize: 'clamp(12px, 3.5vw, 14px)',
-                      fontWeight: '600',
-                      color: currentTheme.textPrimary,
-                      marginBottom: '2px'
-                    }}>
-                      {achievement.reward}
-                    </div>
-                    <div style={{
-                      fontSize: 'clamp(10px, 3vw, 12px)',
-                      color: currentTheme.textSecondary,
-                      marginBottom: '4px'
-                    }}>
-                      {achievement.books} books • Tier {achievement.tier}
-                    </div>
-                    {!achievement.earned && (
-                      <div style={{
-                        fontSize: 'clamp(11px, 3vw, 12px)',
-                        fontWeight: '600',
-                        color: '#FF6B35'
-                      }}>
-                        📚 Need {achievement.booksNeeded} more book{achievement.booksNeeded !== 1 ? 's' : ''}
-                      </div>
-                    )}
-                    {achievement.earned && (
-                      <div style={{
-                        fontSize: 'clamp(11px, 3vw, 12px)',
-                        fontWeight: '600',
-                        color: '#4CAF50'
-                      }}>
-                        ✅ Earned! 🎉
-                      </div>
-                    )}
-                  </div>
-                  <div style={{
-                    fontSize: 'clamp(20px, 6vw, 24px)',
-                    flexShrink: 0,
-                    marginLeft: '8px'
-                  }}>
-                    {achievement.earned ? '🏆' : '🎯'}
-                  </div>
-                </div>
-              ))}
-              
-              {!expandedAchievements && realWorldAchievements.length > 3 && (
-                <div style={{
-                  fontSize: 'clamp(11px, 3vw, 12px)',
-                  color: currentTheme.textSecondary,
-                  textAlign: 'center',
-                  marginTop: '12px'
-                }}>
-                  {realWorldAchievements.length - 3} more achievement{realWorldAchievements.length - 3 !== 1 ? 's' : ''} available
-                </div>
-              )}
+              {(() => {
+  const earnedAchievements = realWorldAchievements.filter(a => a.earned);
+  const unearnedAchievements = realWorldAchievements.filter(a => !a.earned);
+  
+  // Find the next achievement (lowest book requirement among unearned)
+  const nextAchievement = unearnedAchievements.length > 0 
+    ? unearnedAchievements.reduce((next, current) => 
+        current.books < next.books ? current : next
+      )
+    : null;
+  
+  const displayedAchievements = expandedAchievements 
+    ? realWorldAchievements 
+    : earnedAchievements.slice(0, 3);
+  
+  return (
+    <>
+      {displayedAchievements.map((achievement, index) => (
+        <div key={index} style={{
+          backgroundColor: achievement.earned ? 
+            `${currentTheme.primary}30` : `${currentTheme.primary}10`,
+          borderRadius: '12px',
+          padding: '12px',
+          marginBottom: index < displayedAchievements.length - 1 ? '8px' : '0',
+          border: achievement.earned ? `2px solid ${currentTheme.primary}` : `1px dashed ${currentTheme.primary}60`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{
+              fontSize: 'clamp(12px, 3.5vw, 14px)',
+              fontWeight: '600',
+              color: currentTheme.textPrimary,
+              marginBottom: '2px'
+            }}>
+              {achievement.reward}
+            </div>
+            <div style={{
+              fontSize: 'clamp(10px, 3vw, 12px)',
+              color: currentTheme.textSecondary,
+              marginBottom: '4px'
+            }}>
+              {achievement.books} books • Tier {achievement.tier}
+            </div>
+            {!achievement.earned && (
+              <div style={{
+                fontSize: 'clamp(11px, 3vw, 12px)',
+                fontWeight: '600',
+                color: '#FF6B35'
+              }}>
+                📚 Need {achievement.booksNeeded} more book{achievement.booksNeeded !== 1 ? 's' : ''}
+              </div>
+            )}
+            {achievement.earned && (
+              <div style={{
+                fontSize: 'clamp(11px, 3vw, 12px)',
+                fontWeight: '600',
+                color: '#4CAF50'
+              }}>
+                ✅ Earned! 🎉
+              </div>
+            )}
+          </div>
+          <div style={{
+            fontSize: 'clamp(20px, 6vw, 24px)',
+            flexShrink: 0,
+            marginLeft: '8px'
+          }}>
+            {achievement.earned ? '🏆' : '🎯'}
+          </div>
+        </div>
+      ))}
+      
+      {/* NEW SMART STATUS MESSAGE */}
+      {!expandedAchievements && (
+        <div style={{
+          fontSize: 'clamp(11px, 3vw, 12px)',
+          color: currentTheme.textSecondary,
+          textAlign: 'center',
+          marginTop: '12px',
+          padding: '8px',
+          backgroundColor: `${currentTheme.primary}10`,
+          borderRadius: '8px'
+        }}>
+          {nextAchievement ? (
+            <>
+              📖 <strong>{nextAchievement.booksNeeded} more book{nextAchievement.booksNeeded !== 1 ? 's' : ''}</strong> needed for next achievement: <strong>{nextAchievement.reward}</strong>
+            </>
+          ) : (
+            <>
+              🎉 <strong>All achievements unlocked!</strong> You're a reading champion! 🏆
+            </>
+          )}
+        </div>
+      )}
+    </>
+  );
+})()}
             </div>
           )}
 

@@ -1,4 +1,4 @@
-// pages/student-stats/grade-stats.js - Enhanced with Real Achievement Tiers
+// pages/student-stats/grade-stats.js - Enhanced with Expandable Real Achievement Tiers
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../contexts/AuthContext';
@@ -20,7 +20,10 @@ export default function GradeStats() {
   const [gradeStats, setGradeStats] = useState(null);
   const [personalComparison, setPersonalComparison] = useState(null);
   const [gradeEngagement, setGradeEngagement] = useState(null);
-  const [realRewardsTracker, setRealRewardsTracker] = useState(null); // NEW!
+  const [realRewardsTracker, setRealRewardsTracker] = useState(null);
+  
+  // NEW: Expandable state for real rewards
+  const [expandedRealRewards, setExpandedRealRewards] = useState(false);
 
   // Theme definitions (same as before)
   const themes = useMemo(() => ({
@@ -123,7 +126,7 @@ export default function GradeStats() {
   { name: 'My Stats', path: '/student-stats/my-stats', icon: '📈', description: 'Personal deep dive' },
   { name: 'Grade Stats', path: '/student-stats/grade-stats', icon: '🎓', description: 'Compare with classmates', current: true  },
   { name: 'School Stats', path: '/student-stats/school-stats', icon: '🏫', description: 'School-wide progress' },
-  { name: 'Diocese Stats', path: '/student-stats/diocese-stats', icon: '🌍', description: 'Coming soon!', disabled: true },
+  { name: 'Diocese Stats', path: '/student-stats/diocese-stats', icon: '⛪', description: 'Coming soon!', disabled: true },
   { name: 'Global Stats', path: '/student-stats/global-stats', icon: '🌎', description: 'Coming soon!', disabled: true },
   { name: 'Lux DNA Lab', path: '/student-stats/lux-dna-lab', icon: '🧬', description: 'Discover your reading personality' },
   { name: 'Family Battle', path: '/student-stats/family-battle', icon: '👨‍👩‍👧‍👦', description: 'Coming soon!', disabled: true }
@@ -144,6 +147,7 @@ export default function GradeStats() {
       if (event.key === 'Escape') {
         setShowNavMenu(false);
         setShowStatsDropdown(false);
+        setExpandedRealRewards(false);
       }
     };
 
@@ -242,7 +246,11 @@ export default function GradeStats() {
       const tierArray = Array.from(allAchievementTiers.values())
         .map(tier => ({
           ...tier,
-          percentage: totalGradeStudents > 0 ? Math.round((tier.count / totalGradeStudents) * 100) : 0
+          percentage: totalGradeStudents > 0 ? Math.round((tier.count / totalGradeStudents) * 100) : 0,
+          isStudentEarned: studentEarnedTiers.some(earned => 
+            earned.books === tier.books && earned.reward === tier.reward
+          ),
+          hasClassmatesEarned: tier.count > 0
         }))
         .sort((a, b) => a.books - b.books);
       
@@ -985,7 +993,7 @@ export default function GradeStats() {
             </div>
           )}
 
-          {/* NEW: REAL REWARDS TRACKER FOR GRADE */}
+          {/* EXPANDABLE REAL REWARDS TRACKER FOR GRADE */}
           {realRewardsTracker && realRewardsTracker.gradeTiers.length > 0 && (
             <div style={{
               backgroundColor: currentTheme.surface,
@@ -994,14 +1002,45 @@ export default function GradeStats() {
               marginBottom: '20px',
               boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
             }}>
-              <h3 style={{
-                fontSize: 'clamp(14px, 4vw, 16px)',
-                fontWeight: '600',
-                color: currentTheme.textPrimary,
-                margin: '0 0 16px 0'
-              }}>
-                🎯 Grade {gradeStats?.grade} Real Rewards Progress
-              </h3>
+              <div 
+                onClick={() => setExpandedRealRewards(!expandedRealRewards)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: '16px',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  borderRadius: '8px',
+                  transition: 'background-color 0.2s ease',
+                  touchAction: 'manipulation',
+                  WebkitTapHighlightColor: 'transparent'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = `${currentTheme.primary}10`;
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = 'transparent';
+                }}
+              >
+                <h3 style={{
+                  fontSize: 'clamp(14px, 4vw, 16px)',
+                  fontWeight: '600',
+                  color: currentTheme.textPrimary,
+                  margin: 0,
+                  pointerEvents: 'none'
+                }}>
+                  🎯 Grade {gradeStats?.grade} Real Rewards
+                </h3>
+                <div style={{
+                  color: currentTheme.primary,
+                  fontSize: 'clamp(12px, 3vw, 14px)',
+                  fontWeight: '600',
+                  pointerEvents: 'none'
+                }}>
+                  {expandedRealRewards ? '▼ Show Less' : '▶ Show All'}
+                </div>
+              </div>
               
               <div style={{
                 textAlign: 'center',
@@ -1016,90 +1055,118 @@ export default function GradeStats() {
                   {realRewardsTracker.encouragingMessage}
                 </div>
               </div>
-              
-              {realRewardsTracker.gradeTiers.map((tier, index) => {
-                const isStudentEarned = realRewardsTracker.studentEarnedTiers.some(earned => 
-                  earned.books === tier.books && earned.reward === tier.reward
-                );
+
+              {(() => {
+                const earnedTiers = realRewardsTracker.gradeTiers.filter(tier => tier.hasClassmatesEarned);
+                const unearnedTiers = realRewardsTracker.gradeTiers.filter(tier => !tier.hasClassmatesEarned);
+                
+                // Find the next tier (lowest book requirement among unearned)
+                const nextTier = unearnedTiers.length > 0 
+                  ? unearnedTiers.reduce((next, current) => 
+                      current.books < next.books ? current : next
+                    )
+                  : null;
+                
+                const displayedTiers = expandedRealRewards 
+                  ? realRewardsTracker.gradeTiers 
+                  : earnedTiers.slice(0, 3);
                 
                 return (
-                  <div
-                    key={index}
-                    style={{
-                      backgroundColor: isStudentEarned ? 
-                        `${currentTheme.primary}30` : 
-                        tier.count > 0 ? `${currentTheme.primary}20` : `${currentTheme.primary}10`,
-                      borderRadius: '12px',
-                      padding: '12px',
-                      marginBottom: index < realRewardsTracker.gradeTiers.length - 1 ? '8px' : '0',
-                      border: isStudentEarned ? `2px solid ${currentTheme.primary}` : 'none',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between'
-                    }}
-                  >
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{
-                        fontSize: 'clamp(12px, 3.5vw, 14px)',
-                        fontWeight: '600',
-                        color: currentTheme.textPrimary,
-                        marginBottom: '2px'
-                      }}>
-                        {tier.reward}
-                      </div>
-                      <div style={{
-                        fontSize: 'clamp(10px, 3vw, 12px)',
-                        color: currentTheme.textSecondary,
-                        marginBottom: '4px'
-                      }}>
-                        {tier.books} books to unlock
-                        {isStudentEarned && (
-                          <span style={{
-                            color: currentTheme.primary,
+                  <>
+                    {displayedTiers.map((tier, index) => (
+                      <div
+                        key={index}
+                        style={{
+                          backgroundColor: tier.isStudentEarned ? 
+                            `${currentTheme.primary}30` : 
+                            tier.hasClassmatesEarned ? `${currentTheme.primary}20` : `${currentTheme.primary}10`,
+                          borderRadius: '12px',
+                          padding: '12px',
+                          marginBottom: index < displayedTiers.length - 1 ? '8px' : '0',
+                          border: tier.isStudentEarned ? 
+                            `2px solid ${currentTheme.primary}` : 
+                            tier.hasClassmatesEarned ? 'none' : `1px dashed ${currentTheme.primary}60`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between'
+                        }}
+                      >
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{
+                            fontSize: 'clamp(12px, 3.5vw, 14px)',
                             fontWeight: '600',
-                            marginLeft: '8px'
+                            color: currentTheme.textPrimary,
+                            marginBottom: '2px'
                           }}>
-                            - YOU EARNED THIS! 🎉
-                          </span>
-                        )}
+                            {tier.reward}
+                          </div>
+                          <div style={{
+                            fontSize: 'clamp(10px, 3vw, 12px)',
+                            color: currentTheme.textSecondary,
+                            marginBottom: '4px'
+                          }}>
+                            {tier.books} books to unlock
+                            {tier.isStudentEarned && (
+                              <span style={{
+                                color: currentTheme.primary,
+                                fontWeight: '600',
+                                marginLeft: '8px'
+                              }}>
+                                - YOU EARNED THIS! 🎉
+                              </span>
+                            )}
+                          </div>
+                          <div style={{
+                            fontSize: 'clamp(11px, 3vw, 12px)',
+                            fontWeight: '600',
+                            color: tier.count > 0 ? '#4CAF50' : currentTheme.textSecondary
+                          }}>
+                            {tier.count > 0 ? '🎯' : '⭕'} {tier.count} of {realRewardsTracker.totalGradeStudents} classmates earned this ({tier.percentage}%)
+                          </div>
+                        </div>
+                        
+                        <div style={{
+                          minWidth: '40px',
+                          textAlign: 'center'
+                        }}>
+                          <div style={{
+                            fontSize: 'clamp(20px, 6vw, 24px)'
+                          }}>
+                            {tier.isStudentEarned ? '🏆' : tier.count > 0 ? '🎯' : '⭕'}
+                          </div>
+                        </div>
                       </div>
+                    ))}
+                    
+                    {/* SMART STATUS MESSAGE */}
+                    {!expandedRealRewards && (
                       <div style={{
                         fontSize: 'clamp(11px, 3vw, 12px)',
-                        fontWeight: '600',
-                        color: tier.count > 0 ? '#4CAF50' : currentTheme.textSecondary
+                        color: currentTheme.textSecondary,
+                        textAlign: 'center',
+                        marginTop: '12px',
+                        padding: '8px',
+                        backgroundColor: `${currentTheme.primary}10`,
+                        borderRadius: '8px'
                       }}>
-                        🎯 {tier.count} of {realRewardsTracker.totalGradeStudents} classmates earned this ({tier.percentage}%)
+                        {nextTier ? (
+                          <>
+                            📚 Next grade milestone: <strong>{nextTier.books} books for {nextTier.reward}</strong>
+                          </>
+                        ) : earnedTiers.length > 0 ? (
+                          <>
+                            🎉 <strong>Your grade has earned all available rewards!</strong> What an amazing reading community! 🏆
+                          </>
+                        ) : (
+                          <>
+                            🌟 <strong>Your grade is just getting started!</strong> Work together to earn your first rewards! 📖
+                          </>
+                        )}
                       </div>
-                    </div>
-                    
-                    <div style={{
-                      minWidth: '40px',
-                      textAlign: 'center'
-                    }}>
-                      <div style={{
-                        fontSize: 'clamp(20px, 6vw, 24px)'
-                      }}>
-                        {isStudentEarned ? '🏆' : tier.count > 0 ? '🎯' : '⭕'}
-                      </div>
-                    </div>
-                  </div>
+                    )}
+                  </>
                 );
-              })}
-              
-              <div style={{
-                backgroundColor: `${currentTheme.secondary}20`,
-                borderRadius: '8px',
-                padding: '12px',
-                marginTop: '12px',
-                textAlign: 'center'
-              }}>
-                <div style={{
-                  fontSize: 'clamp(11px, 3vw, 12px)',
-                  color: currentTheme.textSecondary
-                }}>
-                  These are the REAL rewards your teachers give out! Keep reading! 🌟
-                </div>
-              </div>
+              })()}
             </div>
           )}
 
