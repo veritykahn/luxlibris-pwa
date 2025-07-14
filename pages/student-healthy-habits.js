@@ -35,10 +35,20 @@ export default function StudentHealthyHabits() {
     updateTimerDuration,
     setCurrentBookId,
     setCurrentBookTitle,
+    setTimerCompleteCallback,
     getTimerProgress,
     getMinutesRead,
     formatTime
   } = useTimer();
+
+  // Set up timer completion callback
+  useEffect(() => {
+    setTimerCompleteCallback(handleTimerComplete);
+    
+    return () => {
+      setTimerCompleteCallback(null);
+    };
+  }, [handleTimerComplete, setTimerCompleteCallback]);
 
   const [studentData, setStudentData] = useState(null);
   const [currentTheme, setCurrentTheme] = useState(null);
@@ -725,13 +735,6 @@ if (lastCalculationDate !== today) {
       }
     }, 3000);
   }, [timerDuration, saveReadingSession, currentBookId, currentBookTitle]);
-
-  // Watch for timer completion
-  useEffect(() => {
-    if (timeRemaining === 0 && isTimerActive) {
-      handleTimerComplete();
-    }
-  }, [timeRemaining, isTimerActive, handleTimerComplete]);
 
   // Timer control handlers
   const handleStartTimer = () => {

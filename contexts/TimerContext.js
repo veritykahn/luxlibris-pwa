@@ -25,6 +25,9 @@ export const TimerProvider = ({ children }) => {
   const [currentBookTitle, setCurrentBookTitle] = useState('');
   const [isOnHealthyHabitsPage, setIsOnHealthyHabitsPage] = useState(false);
   
+  // NEW: Completion callback
+  const [onTimerComplete, setOnTimerComplete] = useState(null);
+  
   const timerRef = useRef(null);
   const lastActiveTimeRef = useRef(Date.now());
 
@@ -95,13 +98,19 @@ export const TimerProvider = ({ children }) => {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [isTimerActive, isTimerPaused, isOnHealthyHabitsPage]);
 
-  // Main timer effect
+  // Main timer effect - UPDATED to call completion callback
   useEffect(() => {
     if (isTimerActive && !isTimerPaused && timeRemaining > 0) {
       timerRef.current = setInterval(() => {
         setTimeRemaining(prev => {
           if (prev <= 1) {
-            // Timer completed
+            // Timer completed - call the callback BEFORE updating state
+            if (onTimerComplete) {
+              console.log('🎯 Timer completed - calling completion callback');
+              onTimerComplete();
+            }
+            
+            // Now update state
             setIsTimerActive(false);
             setIsTimerPaused(false);
             releaseWakeLock();
@@ -115,7 +124,7 @@ export const TimerProvider = ({ children }) => {
     }
 
     return () => clearInterval(timerRef.current);
-  }, [isTimerActive, isTimerPaused, timeRemaining]);
+  }, [isTimerActive, isTimerPaused, timeRemaining, onTimerComplete]);
 
   // Timer control functions
   const startTimer = () => {
@@ -157,6 +166,11 @@ export const TimerProvider = ({ children }) => {
     }
   };
 
+  // NEW: Function to set the completion callback
+  const setTimerCompleteCallback = (callback) => {
+    setOnTimerComplete(() => callback);
+  };
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -186,6 +200,7 @@ export const TimerProvider = ({ children }) => {
     updateTimerDuration,
     setCurrentBookId,
     setCurrentBookTitle,
+    setTimerCompleteCallback, // NEW: Add callback setter
     
     // Utilities
     getTimerProgress: () => ((timerDuration - timeRemaining) / timerDuration) * 100,

@@ -1,4 +1,4 @@
-// pages/teacher/students.js - Complete Student Management System
+// pages/teacher/students.js - FIXED Complete Student Management System
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
@@ -19,7 +19,7 @@ export default function TeacherStudents() {
   } = useAuth()
 
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('app') // 'app' or 'manual'
+  const [activeTab, setActiveTab] = useState('all') // 'all', 'app', or 'manual'
   const [searchTerm, setSearchTerm] = useState('')
   const [gradeFilter, setGradeFilter] = useState('all')
   
@@ -32,6 +32,10 @@ export default function TeacherStudents() {
     totalBooks: 0,
     activeStudents: 0
   })
+
+  // Teacher's configuration data
+  const [teacherNominees, setTeacherNominees] = useState([])
+  const [teacherSubmissionOptions, setTeacherSubmissionOptions] = useState({})
 
   // UI states
   const [showAddManualModal, setShowAddManualModal] = useState(false)
@@ -52,6 +56,7 @@ export default function TeacherStudents() {
   })
 
   const [bookSubmission, setBookSubmission] = useState({
+    bookId: '',
     bookTitle: '',
     submissionType: 'book_report',
     submissionDate: new Date().toISOString().split('T')[0]
@@ -78,6 +83,7 @@ export default function TeacherStudents() {
       }
 
       if (userProfile) {
+        loadTeacherConfiguration()
         loadStudentsData()
       }
     }
@@ -121,6 +127,65 @@ export default function TeacherStudents() {
     }
   }, [])
 
+  // NEW: Load teacher's configuration (nominees and submission options)
+  const loadTeacherConfiguration = async () => {
+    try {
+      console.log('🔧 Loading teacher configuration...')
+      
+      if (!userProfile?.entityId || !userProfile?.schoolId || !userProfile?.uid) {
+        console.error('❌ Missing teacher profile data')
+        return
+      }
+
+      // Find teacher document by UID to get configuration
+      const teachersRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers`)
+      const teacherQuery = query(teachersRef, where('uid', '==', userProfile.uid))
+      const teacherSnapshot = await getDocs(teacherQuery)
+      
+      if (teacherSnapshot.empty) {
+        console.error('❌ Teacher document not found')
+        return
+      }
+
+      const teacherDoc = teacherSnapshot.docs[0]
+      const teacherData = teacherDoc.data()
+      
+      console.log('👩‍🏫 Teacher data:', teacherData)
+
+      // Get teacher's selected nominees
+      const selectedNomineeIds = teacherData.selectedNominees || []
+      console.log('📚 Selected nominee IDs:', selectedNomineeIds)
+
+      // Fetch full book data for selected nominees
+      if (selectedNomineeIds.length > 0) {
+        const masterNomineesRef = collection(db, 'masterNominees')
+        const masterNomineesSnapshot = await getDocs(masterNomineesRef)
+        
+        const nominees = []
+        masterNomineesSnapshot.forEach(doc => {
+          const bookData = doc.data()
+          if (selectedNomineeIds.includes(bookData.id)) {
+            nominees.push({
+              id: bookData.id,
+              ...bookData
+            })
+          }
+        })
+        
+        console.log('✅ Loaded teacher nominees:', nominees.length)
+        setTeacherNominees(nominees)
+      }
+
+      // Get teacher's submission options
+      const submissionOptions = teacherData.submissionOptions || {}
+      console.log('📝 Teacher submission options:', submissionOptions)
+      setTeacherSubmissionOptions(submissionOptions)
+
+    } catch (error) {
+      console.error('❌ Error loading teacher configuration:', error)
+    }
+  }
+
   // Load students data
   const loadStudentsData = async () => {
     try {
@@ -151,7 +216,6 @@ export default function TeacherStudents() {
       const appStudentsQuery = query(
         appStudentsRef, 
         where('currentTeacherId', '==', teacherId)
-        // Note: Removed orderBy to avoid composite index requirement - will sort in JavaScript
       )
       const appStudentsSnapshot = await getDocs(appStudentsQuery)
       
@@ -163,14 +227,13 @@ export default function TeacherStudents() {
         }
       })
       
-      // Sort by firstName in JavaScript (avoids composite index requirement)
+      // Sort by firstName in JavaScript
       appStudentsData.sort((a, b) => a.firstName.localeCompare(b.firstName))
 
       // Load manual students
       const manualStudentsRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers/${teacherId}/manualStudents`)
       let manualStudentsSnapshot = { docs: [] }
       try {
-        // Note: Removed orderBy to avoid index requirement - will sort in JavaScript
         manualStudentsSnapshot = await getDocs(manualStudentsRef)
       } catch (error) {
         console.log('No manual students collection yet')
@@ -244,7 +307,7 @@ export default function TeacherStudents() {
     }
   }
 
-  // Add manual student
+  // Add manual student - FIXED to refresh stats properly
   const addManualStudent = async () => {
     if (!newManualStudent.firstName || !newManualStudent.lastInitial) {
       setShowSuccess('❌ Please fill in all required fields')
@@ -273,7 +336,18 @@ export default function TeacherStudents() {
       const docRef = await addDoc(manualStudentsRef, studentData)
 
       const newStudent = { id: docRef.id, ...studentData }
-      setManualStudents(prev => [...prev, newStudent])
+      
+      // FIXED: Update both local state AND stats
+      setManualStudents(prev => {
+        const updated = [...prev, newStudent]
+        // Update stats immediately to prevent count mismatch
+        setStatsData(prevStats => ({
+          ...prevStats,
+          totalManualStudents: updated.length,
+          activeStudents: prevStats.activeStudents + 1
+        }))
+        return updated
+      })
       
       setNewManualStudent({
         firstName: '',
@@ -294,10 +368,10 @@ export default function TeacherStudents() {
     }
   }
 
-  // Add book submission for manual student
+  // FIXED: Add book submission for manual student with book selection
   const addBookSubmission = async () => {
-    if (!bookSubmission.bookTitle) {
-      setShowSuccess('❌ Please enter book title')
+    if (!bookSubmission.bookId) {
+      setShowSuccess('❌ Please select a book')
       setTimeout(() => setShowSuccess(''), 3000)
       return
     }
@@ -310,8 +384,13 @@ export default function TeacherStudents() {
       const teacherSnapshot = await getDocs(teacherQuery)
       const teacherId = teacherSnapshot.docs[0].id
 
+      // Find the selected book details
+      const selectedBook = teacherNominees.find(book => book.id === bookSubmission.bookId)
+      
       const submission = {
-        ...bookSubmission,
+        bookId: bookSubmission.bookId,
+        bookTitle: selectedBook?.title || bookSubmission.bookTitle,
+        submissionType: bookSubmission.submissionType,
         submittedDate: new Date(bookSubmission.submissionDate),
         approved: true // Auto-approve manual submissions
       }
@@ -337,6 +416,7 @@ export default function TeacherStudents() {
       )
 
       setBookSubmission({
+        bookId: '',
         bookTitle: '',
         submissionType: 'book_report',
         submissionDate: new Date().toISOString().split('T')[0]
@@ -371,7 +451,18 @@ export default function TeacherStudents() {
       const studentRef = doc(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers/${teacherId}/manualStudents`, student.id)
       await deleteDoc(studentRef)
 
-      setManualStudents(prev => prev.filter(s => s.id !== student.id))
+      // FIXED: Update both local state AND stats
+      setManualStudents(prev => {
+        const updated = prev.filter(s => s.id !== student.id)
+        // Update stats immediately
+        setStatsData(prevStats => ({
+          ...prevStats,
+          totalManualStudents: updated.length,
+          activeStudents: prevStats.activeStudents - (student.status === 'active' ? 1 : 0)
+        }))
+        return updated
+      })
+      
       setShowSuccess(`🗑️ ${student.firstName} deleted successfully`)
       setTimeout(() => setShowSuccess(''), 3000)
 
@@ -396,6 +487,42 @@ export default function TeacherStudents() {
       
       return matchesSearch && matchesGrade
     })
+  }
+
+  // NEW: Get all students combined for "All" tab
+  const getAllStudents = () => {
+    const combined = [
+      ...appStudents.map(s => ({ ...s, type: 'app' })),
+      ...manualStudents.map(s => ({ ...s, type: 'manual' }))
+    ]
+    return combined.sort((a, b) => a.firstName.localeCompare(b.firstName))
+  }
+
+  // NEW: Get available submission options for manual students (excluding quiz)
+  const getAvailableSubmissionOptions = () => {
+    const options = []
+    
+    // Always include book report as fallback
+    options.push({ value: 'book_report', label: 'Book Report' })
+    
+    // Add teacher's enabled options (excluding quiz)
+    if (teacherSubmissionOptions.presentToTeacher) {
+      options.push({ value: 'presentToTeacher', label: 'Present to Teacher' })
+    }
+    if (teacherSubmissionOptions.submitReview) {
+      options.push({ value: 'submitReview', label: 'Submit Review' })
+    }
+    if (teacherSubmissionOptions.createStoryboard) {
+      options.push({ value: 'createStoryboard', label: 'Create Storyboard' })
+    }
+    if (teacherSubmissionOptions.discussWithLibrarian) {
+      options.push({ value: 'discussWithLibrarian', label: 'Discuss with Librarian' })
+    }
+    if (teacherSubmissionOptions.actOutScene) {
+      options.push({ value: 'actOutScene', label: 'Act Out Scene' })
+    }
+    
+    return options
   }
 
   // Session extension
@@ -442,6 +569,8 @@ export default function TeacherStudents() {
 
   const filteredAppStudents = filterStudents(appStudents)
   const filteredManualStudents = filterStudents(manualStudents)
+  const filteredAllStudents = filterStudents(getAllStudents())
+  const availableSubmissionOptions = getAvailableSubmissionOptions()
 
   return (
     <>
@@ -722,7 +851,7 @@ export default function TeacherStudents() {
             </div>
           </div>
 
-          {/* Tabs */}
+          {/* UPDATED: Tabs with All Students option */}
           <div style={{
             background: 'white',
             borderRadius: '1rem',
@@ -732,6 +861,25 @@ export default function TeacherStudents() {
             overflow: 'hidden'
           }}>
             <div style={{ display: 'flex' }}>
+              <button
+                onClick={() => setActiveTab('all')}
+                style={{
+                  flex: 1,
+                  padding: '1rem',
+                  backgroundColor: activeTab === 'all' ? '#B6DFEB' : 'transparent',
+                  color: activeTab === 'all' ? '#223848' : '#6b7280',
+                  border: 'none',
+                  fontSize: '1rem',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                👥 All Students ({filteredAllStudents.length})
+              </button>
               <button
                 onClick={() => setActiveTab('app')}
                 style={{
@@ -774,7 +922,26 @@ export default function TeacherStudents() {
           </div>
 
           {/* Content based on active tab */}
-          {activeTab === 'app' ? (
+          {activeTab === 'all' ? (
+            <AllStudentsSection 
+              students={filteredAllStudents}
+              onToggleAppStatus={toggleAppStudentStatus}
+              onEditManualStudent={(student) => {
+                setSelectedStudent(student)
+                setShowEditModal(true)
+              }}
+              onDeleteManualStudent={deleteManualStudent}
+              onAddBookSubmission={(student) => {
+                setSelectedStudent(student)
+                setShowBookSubmissionModal(true)
+              }}
+              onViewDetails={(student) => {
+                setSelectedStudent(student)
+                setShowStudentDetailModal(true)
+              }}
+              isProcessing={isProcessing}
+            />
+          ) : activeTab === 'app' ? (
             <AppStudentsSection 
               students={filteredAppStudents}
               onToggleStatus={toggleAppStudentStatus}
@@ -971,7 +1138,7 @@ export default function TeacherStudents() {
           </Modal>
         )}
 
-        {/* Book Submission Modal */}
+        {/* UPDATED: Book Submission Modal with dropdown and teacher submission options */}
         {showBookSubmissionModal && selectedStudent && (
           <Modal
             title={`📚 Add Book for ${selectedStudent.firstName}`}
@@ -986,13 +1153,18 @@ export default function TeacherStudents() {
                   color: '#374151',
                   marginBottom: '0.5rem'
                 }}>
-                  Book Title *
+                  Select Book *
                 </label>
-                <input
-                  type="text"
-                  value={bookSubmission.bookTitle}
-                  onChange={(e) => setBookSubmission(prev => ({ ...prev, bookTitle: e.target.value }))}
-                  placeholder="Enter book title"
+                <select
+                  value={bookSubmission.bookId}
+                  onChange={(e) => {
+                    const selectedBook = teacherNominees.find(book => book.id === e.target.value)
+                    setBookSubmission(prev => ({ 
+                      ...prev, 
+                      bookId: e.target.value,
+                      bookTitle: selectedBook?.title || ''
+                    }))
+                  }}
                   style={{
                     width: '100%',
                     padding: '0.75rem',
@@ -1001,7 +1173,23 @@ export default function TeacherStudents() {
                     fontSize: '1rem',
                     boxSizing: 'border-box'
                   }}
-                />
+                >
+                  <option value="">Choose a book...</option>
+                  {teacherNominees.map(book => (
+                    <option key={book.id} value={book.id}>
+                      {book.title} by {book.authors}
+                    </option>
+                  ))}
+                </select>
+                {teacherNominees.length === 0 && (
+                  <p style={{
+                    fontSize: '0.75rem',
+                    color: '#ef4444',
+                    margin: '0.5rem 0 0 0'
+                  }}>
+                    No books available. Please select books during teacher onboarding.
+                  </p>
+                )}
               </div>
 
               <div style={{
@@ -1031,12 +1219,20 @@ export default function TeacherStudents() {
                       boxSizing: 'border-box'
                     }}
                   >
-                    <option value="book_report">Book Report</option>
-                    <option value="presentation">Presentation</option>
-                    <option value="discussion">Discussion</option>
-                    <option value="review">Written Review</option>
-                    <option value="other">Other</option>
+                    {availableSubmissionOptions.map(option => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
                   </select>
+                  <p style={{
+                    fontSize: '0.75rem',
+                    color: '#6b7280',
+                    margin: '0.25rem 0 0 0',
+                    fontStyle: 'italic'
+                  }}>
+                    Quiz option only available through the app
+                  </p>
                 </div>
 
                 <div>
@@ -1087,7 +1283,7 @@ export default function TeacherStudents() {
                 </button>
                 <button
                   onClick={addBookSubmission}
-                  disabled={isProcessing}
+                  disabled={isProcessing || !bookSubmission.bookId}
                   style={{
                     padding: '0.75rem 1.5rem',
                     background: 'linear-gradient(135deg, #4CAF50, #66BB6A)',
@@ -1097,7 +1293,7 @@ export default function TeacherStudents() {
                     cursor: 'pointer',
                     fontSize: '0.875rem',
                     fontWeight: '600',
-                    opacity: isProcessing ? 0.7 : 1
+                    opacity: (isProcessing || !bookSubmission.bookId) ? 0.7 : 1
                   }}
                 >
                   {isProcessing ? 'Adding...' : 'Add Book'}
@@ -1275,6 +1471,65 @@ function StatCard({ icon, title, value, subtitle, color }) {
   )
 }
 
+// NEW: All Students Section combining both types
+function AllStudentsSection({ students, onToggleAppStatus, onEditManualStudent, onDeleteManualStudent, onAddBookSubmission, onViewDetails, isProcessing }) {
+  if (students.length === 0) {
+    return (
+      <div style={{
+        background: 'white',
+        borderRadius: '1rem',
+        padding: '3rem 2rem',
+        textAlign: 'center',
+        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)'
+      }}>
+        <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>👥</div>
+        <h3 style={{
+          fontSize: '1.25rem',
+          fontWeight: 'bold',
+          color: '#223848',
+          marginBottom: '0.5rem'
+        }}>
+          No Students Yet
+        </h3>
+        <p style={{
+          color: '#6b7280',
+          marginBottom: '1.5rem'
+        }}>
+          Students will appear here when they join your class or you add them manually.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{
+      background: 'white',
+      borderRadius: '1rem',
+      padding: '1.5rem',
+      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)'
+    }}>
+      <div style={{
+        display: 'grid',
+        gap: '1rem'
+      }}>
+        {students.map(student => (
+          <StudentCard
+            key={`${student.type}-${student.id}`}
+            student={student}
+            type={student.type}
+            onToggleStatus={() => onToggleAppStatus(student)}
+            onViewDetails={() => onViewDetails(student)}
+            onEditStudent={() => onEditManualStudent(student)}
+            onDeleteStudent={() => onDeleteManualStudent(student)}
+            onAddBookSubmission={() => onAddBookSubmission(student)}
+            isProcessing={isProcessing}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function AppStudentsSection({ students, onToggleStatus, onViewDetails, isProcessing }) {
   if (students.length === 0) {
     return (
@@ -1379,7 +1634,7 @@ function ManualStudentsSection({ students, onAddStudent, onEditStudent, onDelete
           color: '#6b7280'
         }}>
           <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>📝</div>
-          <p>No manual students yet. Add students who don&apost use the app!</p>
+          <p>No manual students yet. Add students who don't use the app!</p>
         </div>
       ) : (
         <div style={{
