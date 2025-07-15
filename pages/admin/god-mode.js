@@ -492,6 +492,64 @@ Next steps:
     setPhaseLoading(false);
   };
 
+  // Release new academic year to teachers with student data reset
+  const releaseNewYearToTeachers = async () => {
+    const confirmed = window.confirm(`🚀 RELEASE NEW ACADEMIC YEAR TO TEACHERS?
+
+This will:
+• Change phase: RESULTS → SETUP → TEACHER_SELECTION
+• 📚 CLEAR all manual student book data to 0 during SETUP
+• Allow teachers to select their books for ${getNextAcademicYear()}
+• Teachers can modify submission options and achievements
+• Teachers can deactivate students who left school
+
+Prerequisites:
+✅ New masterNominees uploaded for ${getNextAcademicYear()}
+✅ Quizzes and content ready
+✅ System currently in RESULTS phase
+
+⚠️ Manual student data will be cleared during SETUP phase!
+
+Continue?`);
+
+    if (!confirmed) return;
+
+    try {
+      setPhaseLoading(true);
+      
+      // Use the enhanced function that includes student data reset
+      const result = await dbHelpers.releaseNewYearToTeachersWithReset();
+      
+      // Reload phase data
+      await loadPhaseData();
+      
+      alert(`✅ SUCCESS! New academic year released to teachers!
+
+🎯 Phase: TEACHER_SELECTION
+📅 Academic Year: ${getNextAcademicYear()}
+👩‍🏫 Teachers can now select their books (limited to original count)
+📚 Manual student data cleared during SETUP: ${result.studentsReset} students reset
+
+Process completed:
+1. ✅ RESULTS → SETUP (student data cleared)
+2. ✅ SETUP → TEACHER_SELECTION (teachers can select)
+
+Teacher Selection Period: May 24 - June 1
+• Teachers select new nominees (within their limit)
+• Teachers can modify submission options  
+• Teachers can adjust achievement rewards
+• Teachers can deactivate students who left
+• Manual students start with 0 books for new year
+
+System will auto-switch to ACTIVE on June 1st.`);
+      
+    } catch (error) {
+      console.error('❌ Error releasing new year:', error);
+      alert(`❌ Error: ${error.message}`);
+    }
+    setPhaseLoading(false);
+  };
+
   // Helper function to get next academic year
   const getNextAcademicYear = () => {
     const current = dbHelpers.getCurrentAcademicYear();
@@ -1627,10 +1685,10 @@ Type "DELETE" to confirm:`)
                   </button>
                 )}
 
-                {/* Start New Academic Year Button */}
-                {(phaseData.currentPhase === 'RESULTS' || phaseData.currentPhase === 'CLOSED') && (
+                {/* Release New Year to Teachers Button */}
+                {phaseData.currentPhase === 'RESULTS' && (
                   <button
-                    onClick={startNewAcademicYear}
+                    onClick={releaseNewYearToTeachers}
                     disabled={phaseLoading}
                     style={{
                       background: 'linear-gradient(135deg, #f59e0b, #d97706)',
@@ -1644,7 +1702,28 @@ Type "DELETE" to confirm:`)
                       textAlign: 'center'
                     }}
                   >
-                    📅 Start New Academic Year
+                    🚀 Release New Year to Teachers
+                  </button>
+                )}
+
+                {/* Start New Academic Year Button (fallback) */}
+                {phaseData.currentPhase === 'CLOSED' && (
+                  <button
+                    onClick={startNewAcademicYear}
+                    disabled={phaseLoading}
+                    style={{
+                      background: 'linear-gradient(135deg, #6b7280, #4b5563)',
+                      color: 'white',
+                      padding: '0.75rem 1rem',
+                      borderRadius: '0.5rem',
+                      border: 'none',
+                      cursor: phaseLoading ? 'not-allowed' : 'pointer',
+                      fontSize: '0.875rem',
+                      fontWeight: '600',
+                      textAlign: 'center'
+                    }}
+                  >
+                    📅 Manual Start New Year
                   </button>
                 )}
 

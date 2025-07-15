@@ -1,8 +1,8 @@
-// pages/admin/school-onboarding.js - ENHANCED VERSION with Strategy Tips & Trigger Warnings
+// pages/admin/school-onboarding.js - ENHANCED VERSION with Strategy Tips & Trigger Warnings + Academic Year Support
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
-import { db, auth, getCurrentAcademicYear } from '../../lib/firebase'
+import { db, auth, getCurrentAcademicYear, dbHelpers } from '../../lib/firebase'
 import { collection, getDocs, doc, getDoc, updateDoc, addDoc, query, where } from 'firebase/firestore'
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth'
 import { useAuth } from '../../contexts/AuthContext'
@@ -68,32 +68,88 @@ export default function TeacherOnboarding() {
     }
   }, [authLoading, initialized, user, userProfile, createdUser])
 
-  // Fetch nominees
+  // RESTORED: Check if onboarding is allowed during current phase
+  useEffect(() => {
+    const checkOnboardingAllowed = async () => {
+      try {
+        const config = await dbHelpers.getSystemConfig()
+        const currentPhase = config.programPhase
+        
+        console.log('🔍 Checking if onboarding allowed in phase:', currentPhase)
+        
+        // Only allow onboarding during TEACHER_SELECTION and ACTIVE phases
+        const allowedPhases = ['TEACHER_SELECTION', 'ACTIVE']
+        
+        if (!allowedPhases.includes(currentPhase)) {
+          alert(`⚠️ Teacher registration is not available during ${currentPhase} phase. Please try again later or contact your administrator.`)
+          router.push('/sign-in')
+          return
+        }
+        
+        console.log('✅ Onboarding allowed in current phase')
+        
+      } catch (error) {
+        console.error('❌ Error checking onboarding status:', error)
+        // Allow onboarding to continue if check fails (graceful degradation)
+      }
+    }
+    
+    // Only check after auth is initialized and we're past the initial setup steps
+    if (initialized && !authLoading && currentStep >= 3) {
+      checkOnboardingAllowed()
+    }
+  }, [initialized, authLoading, currentStep, router])
+
+  // UPDATED: Fetch nominees with academic year and phase awareness
   const fetchNominees = async () => {
     try {
+      console.log('📚 Loading nominees for current academic year...')
+      
+      const currentYear = getCurrentAcademicYear()
+      console.log('📅 Current academic year:', currentYear)
+      
       const nomineesRef = collection(db, 'masterNominees')
       const snapshot = await getDocs(nomineesRef)
       const nomineesData = []
       
       snapshot.forEach((doc) => {
-        nomineesData.push({
-          id: doc.id,
-          ...doc.data(),
-          selected: true
-        })
+        const bookData = doc.data()
+        
+        // FILTER: Only include books for current academic year with active status
+        const isCurrentYear = bookData.academicYear === currentYear || !bookData.academicYear // Include legacy books without year
+        const isActive = bookData.status === 'active'
+        
+        console.log(`📖 ${bookData.title}: Year=${bookData.academicYear}, Status=${bookData.status}, Include=${isCurrentYear && isActive}`)
+        
+        if (isCurrentYear && isActive) {
+          nomineesData.push({
+            id: doc.id,
+            ...bookData,
+            selected: true // Still auto-select all available books
+          })
+        }
       })
+      
+      console.log(`✅ Loaded ${nomineesData.length} active nominees for ${currentYear}`)
+      
+      // Show message if no nominees available
+      if (nomineesData.length === 0) {
+        console.warn('⚠️ No active nominees found for current academic year')
+        alert(`⚠️ No active books available for ${currentYear}. Please contact your administrator.`)
+      }
       
       setNominees(nomineesData)
       
-      // Only auto-select all if no previous selection
-      if (onboardingData.selectedNominees.length === 0) {
+      // Only auto-select all if no previous selection AND books are available
+      if (onboardingData.selectedNominees.length === 0 && nomineesData.length > 0) {
         setOnboardingData(prev => ({
           ...prev,
           selectedNominees: nomineesData.map(n => n.id)
         }))
       }
     } catch (error) {
-      console.error('Error fetching nominees:', error)
+      console.error('❌ Error fetching nominees:', error)
+      alert('Error loading book nominees. Please try again or contact support.')
     }
   }
 
@@ -370,7 +426,6 @@ export default function TeacherOnboarding() {
         setLoading(false)
         return
       }
-
       // Find the teacher document to update using stored profile data
       const teachersRef = collection(db, `entities/${createdProfile.dioceseId}/schools/${createdProfile.schoolId}/teachers`)
       const teacherQuery = query(teachersRef, where('uid', '==', createdUser.uid))
@@ -381,22 +436,29 @@ export default function TeacherOnboarding() {
         setLoading(false)
         return
       }
-
       const teacherDoc = teacherSnapshot.docs[0]
+      const currentYear = getCurrentAcademicYear() // Get current academic year
       
-      // Save program configuration to teacher document
+      // ENHANCED: Save program configuration AND auto-release to students
       await updateDoc(teacherDoc.ref, {
         selectedNominees: onboardingData.selectedNominees,
         achievementTiers: onboardingData.achievementTiers,
         submissionOptions: onboardingData.submissionOptions,
         onboardingCompleted: true,
         onboardingCompletedAt: new Date(),
+        
+        // ADD: Year-over-year tracking fields (fixes settings page)
+        lastYearOverYearSelection: currentYear, // Marks as completed for current year
+        
+        // ADD: Auto-release to students after onboarding
+        releasedToStudents: true,              // Auto-release after onboarding
+        releaseAcademicYear: currentYear,      // Track release year  
+        releasedAt: new Date(),               // Track when released
+        
         lastModified: new Date()
       })
-
       // Redirect immediately to dashboard - no splash page needed
       window.location.href = '/admin/school-dashboard'
-
     } catch (error) {
       console.error('Error completing onboarding:', error)
       setError(`Error saving configuration: ${error.message}. Please try again.`)
@@ -1064,8 +1126,10 @@ export default function TeacherOnboarding() {
   )
 }
 
-// ENHANCED Supporting Components
+// ENHANCED Supporting Components with Academic Year Support
 function NomineeSelectionStep({ nominees, selectedNominees, onToggleNominee, calculateAchievementTiers }) {
+  const currentYear = getCurrentAcademicYear()
+  
   return (
     <div>
       <h2 style={{
@@ -1075,105 +1139,153 @@ function NomineeSelectionStep({ nominees, selectedNominees, onToggleNominee, cal
         marginBottom: '1rem',
         fontFamily: 'Georgia, serif'
       }}>
-        📚 Set Your Program Scope
+        📚 Select Books for {currentYear}
       </h2>
       <p style={{ 
         color: '#ADD4EA', 
         marginBottom: '1rem',
         fontSize: 'clamp(0.875rem, 3vw, 1rem)'
       }}>
-        <strong>Important:</strong> This sets your program&apos;s book capacity for ALL future years.
+        Choose from {nominees.length} books available for the {currentYear} academic year.
       </p>
 
-      {/* NEW: Lifetime Strategy Explanation */}
+      {/* Academic Year Notice */}
       <div style={{
-        background: 'linear-gradient(135deg, #fff3cd, #ffeaa7)',
+        background: 'linear-gradient(135deg, #e0f2fe, #b3e5fc)',
         borderRadius: '0.75rem',
         padding: '1rem',
         marginBottom: '1.5rem',
-        border: '1px solid #f39c12'
+        border: '1px solid #81d4fa'
       }}>
         <h4 style={{ 
-          color: '#d68910', 
+          color: '#0277bd', 
           marginBottom: '0.5rem', 
           fontSize: 'clamp(0.875rem, 3vw, 1rem)',
           fontWeight: '600'
         }}>
-          💡 Strategy Tip: Choose Your Maximum
+          📅 Academic Year: {currentYear}
         </h4>
-        <ul style={{ 
-          color: '#8b6914', 
+        <p style={{ 
+          color: '#0288d1', 
           fontSize: 'clamp(0.75rem, 2.5vw, 0.875rem)', 
           lineHeight: '1.4', 
-          margin: 0, 
-          paddingLeft: '1.2rem' 
+          margin: 0
         }}>
-          <li><strong>All 20 books:</strong> Get every new book automatically each year</li>
-          <li><strong>15-18 books:</strong> Keep a buffer to skip books with sensitive topics</li>
-          <li><strong>10-15 books:</strong> Smaller, curated selection for your community</li>
-        </ul>
-        <p style={{ 
-          color: '#8b6914', 
-          fontSize: 'clamp(0.6rem, 2vw, 0.75rem)', 
-          fontStyle: 'italic', 
-          margin: '0.5rem 0 0 0' 
-        }}>
-          Each year you&apos;ll pick specific books up to your chosen limit.
+          You're selecting books for the current academic year. These books will be available to your students 
+          when the reading program is active.
         </p>
       </div>
-      
-      {/* Dynamic Achievement Preview */}
-      <div style={{
-        background: 'linear-gradient(135deg, #FFFCF5, #ADD4EA)',
-        borderRadius: '0.75rem',
-        padding: '1rem',
-        marginBottom: '1rem',
-        border: '1px solid #ADD4EA'
-      }}>
-        <p style={{ 
-          color: '#223848', 
-          fontSize: 'clamp(0.875rem, 3vw, 1rem)', 
-          margin: '0 0 0.5rem 0',
-          fontWeight: '600'
+
+      {/* Show message if no nominees */}
+      {nominees.length === 0 ? (
+        <div style={{
+          background: '#fef2f2',
+          borderRadius: '0.75rem',
+          padding: '2rem',
+          textAlign: 'center',
+          border: '1px solid #fca5a5'
         }}>
-          📊 Selected: {selectedNominees.length} of {nominees.length} books
-        </p>
-        {selectedNominees.length > 0 && (
-          <p style={{ 
-            color: '#223848', 
-            fontSize: 'clamp(0.75rem, 2.5vw, 0.875rem)', 
-            margin: 0,
-            fontStyle: 'italic'
-          }}>
-            🎯 Achievement tiers will be: {
-              calculateAchievementTiers(selectedNominees.length)
-                .filter(tier => tier.type !== 'lifetime')
-                .map(tier => tier.books)
-                .join(', ')
-            } books
+          <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>📚</div>
+          <h3 style={{ color: '#dc2626', marginBottom: '0.5rem' }}>No Books Available</h3>
+          <p style={{ color: '#991b1b', fontSize: '0.875rem' }}>
+            No active book nominees are available for {currentYear}. 
+            Please contact your administrator.
           </p>
-        )}
-      </div>
-      
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))',
-        gap: '0.75rem',
-        maxHeight: '50vh',
-        overflowY: 'auto',
-        padding: '1rem',
-        background: '#f9fafb',
-        borderRadius: '0.5rem'
-      }}>
-        {nominees.map(book => (
-          <BookCard 
-            key={book.id}
-            book={book}
-            isSelected={selectedNominees.includes(book.id)}
-            onToggle={() => onToggleNominee(book.id)}
-          />
-        ))}
-      </div>
+        </div>
+      ) : (
+        <>
+          {/* NEW: Lifetime Strategy Explanation */}
+          <div style={{
+            background: 'linear-gradient(135deg, #fff3cd, #ffeaa7)',
+            borderRadius: '0.75rem',
+            padding: '1rem',
+            marginBottom: '1.5rem',
+            border: '1px solid #f39c12'
+          }}>
+            <h4 style={{ 
+              color: '#d68910', 
+              marginBottom: '0.5rem', 
+              fontSize: 'clamp(0.875rem, 3vw, 1rem)',
+              fontWeight: '600'
+            }}>
+              💡 Strategy Tip: Choose Your Maximum
+            </h4>
+            <ul style={{ 
+              color: '#8b6914', 
+              fontSize: 'clamp(0.75rem, 2.5vw, 0.875rem)', 
+              lineHeight: '1.4', 
+              margin: 0, 
+              paddingLeft: '1.2rem' 
+            }}>
+              <li><strong>All {nominees.length} books:</strong> Get every new book automatically each year</li>
+              <li><strong>{Math.ceil(nominees.length * 0.75)}-{Math.ceil(nominees.length * 0.9)} books:</strong> Keep a buffer to skip books with sensitive topics</li>
+              <li><strong>{Math.ceil(nominees.length * 0.5)}-{Math.ceil(nominees.length * 0.75)} books:</strong> Smaller, curated selection for your community</li>
+            </ul>
+            <p style={{ 
+              color: '#8b6914', 
+              fontSize: 'clamp(0.6rem, 2vw, 0.75rem)', 
+              fontStyle: 'italic', 
+              margin: '0.5rem 0 0 0' 
+            }}>
+              Each year you&apos;ll pick specific books up to your chosen limit.
+            </p>
+          </div>
+          
+          {/* Dynamic Achievement Preview */}
+          <div style={{
+            background: 'linear-gradient(135deg, #FFFCF5, #ADD4EA)',
+            borderRadius: '0.75rem',
+            padding: '1rem',
+            marginBottom: '1rem',
+            border: '1px solid #ADD4EA'
+          }}>
+            <p style={{ 
+              color: '#223848', 
+              fontSize: 'clamp(0.875rem, 3vw, 1rem)', 
+              margin: '0 0 0.5rem 0',
+              fontWeight: '600'
+            }}>
+              📊 Selected: {selectedNominees.length} of {nominees.length} books
+            </p>
+            {selectedNominees.length > 0 && (
+              <p style={{ 
+                color: '#223848', 
+                fontSize: 'clamp(0.75rem, 2.5vw, 0.875rem)', 
+                margin: 0,
+                fontStyle: 'italic'
+              }}>
+                🎯 Achievement tiers: {
+                  calculateAchievementTiers(selectedNominees.length)
+                    .filter(tier => tier.type !== 'lifetime')
+                    .map(tier => tier.books)
+                    .join(', ')
+                } books
+              </p>
+            )}
+          </div>
+          
+          {/* Book selection grid */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))',
+            gap: '0.75rem',
+            maxHeight: '50vh',
+            overflowY: 'auto',
+            padding: '1rem',
+            background: '#f9fafb',
+            borderRadius: '0.5rem'
+          }}>
+            {nominees.map(book => (
+              <BookCard 
+                key={book.id}
+                book={book}
+                isSelected={selectedNominees.includes(book.id)}
+                onToggle={() => onToggleNominee(book.id)}
+              />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }

@@ -1,9 +1,9 @@
-// pages/admin/school-dashboard.js - Teacher Dashboard with Join Codes
+// pages/admin/school-dashboard.js - Teacher Dashboard with Join Codes and Phase Status
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
-import { db } from '../../lib/firebase'
+import { db, dbHelpers, getCurrentAcademicYear } from '../../lib/firebase'
 import { collection, getDocs, query, where, orderBy, limit, doc, updateDoc, getDoc } from 'firebase/firestore'
 
 export default function TeacherDashboard() {
@@ -36,11 +36,18 @@ export default function TeacherDashboard() {
   const [quickStats, setQuickStats] = useState({})
   const [showTimeoutWarning, setShowTimeoutWarning] = useState(false)
   
-  // New state for join codes
+  // Join codes state
   const [studentJoinCode, setStudentJoinCode] = useState('')
   const [parentQuizCode, setParentQuizCode] = useState('')
   const [codesLoading, setCodesLoading] = useState(true)
   const [copySuccess, setCopySuccess] = useState('')
+
+  // Phase status state
+  const [phaseStatus, setPhaseStatus] = useState({
+    currentPhase: 'ACTIVE',
+    academicYear: '2025-26',
+    loading: true
+  })
 
   // Authentication check
   useEffect(() => {
@@ -65,6 +72,7 @@ export default function TeacherDashboard() {
       if (userProfile) {
         loadDashboardData()
         loadJoinCodes()
+        loadPhaseStatus()
       }
     }
 
@@ -212,6 +220,32 @@ export default function TeacherDashboard() {
     } finally {
       console.log('🏁 Setting codesLoading to false')
       setCodesLoading(false)
+    }
+  }
+
+  // Load phase status
+  const loadPhaseStatus = async () => {
+    try {
+      console.log('📊 Loading phase status...')
+      
+      // Get current system configuration
+      const config = await dbHelpers.getSystemConfig()
+      const currentYear = getCurrentAcademicYear()
+      
+      setPhaseStatus({
+        currentPhase: config.programPhase || 'ACTIVE',
+        academicYear: currentYear,
+        loading: false
+      })
+      
+      console.log('✅ Phase status loaded:', {
+        phase: config.programPhase,
+        year: currentYear
+      })
+      
+    } catch (error) {
+      console.error('❌ Error loading phase status:', error)
+      setPhaseStatus(prev => ({ ...prev, loading: false }))
     }
   }
 
@@ -417,6 +451,31 @@ export default function TeacherDashboard() {
 
   const handleTimeoutSignOut = async () => {
     await signOut({ redirectTo: '/sign-in?reason=session-expired' })
+  }
+
+  // Phase helper functions
+  function getPhaseIcon(phase) {
+    const icons = {
+      'SETUP': '📝',
+      'TEACHER_SELECTION': '👩‍🏫',
+      'ACTIVE': '📚',
+      'VOTING': '🗳️',
+      'RESULTS': '🏆',
+      'CLOSED': '❄️'
+    }
+    return icons[phase] || '📋'
+  }
+
+  function getPhaseDisplayName(phase) {
+    const names = {
+      'SETUP': 'Setup',
+      'TEACHER_SELECTION': 'Teacher Selection',
+      'ACTIVE': 'Active Reading',
+      'VOTING': 'Voting Period',
+      'RESULTS': 'Results Available',
+      'CLOSED': 'Closed'
+    }
+    return names[phase] || 'Unknown'
   }
 
   // Show loading
@@ -851,6 +910,109 @@ export default function TeacherDashboard() {
                     >
                       {copySuccess === 'parent' ? '✓ Copied!' : '📋 Copy'}
                     </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Phase Status Display */}
+          <div style={{
+            background: 'white',
+            borderRadius: '1rem',
+            padding: '1.5rem',
+            marginBottom: '1.5rem',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+            border: '2px solid #E5E7EB'
+          }}>
+            <h3 style={{
+              fontSize: '1.25rem',
+              fontWeight: 'bold',
+              color: '#223848',
+              margin: '0 0 1rem 0',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}>
+              📊 Program Status
+            </h3>
+            
+            {phaseStatus.loading ? (
+              <div style={{ textAlign: 'center', padding: '1rem' }}>
+                <div style={{
+                  width: '2rem',
+                  height: '2rem',
+                  border: '3px solid #C3E0DE',
+                  borderTop: '3px solid #223848',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite',
+                  margin: '0 auto 1rem'
+                }}></div>
+                <p style={{ color: '#6b7280' }}>Loading status...</p>
+              </div>
+            ) : (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gap: '1rem'
+              }}>
+                {/* Academic Year */}
+                <div style={{
+                  background: 'linear-gradient(135deg, #ADD4EA15, #ADD4EA25)',
+                  borderRadius: '0.75rem',
+                  padding: '1.25rem',
+                  border: '1px solid #ADD4EA',
+                  textAlign: 'center'
+                }}>
+                  <div style={{
+                    fontSize: '1.5rem',
+                    marginBottom: '0.5rem'
+                  }}>
+                    📅
+                  </div>
+                  <div style={{
+                    fontSize: '1.125rem',
+                    fontWeight: 'bold',
+                    color: '#223848',
+                    marginBottom: '0.25rem'
+                  }}>
+                    {phaseStatus.academicYear}
+                  </div>
+                  <div style={{
+                    fontSize: '0.875rem',
+                    color: '#6b7280'
+                  }}>
+                    Academic Year
+                  </div>
+                </div>
+
+                {/* Current Phase */}
+                <div style={{
+                  background: 'linear-gradient(135deg, #C3E0DE15, #C3E0DE25)',
+                  borderRadius: '0.75rem',
+                  padding: '1.25rem',
+                  border: '1px solid #C3E0DE',
+                  textAlign: 'center'
+                }}>
+                  <div style={{
+                    fontSize: '1.5rem',
+                    marginBottom: '0.5rem'
+                  }}>
+                    {getPhaseIcon(phaseStatus.currentPhase)}
+                  </div>
+                  <div style={{
+                    fontSize: '1.125rem',
+                    fontWeight: 'bold',
+                    color: '#223848',
+                    marginBottom: '0.25rem'
+                  }}>
+                    {getPhaseDisplayName(phaseStatus.currentPhase)}
+                  </div>
+                  <div style={{
+                    fontSize: '0.875rem',
+                    color: '#6b7280'
+                  }}>
+                    Current Phase
                   </div>
                 </div>
               </div>
