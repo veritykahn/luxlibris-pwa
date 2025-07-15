@@ -2,6 +2,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
+import { usePhaseAccess } from '../hooks/usePhaseAccess';
+import VotingInterface from '../components/VotingInterface';
 import { getStudentDataEntities, getSchoolNomineesEntities } from '../lib/firebase';
 import { 
   collection, 
@@ -17,6 +19,7 @@ import Head from 'next/head';
 export default function StudentDashboard() {
   const router = useRouter();
   const { user, userProfile, isAuthenticated, loading: authLoading } = useAuth();
+const { phaseData, hasAccess, getPhaseMessage, getPhaseInfo } = usePhaseAccess();  
   const [studentData, setStudentData] = useState(null);
   const [nominees, setNominees] = useState([]);
   const [currentTheme, setCurrentTheme] = useState(null);
@@ -1148,6 +1151,9 @@ export default function StudentDashboard() {
       }
       
       console.log('✅ Student data loaded:', firebaseStudentData.firstName);
+console.log('🎯 PHASE TEST - Current phase:', phaseData.currentPhase);  // ← ADD THIS
+console.log('🎯 PHASE TEST - Can browse books:', hasAccess('nomineesBrowsing'));  // ← ADD THIS
+console.log('🎯 PHASE TEST - Phase message:', getPhaseMessage());  // ← ADD THIS
       
       // NEW: Check for grade progression after loading student data
       const { checkGradeProgression } = await import('../lib/firebase');
@@ -1671,31 +1677,43 @@ export default function StudentDashboard() {
             </div>
           </div>
 
+          {/* Voting Interface - Only During Voting Phase */}
+{hasAccess('votingInterface') && (
+  <VotingInterface 
+    studentData={studentData} 
+    currentTheme={currentTheme} 
+  />
+)}
+
           {/* MOVED TO TOP: Progress Wheels with ANIMATIONS */}
           <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '16px',
-            marginBottom: '20px'
-          }}>
-            <div style={{ animation: 'slideInLeft 0.8s ease-out 0.4s both' }}>
-              <ProgressWheel
-                title="This Year"
-                current={dashboardData.booksReadThisYear}
-                goal={dashboardData.currentYearGoal}
-                color={currentTheme.primary}
-                emoji="📖"
-              />
-            </div>
-            <div style={{ animation: 'slideInRight 0.8s ease-out 0.5s both' }}>
-              <ProgressWheel
-                title="Lifetime Journey"
-                current={dashboardData.totalBooksRead}
-                goal={dashboardData.lifetimeGoal}
-                color={currentTheme.accent}
-                emoji="🏆"
-              />
-            </div>
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+  gap: '16px',
+  marginBottom: '20px'
+}}>
+            {hasAccess('achievements') && (
+  <div style={{ animation: 'slideInLeft 0.8s ease-out 0.4s both' }}>
+    <ProgressWheel
+      title="This Year"
+      current={dashboardData.booksReadThisYear}
+      goal={dashboardData.currentYearGoal}
+      color={currentTheme.primary}
+      emoji="📖"
+    />
+  </div>
+)}
+            {hasAccess('achievements') && (
+  <div style={{ animation: 'slideInRight 0.8s ease-out 0.5s both' }}>
+    <ProgressWheel
+      title="Lifetime Journey"
+      current={dashboardData.totalBooksRead}
+      goal={dashboardData.lifetimeGoal}
+      color={currentTheme.accent}
+      emoji="🏆"
+    />
+  </div>
+)}
           </div>
         </div>
 
@@ -1703,33 +1721,33 @@ export default function StudentDashboard() {
         <div style={{ padding: '0 20px 20px' }}>
           
           {/* UPDATED: Action Items - Expandable with ANIMATIONS */}
-          {actionItems.length > 0 && (
-            <div style={{
-              backgroundColor: currentTheme.surface,
-              borderRadius: '16px',
-              padding: '20px',
-              marginBottom: '20px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              border: `2px solid ${currentTheme.primary}30`,
-              animation: 'slideInUp 0.8s ease-out 0.6s both'
-            }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginBottom: '16px'
-              }}>
-                <h3 style={{
-                  fontSize: '18px',
-                  fontWeight: '600',
-                  color: currentTheme.textPrimary,
-                  margin: '0',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}>
-                  ✨ What should I do next?
-                </h3>
+          {hasAccess('bookSubmission') && actionItems.length > 0 && (
+  <div style={{
+    backgroundColor: currentTheme.surface,
+    borderRadius: '16px',
+    padding: '20px',
+    marginBottom: '20px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+    border: `2px solid ${currentTheme.primary}30`,
+    animation: 'slideInUp 0.8s ease-out 0.6s both'
+  }}>
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: '16px'
+    }}>
+      <h3 style={{
+        fontSize: '18px',
+        fontWeight: '600',
+        color: currentTheme.textPrimary,
+        margin: '0',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px'
+      }}>
+        ✨ What should I do next?
+      </h3>
                 {actionItems.length > 1 && (
                   <button
                     onClick={() => setShowAllActionItems(!showAllActionItems)}
@@ -1808,7 +1826,7 @@ export default function StudentDashboard() {
           )}
 
           {/* FIXED: Currently Reading with separate button - inline calculation */}
-{(() => {
+{hasAccess('bookshelfEditing') && (() => {
   // Calculate currently reading books inline
   const currentlyReadingBooks = (studentData.bookshelf || []).filter(book => {
     const state = getBookState(book);
@@ -2065,27 +2083,27 @@ export default function StudentDashboard() {
 })()}
 
           {/* UPDATED: Smart Book Recommendations with ANIMATIONS */}
-          {smartRecommendations.length > 0 && (
-            <div style={{
-              backgroundColor: currentTheme.surface,
-              borderRadius: '16px',
-              padding: '20px',
-              marginBottom: '20px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              animation: 'slideInUp 0.8s ease-out 1.0s both'
-            }}>
-              <h3 style={{
-                fontSize: '18px',
-                fontWeight: '600',
-                color: currentTheme.textPrimary,
-                margin: '0 0 16px 0',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}>
-                <span>🎯</span>
-                Recommended for You
-              </h3>
+          {hasAccess('nomineesBrowsing') && smartRecommendations.length > 0 && (
+  <div style={{
+    backgroundColor: currentTheme.surface,
+    borderRadius: '16px',
+    padding: '20px',
+    marginBottom: '20px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+    animation: 'slideInUp 0.8s ease-out 1.0s both'
+  }}>
+    <h3 style={{
+      fontSize: '18px',
+      fontWeight: '600',
+      color: currentTheme.textPrimary,
+      margin: '0 0 16px 0',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px'
+    }}>
+      <span>🎯</span>
+      Recommended for You
+    </h3>
               
               {smartRecommendations.map((rec, recIndex) => (
                 <div key={recIndex} style={{ 
@@ -2208,26 +2226,26 @@ export default function StudentDashboard() {
           )}
 
           {/* Achievement Progress with ANIMATIONS */}
-          {nextAchievement && (
-            <div style={{
-              backgroundColor: currentTheme.surface,
-              borderRadius: '16px',
-              padding: '20px',
-              marginBottom: '20px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              animation: 'slideInUp 0.8s ease-out 1.2s both'
-            }}>
-              <h3 style={{
-                fontSize: '18px',
-                fontWeight: '600',
-                color: currentTheme.textPrimary,
-                margin: '0 0 16px 0',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}>
-                🎯 Next Achievement Goal
-              </h3>
+          {hasAccess('achievements') && nextAchievement && (
+  <div style={{
+    backgroundColor: currentTheme.surface,
+    borderRadius: '16px',
+    padding: '20px',
+    marginBottom: '20px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+    animation: 'slideInUp 0.8s ease-out 1.2s both'
+  }}>
+    <h3 style={{
+      fontSize: '18px',
+      fontWeight: '600',
+      color: currentTheme.textPrimary,
+      margin: '0 0 16px 0',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px'
+    }}>
+      🎯 Next Achievement Goal
+    </h3>
               
               <div style={{
                 background: `linear-gradient(135deg, ${currentTheme.primary}20, ${currentTheme.accent}20)`,
@@ -2289,30 +2307,34 @@ export default function StudentDashboard() {
             marginBottom: '20px',
             animation: 'slideInUp 0.8s ease-out 1.4s both'
           }}>
-            <div style={{ 
-              animation: 'slideInLeft 0.6s ease-out 1.5s both',
-              flex: '1',
-              maxWidth: '200px'
-            }}>
-              <QuickActionButton
-                emoji="🎴"
-                label="Browse Books"
-                onClick={() => router.push('/student-nominees')}
-                theme={currentTheme}
-              />
-            </div>
-            <div style={{ 
-              animation: 'slideInRight 0.6s ease-out 1.6s both',
-              flex: '1',
-              maxWidth: '200px'
-            }}>
-              <QuickActionButton
-                emoji="📖"
-                label="My Bookshelf"
-                onClick={() => router.push('/student-bookshelf')}
-                theme={currentTheme}
-              />
-            </div>
+            {hasAccess('nomineesBrowsing') && (
+  <div style={{ 
+    animation: 'slideInLeft 0.6s ease-out 1.5s both',
+    flex: '1',
+    maxWidth: '200px'
+  }}>
+    <QuickActionButton
+      emoji="🎴"
+      label="Browse Books"
+      onClick={() => router.push('/student-nominees')}
+      theme={currentTheme}
+    />
+  </div>
+)}
+            {hasAccess('bookshelfEditing') && (
+  <div style={{ 
+    animation: 'slideInRight 0.6s ease-out 1.6s both',
+    flex: '1',
+    maxWidth: '200px'
+  }}>
+    <QuickActionButton
+      emoji="📖"
+      label="My Bookshelf"
+      onClick={() => router.push('/student-bookshelf')}
+      theme={currentTheme}
+    />
+  </div>
+)}
           </div>
 
           {/* UPDATED: Reading Habits with SPARKLING saint unlock! */}
