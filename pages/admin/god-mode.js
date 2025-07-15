@@ -2246,7 +2246,7 @@ Type "DELETE" to confirm:`)
                           marginBottom: '0.25rem',
                           lineHeight: '1.2'
                         }}>
-                          "{book.bookTitle}"
+                          &quot;{book.bookTitle}&quot;
                         </div>
                         <div style={{
                           fontSize: '0.75rem',
@@ -2378,7 +2378,7 @@ Type "DELETE" to confirm:`)
                             </td>
                             <td style={{ padding: '0.75rem' }}>
                               <div style={{ color: 'white', fontWeight: '600', marginBottom: '0.25rem' }}>
-                                "{book.bookTitle}"
+                                &quot;{book.bookTitle}&quot;
                               </div>
                               <div style={{ color: '#c084fc', fontSize: '0.75rem' }}>
                                 by {book.bookAuthors}
@@ -2420,7 +2420,7 @@ Type "DELETE" to confirm:`)
                 <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🗳️</div>
                 <p style={{ fontSize: '1.125rem', marginBottom: '0.5rem' }}>No voting results yet</p>
                 <p style={{ fontSize: '0.875rem' }}>
-                  Click "Load Results" to check for votes, or wait for students to start voting!
+                  Click &quot;Load Results&quot; to check for votes, or wait for students to start voting!
                 </p>
               </div>
             )}

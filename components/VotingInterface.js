@@ -77,7 +77,7 @@ export default function VotingInterface({ studentData, currentTheme }) {
           lineHeight: '1.5'
         }}>
           You need to complete at least one book before you can vote. 
-          Keep reading and you'll be able to vote next time!
+          Keep reading and you&apos;ll be able to vote next time!
         </p>
       </div>
     );
