@@ -364,6 +364,39 @@ export default function GodModeWithPrograms() {
     setPhaseLoading(false);
   };
 
+  // ADDED: Check phases now function
+  const checkPhasesNow = async () => {
+    setPhaseLoading(true);
+    try {
+      console.log('🔍 Manually checking phases...');
+      
+      // Run the automatic phase checking function
+      const result = await dbHelpers.checkAndUpdatePhases();
+      
+      if (result.updated) {
+        alert(`✅ PHASE AUTOMATICALLY UPDATED!
+🔄 Phase changed: ${result.oldPhase} → ${result.newPhase}
+📅 Based on current date and system rules
+🎯 System is now synchronized
+This is what should happen automatically, but you can trigger it manually during your pilot.`);
+      } else {
+        alert(`✅ PHASES CHECKED - NO CHANGES NEEDED
+📊 Current phase: ${result.currentPhase}
+📅 System is already synchronized with current dates
+🎯 No automatic transitions required at this time
+${result.error ? `⚠️ Note: ${result.error}` : ''}`);
+      }
+      
+      // Reload phase data to reflect any changes
+      await loadPhaseData();
+      
+    } catch (error) {
+      console.error('❌ Error checking phases:', error);
+      alert('Error checking phases: ' + error.message);
+    }
+    setPhaseLoading(false);
+  };
+
   // Release nominees to teachers (SETUP → TEACHER_SELECTION)
   const releaseNomineesToTeachers = async () => {
     const confirmed = window.confirm(`🚀 RELEASE NOMINEES TO TEACHERS?
@@ -1726,6 +1759,25 @@ Type "DELETE" to confirm:`)
                     📅 Manual Start New Year
                   </button>
                 )}
+
+                {/* ADDED: Check Phases Now Button */}
+                <button
+                  onClick={checkPhasesNow}
+                  disabled={phaseLoading}
+                  style={{
+                    background: 'linear-gradient(135deg, #6b7280, #4b5563)',
+                    color: 'white',
+                    padding: '0.75rem 1rem',
+                    borderRadius: '0.5rem',
+                    border: 'none',
+                    cursor: phaseLoading ? 'not-allowed' : 'pointer',
+                    fontSize: '0.875rem',
+                    fontWeight: '600',
+                    textAlign: 'center'
+                  }}
+                >
+                  🔍 Check Phases Now
+                </button>
 
                 {/* Always Available: Generate Report */}
                 <button
