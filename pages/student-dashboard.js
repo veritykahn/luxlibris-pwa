@@ -2307,7 +2307,7 @@ export default function StudentDashboard() {
               maxWidth: '200px'
             }}>
               <QuickActionButton
-                emoji="📂"
+                emoji="📖"
                 label="My Bookshelf"
                 onClick={() => router.push('/student-bookshelf')}
                 theme={currentTheme}
