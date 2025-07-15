@@ -925,11 +925,13 @@ export default function TeacherStudents() {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 style={{
                   padding: '0.75rem 1rem',
-                  border: '1px solid #e5e7eb',
+                  border: '2px solid #d1d5db',
                   borderRadius: '0.5rem',
                   fontSize: '1rem',
                   width: '100%',
-                  boxSizing: 'border-box'
+                  boxSizing: 'border-box',
+                  color: '#1f2937',
+                  backgroundColor: '#ffffff'
                 }}
               />
               <select
@@ -937,10 +939,12 @@ export default function TeacherStudents() {
                 onChange={(e) => setGradeFilter(e.target.value)}
                 style={{
                   padding: '0.75rem 1rem',
-                  border: '1px solid #e5e7eb',
+                  border: '2px solid #d1d5db',
                   borderRadius: '0.5rem',
                   fontSize: '1rem',
-                  minWidth: '120px'
+                  minWidth: '120px',
+                  color: '#1f2937',
+                  backgroundColor: '#ffffff'
                 }}
               >
                 <option value="all">All Grades</option>
@@ -1099,10 +1103,12 @@ export default function TeacherStudents() {
                   style={{
                     width: '100%',
                     padding: '0.75rem',
-                    border: '1px solid #e5e7eb',
+                    border: '2px solid #d1d5db',
                     borderRadius: '0.5rem',
                     fontSize: '1rem',
-                    boxSizing: 'border-box'
+                    boxSizing: 'border-box',
+                    color: '#1f2937',
+                    backgroundColor: '#ffffff'
                   }}
                 />
               </div>
@@ -1129,11 +1135,13 @@ export default function TeacherStudents() {
                   style={{
                     width: '100%',
                     padding: '0.75rem',
-                    border: '1px solid #e5e7eb',
+                    border: '2px solid #d1d5db',
                     borderRadius: '0.5rem',
                     fontSize: '1rem',
                     boxSizing: 'border-box',
-                    textTransform: 'uppercase'
+                    textTransform: 'uppercase',
+                    color: '#1f2937',
+                    backgroundColor: '#ffffff'
                   }}
                 />
               </div>
@@ -1159,10 +1167,12 @@ export default function TeacherStudents() {
                     style={{
                       width: '100%',
                       padding: '0.75rem',
-                      border: '1px solid #e5e7eb',
+                      border: '2px solid #d1d5db',
                       borderRadius: '0.5rem',
                       fontSize: '1rem',
-                      boxSizing: 'border-box'
+                      boxSizing: 'border-box',
+                      color: '#1f2937',
+                      backgroundColor: '#ffffff'
                     }}
                   >
                     <option value={4}>4th Grade</option>
@@ -1192,10 +1202,12 @@ export default function TeacherStudents() {
                     style={{
                       width: '100%',
                       padding: '0.75rem',
-                      border: '1px solid #e5e7eb',
+                      border: '2px solid #d1d5db',
                       borderRadius: '0.5rem',
                       fontSize: '1rem',
-                      boxSizing: 'border-box'
+                      boxSizing: 'border-box',
+                      color: '#1f2937',
+                      backgroundColor: '#ffffff'
                     }}
                   />
                 </div>
@@ -2015,7 +2027,40 @@ function StudentCard({ student, type, onToggleStatus, onViewDetails, onEditStude
             </>
           ) : (
             <>
-              {/* Row 1: Book actions */}
+              {/* Row 1: Edit/Delete actions */}
+              <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={onEditStudent}
+                  style={{
+                    padding: '0.5rem',
+                    backgroundColor: '#C3E0DE',
+                    color: '#223848',
+                    border: 'none',
+                    borderRadius: '0.375rem',
+                    fontSize: '0.75rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  ✏️
+                </button>
+                <button
+                  onClick={onDeleteStudent}
+                  disabled={isProcessing}
+                  style={{
+                    padding: '0.5rem',
+                    backgroundColor: '#f87171',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.375rem',
+                    fontSize: '0.75rem',
+                    cursor: 'pointer',
+                    opacity: isProcessing ? 0.7 : 1
+                  }}
+                >
+                  🗑️
+                </button>
+              </div>
+              {/* Row 2: Book actions */}
               <div style={{ display: 'flex', gap: '0.25rem', width: '100%' }}>
                 <button
                   onClick={onAddBookSubmission}
@@ -2048,39 +2093,6 @@ function StudentCard({ student, type, onToggleStatus, onViewDetails, onEditStude
                   }}
                 >
                   📖 View Books
-                </button>
-              </div>
-              {/* Row 2: Edit/Delete actions */}
-              <div style={{ display: 'flex', gap: '0.25rem' }}>
-                <button
-                  onClick={onEditStudent}
-                  style={{
-                    padding: '0.5rem',
-                    backgroundColor: '#C3E0DE',
-                    color: '#223848',
-                    border: 'none',
-                    borderRadius: '0.375rem',
-                    fontSize: '0.75rem',
-                    cursor: 'pointer'
-                  }}
-                >
-                  ✏️
-                </button>
-                <button
-                  onClick={onDeleteStudent}
-                  disabled={isProcessing}
-                  style={{
-                    padding: '0.5rem',
-                    backgroundColor: '#f87171',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '0.375rem',
-                    fontSize: '0.75rem',
-                    cursor: 'pointer',
-                    opacity: isProcessing ? 0.7 : 1
-                  }}
-                >
-                  🗑️
                 </button>
               </div>
             </>
