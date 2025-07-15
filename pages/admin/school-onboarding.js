@@ -1171,7 +1171,7 @@ function NomineeSelectionStep({ nominees, selectedNominees, onToggleNominee, cal
           lineHeight: '1.4', 
           margin: 0
         }}>
-          You're selecting books for the current academic year. These books will be available to your students 
+          You&apos;re selecting books for the current academic year. These books will be available to your students 
           when the reading program is active.
         </p>
       </div>
