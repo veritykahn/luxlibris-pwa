@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
 import { usePhaseAccess } from '../hooks/usePhaseAccess';
 import VotingInterface from '../components/VotingInterface';
+import ResultsInterface from '../components/ResultsInterface';
 import { getStudentDataEntities, getSchoolNomineesEntities } from '../lib/firebase';
 import { 
   collection, 
@@ -1680,6 +1681,14 @@ console.log('🎯 PHASE TEST - Phase message:', getPhaseMessage());  // ← ADD 
           {/* Voting Interface - Only During Voting Phase */}
 {hasAccess('votingInterface') && (
   <VotingInterface 
+    studentData={studentData} 
+    currentTheme={currentTheme} 
+  />
+)}
+
+          {/* Results Interface - Only During Results Phase */}
+{hasAccess('votingResults') && (
+  <ResultsInterface 
     studentData={studentData} 
     currentTheme={currentTheme} 
   />

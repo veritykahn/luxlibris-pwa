@@ -40,6 +40,10 @@ export default function MyStats() {
   // NEW: Badge Modal
   const [showBadgeModal, setShowBadgeModal] = useState(false);
   
+  // NEW: Bird Fact Modal states
+  const [showBirdFactModal, setShowBirdFactModal] = useState(false);
+  const [selectedBadge, setSelectedBadge] = useState(null);
+  
   // Stats data
   const [personalStats, setPersonalStats] = useState(null);
   const [readingQuality, setReadingQuality] = useState(null);
@@ -163,6 +167,12 @@ export default function MyStats() {
     { name: 'Family Battle', path: '/student-stats/family-battle', icon: '👨‍👩‍👧‍👦', description: 'Coming soon!', disabled: true }
   ], []);
 
+  // NEW: Handle badge click function
+  const handleBadgeClick = (badge) => {
+    setSelectedBadge(badge);
+    setShowBirdFactModal(true);
+  };
+
   // Close nav menus when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -179,12 +189,13 @@ export default function MyStats() {
         setShowNavMenu(false);
         setShowStatsDropdown(false);
         setShowBadgeModal(false);
+        setShowBirdFactModal(false);
         setShowBraggingRights(false);
         setShowLeaderboard(false);
       }
     };
 
-    if (showNavMenu || showStatsDropdown || showBadgeModal || showBraggingRights || showLeaderboard) {
+    if (showNavMenu || showStatsDropdown || showBadgeModal || showBirdFactModal || showBraggingRights || showLeaderboard) {
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('keydown', handleEscape);
     }
@@ -193,7 +204,7 @@ export default function MyStats() {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscape);
     };
-  }, [showNavMenu, showStatsDropdown, showBadgeModal, showBraggingRights, showLeaderboard]);
+  }, [showNavMenu, showStatsDropdown, showBadgeModal, showBirdFactModal, showBraggingRights, showLeaderboard]);
 
   // Handle stats navigation
   const handleStatsNavigation = (option) => {
@@ -1552,7 +1563,7 @@ export default function MyStats() {
           )}
         </div>
 
-        {/* BADGE MODAL */}
+        {/* UPDATED BADGE MODAL WITH CLICKABLE BADGES */}
         {showBadgeModal && (
           <div style={{
             position: 'fixed',
@@ -1588,7 +1599,7 @@ export default function MyStats() {
                   color: currentTheme.textPrimary,
                   margin: 0
                 }}>
-                  🏅 Your Badge Collection
+                  🏅 Your Bird Badge Collection
                 </h3>
                 
                 <button
@@ -1616,7 +1627,15 @@ export default function MyStats() {
                   fontSize: '12px',
                   color: currentTheme.textSecondary
                 }}>
-                  {earnedBadges.length} of {Object.keys(BADGE_CALENDAR).length} badges earned ({Math.round((earnedBadges.length / Object.keys(BADGE_CALENDAR).length) * 100)}%)
+                  {earnedBadges.length} of {Object.keys(BADGE_CALENDAR).length} bird badges earned ({Math.round((earnedBadges.length / Object.keys(BADGE_CALENDAR).length) * 100)}%)
+                </div>
+                <div style={{
+                  fontSize: '11px',
+                  color: currentTheme.textSecondary,
+                  marginTop: '4px',
+                  opacity: 0.8
+                }}>
+                  Click any badge to see the bird fact! 🐦
                 </div>
               </div>
               
@@ -1625,6 +1644,7 @@ export default function MyStats() {
                   {earnedBadges.map((badge, index) => (
                     <div
                       key={index}
+                      onClick={() => handleBadgeClick(badge)}
                       style={{
                         backgroundColor: `${currentTheme.primary}15`,
                         borderRadius: '12px',
@@ -1632,14 +1652,66 @@ export default function MyStats() {
                         marginBottom: '8px',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '12px'
+                        gap: '12px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        border: `2px solid transparent`,
+                        touchAction: 'manipulation',
+                        WebkitTapHighlightColor: 'transparent'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.target.style.backgroundColor = `${currentTheme.primary}25`;
+                        e.target.style.borderColor = `${currentTheme.primary}60`;
+                        e.target.style.transform = 'translateY(-1px)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.backgroundColor = `${currentTheme.primary}15`;
+                        e.target.style.borderColor = 'transparent';
+                        e.target.style.transform = 'translateY(0)';
                       }}
                     >
                       <div style={{
-                        fontSize: '24px',
-                        flexShrink: 0
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: '50%',
+                        backgroundColor: `${currentTheme.primary}30`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        padding: '8px',
+                        position: 'relative'
                       }}>
-                        {badge.emoji}
+                        <img 
+                          src={`/badges/${badge.pngName}`}
+                          alt={badge.name}
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            objectFit: 'contain'
+                          }}
+                          onError={(e) => {
+                            e.target.src = '/badges/hummingbird.png';
+                          }}
+                        />
+                        {/* Click indicator */}
+                        <div style={{
+                          position: 'absolute',
+                          bottom: '-2px',
+                          right: '-2px',
+                          width: '16px',
+                          height: '16px',
+                          backgroundColor: currentTheme.primary,
+                          borderRadius: '50%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '8px',
+                          color: 'white',
+                          fontWeight: 'bold'
+                        }}>
+                          ?
+                        </div>
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{
@@ -1662,7 +1734,7 @@ export default function MyStats() {
                           color: currentTheme.primary,
                           fontWeight: '600'
                         }}>
-                          Week {badge.week} • {badge.xp} XP
+                          Week {badge.week} • {badge.xp} XP • Click for bird fact! 🐦
                         </div>
                       </div>
                     </div>
@@ -1679,13 +1751,13 @@ export default function MyStats() {
                     color: currentTheme.textPrimary,
                     marginBottom: '8px'
                   }}>
-                    No badges earned yet
+                    No bird badges earned yet
                   </div>
                   <div style={{
                     fontSize: '12px',
                     color: currentTheme.textSecondary
                   }}>
-                    Complete reading challenges to earn your first badge!
+                    Complete reading challenges to earn your first bird badge!
                   </div>
                 </div>
               )}
@@ -1705,6 +1777,152 @@ export default function MyStats() {
                 }}
               >
                 Close
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* NEW BIRD FACT MODAL */}
+        {showBirdFactModal && selectedBadge && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.85)',
+            zIndex: 1100,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}>
+            <div style={{
+              backgroundColor: currentTheme.surface,
+              borderRadius: '20px',
+              padding: '24px',
+              maxWidth: '380px',
+              width: '100%',
+              textAlign: 'center',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+              position: 'relative'
+            }}>
+              <button
+                onClick={() => setShowBirdFactModal(false)}
+                style={{
+                  position: 'absolute',
+                  top: '12px',
+                  right: '12px',
+                  backgroundColor: 'rgba(0,0,0,0.1)',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '32px',
+                  height: '32px',
+                  fontSize: '16px',
+                  cursor: 'pointer',
+                  color: currentTheme.textSecondary
+                }}
+              >
+                ✕
+              </button>
+
+              {/* Large Badge Image */}
+              <div style={{
+                width: '120px',
+                height: '120px',
+                margin: '0 auto 20px',
+                borderRadius: '50%',
+                backgroundColor: `${currentTheme.primary}20`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '20px',
+                border: `3px solid ${currentTheme.primary}60`
+              }}>
+                <img 
+                  src={`/badges/${selectedBadge.pngName}`}
+                  alt={selectedBadge.name}
+                  style={{
+                    width: '80px',
+                    height: '80px',
+                    objectFit: 'contain'
+                  }}
+                  onError={(e) => {
+                    e.target.src = '/badges/hummingbird.png';
+                  }}
+                />
+              </div>
+
+              {/* Badge Info */}
+              <h3 style={{
+                fontSize: '20px',
+                fontWeight: '600',
+                color: currentTheme.textPrimary,
+                margin: '0 0 8px 0',
+                fontFamily: 'Didot, "Times New Roman", serif'
+              }}>
+                {selectedBadge.name}
+              </h3>
+
+              <div style={{
+                fontSize: '14px',
+                color: currentTheme.textSecondary,
+                marginBottom: '20px'
+              }}>
+                {selectedBadge.description}
+              </div>
+
+              <div style={{
+                fontSize: '12px',
+                color: currentTheme.primary,
+                fontWeight: '600',
+                marginBottom: '20px'
+              }}>
+                Week {selectedBadge.week} • {selectedBadge.xp} XP
+              </div>
+
+              {/* Bird Fact */}
+              <div style={{
+                backgroundColor: `${currentTheme.secondary}20`,
+                borderRadius: '16px',
+                padding: '20px',
+                marginBottom: '20px',
+                border: `2px solid ${currentTheme.secondary}60`
+              }}>
+                <div style={{
+                  fontSize: '16px',
+                  marginBottom: '12px'
+                }}>
+                  🐦 Amazing Bird Fact!
+                </div>
+                <div style={{
+                  fontSize: '14px',
+                  color: currentTheme.textPrimary,
+                  lineHeight: '1.5',
+                  fontWeight: '500'
+                }}>
+                  {selectedBadge.birdFact}
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowBirdFactModal(false)}
+                style={{
+                  width: '100%',
+                  backgroundColor: currentTheme.primary,
+                  color: currentTheme.textPrimary,
+                  border: 'none',
+                  borderRadius: '16px',
+                  padding: '16px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  minHeight: '44px',
+                  touchAction: 'manipulation',
+                  WebkitTapHighlightColor: 'transparent'
+                }}
+              >
+                Awesome! 🎉
               </button>
             </div>
           </div>

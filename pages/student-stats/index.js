@@ -894,36 +894,61 @@ if (books >= 10) {
           
           {/* SMALL PILL: THIS WEEK'S CHALLENGE */}
           {currentWeekBadge && (
-            <div style={{
-              backgroundColor: currentTheme.surface,
-              borderRadius: '50px',
-              padding: '12px 20px',
-              marginBottom: '20px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              textAlign: 'center',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px'
-            }}>
-              <span style={{ fontSize: '20px' }}>{currentWeekBadge.emoji}</span>
-              <div>
-                <div style={{
-                  fontSize: 'clamp(12px, 3.5vw, 14px)',
-                  fontWeight: '600',
-                  color: currentTheme.textPrimary
-                }}>
-                  {currentWeekBadge.week === 0 ? 'Challenge Starting Soon!' : 'This Week\'s Challenge'}
-                </div>
-                <div style={{
-                  fontSize: 'clamp(10px, 3vw, 11px)',
-                  color: currentTheme.textSecondary
-                }}>
-                  {currentWeekBadge.name}
-                </div>
-              </div>
-            </div>
-          )}
+  <div style={{
+    backgroundColor: currentTheme.surface,
+    borderRadius: '50px',
+    padding: '12px 20px',
+    marginBottom: '20px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+    textAlign: 'center',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '12px'
+  }}>
+    {/* UPDATED: Use PNG image instead of emoji */}
+    <div style={{
+      width: '32px',
+      height: '32px',
+      borderRadius: '50%',
+      backgroundColor: `${currentTheme.primary}20`,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+      padding: '4px'
+    }}>
+      <img 
+        src={`/badges/${currentWeekBadge.pngName}`}
+        alt={currentWeekBadge.name}
+        style={{
+          width: '24px',
+          height: '24px',
+          objectFit: 'contain'
+        }}
+        onError={(e) => {
+          // Fallback to a default badge image if the specific badge image fails to load
+          e.target.src = '/badges/hummingbird.png';
+        }}
+      />
+    </div>
+    <div>
+      <div style={{
+        fontSize: 'clamp(12px, 3.5vw, 14px)',
+        fontWeight: '600',
+        color: currentTheme.textPrimary
+      }}>
+        {currentWeekBadge.week === 0 ? 'Challenge Starting Soon!' : 'This Week\'s Challenge'}
+      </div>
+      <div style={{
+        fontSize: 'clamp(10px, 3vw, 11px)',
+        color: currentTheme.textSecondary
+      }}>
+        {currentWeekBadge.name}
+      </div>
+    </div>
+  </div>
+)}
           
           {/* ENHANCED READING JOURNEY WITH DYNAMIC MESSAGING */}
           {(() => {

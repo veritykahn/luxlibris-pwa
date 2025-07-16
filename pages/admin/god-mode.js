@@ -512,7 +512,7 @@ export default function GodModeWithPrograms() {
       console.log('🔍 Manually checking phases...');
       
       // Run the automatic phase checking function
-      const result = await dbHelpers.checkAndUpdatePhases();
+      const result = await dbHelpers.checkAndUpdatePhasesWithClearing();
       
       if (result.updated) {
         alert(`✅ PHASE AUTOMATICALLY UPDATED!
@@ -1859,26 +1859,70 @@ Type "DELETE" to confirm:`)
                   </button>
                 )}
 
-                {/* Release New Year to Teachers Button */}
-                {phaseData.currentPhase === 'RESULTS' && (
-                  <button
-                    onClick={releaseNewYearToTeachers}
-                    disabled={phaseLoading}
-                    style={{
-                      background: 'linear-gradient(135deg, #f59e0b, #d97706)',
-                      color: 'white',
-                      padding: '0.75rem 1rem',
-                      borderRadius: '0.5rem',
-                      border: 'none',
-                      cursor: phaseLoading ? 'not-allowed' : 'pointer',
-                      fontSize: '0.875rem',
-                      fontWeight: '600',
-                      textAlign: 'center'
-                    }}
-                  >
-                    🚀 Release New Year to Teachers
-                  </button>
-                )}
+                {/* Clear Student Data and Move to Teacher Selection */}
+{phaseData.currentPhase === 'RESULTS' && (
+  <button
+    onClick={async () => {
+      const confirmed = window.confirm(`🗑️ CLEAR ALL STUDENT DATA & START TEACHER SELECTION?
+
+This will:
+- Clear all student bookshelves, badges, and votes
+- Preserve saints, streaks, and lifetime XP
+- Move phase to TEACHER_SELECTION
+- Allow teachers to select new books
+
+⚠️ Student data will be cleared for ALL students!
+Bragging rights certificates will no longer be available.
+
+Continue?`);
+      
+      if (!confirmed) return;
+      
+      try {
+        setPhaseLoading(true);
+        
+        // Import the function
+        const { transitionToTeacherSelectionWithClearing } = await import('../../lib/firebase');
+        
+        // Clear student data and transition phase
+        const result = await transitionToTeacherSelectionWithClearing();
+        
+        // Reload phase data
+        await loadPhaseData();
+        
+        alert(`✅ SUCCESS!
+
+🗑️ Student data cleared for ${result.studentsCleared} students
+🎯 Phase: TEACHER_SELECTION
+👩‍🏫 Teachers can now select books for new academic year
+
+Next steps:
+1. Teachers select their books (May 24 - June 1)
+2. System auto-switches to ACTIVE on June 1st
+3. Students start fresh with clean slate`);
+        
+      } catch (error) {
+        console.error('❌ Error clearing student data:', error);
+        alert('Error clearing student data: ' + error.message);
+      }
+      setPhaseLoading(false);
+    }}
+    disabled={phaseLoading}
+    style={{
+      background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+      color: 'white',
+      padding: '0.75rem 1rem',
+      borderRadius: '0.5rem',
+      border: 'none',
+      cursor: phaseLoading ? 'not-allowed' : 'pointer',
+      fontSize: '0.875rem',
+      fontWeight: '600',
+      textAlign: 'center'
+    }}
+  >
+    🗑️ Clear Student Data & Start Teacher Selection
+  </button>
+)}
 
                 {/* Start New Academic Year Button (fallback) */}
                 {phaseData.currentPhase === 'CLOSED' && (

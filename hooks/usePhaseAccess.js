@@ -104,6 +104,7 @@ export const usePhaseAccess = () => {
       nomineesBrowsing: false,
       bookshelfEditing: false,
       votingInterface: false,
+      votingResults: true,        // NEW: Show results to students
       
       // Year-round features available
       saintsPages: true,
