@@ -202,7 +202,7 @@ export default function ResultsInterface({ studentData, currentTheme }) {
                 margin: '0 0 8px 0',
                 fontWeight: '600'
               }}>
-                You voted for "{studentResult.book.bookTitle}"
+                You voted for &quot;{studentResult.book.bookTitle}&quot;
               </p>
               <p style={{
                 fontSize: '14px',
@@ -229,7 +229,7 @@ export default function ResultsInterface({ studentData, currentTheme }) {
                 color: currentTheme.textSecondary,
                 margin: '0 0 4px 0'
               }}>
-                You voted for "{studentResult.book.bookTitle}"
+                You voted for &quot;{studentResult.book.bookTitle}&quot;
               </p>
               <p style={{
                 fontSize: '12px',
@@ -353,7 +353,7 @@ export default function ResultsInterface({ studentData, currentTheme }) {
                   marginBottom: '2px',
                   lineHeight: '1.2'
                 }}>
-                  "{book.bookTitle}"
+                  &quot;{book.bookTitle}&quot;
                 </div>
                 <div style={{
                   fontSize: '10px',
@@ -399,7 +399,7 @@ export default function ResultsInterface({ studentData, currentTheme }) {
           color: currentTheme.textSecondary,
           margin: 0
         }}>
-          Thank you for making this year's Lux Libris Award amazing. 
+          Thank you for making this year&apos;s Lux Libris Award amazing. 
           Keep reading and see you next year!
         </p>
       </div>

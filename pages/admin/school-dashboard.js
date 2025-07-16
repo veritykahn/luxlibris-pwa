@@ -1,10 +1,267 @@
-// pages/admin/school-dashboard.js - Teacher Dashboard with Join Codes and Phase Status
+// pages/admin/school-dashboard.js - Teacher Dashboard with Join Codes and Enhanced Phase Status
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
 import { db, dbHelpers, getCurrentAcademicYear } from '../../lib/firebase'
 import { collection, getDocs, query, where, orderBy, limit, doc, updateDoc, getDoc } from 'firebase/firestore'
+
+// Enhanced Phase Details Section Component
+function PhaseDetailsSection({ currentPhase, router }) {
+  const getPhaseDetails = (phase) => {
+    switch (phase) {
+      case 'ACTIVE':
+        return {
+          title: 'Active Reading Period',
+          description: 'Students are actively reading and submitting books for approval.',
+          status: 'success',
+          statusText: 'Program Running Smoothly',
+          timeline: 'Sept 1 - March 31',
+          actions: [
+            { text: 'Review Student Submissions', route: '/teacher/submissions', icon: '📋' },
+            { text: 'Manage Students', route: '/teacher/students', icon: '👥' },
+            { text: 'View Achievements', route: '/teacher/achievements', icon: '🏆' }
+          ],
+          nextPhase: 'Voting begins March 31st - students will vote for their favorite books!'
+        }
+      
+      case 'VOTING':
+        return {
+          title: 'Student Voting Period',
+          description: 'Students are voting for their favorite books. Manual student voting is available.',
+          status: 'voting',
+          statusText: 'Voting Active',
+          timeline: 'April 1 - April 14',
+          actions: [
+            { text: 'Vote for Manual Students', route: '/teacher/students', icon: '🗳️', highlight: true },
+            { text: 'View Student Progress', route: '/teacher/students', icon: '👥' },
+            { text: 'Monitor Voting Activity', route: '/teacher/achievements', icon: '📊' }
+          ],
+          nextPhase: 'Results will be announced April 15th!'
+        }
+      
+      case 'RESULTS':
+        return {
+          title: 'Results Available',
+          description: 'Voting results are now available. Students can see the winners!',
+          status: 'results',
+          statusText: 'Results Published',
+          timeline: 'April 15 - May 23',
+          actions: [
+            { text: 'View Voting Results', route: '/teacher/achievements', icon: '🏆', highlight: true },
+            { text: 'See Student Votes', route: '/teacher/students', icon: '🗳️' },
+            { text: 'Download Reports', route: '/teacher/achievements', icon: '📊' }
+          ],
+          nextPhase: 'Teacher book selection starts May 24th for next year!'
+        }
+      
+      case 'TEACHER_SELECTION':
+        return {
+          title: 'Teacher Book Selection',
+          description: 'Select books and configure settings for the next academic year.',
+          status: 'setup',
+          statusText: 'Setup Required',
+          timeline: 'May 24 - June 1',
+          actions: [
+            { text: 'Select Books for Next Year', route: '/teacher/settings', icon: '📚', highlight: true },
+            { text: 'Configure Achievement Tiers', route: '/teacher/settings', icon: '🎯' },
+            { text: 'Set Submission Options', route: '/teacher/settings', icon: '⚙️' }
+          ],
+          nextPhase: 'New academic year begins June 1st with fresh student data!'
+        }
+      
+      case 'SETUP':
+        return {
+          title: 'Program Setup',
+          description: 'Initial program configuration is being completed.',
+          status: 'setup',
+          statusText: 'Setup in Progress',
+          timeline: 'Administrative Period',
+          actions: [
+            { text: 'Complete Setup', route: '/teacher/settings', icon: '⚙️', highlight: true },
+            { text: 'Review Configuration', route: '/teacher/settings', icon: '📋' }
+          ],
+          nextPhase: 'Active reading period will begin once setup is complete.'
+        }
+      
+      default:
+        return {
+          title: 'Unknown Phase',
+          description: 'Phase information not available.',
+          status: 'neutral',
+          statusText: 'Status Unknown',
+          timeline: 'Unknown',
+          actions: [],
+          nextPhase: 'Please contact support if this persists.'
+        }
+    }
+  }
+
+  const phaseInfo = getPhaseDetails(currentPhase)
+  
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'success': return { bg: '#F0FDF4', border: '#16A34A', text: '#166534' }
+      case 'voting': return { bg: '#FEF3C7', border: '#D97706', text: '#92400E' }
+      case 'results': return { bg: '#F3E8FF', border: '#9333EA', text: '#6B21A8' }
+      case 'setup': return { bg: '#FEF2F2', border: '#DC2626', text: '#991B1B' }
+      default: return { bg: '#F8FAFC', border: '#64748B', text: '#475569' }
+    }
+  }
+
+  const colors = getStatusColor(phaseInfo.status)
+
+  return (
+    <div style={{
+      border: `2px solid ${colors.border}30`,
+      borderRadius: '0.75rem',
+      overflow: 'hidden'
+    }}>
+      {/* Header */}
+      <div style={{
+        background: colors.bg,
+        padding: '1rem 1.25rem',
+        borderBottom: `1px solid ${colors.border}20`
+      }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          marginBottom: '0.5rem'
+        }}>
+          <h4 style={{
+            fontSize: '1.125rem',
+            fontWeight: 'bold',
+            color: colors.text,
+            margin: 0
+          }}>
+            {phaseInfo.title}
+          </h4>
+          <div style={{
+            background: colors.border,
+            color: 'white',
+            padding: '0.25rem 0.75rem',
+            borderRadius: '1rem',
+            fontSize: '0.75rem',
+            fontWeight: '600'
+          }}>
+            {phaseInfo.statusText}
+          </div>
+        </div>
+        <p style={{
+          color: colors.text,
+          fontSize: '0.875rem',
+          margin: '0 0 0.75rem 0',
+          lineHeight: '1.4'
+        }}>
+          {phaseInfo.description}
+        </p>
+        <div style={{
+          fontSize: '0.75rem',
+          color: `${colors.text}CC`,
+          fontWeight: '600'
+        }}>
+          📅 Timeline: {phaseInfo.timeline}
+        </div>
+      </div>
+
+      {/* Actions */}
+      {phaseInfo.actions.length > 0 && (
+        <div style={{
+          padding: '1.25rem',
+          background: 'white'
+        }}>
+          <h5 style={{
+            fontSize: '0.875rem',
+            fontWeight: '600',
+            color: '#374151',
+            margin: '0 0 0.75rem 0',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em'
+          }}>
+            Available Actions
+          </h5>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '0.75rem'
+          }}>
+            {phaseInfo.actions.map((action, index) => (
+              <button
+                key={index}
+                onClick={() => router.push(action.route)}
+                style={{
+                  background: action.highlight 
+                    ? `linear-gradient(135deg, ${colors.border}20, ${colors.border}30)`
+                    : 'linear-gradient(135deg, #F8FAFC, #F1F5F9)',
+                  border: action.highlight 
+                    ? `2px solid ${colors.border}60`
+                    : '1px solid #E2E8F0',
+                  borderRadius: '0.5rem',
+                  padding: '0.75rem',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  transition: 'all 0.2s ease',
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  color: action.highlight ? colors.text : '#374151'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-1px)'
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)'
+                  e.currentTarget.style.boxShadow = 'none'
+                }}
+              >
+                <span style={{ fontSize: '1.125rem' }}>{action.icon}</span>
+                {action.text}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Next Phase Info */}
+      <div style={{
+        background: '#F8FAFC',
+        padding: '1rem 1.25rem',
+        borderTop: '1px solid #E2E8F0'
+      }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem'
+        }}>
+          <span style={{ fontSize: '1rem' }}>🔮</span>
+          <div>
+            <div style={{
+              fontSize: '0.75rem',
+              fontWeight: '600',
+              color: '#6B7280',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              marginBottom: '0.25rem'
+            }}>
+              What's Next
+            </div>
+            <div style={{
+              fontSize: '0.875rem',
+              color: '#374151',
+              lineHeight: '1.4'
+            }}>
+              {phaseInfo.nextPhase}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function TeacherDashboard() {
   const router = useRouter()
@@ -916,7 +1173,7 @@ export default function TeacherDashboard() {
             )}
           </div>
 
-          {/* Phase Status Display */}
+          {/* Enhanced Phase Status Display */}
           <div style={{
             background: 'white',
             borderRadius: '1rem',
@@ -951,71 +1208,64 @@ export default function TeacherDashboard() {
                 <p style={{ color: '#6b7280' }}>Loading status...</p>
               </div>
             ) : (
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                gap: '1rem'
-              }}>
-                {/* Academic Year */}
+              <>
+                {/* Current Status Cards */}
                 <div style={{
-                  background: 'linear-gradient(135deg, #ADD4EA15, #ADD4EA25)',
-                  borderRadius: '0.75rem',
-                  padding: '1.25rem',
-                  border: '1px solid #ADD4EA',
-                  textAlign: 'center'
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                  gap: '1rem',
+                  marginBottom: '1.5rem'
                 }}>
+                  {/* Academic Year */}
                   <div style={{
-                    fontSize: '1.5rem',
-                    marginBottom: '0.5rem'
+                    background: 'linear-gradient(135deg, #ADD4EA15, #ADD4EA25)',
+                    borderRadius: '0.75rem',
+                    padding: '1.25rem',
+                    border: '1px solid #ADD4EA',
+                    textAlign: 'center'
                   }}>
-                    📅
+                    <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>📅</div>
+                    <div style={{
+                      fontSize: '1.125rem',
+                      fontWeight: 'bold',
+                      color: '#223848',
+                      marginBottom: '0.25rem'
+                    }}>
+                      {phaseStatus.academicYear}
+                    </div>
+                    <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                      Academic Year
+                    </div>
                   </div>
+
+                  {/* Current Phase */}
                   <div style={{
-                    fontSize: '1.125rem',
-                    fontWeight: 'bold',
-                    color: '#223848',
-                    marginBottom: '0.25rem'
+                    background: 'linear-gradient(135deg, #C3E0DE15, #C3E0DE25)',
+                    borderRadius: '0.75rem',
+                    padding: '1.25rem',
+                    border: '1px solid #C3E0DE',
+                    textAlign: 'center'
                   }}>
-                    {phaseStatus.academicYear}
-                  </div>
-                  <div style={{
-                    fontSize: '0.875rem',
-                    color: '#6b7280'
-                  }}>
-                    Academic Year
+                    <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>
+                      {getPhaseIcon(phaseStatus.currentPhase)}
+                    </div>
+                    <div style={{
+                      fontSize: '1.125rem',
+                      fontWeight: 'bold',
+                      color: '#223848',
+                      marginBottom: '0.25rem'
+                    }}>
+                      {getPhaseDisplayName(phaseStatus.currentPhase)}
+                    </div>
+                    <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                      Current Phase
+                    </div>
                   </div>
                 </div>
 
-                {/* Current Phase */}
-                <div style={{
-                  background: 'linear-gradient(135deg, #C3E0DE15, #C3E0DE25)',
-                  borderRadius: '0.75rem',
-                  padding: '1.25rem',
-                  border: '1px solid #C3E0DE',
-                  textAlign: 'center'
-                }}>
-                  <div style={{
-                    fontSize: '1.5rem',
-                    marginBottom: '0.5rem'
-                  }}>
-                    {getPhaseIcon(phaseStatus.currentPhase)}
-                  </div>
-                  <div style={{
-                    fontSize: '1.125rem',
-                    fontWeight: 'bold',
-                    color: '#223848',
-                    marginBottom: '0.25rem'
-                  }}>
-                    {getPhaseDisplayName(phaseStatus.currentPhase)}
-                  </div>
-                  <div style={{
-                    fontSize: '0.875rem',
-                    color: '#6b7280'
-                  }}>
-                    Current Phase
-                  </div>
-                </div>
-              </div>
+                {/* Phase Details */}
+                <PhaseDetailsSection currentPhase={phaseStatus.currentPhase} router={router} />
+              </>
             )}
           </div>
 
@@ -1329,7 +1579,7 @@ export default function TeacherDashboard() {
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => handleNavigation(tab.id)}  // ✅ This will now route correctly
+              onClick={() => handleNavigation(tab.id)}
               style={{
                 background: tab.active 
                   ? `linear-gradient(135deg, #ADD4EA15, #ADD4EA25)`
