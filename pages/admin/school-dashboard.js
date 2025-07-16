@@ -247,7 +247,7 @@ function PhaseDetailsSection({ currentPhase, router }) {
               letterSpacing: '0.05em',
               marginBottom: '0.25rem'
             }}>
-              What's Next
+              What&apos;s Next
             </div>
             <div style={{
               fontSize: '0.875rem',
