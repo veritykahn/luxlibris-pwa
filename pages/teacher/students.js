@@ -265,7 +265,7 @@ Continue?`)
                         color: '#374151'
                       }}
                     >
-                      <option value="">Select {student.firstName}'s favorite book...</option>
+                      <option value="">Select {student.firstName}&apos;s favorite book...</option>
                       {teacherNominees.map(book => (
                         <option key={book.id} value={book.id}>
                           {book.title} by {book.authors}
