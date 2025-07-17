@@ -1459,7 +1459,7 @@ export default function StudentBookshelf() {
                 lineHeight: '1.6',
                 marginBottom: '24px'
               }}>
-                Keep the reading adventure going! Explore your bookshelf, hit up the library, and collect XP and saints while we cook up next year's awesome nominees! 📖⭐
+                Keep the reading adventure going! Explore your bookshelf, hit up the library, and collect XP and saints while we cook up next year&aos;s awesome nominees! 📖⭐
               </p>
               
               {/* Motivational stats if available */}
