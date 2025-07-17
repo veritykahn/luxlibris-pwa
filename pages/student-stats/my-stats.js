@@ -1,4 +1,4 @@
-// pages/student-stats/my-stats.js - Reorganized with Large Badge Section & Detailed Analytics
+// pages/student-stats/my-stats.js - Updated with EnhancedBraggingRightsModal
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
@@ -7,12 +7,10 @@ import { getStudentDataEntities, updateStudentDataEntities } from '../../lib/fir
 import { collection, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import Head from 'next/head';
-import { 
-  getGradeLeaderboard, 
-  generateEnhancedBraggingRights 
-} from '../../lib/leaderboard-system';
+import { getGradeLeaderboard } from '../../lib/leaderboard-system';
 import { calculateReadingPersonality } from '../../lib/reading-personality';
 import { getCurrentWeekBadge, getBadgeProgress, getEarnedBadges, getLevelProgress, BADGE_CALENDAR } from '../../lib/badge-system';
+import EnhancedBraggingRightsModal from '../../components/EnhancedBraggingRightsModal';
 
 export default function MyStats() {
   const router = useRouter();
@@ -37,10 +35,10 @@ export default function MyStats() {
   const [levelProgress, setLevelProgress] = useState(null);
   const [currentWeekBadge, setCurrentWeekBadge] = useState(null);
   
-  // NEW: Badge Modal
+  // Badge Modal
   const [showBadgeModal, setShowBadgeModal] = useState(false);
   
-  // NEW: Bird Fact Modal states
+  // Bird Fact Modal states
   const [showBirdFactModal, setShowBirdFactModal] = useState(false);
   const [selectedBadge, setSelectedBadge] = useState(null);
   
@@ -155,7 +153,7 @@ export default function MyStats() {
     { name: 'Settings', path: '/student-settings', icon: '⚙' }
   ], []);
 
-  // REORDERED Stats navigation options
+  // Stats navigation options
   const statsNavOptions = useMemo(() => [
     { name: 'Stats Dashboard', path: '/student-stats', icon: '📊', description: 'Fun overview' },
     { name: 'My Stats', path: '/student-stats/my-stats', icon: '📈', description: 'Personal deep dive', current: true },
@@ -167,7 +165,7 @@ export default function MyStats() {
     { name: 'Family Battle', path: '/student-stats/family-battle', icon: '👨‍👩‍👧‍👦', description: 'Coming soon!', disabled: true }
   ], []);
 
-  // NEW: Handle badge click function
+  // Handle badge click function
   const handleBadgeClick = (badge) => {
     setSelectedBadge(badge);
     setShowBirdFactModal(true);
@@ -263,11 +261,6 @@ export default function MyStats() {
 
     return streakCount;
   }, []);
-
-  // Generate bragging rights data
-  const generateBraggingRights = useCallback(() => {
-    return generateEnhancedBraggingRights(studentData, personalStats, badgeProgress, earnedBadges);
-  }, [studentData, personalStats, badgeProgress, earnedBadges]);
 
   // Load real leaderboard data
   const loadLeaderboardData = useCallback(async () => {
@@ -710,7 +703,7 @@ export default function MyStats() {
             ←
           </button>
 
-          {/* REORDERED STATS DROPDOWN */}
+          {/* STATS DROPDOWN */}
           <div className="stats-dropdown-container" style={{ position: 'relative', flex: 1 }}>
             <button
               onClick={() => setShowStatsDropdown(!showStatsDropdown)}
@@ -1189,104 +1182,104 @@ export default function MyStats() {
               </div>
               
               {(() => {
-  const earnedAchievements = realWorldAchievements.filter(a => a.earned);
-  const unearnedAchievements = realWorldAchievements.filter(a => !a.earned);
-  
-  // Find the next achievement (lowest book requirement among unearned)
-  const nextAchievement = unearnedAchievements.length > 0 
-    ? unearnedAchievements.reduce((next, current) => 
-        current.books < next.books ? current : next
-      )
-    : null;
-  
-  const displayedAchievements = expandedAchievements 
-    ? realWorldAchievements 
-    : earnedAchievements.slice(0, 3);
-  
-  return (
-    <>
-      {displayedAchievements.map((achievement, index) => (
-        <div key={index} style={{
-          backgroundColor: achievement.earned ? 
-            `${currentTheme.primary}30` : `${currentTheme.primary}10`,
-          borderRadius: '12px',
-          padding: '12px',
-          marginBottom: index < displayedAchievements.length - 1 ? '8px' : '0',
-          border: achievement.earned ? `2px solid ${currentTheme.primary}` : `1px dashed ${currentTheme.primary}60`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between'
-        }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{
-              fontSize: 'clamp(12px, 3.5vw, 14px)',
-              fontWeight: '600',
-              color: currentTheme.textPrimary,
-              marginBottom: '2px'
-            }}>
-              {achievement.reward}
-            </div>
-            <div style={{
-              fontSize: 'clamp(10px, 3vw, 12px)',
-              color: currentTheme.textSecondary,
-              marginBottom: '4px'
-            }}>
-              {achievement.books} books • Tier {achievement.tier}
-            </div>
-            {!achievement.earned && (
-              <div style={{
-                fontSize: 'clamp(11px, 3vw, 12px)',
-                fontWeight: '600',
-                color: '#FF6B35'
-              }}>
-                📚 Need {achievement.booksNeeded} more book{achievement.booksNeeded !== 1 ? 's' : ''}
-              </div>
-            )}
-            {achievement.earned && (
-              <div style={{
-                fontSize: 'clamp(11px, 3vw, 12px)',
-                fontWeight: '600',
-                color: '#4CAF50'
-              }}>
-                ✅ Earned! 🎉
-              </div>
-            )}
-          </div>
-          <div style={{
-            fontSize: 'clamp(20px, 6vw, 24px)',
-            flexShrink: 0,
-            marginLeft: '8px'
-          }}>
-            {achievement.earned ? '🏆' : '🎯'}
-          </div>
-        </div>
-      ))}
-      
-      {/* NEW SMART STATUS MESSAGE */}
-      {!expandedAchievements && (
-        <div style={{
-          fontSize: 'clamp(11px, 3vw, 12px)',
-          color: currentTheme.textSecondary,
-          textAlign: 'center',
-          marginTop: '12px',
-          padding: '8px',
-          backgroundColor: `${currentTheme.primary}10`,
-          borderRadius: '8px'
-        }}>
-          {nextAchievement ? (
-            <>
-              📖 <strong>{nextAchievement.booksNeeded} more book{nextAchievement.booksNeeded !== 1 ? 's' : ''}</strong> needed for next achievement: <strong>{nextAchievement.reward}</strong>
-            </>
-          ) : (
-            <>
-              🎉 <strong>All achievements unlocked!</strong> You&apos;re a reading champion! 🏆
-            </>
-          )}
-        </div>
-      )}
-    </>
-  );
-})()}
+                const earnedAchievements = realWorldAchievements.filter(a => a.earned);
+                const unearnedAchievements = realWorldAchievements.filter(a => !a.earned);
+                
+                // Find the next achievement (lowest book requirement among unearned)
+                const nextAchievement = unearnedAchievements.length > 0 
+                  ? unearnedAchievements.reduce((next, current) => 
+                      current.books < next.books ? current : next
+                    )
+                  : null;
+                
+                const displayedAchievements = expandedAchievements 
+                  ? realWorldAchievements 
+                  : earnedAchievements.slice(0, 3);
+                
+                return (
+                  <>
+                    {displayedAchievements.map((achievement, index) => (
+                      <div key={index} style={{
+                        backgroundColor: achievement.earned ? 
+                          `${currentTheme.primary}30` : `${currentTheme.primary}10`,
+                        borderRadius: '12px',
+                        padding: '12px',
+                        marginBottom: index < displayedAchievements.length - 1 ? '8px' : '0',
+                        border: achievement.earned ? `2px solid ${currentTheme.primary}` : `1px dashed ${currentTheme.primary}60`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between'
+                      }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{
+                            fontSize: 'clamp(12px, 3.5vw, 14px)',
+                            fontWeight: '600',
+                            color: currentTheme.textPrimary,
+                            marginBottom: '2px'
+                          }}>
+                            {achievement.reward}
+                          </div>
+                          <div style={{
+                            fontSize: 'clamp(10px, 3vw, 12px)',
+                            color: currentTheme.textSecondary,
+                            marginBottom: '4px'
+                          }}>
+                            {achievement.books} books • Tier {achievement.tier}
+                          </div>
+                          {!achievement.earned && (
+                            <div style={{
+                              fontSize: 'clamp(11px, 3vw, 12px)',
+                              fontWeight: '600',
+                              color: '#FF6B35'
+                            }}>
+                              📚 Need {achievement.booksNeeded} more book{achievement.booksNeeded !== 1 ? 's' : ''}
+                            </div>
+                          )}
+                          {achievement.earned && (
+                            <div style={{
+                              fontSize: 'clamp(11px, 3vw, 12px)',
+                              fontWeight: '600',
+                              color: '#4CAF50'
+                            }}>
+                              ✅ Earned! 🎉
+                            </div>
+                          )}
+                        </div>
+                        <div style={{
+                          fontSize: 'clamp(20px, 6vw, 24px)',
+                          flexShrink: 0,
+                          marginLeft: '8px'
+                        }}>
+                          {achievement.earned ? '🏆' : '🎯'}
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {/* SMART STATUS MESSAGE */}
+                    {!expandedAchievements && (
+                      <div style={{
+                        fontSize: 'clamp(11px, 3vw, 12px)',
+                        color: currentTheme.textSecondary,
+                        textAlign: 'center',
+                        marginTop: '12px',
+                        padding: '8px',
+                        backgroundColor: `${currentTheme.primary}10`,
+                        borderRadius: '8px'
+                      }}>
+                        {nextAchievement ? (
+                          <>
+                            📖 <strong>{nextAchievement.booksNeeded} more book{nextAchievement.booksNeeded !== 1 ? 's' : ''}</strong> needed for next achievement: <strong>{nextAchievement.reward}</strong>
+                          </>
+                        ) : (
+                          <>
+                            🎉 <strong>All achievements unlocked!</strong> You&apos;re a reading champion! 🏆
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           )}
 
@@ -1563,7 +1556,7 @@ export default function MyStats() {
           )}
         </div>
 
-        {/* UPDATED BADGE MODAL WITH CLICKABLE BADGES */}
+        {/* BADGE MODAL WITH CLICKABLE BADGES */}
         {showBadgeModal && (
           <div style={{
             position: 'fixed',
@@ -1627,7 +1620,7 @@ export default function MyStats() {
                   fontSize: '12px',
                   color: currentTheme.textSecondary
                 }}>
-                  {earnedBadges.length} of {Object.keys(BADGE_CALENDAR).length} bird badges earned ({Math.round((earnedBadges.length / Object.keys(BADGE_CALENDAR).length) * 100)}%)
+                  {earnedBadges.length} of {Object.keys(BADGE_CALENDAR).length} Lux Libris badges earned ({Math.round((earnedBadges.length / Object.keys(BADGE_CALENDAR).length) * 100)}%)
                 </div>
                 <div style={{
                   fontSize: '11px',
@@ -1751,7 +1744,7 @@ export default function MyStats() {
                     color: currentTheme.textPrimary,
                     marginBottom: '8px'
                   }}>
-                    No bird badges earned yet
+                    No Lux Libris badges earned yet
                   </div>
                   <div style={{
                     fontSize: '12px',
@@ -1782,7 +1775,7 @@ export default function MyStats() {
           </div>
         )}
 
-        {/* NEW BIRD FACT MODAL */}
+        {/* BIRD FACT MODAL */}
         {showBirdFactModal && selectedBadge && (
           <div style={{
             position: 'fixed',
@@ -1928,7 +1921,7 @@ export default function MyStats() {
           </div>
         )}
 
-        {/* LEADERBOARD MODAL - MOVED FROM INDEX */}
+        {/* LEADERBOARD MODAL */}
         {showLeaderboard && (
           <div style={{
             position: 'fixed',
@@ -2249,288 +2242,16 @@ export default function MyStats() {
           </div>
         )}
 
-        {/* BRAGGING RIGHTS MODAL - ENHANCED WITH BADGE EMOJIS */}
-        {showBraggingRights && (() => {
-          const braggingData = generateBraggingRights();
-          
-          return (
-            <div style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: 'rgba(0,0,0,0.85)',
-              zIndex: 1000,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '20px'
-            }}>
-              <div style={{
-                backgroundColor: '#FFFFFF',
-                borderRadius: '20px',
-                maxWidth: '380px',
-                width: '100%',
-                maxHeight: '85vh',
-                overflowY: 'auto',
-                position: 'relative',
-                boxShadow: '0 20px 40px rgba(0,0,0,0.3)'
-              }}>
-                <button
-                  onClick={() => setShowBraggingRights(false)}
-                  style={{
-                    position: 'absolute',
-                    top: '12px',
-                    right: '12px',
-                    backgroundColor: 'rgba(0,0,0,0.7)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '50%',
-                    width: '36px',
-                    height: '36px',
-                    fontSize: '16px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 10,
-                    touchAction: 'manipulation',
-                    WebkitTapHighlightColor: 'transparent'
-                  }}
-                >
-                  ✕
-                </button>
-
-                {/* Header */}
-                <div style={{
-                  background: `linear-gradient(135deg, ${currentTheme.primary}, ${currentTheme.secondary})`,
-                  borderRadius: '20px 20px 0 0',
-                  padding: '20px',
-                  textAlign: 'center',
-                  color: 'white'
-                }}>
-                  <div style={{ fontSize: 'clamp(40px, 12vw, 48px)', marginBottom: '12px' }}>🏆</div>
-                  <h2 style={{
-                    fontSize: 'clamp(18px, 5vw, 20px)',
-                    fontWeight: '600',
-                    margin: '0 0 8px 0',
-                    fontFamily: 'Didot, "Times New Roman", serif'
-                  }}>
-                    Reading Achievement Certificate
-                  </h2>
-                  <p style={{
-                    fontSize: 'clamp(12px, 3.5vw, 14px)',
-                    opacity: 0.9,
-                    margin: '0'
-                  }}>
-                    {braggingData?.studentName} • Grade {braggingData?.grade}
-                  </p>
-                </div>
-
-                <div style={{ padding: '20px' }}>
-                  {/* Stats Summary */}
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(3, 1fr)',
-                    gap: '12px',
-                    marginBottom: '20px'
-                  }}>
-                    <div style={{
-                      backgroundColor: '#FFFFFF',
-                      border: `2px solid ${currentTheme.primary}`,
-                      borderRadius: '12px',
-                      padding: '12px',
-                      textAlign: 'center'
-                    }}>
-                      <div style={{
-                        fontSize: 'clamp(16px, 5vw, 18px)',
-                        fontWeight: 'bold',
-                        color: '#000000'
-                      }}>
-                        {braggingData?.level || 1}
-                      </div>
-                      <div style={{
-                        fontSize: 'clamp(9px, 2.5vw, 10px)',
-                        color: '#666666'
-                      }}>
-                        Level
-                      </div>
-                    </div>
-                    <div style={{
-                      backgroundColor: '#FFFFFF',
-                      border: `2px solid ${currentTheme.primary}`,
-                      borderRadius: '12px',
-                      padding: '12px',
-                      textAlign: 'center'
-                    }}>
-                      <div style={{
-                        fontSize: 'clamp(16px, 5vw, 18px)',
-                        fontWeight: 'bold',
-                        color: '#000000'
-                      }}>
-                        {braggingData?.totalXP || 0}
-                      </div>
-                      <div style={{
-                        fontSize: 'clamp(9px, 2.5vw, 10px)',
-                        color: '#666666'
-                      }}>
-                        XP
-                      </div>
-                    </div>
-                    <div style={{
-                      backgroundColor: '#FFFFFF',
-                      border: `2px solid ${currentTheme.primary}`,
-                      borderRadius: '12px',
-                      padding: '12px',
-                      textAlign: 'center'
-                    }}>
-                      <div style={{
-                        fontSize: 'clamp(16px, 5vw, 18px)',
-                        fontWeight: 'bold',
-                        color: '#000000'
-                      }}>
-                        {braggingData?.badgesEarned || 0}
-                      </div>
-                      <div style={{
-                        fontSize: 'clamp(9px, 2.5vw, 10px)',
-                        color: '#666666'
-                      }}>
-                        Badges
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Featured Badge */}
-                  {braggingData?.featuredBadge && (
-                    <div style={{
-                      backgroundColor: `${currentTheme.primary}10`,
-                      borderRadius: '12px',
-                      padding: '12px',
-                      marginBottom: '16px',
-                      textAlign: 'center',
-                      border: `2px solid ${currentTheme.primary}60`
-                    }}>
-                      <div style={{ fontSize: '24px', marginBottom: '8px' }}>
-                        {braggingData.featuredBadge.emoji}
-                      </div>
-                      <div style={{
-                        fontSize: 'clamp(11px, 3vw, 12px)',
-                        color: currentTheme.textSecondary,
-                        marginBottom: '4px'
-                      }}>
-                        Latest Badge
-                      </div>
-                      <div style={{
-                        fontSize: 'clamp(12px, 3.5vw, 14px)',
-                        fontWeight: '600',
-                        color: currentTheme.textPrimary
-                      }}>
-                        {braggingData.featuredBadge.name}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Top Achievements */}
-                  <div style={{
-                    marginBottom: '20px'
-                  }}>
-                    <div style={{
-                      fontSize: 'clamp(12px, 3.5vw, 14px)',
-                      fontWeight: '600',
-                      color: currentTheme.textPrimary,
-                      marginBottom: '12px',
-                      textAlign: 'center'
-                    }}>
-                      🌟 Your Amazing Achievements 🌟
-                    </div>
-                    
-                    {braggingData?.topAchievements.map((achievement, index) => (
-                      <div
-                        key={index}
-                        style={{
-                          backgroundColor: '#FFFFFF',
-                          border: `1px solid ${currentTheme.primary}60`,
-                          borderRadius: '12px',
-                          padding: '10px',
-                          marginBottom: '6px',
-                          fontSize: 'clamp(11px, 3vw, 12px)',
-                          fontWeight: '500',
-                          color: '#000000',
-                          textAlign: 'left'
-                        }}
-                      >
-                        {achievement}
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Special Badges - EMOJIS ONLY like scout badges */}
-                  {braggingData?.specialBadges && braggingData.specialBadges.length > 0 && (
-                    <div style={{
-                      backgroundColor: `${currentTheme.secondary}20`,
-                      borderRadius: '12px',
-                      padding: '12px',
-                      marginBottom: '16px',
-                      textAlign: 'center'
-                    }}>
-                      <div style={{
-                        fontSize: 'clamp(11px, 3vw, 12px)',
-                        color: currentTheme.textSecondary,
-                        marginBottom: '8px'
-                      }}>
-                        ⚡ Special Badges Earned
-                      </div>
-                      <div style={{
-                        display: 'flex',
-                        justifyContent: 'center',
-                        gap: '8px',
-                        flexWrap: 'wrap'
-                      }}>
-                        {earnedBadges.map((badge, index) => (
-                          <div key={index} style={{
-                            fontSize: '24px',
-                            padding: '4px',
-                            backgroundColor: 'rgba(255,255,255,0.8)',
-                            borderRadius: '8px',
-                            border: `1px solid ${currentTheme.primary}40`
-                          }}>
-                            {badge.emoji}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Screenshot hint */}
-                  <div style={{
-                    backgroundColor: `${currentTheme.primary}20`,
-                    borderRadius: '12px',
-                    padding: '16px',
-                    textAlign: 'center',
-                    marginTop: '16px'
-                  }}>
-                    <div style={{
-                      fontSize: 'clamp(14px, 4vw, 16px)',
-                      fontWeight: '600',
-                      color: currentTheme.textPrimary,
-                      marginBottom: '8px'
-                    }}>
-                      📸 Want to share this?
-                    </div>
-                    <div style={{
-                      fontSize: 'clamp(11px, 3vw, 12px)',
-                      color: currentTheme.textSecondary
-                    }}>
-                      Take a screenshot to share your achievements with family and friends!
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })()}
+        {/* ENHANCED BRAGGING RIGHTS MODAL */}
+        <EnhancedBraggingRightsModal
+          show={showBraggingRights}
+          onClose={() => setShowBraggingRights(false)}
+          studentData={studentData}
+          earnedBadges={earnedBadges}
+          levelProgress={levelProgress}
+          readingPersonality={readingPersonality}
+          currentTheme={currentTheme}
+        />
 
         <style jsx>{`
           @keyframes spin {
