@@ -1428,7 +1428,7 @@ return '🌟 Congratulations on an amazing year of reading!';
                     fontWeight: '600',
                     color: currentTheme.textPrimary 
                   }}>
-                    Your teacher is setting up this year's program
+                    Your teacher is setting up this year&apos;s program
                   </div>
                   <div style={{ 
                     fontSize: '12px',

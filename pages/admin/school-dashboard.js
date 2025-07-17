@@ -1180,7 +1180,7 @@ export default function TeacherDashboard() {
                 color: '#6b7280',
                 margin: 0
               }}>
-                Please wait while we reset your manual students' reading data.
+                Please wait while we reset your manual students&apos; reading data.
               </p>
             </div>
           </div>
