@@ -1490,12 +1490,12 @@ const getMotivationalMessage = () => {
 
           {/* MOVED TO TOP: Progress Wheels with ANIMATIONS - only during active phases */}
           {hasAccess('achievements') && (
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-              gap: '16px',
-              marginBottom: '20px'
-            }}>
+  <div style={{
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr', // Force exactly 2 columns
+    gap: '16px',
+    marginBottom: '20px'
+  }}>
               <div style={{ animation: 'slideInLeft 0.8s ease-out 0.4s both' }}>
                 <ProgressWheel
                   title="This Year"

@@ -1,9 +1,11 @@
 // components/ResultsInterface.js - Display voting results to students
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
 import { db, dbHelpers } from '../lib/firebase';
 import { collection, getDocs } from 'firebase/firestore';
 
 export default function ResultsInterface({ studentData, currentTheme }) {
+  const router = useRouter();
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [studentVote, setStudentVote] = useState(null);
@@ -169,6 +171,72 @@ export default function ResultsInterface({ studentData, currentTheme }) {
         }}>
           The winners have been announced!
         </p>
+      </div>
+
+      {/* NEW: Bragging Rights Unlock */}
+      <div style={{
+        background: `linear-gradient(135deg, ${currentTheme.accent}40, ${currentTheme.accent}20)`,
+        borderRadius: '16px',
+        padding: '20px',
+        marginBottom: '24px',
+        border: `2px solid ${currentTheme.accent}60`,
+        textAlign: 'center'
+      }}>
+        <div style={{
+          fontSize: '48px',
+          marginBottom: '12px',
+          animation: 'bounce 2s ease-in-out infinite'
+        }}>
+          🏆
+        </div>
+        <h3 style={{
+          fontSize: '20px',
+          fontWeight: '600',
+          color: currentTheme.textPrimary,
+          margin: '0 0 8px 0'
+        }}>
+          Bragging Rights Officially Unlocked!
+        </h3>
+        <p style={{
+          fontSize: '14px',
+          color: currentTheme.textSecondary,
+          margin: '0 0 16px 0',
+          lineHeight: '1.4'
+        }}>
+          What an incredible reading year! Time to show off all your amazing achievements and stats.
+        </p>
+        <button
+          onClick={() => router.push('/student-stats')}
+          style={{
+            backgroundColor: currentTheme.primary,
+            color: currentTheme.textPrimary,
+            border: 'none',
+            borderRadius: '12px',
+            padding: '12px 24px',
+            fontSize: '14px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            transition: 'all 0.3s ease',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            margin: '0 auto',
+            minHeight: '44px',
+            touchAction: 'manipulation',
+            WebkitTapHighlightColor: 'transparent'
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.transform = 'scale(1.05)';
+            e.target.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.transform = 'scale(1)';
+            e.target.style.boxShadow = 'none';
+          }}
+        >
+          🎉 Show My Bragging Rights
+        </button>
       </div>
 
       {/* Student's Result (if they voted) */}

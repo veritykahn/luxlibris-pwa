@@ -1,4 +1,4 @@
-// pages/sign-in.js - Updated with Personal Password Support
+// pages/sign-in.js - Updated with Personal Password Support and Visible Teacher Code
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
@@ -410,7 +410,7 @@ export default function SignIn() {
                       Teacher Code
                     </label>
                     <input
-                      type="password"
+                      type="text"
                       value={formData.teacherCode}
                       onChange={(e) => setFormData(prev => ({ 
                         ...prev, 
@@ -430,7 +430,8 @@ export default function SignIn() {
                         fontWeight: 'bold',
                         letterSpacing: '0.1em',
                         color: '#1f2937',
-                        backgroundColor: 'white'
+                        backgroundColor: 'white',
+                        textTransform: 'uppercase'
                       }}
                       onFocus={(e) => e.target.style.borderColor = '#ADD4EA'}
                       onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
