@@ -557,7 +557,7 @@ export default function TeacherSettings() {
                     fontStyle: 'italic'
                   }}>
                     💡 This configuration will remain active until the Teacher Selection phase begins on May 24th. 
-                    Students can read and submit books using the options above.
+                    Students can read and submit books using the options below.
                   </div>
                 )}
               </div>

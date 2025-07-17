@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
+import { usePhaseAccess } from '../hooks/usePhaseAccess';
 import { getStudentDataEntities, getSchoolNomineesEntities, updateStudentDataEntities, getCurrentAcademicYear } from '../lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -22,6 +23,9 @@ export default function StudentBookshelf() {
   const [textareaHeight, setTextareaHeight] = useState(50);
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState('');
+  
+  // Phase access control
+  const { hasAccess, getPhaseMessage, getPhaseInfo } = usePhaseAccess();
   
   // 🍔 HAMBURGER MENU STATE VARIABLES
   const [showNavMenu, setShowNavMenu] = useState(false);
@@ -1182,7 +1186,7 @@ export default function StudentBookshelf() {
     setIsSaving(false);
   };
 
-  // Show loading
+  // Show loading first
   if (loading || isLoading || !studentData || !currentTheme) {
     return (
       <div style={{
@@ -1205,6 +1209,393 @@ export default function StudentBookshelf() {
           <p style={{ color: '#223848', fontSize: '14px' }}>Loading your bookshelf...</p>
         </div>
       </div>
+    );
+  }
+
+  // CHECK FOR LOCKED BOOKSHELF (RESULTS phase)
+  if (!hasAccess('bookshelfViewing')) {
+    const phaseInfo = getPhaseInfo();
+    
+    return (
+      <>
+        <Head>
+          <title>My Bookshelf - Lux Libris</title>
+          <meta name="description" content="Track your reading progress and manage your personal book collection" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+          <link rel="icon" href="/images/lux_libris_logo.png" />
+        </Head>
+        
+        <div style={{
+          minHeight: '100vh',
+          fontFamily: 'Avenir, system-ui, -apple-system, sans-serif',
+          backgroundColor: currentTheme.background
+        }}>
+          
+          {/* 🍔 HEADER WITH HAMBURGER MENU - KEEP DURING LOCKED PHASES */}
+          <div style={{
+            background: `linear-gradient(135deg, ${currentTheme.primary}F0, ${currentTheme.secondary}F0)`,
+            backdropFilter: 'blur(20px)',
+            padding: '30px 20px 12px',
+            position: 'relative',
+            borderRadius: '0 0 25px 25px',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+            zIndex: 100,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
+            <button
+              onClick={() => router.back()}
+              style={{
+                backgroundColor: 'rgba(255,255,255,0.3)',
+                border: 'none',
+                borderRadius: '50%',
+                width: '44px',
+                height: '44px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '18px',
+                cursor: 'pointer',
+                color: currentTheme.textPrimary,
+                backdropFilter: 'blur(10px)',
+                flexShrink: 0,
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent'
+              }}
+            >
+              ←
+            </button>
+
+            <h1 style={{
+              fontSize: '24px',
+              fontWeight: '400',
+              color: currentTheme.textPrimary,
+              margin: '0',
+              letterSpacing: '1px',
+              fontFamily: 'Didot, "Times New Roman", serif',
+              textAlign: 'center',
+              flex: 1
+            }}>
+              My Bookshelf
+            </h1>
+
+            {/* 🍔 Hamburger Menu - KEEP AVAILABLE */}
+            <div className="nav-menu-container" style={{ position: 'relative' }}>
+              <button
+                onClick={() => setShowNavMenu(!showNavMenu)}
+                style={{
+                  backgroundColor: 'rgba(255,255,255,0.3)',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '44px',
+                  height: '44px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '18px',
+                  cursor: 'pointer',
+                  color: currentTheme.textPrimary,
+                  backdropFilter: 'blur(10px)',
+                  flexShrink: 0,
+                  touchAction: 'manipulation',
+                  WebkitTapHighlightColor: 'transparent'
+                }}
+              >
+                ☰
+              </button>
+
+              {/* Dropdown Menu */}
+              {showNavMenu && (
+                <div style={{
+                  position: 'absolute',
+                  top: '50px',
+                  right: '0',
+                  backgroundColor: currentTheme.surface,
+                  borderRadius: '12px',
+                  minWidth: '180px',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                  backdropFilter: 'blur(20px)',
+                  border: `2px solid ${currentTheme.primary}60`,
+                  overflow: 'hidden',
+                  zIndex: 9999
+                }}>
+                  {navMenuItems.map((item, index) => (
+                    <button
+                      key={item.path}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setShowNavMenu(false);
+                        if (!item.current) {
+                          setTimeout(() => router.push(item.path), 100);
+                        }
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        backgroundColor: item.current ? `${currentTheme.primary}30` : 'transparent',
+                        border: 'none',
+                        borderBottom: index < navMenuItems.length - 1 ? `1px solid ${currentTheme.primary}40` : 'none',
+                        cursor: item.current ? 'default' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        fontSize: '14px',
+                        color: currentTheme.textPrimary,
+                        fontWeight: item.current ? '600' : '500',
+                        textAlign: 'left',
+                        touchAction: 'manipulation',
+                        WebkitTapHighlightColor: 'transparent',
+                        transition: 'background-color 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!item.current) {
+                          e.target.style.backgroundColor = `${currentTheme.primary}20`;
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!item.current) {
+                          e.target.style.backgroundColor = 'transparent';
+                        }
+                      }}
+                    >
+                      <span style={{ fontSize: '16px' }}>{item.icon}</span>
+                      <span>{item.name}</span>
+                      {item.current && (
+                        <span style={{ marginLeft: 'auto', fontSize: '12px', color: currentTheme.primary }}>●</span>
+                      )}
+                    </button>
+                  ))}
+                  
+                  {/* 🔔 Notification Toggle */}
+                  <div style={{
+                    padding: '12px 16px',
+                    borderTop: `1px solid ${currentTheme.primary}40`,
+                    backgroundColor: `${currentTheme.primary}10`
+                  }}>
+                    <button
+                      onClick={async (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (notificationProcessing) return;
+                        setNotificationProcessing(true);
+                        try {
+                          const enabled = await requestNotificationPermission();
+                        } catch (error) {
+                          console.error('Notification error:', error);
+                        } finally {
+                          setNotificationProcessing(false);
+                          setTimeout(() => setShowNavMenu(false), 1000);
+                        }
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        backgroundColor: notificationsEnabled ? `${currentTheme.primary}30` : currentTheme.surface,
+                        border: `2px solid ${notificationsEnabled ? currentTheme.primary : currentTheme.textSecondary}60`,
+                        borderRadius: '8px',
+                        cursor: notificationProcessing ? 'wait' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        fontSize: '12px',
+                        color: currentTheme.textPrimary,
+                        fontWeight: '600',
+                        touchAction: 'manipulation',
+                        WebkitTapHighlightColor: 'transparent',
+                        transition: 'all 0.2s ease',
+                        opacity: notificationProcessing ? 0.7 : 1
+                      }}
+                    >
+                      <span>
+                        {notificationProcessing ? '⏳' : (notificationsEnabled ? '🔔' : '🔕')}
+                      </span>
+                      <span>
+                        {notificationProcessing ? 'Processing...' : (notificationsEnabled ? 'Notifications On' : 'Enable Notifications')}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* LOCKED BOOKSHELF MESSAGE */}
+          <div style={{
+            padding: '40px 20px',
+            textAlign: 'center',
+            maxWidth: '400px',
+            margin: '0 auto'
+          }}>
+            <div style={{
+              backgroundColor: currentTheme.surface,
+              borderRadius: '20px',
+              padding: '40px 30px',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
+              border: `3px solid ${phaseInfo.color || currentTheme.primary}`
+            }}>
+              <div style={{ 
+                fontSize: '80px', 
+                marginBottom: '24px',
+                opacity: 0.8
+              }}>
+                {phaseInfo.icon}
+              </div>
+              
+              <h2 style={{
+                fontSize: '24px',
+                fontWeight: '600',
+                color: currentTheme.textPrimary,
+                marginBottom: '16px',
+                fontFamily: 'Didot, "Times New Roman", serif'
+              }}>
+                Happy Reading!
+              </h2>
+              
+              <p style={{
+                fontSize: '16px',
+                color: currentTheme.textSecondary,
+                lineHeight: '1.6',
+                marginBottom: '24px'
+              }}>
+                Keep the reading adventure going! Explore your bookshelf, hit up the library, and collect XP and saints while we cook up next year's awesome nominees! 📖⭐
+              </p>
+              
+              {/* Motivational stats if available */}
+              {studentData.booksSubmittedThisYear > 0 && (
+                <div style={{
+                  backgroundColor: `${currentTheme.primary}15`,
+                  borderRadius: '12px',
+                  padding: '16px',
+                  marginBottom: '24px',
+                  border: `1px solid ${currentTheme.primary}40`
+                }}>
+                  <div style={{
+                    fontSize: '32px',
+                    fontWeight: 'bold',
+                    color: currentTheme.primary,
+                    marginBottom: '4px'
+                  }}>
+                    {studentData.booksSubmittedThisYear}
+                  </div>
+                  <div style={{
+                    fontSize: '14px',
+                    color: currentTheme.textPrimary,
+                    fontWeight: '600',
+                    marginBottom: '4px'
+                  }}>
+                    Books Completed This Year
+                  </div>
+                  <div style={{
+                    fontSize: '12px',
+                    color: currentTheme.textSecondary
+                  }}>
+                    Amazing reading journey! 🎉
+                  </div>
+                </div>
+              )}
+              
+              {/* Action buttons */}
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                alignItems: 'center'
+              }}>
+                <button
+                  onClick={() => router.push('/student-dashboard')}
+                  style={{
+                    backgroundColor: phaseInfo.color || currentTheme.primary,
+                    color: 'white',
+                    border: 'none',
+                    padding: '14px 28px',
+                    borderRadius: '12px',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    marginBottom: '8px'
+                  }}
+                >
+                  🏆 See Results
+                </button>
+                
+                <div style={{
+                  display: 'flex',
+                  gap: '12px',
+                  flexWrap: 'wrap',
+                  justifyContent: 'center'
+                }}>
+                  <button
+                    onClick={() => router.push('/student-healthy-habits')}
+                    style={{
+                      backgroundColor: 'transparent',
+                      color: currentTheme.textPrimary,
+                      border: `2px solid ${currentTheme.primary}`,
+                      padding: '12px 20px',
+                      borderRadius: '12px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    ○ Healthy Habits
+                  </button>
+                  
+                  <button
+                    onClick={() => router.push('/student-saints')}
+                    style={{
+                      backgroundColor: 'transparent',
+                      color: currentTheme.textPrimary,
+                      border: `2px solid ${currentTheme.primary}`,
+                      padding: '12px 20px',
+                      borderRadius: '12px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    ♔ Saints
+                  </button>
+                </div>
+                
+                <button
+                  onClick={() => router.push('/student-dashboard')}
+                  style={{
+                    backgroundColor: 'transparent',
+                    color: currentTheme.textSecondary,
+                    border: 'none',
+                    padding: '8px 16px',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                    marginTop: '8px'
+                  }}
+                >
+                  ← Back to Dashboard
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* CSS animations */}
+          <style jsx>{`
+            @keyframes spin {
+              from { transform: rotate(0deg); }
+              to { transform: rotate(360deg); }
+            }
+          `}</style>
+        </div>
+      </>
     );
   }
 
@@ -1738,13 +2129,17 @@ export default function StudentBookshelf() {
           )}
         </div>
 
-        {/* BOOK MODAL */}
+        {/* BOOK MODAL - UPDATED WITH READ-ONLY FUNCTIONALITY */}
         {showBookModal && selectedBook && (() => {
           const colorPalette = getCategoryColorPalette(selectedBook.details);
           const total = getBookTotal(selectedBook);
           const bookState = getBookState(selectedBook);
           const stateMessage = getBookStateMessage(selectedBook);
           const locked = isBookLocked(selectedBook);
+          
+          // NEW: Check if editing is allowed by phase system
+          const canEdit = hasAccess('bookshelfEditing');
+          const phaseInfo = getPhaseInfo();
           
           return (
             <div style={{
@@ -1770,13 +2165,33 @@ export default function StudentBookshelf() {
                 position: 'relative',
                 boxShadow: '0 20px 40px rgba(0,0,0,0.3)'
               }}>
+                {/* Header - show phase indicator if read-only */}
                 <div style={{
                   position: 'relative',
                   padding: '15px 15px 10px',
-                  backgroundColor: '#FFFFFF',
+                  backgroundColor: canEdit ? '#FFFFFF' : `${phaseInfo.color || currentTheme.primary}10`,
                   borderRadius: '20px 20px 0 0',
-                  textAlign: 'center'
+                  textAlign: 'center',
+                  borderBottom: canEdit ? 'none' : `2px solid ${phaseInfo.color || currentTheme.primary}40`
                 }}>
+                  {/* Phase indicator for read-only mode */}
+                  {!canEdit && (
+                    <div style={{
+                      backgroundColor: phaseInfo.color || currentTheme.primary,
+                      color: 'white',
+                      padding: '6px 12px',
+                      borderRadius: '12px',
+                      fontSize: '11px',
+                      fontWeight: '600',
+                      marginBottom: '12px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}>
+                      {phaseInfo.icon} {phaseInfo.name} - View Only
+                    </div>
+                  )}
+
                   <button
                     onClick={closeBookModal}
                     style={{
@@ -1801,6 +2216,7 @@ export default function StudentBookshelf() {
                     ✕
                   </button>
 
+                  {/* Book cover and completion status */}
                   <div style={{
                     width: '120px',
                     height: '160px',
@@ -1829,7 +2245,7 @@ export default function StudentBookshelf() {
                       <span style={{ fontSize: '40px' }}>📚</span>
                     )}
                     
-                    {/* Celebration icon for completed books */}
+                    {/* Completion badge */}
                     {bookState === 'completed' && (
                       <div style={{
                         position: 'absolute',
@@ -1860,6 +2276,7 @@ export default function StudentBookshelf() {
                   border: `2px solid ${colorPalette.primary}20`,
                   borderTop: 'none'
                 }}>
+                  {/* Book title and author */}
                   <div style={{ textAlign: 'center', marginBottom: '15px' }}>
                     <h2 style={{
                       fontSize: '18px',
@@ -1882,7 +2299,7 @@ export default function StudentBookshelf() {
                       by {selectedBook.details.authors}
                     </p>
 
-                    {/* Enhanced Status Message with Teacher Notes */}
+                    {/* Status message */}
                     {stateMessage && (
                       <div style={{
                         backgroundColor: stateMessage.color,
@@ -1901,96 +2318,49 @@ export default function StudentBookshelf() {
                       </div>
                     )}
 
-                    {/* Resubmission Button for Revision Ready */}
-                    {bookState === 'revision_ready' && (
-                      <button
-                        onClick={() => {
-                          // Allow student to complete and resubmit
-                          const total = getBookTotal(selectedBook);
-                          setTempProgress(total); // Set to completed
-                          setShowSuccess('📝 Ready to resubmit! Update any details and save.');
-                          setTimeout(() => setShowSuccess(''), 3000);
-                        }}
-                        style={{
-                          backgroundColor: '#2196F3',
-                          color: 'white',
-                          border: 'none',
-                          padding: '8px 16px',
-                          borderRadius: '16px',
-                          fontSize: '12px',
-                          fontWeight: '500',
-                          cursor: 'pointer',
-                          width: '100%',
-                          minHeight: '44px',
-                          fontFamily: 'system-ui, -apple-system, sans-serif',
-                          marginBottom: '12px'
-                        }}
-                      >
-                        📝 Ready to Resubmit
-                      </button>
+                    {/* Read-only message during phase locks */}
+                    {!canEdit && (
+                      <div style={{
+                        backgroundColor: `${phaseInfo.color || currentTheme.primary}20`,
+                        color: phaseInfo.color || currentTheme.primary,
+                        padding: '8px 12px',
+                        borderRadius: '12px',
+                        fontSize: '11px',
+                        fontWeight: '600',
+                        margin: '0 0 12px 0',
+                        border: `1px solid ${phaseInfo.color || currentTheme.primary}40`
+                      }}>
+                        📖 Viewing only - {phaseInfo.name.toLowerCase()} mode active
+                      </div>
                     )}
 
-                    {/* Start Reading Session Button - Only show if not completed and not locked */}
+                    {/* Start Reading Session Button - DISABLED during phase locks */}
                     {shouldShowReadingButton(selectedBook) && (
                       <button
-                        onClick={() => startReadingSession(selectedBook)}
-                        disabled={locked}
+                        onClick={() => canEdit ? startReadingSession(selectedBook) : null}
+                        disabled={locked || !canEdit}
                         style={{
-                          backgroundColor: locked ? '#E0E0E0' : colorPalette.primary,
-                          color: locked ? '#999' : colorPalette.textPrimary,
+                          backgroundColor: (locked || !canEdit) ? '#E0E0E0' : colorPalette.primary,
+                          color: (locked || !canEdit) ? '#999' : colorPalette.textPrimary,
                           border: 'none',
                           padding: '8px 16px',
                           borderRadius: '16px',
                           fontSize: '12px',
                           fontWeight: '500',
-                          cursor: locked ? 'not-allowed' : 'pointer',
+                          cursor: (locked || !canEdit) ? 'not-allowed' : 'pointer',
                           width: '100%',
                           minHeight: '44px',
                           fontFamily: 'system-ui, -apple-system, sans-serif',
-                          opacity: locked ? 0.6 : 1,
+                          opacity: (locked || !canEdit) ? 0.6 : 1,
                           marginBottom: '12px'
                         }}
                       >
-                        📖 Start Reading Session
+                        {!canEdit ? '📖 Reading sessions paused' : '📖 Start Reading Session'}
                       </button>
                     )}
                   </div>
 
-                  {/* Progress section */}
-                  <div style={{ marginBottom: '15px' }}>
-                    <label style={{
-                      fontSize: '12px',
-                      fontWeight: '500',
-                      color: locked ? '#999' : colorPalette.textPrimary,
-                      display: 'block',
-                      marginBottom: '6px',
-                      fontFamily: 'Avenir, system-ui, sans-serif',
-                      letterSpacing: '0.3px'
-                    }}>
-                      {selectedBook.format === 'audiobook' ? 'Minutes' : 'Pages'}: {tempProgress}/{total}
-                    </label>
-                    
-                    <input
-                      type="range"
-                      min="0"
-                      max={total}
-                      value={tempProgress}
-                      onChange={(e) => setTempProgress(parseInt(e.target.value))}
-                      disabled={locked}
-                      style={{
-                        width: '100%',
-                        height: '6px',
-                        borderRadius: '3px',
-                        background: `linear-gradient(to right, ${locked ? '#E0E0E0' : colorPalette.primary} 0%, ${locked ? '#E0E0E0' : colorPalette.primary} ${(tempProgress/total)*100}%, #E0E0E0 ${(tempProgress/total)*100}%, #E0E0E0 100%)`,
-                        outline: 'none',
-                        appearance: 'none',
-                        WebkitAppearance: 'none',
-                        cursor: locked ? 'not-allowed' : 'pointer',
-                        opacity: locked ? 0.6 : 1
-                      }}
-                    />
-                  </div>
-
+                  {/* Progress section - READ ONLY during phase locks */}
                   <div style={{ marginBottom: '15px' }}>
                     <label style={{
                       fontSize: '12px',
@@ -2001,7 +2371,43 @@ export default function StudentBookshelf() {
                       fontFamily: 'Avenir, system-ui, sans-serif',
                       letterSpacing: '0.3px'
                     }}>
-                      Rating
+                      {selectedBook.format === 'audiobook' ? 'Minutes' : 'Pages'}: {tempProgress}/{total}
+                      {!canEdit && <span style={{ color: colorPalette.textSecondary, fontStyle: 'italic' }}> (view only)</span>}
+                    </label>
+                    
+                    <input
+                      type="range"
+                      min="0"
+                      max={total}
+                      value={tempProgress}
+                      onChange={canEdit ? (e) => setTempProgress(parseInt(e.target.value)) : undefined}
+                      disabled={!canEdit}
+                      style={{
+                        width: '100%',
+                        height: '6px',
+                        borderRadius: '3px',
+                        background: `linear-gradient(to right, ${colorPalette.primary} 0%, ${colorPalette.primary} ${(tempProgress/total)*100}%, #E0E0E0 ${(tempProgress/total)*100}%, #E0E0E0 100%)`,
+                        outline: 'none',
+                        appearance: 'none',
+                        WebkitAppearance: 'none',
+                        cursor: canEdit ? 'pointer' : 'not-allowed',
+                        opacity: canEdit ? 1 : 0.6
+                      }}
+                    />
+                  </div>
+
+                  {/* Rating section - READ ONLY during phase locks */}
+                  <div style={{ marginBottom: '15px' }}>
+                    <label style={{
+                      fontSize: '12px',
+                      fontWeight: '500',
+                      color: colorPalette.textPrimary,
+                      display: 'block',
+                      marginBottom: '6px',
+                      fontFamily: 'Avenir, system-ui, sans-serif',
+                      letterSpacing: '0.3px'
+                    }}>
+                      Rating {!canEdit && <span style={{ color: colorPalette.textSecondary, fontStyle: 'italic' }}>(view only)</span>}
                     </label>
                     <div style={{ 
                       display: 'flex', 
@@ -2011,16 +2417,18 @@ export default function StudentBookshelf() {
                       {[1, 2, 3, 4, 5].map(star => (
                         <button
                           key={star}
-                          onClick={() => setTempRating(star)}
+                          onClick={canEdit ? () => setTempRating(star) : undefined}
+                          disabled={!canEdit}
                           style={{
                             background: 'none',
                             border: 'none',
                             fontSize: '18px',
-                            cursor: 'pointer',
+                            cursor: canEdit ? 'pointer' : 'not-allowed',
                             color: star <= tempRating ? '#FFD700' : '#E0E0E0',
                             padding: '1px',
                             minHeight: '44px',
-                            minWidth: '44px'
+                            minWidth: '44px',
+                            opacity: canEdit ? 1 : 0.7
                           }}
                         >
                           ★
@@ -2029,11 +2437,22 @@ export default function StudentBookshelf() {
                     </div>
                   </div>
 
+                  {/* Notes section - READ ONLY during phase locks */}
                   <div style={{ marginBottom: '15px' }}>
+                    <label style={{
+                      fontSize: '12px',
+                      fontWeight: '500',
+                      color: colorPalette.textPrimary,
+                      display: 'block',
+                      marginBottom: '6px'
+                    }}>
+                      Notes {!canEdit && <span style={{ color: colorPalette.textSecondary, fontStyle: 'italic' }}>(view only)</span>}
+                    </label>
                     <textarea
                       value={tempNotes}
-                      onChange={handleTextareaChange}
-                      placeholder="Notes..."
+                      onChange={canEdit ? handleTextareaChange : undefined}
+                      placeholder={canEdit ? "Notes..." : "No notes added"}
+                      readOnly={!canEdit}
                       style={{
                         width: '100%',
                         height: `${textareaHeight}px`,
@@ -2043,14 +2462,15 @@ export default function StudentBookshelf() {
                         border: `1px solid ${colorPalette.primary}40`,
                         borderRadius: '6px',
                         fontSize: '16px',
-                        backgroundColor: '#FFFFFF',
+                        backgroundColor: canEdit ? '#FFFFFF' : '#F5F5F5',
                         color: colorPalette.textPrimary,
                         fontFamily: 'inherit',
                         boxSizing: 'border-box',
                         outline: 'none',
                         resize: 'none',
                         overflow: 'hidden',
-                        transition: 'height 0.1s ease'
+                        transition: 'height 0.1s ease',
+                        cursor: canEdit ? 'text' : 'default'
                       }}
                       onInput={(e) => {
                         if (e.target.scrollHeight > 120) {
@@ -2062,48 +2482,103 @@ export default function StudentBookshelf() {
                     />
                   </div>
 
+                  {/* Action buttons - CONDITIONAL based on phase */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <button
-                      onClick={saveBookProgress}
-                      disabled={isSaving}
-                      style={{
-                        backgroundColor: colorPalette.primary,
-                        color: colorPalette.textPrimary,
-                        border: 'none',
-                        padding: '10px 16px',
-                        borderRadius: '16px',
-                        fontSize: '12px',
-                        fontWeight: '500',
-                        cursor: 'pointer',
-                        opacity: isSaving ? 0.7 : 1,
-                        minHeight: '44px',
-                        fontFamily: 'system-ui, -apple-system, sans-serif'
-                      }}
-                    >
-                      {isSaving ? 'Saving...' : '💾 Save'}
-                    </button>
-                    
-                    {/* Remove button - Only show if not completed */}
-                    {shouldShowRemoveButton(selectedBook) && (
-                      <button
-                        onClick={() => deleteBook(selectedBook.bookId)}
-                        disabled={isSaving || locked}
-                        style={{
-                          backgroundColor: locked ? '#E0E0E0' : colorPalette.textSecondary,
-                          color: locked ? '#999' : 'white',
-                          border: 'none',
-                          padding: '10px 16px',
-                          borderRadius: '16px',
-                          fontSize: '12px',
-                          cursor: locked ? 'not-allowed' : 'pointer',
-                          opacity: isSaving ? 0.7 : (locked ? 0.6 : 1),
-                          minHeight: '44px',
-                          fontWeight: '500',
-                          fontFamily: 'system-ui, -apple-system, sans-serif'
-                        }}
-                      >
-                        🗑️ Remove
-                      </button>
+                    {canEdit ? (
+                      // EDITING ALLOWED - Show normal buttons
+                      <>
+                        <button
+                          onClick={saveBookProgress}
+                          disabled={isSaving}
+                          style={{
+                            backgroundColor: colorPalette.primary,
+                            color: colorPalette.textPrimary,
+                            border: 'none',
+                            padding: '10px 16px',
+                            borderRadius: '16px',
+                            fontSize: '12px',
+                            fontWeight: '500',
+                            cursor: 'pointer',
+                            opacity: isSaving ? 0.7 : 1,
+                            minHeight: '44px',
+                            fontFamily: 'system-ui, -apple-system, sans-serif'
+                          }}
+                        >
+                          {isSaving ? 'Saving...' : '💾 Save'}
+                        </button>
+                        
+                        {shouldShowRemoveButton(selectedBook) && (
+                          <button
+                            onClick={() => deleteBook(selectedBook.bookId)}
+                            disabled={isSaving || locked}
+                            style={{
+                              backgroundColor: locked ? '#E0E0E0' : colorPalette.textSecondary,
+                              color: locked ? '#999' : 'white',
+                              border: 'none',
+                              padding: '10px 16px',
+                              borderRadius: '16px',
+                              fontSize: '12px',
+                              cursor: locked ? 'not-allowed' : 'pointer',
+                              opacity: isSaving ? 0.7 : (locked ? 0.6 : 1),
+                              minHeight: '44px',
+                              fontWeight: '500',
+                              fontFamily: 'system-ui, -apple-system, sans-serif'
+                            }}
+                          >
+                            🗑️ Remove
+                          </button>
+                        )}
+                      </>
+                    ) : (
+                      // READ-ONLY MODE - Show view-only message and close button
+                      <>
+                        <div style={{
+                          backgroundColor: `${phaseInfo.color || currentTheme.primary}10`,
+                          border: `2px solid ${phaseInfo.color || currentTheme.primary}40`,
+                          borderRadius: '12px',
+                          padding: '12px',
+                          textAlign: 'center'
+                        }}>
+                          <p style={{
+                            fontSize: '12px',
+                            color: colorPalette.textPrimary,
+                            margin: '0 0 4px 0',
+                            fontWeight: '600'
+                          }}>
+                            📖 View Only Mode
+                          </p>
+                          <p style={{
+                            fontSize: '11px',
+                            color: colorPalette.textSecondary,
+                            margin: 0,
+                            lineHeight: '1.3'
+                          }}>
+                            {phaseInfo.name === 'Voting Period' ? 
+                              'Book editing is paused during voting. Focus on choosing your favorite!' :
+                             phaseInfo.name === 'Results' ?
+                              'Book editing is paused while we celebrate the winners!' :
+                              'Book editing is temporarily unavailable'}
+                          </p>
+                        </div>
+                        
+                        <button
+                          onClick={closeBookModal}
+                          style={{
+                            backgroundColor: colorPalette.textSecondary,
+                            color: 'white',
+                            border: 'none',
+                            padding: '10px 16px',
+                            borderRadius: '16px',
+                            fontSize: '12px',
+                            fontWeight: '500',
+                            cursor: 'pointer',
+                            minHeight: '44px',
+                            fontFamily: 'system-ui, -apple-system, sans-serif'
+                          }}
+                        >
+                          ✓ Close
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>

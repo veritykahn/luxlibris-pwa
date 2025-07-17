@@ -1,4 +1,4 @@
-// hooks/usePhaseAccess.js - Phase-aware locking system for student pages
+// hooks/usePhaseAccess.js - UPDATED to lock bookshelf during RESULTS
 import { useState, useEffect } from 'react';
 import { dbHelpers } from '../lib/firebase';
 
@@ -17,6 +17,7 @@ export const usePhaseAccess = () => {
       bookSubmission: false,
       nomineesBrowsing: false,
       bookshelfEditing: false,
+      bookshelfViewing: false,  // NEW: Block bookshelf completely
       votingInterface: false,
       
       // Year-round features stay available
@@ -39,6 +40,7 @@ export const usePhaseAccess = () => {
       bookSubmission: false,
       nomineesBrowsing: false,
       bookshelfEditing: false,
+      bookshelfViewing: false,  // NEW: Block bookshelf completely
       votingInterface: false,
       
       // Year-round features available
@@ -61,6 +63,7 @@ export const usePhaseAccess = () => {
       bookSubmission: true,
       nomineesBrowsing: true,
       bookshelfEditing: true,
+      bookshelfViewing: true,  // NEW: Full bookshelf access
       votingInterface: false,
       
       // All features available
@@ -81,6 +84,7 @@ export const usePhaseAccess = () => {
       bookSubmission: false,    // Can't submit completions
       nomineesBrowsing: false,  // Can't browse for new books
       bookshelfEditing: false,  // Can't edit bookshelf
+      bookshelfViewing: true,   // NEW: Can view bookshelf (read-only)
       votingInterface: true,    // Voting is active!
       
       // Year-round features stay open
@@ -98,26 +102,27 @@ export const usePhaseAccess = () => {
     },
     
     RESULTS: {
-      // Similar to voting but no voting interface
+      // UPDATED: Lock down both nominees AND bookshelf completely
       bookSelection: false,
       bookSubmission: false,
-      nomineesBrowsing: false,
-      bookshelfEditing: false,
+      nomineesBrowsing: false,  // Locked completely
+      bookshelfEditing: false,  // Locked completely
+      bookshelfViewing: false,  // NEW: Lock bookshelf completely during results
       votingInterface: false,
-      votingResults: true,        // NEW: Show results to students
+      votingResults: true,      // Show results to students
       
       // Year-round features available
       saintsPages: true,
       healthyHabits: true,
       readingTimer: true,
       basicStats: true,
-      bookDetails: true,
+      bookDetails: false,       // NEW: Lock book details too
       
       // Program features locked
       advancedStats: false,
       achievements: false,
       
-      message: "🏆 Results are in! Check out this year's winners while we prepare for next year!"
+      message: "🏆 Carry on with your reading habits and collecting XP and saints while we prepare next year's nominees!"
     },
     
     CLOSED: {
@@ -126,6 +131,7 @@ export const usePhaseAccess = () => {
       bookSubmission: false,
       nomineesBrowsing: false,
       bookshelfEditing: false,
+      bookshelfViewing: false,  // NEW: Block bookshelf completely
       votingInterface: false,
       
       // Only year-round features
