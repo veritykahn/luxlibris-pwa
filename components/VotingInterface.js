@@ -253,7 +253,7 @@ export default function VotingInterface({ studentData, currentTheme }) {
             margin: '0 0 16px 0',
             lineHeight: '1.4'
           }}>
-            You've completed an amazing reading year! Show off your achievements and stats to everyone.
+            You&apos;ve completed an amazing reading year! Show off your achievements and stats to everyone.
           </p>
           <button
             onClick={() => router.push('/student-stats')}
