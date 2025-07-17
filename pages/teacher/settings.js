@@ -22,6 +22,7 @@ export default function TeacherSettings() {
   const [yearOverYearStatus, setYearOverYearStatus] = useState(null)
   const [releaseStatus, setReleaseStatus] = useState(null)
   const [availableNominees, setAvailableNominees] = useState([])
+  const [selectedBooksWithDetails, setSelectedBooksWithDetails] = useState([])
   const [currentConfig, setCurrentConfig] = useState({
     selectedNominees: [],
     achievementTiers: [],
@@ -58,6 +59,58 @@ export default function TeacherSettings() {
     checkAuth()
   }, [authLoading, isAuthenticated, userProfile, router, isSessionExpired, signOut])
 
+  // Load phase status
+  const loadPhaseStatus = async () => {
+    try {
+      const config = await dbHelpers.getSystemConfig()
+      setPhaseStatus({
+        currentPhase: config.programPhase || 'ACTIVE',
+        academicYear: getCurrentAcademicYear()
+      })
+    } catch (error) {
+      console.error('Error loading phase status:', error)
+    }
+  }
+
+  // Load selected books details
+  const loadSelectedBooksDetails = async (selectedNominees) => {
+    if (!selectedNominees || selectedNominees.length === 0) {
+      setSelectedBooksWithDetails([])
+      return
+    }
+
+    try {
+      console.log('📚 Loading details for selected books:', selectedNominees)
+      
+      // Use the existing dbHelpers pattern to get all available nominees
+      const allNominees = await dbHelpers.getAvailableNomineesForYear()
+      console.log('📖 Found', allNominees.length, 'total books from dbHelpers')
+      
+      // Get details for selected books
+      const selectedBooksDetails = selectedNominees.map(nomineeId => {
+        const book = allNominees.find(b => b.id === nomineeId)
+        if (book) {
+          return book
+        } else {
+          console.warn('Book not found for ID:', nomineeId)
+          return { 
+            id: nomineeId, 
+            title: 'Book Not Found', 
+            authors: 'Unknown',
+            coverImageUrl: null 
+          }
+        }
+      })
+      
+      console.log('✅ Loaded details for', selectedBooksDetails.length, 'selected books')
+      setSelectedBooksWithDetails(selectedBooksDetails)
+      
+    } catch (error) {
+      console.error('❌ Error loading book details:', error)
+      setSelectedBooksWithDetails([])
+    }
+  }
+
   // Load all settings data
   const loadSettingsData = async () => {
     try {
@@ -70,11 +123,7 @@ export default function TeacherSettings() {
       }
 
       // Get current phase status
-      const config = await dbHelpers.getSystemConfig()
-      setPhaseStatus({
-        currentPhase: config.programPhase,
-        academicYear: getCurrentAcademicYear()
-      })
+      await loadPhaseStatus()
 
       // Check year-over-year status
       const yoyStatus = await dbHelpers.checkTeacherYearOverYearStatus(
@@ -98,6 +147,9 @@ export default function TeacherSettings() {
         achievementTiers: yoyStatus.teacherData.achievementTiers || [],
         submissionOptions: yoyStatus.teacherData.submissionOptions || {}
       })
+
+      // Load selected books details
+      await loadSelectedBooksDetails(yoyStatus.teacherData.selectedNominees || [])
 
       // If in TEACHER_SELECTION phase, load available nominees
       if (yoyStatus.needsYearOverYearSetup) {
@@ -367,7 +419,7 @@ export default function TeacherSettings() {
           padding: '1rem'
         }}>
 
-          {/* Phase Status Display */}
+          {/* Enhanced Phase Status Display with Configuration Summary */}
           {phaseStatus && (
             <div style={{
               background: 'white',
@@ -392,8 +444,10 @@ export default function TeacherSettings() {
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                gap: '1rem'
+                gap: '1rem',
+                marginBottom: '1.5rem'
               }}>
+                {/* Academic Year */}
                 <div style={{
                   background: 'linear-gradient(135deg, #ADD4EA15, #ADD4EA25)',
                   borderRadius: '0.75rem',
@@ -415,6 +469,7 @@ export default function TeacherSettings() {
                   </div>
                 </div>
 
+                {/* Current Phase */}
                 <div style={{
                   background: 'linear-gradient(135deg, #C3E0DE15, #C3E0DE25)',
                   borderRadius: '0.75rem',
@@ -423,7 +478,10 @@ export default function TeacherSettings() {
                   textAlign: 'center'
                 }}>
                   <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>
-                    {phaseStatus.currentPhase === 'TEACHER_SELECTION' ? '👩‍🏫' : '📚'}
+                    {phaseStatus.currentPhase === 'ACTIVE' ? '📚' : 
+                     phaseStatus.currentPhase === 'VOTING' ? '🗳️' : 
+                     phaseStatus.currentPhase === 'RESULTS' ? '🏆' : 
+                     phaseStatus.currentPhase === 'TEACHER_SELECTION' ? '👩‍🏫' : '📋'}
                   </div>
                   <div style={{
                     fontSize: '1.125rem',
@@ -431,12 +489,77 @@ export default function TeacherSettings() {
                     color: '#223848',
                     marginBottom: '0.25rem'
                   }}>
-                    {phaseStatus.currentPhase === 'TEACHER_SELECTION' ? 'Book Selection' : 'Active Reading'}
+                    {phaseStatus.currentPhase === 'ACTIVE' ? 'Active Reading' : 
+                     phaseStatus.currentPhase === 'VOTING' ? 'Voting Period' : 
+                     phaseStatus.currentPhase === 'RESULTS' ? 'Results Available' : 
+                     phaseStatus.currentPhase === 'TEACHER_SELECTION' ? 'Book Selection' : 'Setup'}
                   </div>
                   <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
                     Current Phase
                   </div>
                 </div>
+              </div>
+
+              {/* Configuration Summary */}
+              <div style={{
+                background: 'linear-gradient(135deg, #EDF2F7, #E2E8F0)',
+                border: '1px solid #CBD5E0',
+                borderRadius: '0.75rem',
+                padding: '1.25rem'
+              }}>
+                <h4 style={{
+                  fontSize: '1rem',
+                  fontWeight: '600',
+                  color: '#2D3748',
+                  margin: '0 0 0.75rem 0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}>
+                  📊 Configuration Summary
+                </h4>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                  gap: '1rem',
+                  fontSize: '0.875rem',
+                  color: '#4A5568'
+                }}>
+                  <div>
+                    <strong>Books Available:</strong> {selectedBooksWithDetails.length}
+                  </div>
+                  <div>
+                    <strong>Completion Methods:</strong> {(() => {
+                      // Count enabled teacher options (excluding quiz which is always available)
+                      const enabledTeacherOptions = Object.keys(currentConfig.submissionOptions || {})
+                        .filter(key => key !== 'quiz' && currentConfig.submissionOptions[key]).length
+                      // Add 1 for quiz (always available)
+                      return enabledTeacherOptions + 1
+                    })()}
+                  </div>
+                  <div>
+                    <strong>Achievement Tiers:</strong> {currentConfig.achievementTiers?.length || 0}
+                  </div>
+                  <div>
+                    <strong>Status:</strong> <span style={{ color: '#38A169', fontWeight: '600' }}>
+                      {yearOverYearStatus?.hasCompletedThisYear ? 'Active' : 'Setup Needed'}
+                    </span>
+                  </div>
+                </div>
+                {phaseStatus.currentPhase !== 'TEACHER_SELECTION' && (
+                  <div style={{
+                    marginTop: '0.75rem',
+                    padding: '0.75rem',
+                    background: 'rgba(255, 255, 255, 0.7)',
+                    borderRadius: '0.5rem',
+                    fontSize: '0.75rem',
+                    color: '#718096',
+                    fontStyle: 'italic'
+                  }}>
+                    💡 This configuration will remain active until the Teacher Selection phase begins on May 24th. 
+                    Students can read and submit books using the options above.
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -463,6 +586,9 @@ export default function TeacherSettings() {
               releaseStatus={releaseStatus}
               onReleaseToStudents={releaseToStudents}
               isProcessing={isProcessing}
+              selectedBooksWithDetails={selectedBooksWithDetails}
+              teacherSubmissionOptions={currentConfig.submissionOptions}
+              phaseStatus={phaseStatus}
             />
           )}
 
@@ -850,8 +976,31 @@ function YearOverYearBookSelection({
   )
 }
 
-// Current Configuration Display Component
-function CurrentConfigurationDisplay({ config, yearOverYearStatus, releaseStatus, onReleaseToStudents, isProcessing }) {
+// Enhanced Current Configuration Display Component
+function CurrentConfigurationDisplay({ config, yearOverYearStatus, releaseStatus, onReleaseToStudents, isProcessing, selectedBooksWithDetails, teacherSubmissionOptions, phaseStatus }) {
+  
+  // Get enabled submission options with descriptions
+  const getSubmissionOptionsDisplay = () => {
+    const options = [
+      { key: 'quiz', label: '📝 Take Quiz', description: 'Parent code required, auto-graded', enabled: true, note: 'Always Available' },
+      { key: 'presentToTeacher', label: '🗣️ Present to Teacher', description: 'Oral presentation or discussion' },
+      { key: 'submitReview', label: '✍️ Submit Written Review', description: 'Written book review or summary' },
+      { key: 'createStoryboard', label: '🎨 Create Storyboard', description: 'Visual art or comic strip' },
+      { key: 'bookReport', label: '📚 Traditional Book Report', description: 'Formal written report' },
+      { key: 'discussWithLibrarian', label: '💬 Discussion with Librarian', description: 'One-on-one book discussion' },
+      { key: 'actOutScene', label: '🎭 Act Out Scene', description: 'Performance or dramatic reading' }
+    ];
+
+    return options.filter(option => 
+      option.enabled || teacherSubmissionOptions?.[option.key]
+    );
+  };
+
+  const enabledSubmissionOptions = getSubmissionOptionsDisplay();
+
+  // Check if we're in a "locked" phase (not TEACHER_SELECTION)
+  const isConfigurationLocked = phaseStatus?.currentPhase !== 'TEACHER_SELECTION';
+
   return (
     <div style={{
       background: 'white',
@@ -859,150 +1008,478 @@ function CurrentConfigurationDisplay({ config, yearOverYearStatus, releaseStatus
       padding: '1.5rem',
       boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)'
     }}>
-      <h2 style={{
-        fontSize: '1.5rem',
-        fontWeight: 'bold',
-        color: '#223848',
-        margin: '0 0 1rem 0',
-        fontFamily: 'Georgia, serif'
-      }}>
-        ⚙️ Current Configuration
-      </h2>
-      
       <div style={{
-        display: 'grid',
-        gap: '1.5rem'
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: '1.5rem'
       }}>
-        {/* Books Selected */}
-        <div>
-          <h3 style={{
-            fontSize: '1.125rem',
-            fontWeight: '600',
-            color: '#223848',
-            margin: '0 0 0.5rem 0'
-          }}>
-            📚 Selected Books ({config.selectedNominees.length})
-          </h3>
-          <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
-            You have {config.selectedNominees.length} books selected for your reading program.
-          </p>
-        </div>
-
-        {/* Configuration Status */}
-        <div style={{
-          background: yearOverYearStatus?.hasCompletedThisYear ? '#ecfdf5' : '#fef3c7',
-          border: `1px solid ${yearOverYearStatus?.hasCompletedThisYear ? '#10b981' : '#f59e0b'}`,
-          borderRadius: '0.5rem',
-          padding: '1rem'
+        <h2 style={{
+          fontSize: '1.5rem',
+          fontWeight: 'bold',
+          color: '#223848',
+          margin: 0,
+          fontFamily: 'Georgia, serif'
         }}>
-          <p style={{ 
-            color: yearOverYearStatus?.hasCompletedThisYear ? '#065f46' : '#92400e', 
-            margin: 0, 
-            fontWeight: '600' 
-          }}>
-            {yearOverYearStatus?.hasCompletedThisYear ? 
-              `✅ Configuration complete for ${yearOverYearStatus.currentYear}` :
-              `⏳ Configuration not yet set for ${yearOverYearStatus.currentYear}`
-            }
-          </p>
-        </div>
-
-        {/* Release Status and Button */}
-        {yearOverYearStatus?.hasCompletedThisYear && releaseStatus && (
+          {isConfigurationLocked ? '📋 Current Year Configuration' : '⚙️ Current Configuration'}
+        </h2>
+        
+        {isConfigurationLocked && (
           <div style={{
-            background: releaseStatus.hasReleased ? '#ecfdf5' : '#fef3c7',
-            border: `1px solid ${releaseStatus.hasReleased ? '#10b981' : '#f59e0b'}`,
+            background: '#E5E7EB',
+            color: '#374151',
+            padding: '0.5rem 1rem',
             borderRadius: '0.5rem',
-            padding: '1.5rem'
+            fontSize: '0.75rem',
+            fontWeight: '600',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.25rem'
           }}>
-            {releaseStatus.hasReleased ? (
-              // Already Released
-              <div style={{ textAlign: 'center' }}>
-                <h4 style={{
-                  fontSize: '1.125rem',
-                  fontWeight: '600',
-                  color: '#065f46',
-                  margin: '0 0 0.5rem 0'
-                }}>
-                  🎉 Books Released to Students!
-                </h4>
-                <p style={{
-                  color: '#047857',
-                  margin: '0 0 0.5rem 0',
-                  fontSize: '0.875rem'
-                }}>
-                  {releaseStatus.booksCount} books are now available to your students for {releaseStatus.academicYear}.
-                </p>
-                {releaseStatus.releaseDate && (
-                  <p style={{
-                    color: '#065f46',
-                    margin: 0,
-                    fontSize: '0.75rem',
-                    fontStyle: 'italic'
-                  }}>
-                    Released on: {new Date(releaseStatus.releaseDate.seconds * 1000).toLocaleDateString()}
-                  </p>
-                )}
-              </div>
-            ) : releaseStatus.canRelease ? (
-              // Can Release
-              <div style={{ textAlign: 'center' }}>
-                <h4 style={{
-                  fontSize: '1.125rem',
-                  fontWeight: '600',
-                  color: '#92400e',
-                  margin: '0 0 0.5rem 0'
-                }}>
-                  📚 Ready to Release Books?
-                </h4>
-                <p style={{
-                  color: '#b45309',
-                  margin: '0 0 1rem 0',
-                  fontSize: '0.875rem'
-                }}>
-                  Your {releaseStatus.booksCount} selected books are ready. Release them to make them available to your students.
-                </p>
-                <button
-                  onClick={onReleaseToStudents}
-                  disabled={isProcessing}
-                  style={{
-                    padding: '1rem 2rem',
-                    background: 'linear-gradient(135deg, #059669, #047857)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '0.5rem',
-                    fontSize: '1rem',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    opacity: isProcessing ? 0.7 : 1
-                  }}
-                >
-                  {isProcessing ? '🚀 Releasing...' : '🚀 Release to Students'}
-                </button>
-              </div>
-            ) : (
-              // Cannot Release
-              <div style={{ textAlign: 'center' }}>
-                <h4 style={{
-                  fontSize: '1.125rem',
-                  fontWeight: '600',
-                  color: '#92400e',
-                  margin: '0 0 0.5rem 0'
-                }}>
-                  ⏳ Configuration Needed
-                </h4>
-                <p style={{
-                  color: '#b45309',
-                  margin: 0,
-                  fontSize: '0.875rem'
-                }}>
-                  Complete your book selection and configuration before releasing to students.
-                </p>
-              </div>
-            )}
+            🔒 Read Only
           </div>
         )}
       </div>
+
+      {isConfigurationLocked ? (
+        // ENHANCED READ-ONLY DISPLAY for ACTIVE/VOTING/RESULTS phases
+        <div style={{ display: 'grid', gap: '2rem' }}>
+          
+          {/* Phase Status Banner */}
+          <div style={{
+            background: 'linear-gradient(135deg, #C3E0DE20, #A1E5DB20)',
+            border: '2px solid #C3E0DE60',
+            borderRadius: '0.75rem',
+            padding: '1.25rem',
+            textAlign: 'center'
+          }}>
+            <h3 style={{
+              fontSize: '1.125rem',
+              fontWeight: '600',
+              color: '#223848',
+              margin: '0 0 0.5rem 0'
+            }}>
+              📅 Academic Year {yearOverYearStatus?.currentYear || '2025-26'}
+            </h3>
+            <p style={{
+              color: '#6B7280',
+              fontSize: '0.875rem',
+              margin: 0
+            }}>
+              Configuration is active and cannot be changed until Teacher Selection phase (May 24th)
+            </p>
+          </div>
+
+          {/* Selected Books Display */}
+          <div>
+            <h3 style={{
+              fontSize: '1.25rem',
+              fontWeight: '600',
+              color: '#223848',
+              margin: '0 0 1rem 0',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}>
+              📚 Selected Books ({selectedBooksWithDetails.length})
+            </h3>
+            
+            {selectedBooksWithDetails.length === 0 ? (
+              <div style={{
+                background: '#FEF2F2',
+                border: '1px solid #FECACA',
+                borderRadius: '0.5rem',
+                padding: '1rem',
+                textAlign: 'center'
+              }}>
+                <p style={{ color: '#DC2626', margin: 0 }}>
+                  No books configured for this year
+                </p>
+              </div>
+            ) : (
+              <div style={{
+                background: '#F9FAFB',
+                borderRadius: '0.75rem',
+                padding: '1rem',
+                maxHeight: '400px',
+                overflowY: 'auto'
+              }}>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                  gap: '0.75rem'
+                }}>
+                  {selectedBooksWithDetails.map((book, index) => (
+                    <div
+                      key={book.id}
+                      style={{
+                        background: 'white',
+                        border: '1px solid #E5E7EB',
+                        borderRadius: '0.5rem',
+                        padding: '0.75rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem'
+                      }}
+                    >
+                      <div style={{
+                        width: '40px',
+                        height: '60px',
+                        background: '#F3F4F6',
+                        borderRadius: '0.25rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '20px',
+                        overflow: 'hidden',
+                        flexShrink: 0
+                      }}>
+                        {book.coverImageUrl ? (
+                          <img
+                            src={book.coverImageUrl}
+                            alt={book.title}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                              borderRadius: '0.25rem'
+                            }}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.nextElementSibling.style.display = 'block';
+                            }}
+                          />
+                        ) : (
+                          <span>📚</span>
+                        )}
+                        <span style={{ display: book.coverImageUrl ? 'none' : 'block' }}>📚</span>
+                      </div>
+                      
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <h4 style={{
+                          fontSize: '0.875rem',
+                          fontWeight: 'bold',
+                          color: '#1F2937',
+                          margin: '0 0 0.25rem 0',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}>
+                          {book.title}
+                        </h4>
+                        <p style={{
+                          fontSize: '0.75rem',
+                          color: '#6B7280',
+                          margin: '0 0 0.25rem 0',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}>
+                          by {book.authors}
+                        </p>
+                        {book.genres && (
+                          <p style={{
+                            fontSize: '0.6875rem',
+                            color: '#9CA3AF',
+                            margin: 0,
+                            fontStyle: 'italic',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {book.genres}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Submission Options Display */}
+          <div>
+            <h3 style={{
+              fontSize: '1.25rem',
+              fontWeight: '600',
+              color: '#223848',
+              margin: '0 0 1rem 0',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}>
+              📝 Book Completion Options ({enabledSubmissionOptions.length})
+            </h3>
+            
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: '0.75rem'
+            }}>
+              {enabledSubmissionOptions.map(option => (
+                <div key={option.key} style={{
+                  padding: '1rem',
+                  border: '1px solid #E5E7EB',
+                  borderRadius: '0.5rem',
+                  background: option.note ? '#F0FDF4' : 'white',
+                  opacity: 1
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '0.75rem'
+                  }}>
+                    <div style={{
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '50%',
+                      background: '#10B981',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontSize: '10px',
+                      flexShrink: 0,
+                      marginTop: '0.125rem'
+                    }}>
+                      ✓
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{
+                        fontSize: '0.875rem',
+                        fontWeight: '600',
+                        color: '#223848',
+                        marginBottom: '0.25rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem'
+                      }}>
+                        {option.label} 
+                        {option.note && (
+                          <span style={{
+                            fontSize: '0.6875rem',
+                            background: '#E5E7EB',
+                            color: '#374151',
+                            padding: '0.125rem 0.375rem',
+                            borderRadius: '0.25rem'
+                          }}>
+                            {option.note}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{
+                        fontSize: '0.75rem',
+                        color: '#6B7280',
+                        lineHeight: '1.3'
+                      }}>
+                        {option.description}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Achievement Tiers Display */}
+          {config.achievementTiers && config.achievementTiers.length > 0 && (
+            <div>
+              <h3 style={{
+                fontSize: '1.25rem',
+                fontWeight: '600',
+                color: '#223848',
+                margin: '0 0 1rem 0',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}>
+                🏆 Achievement Rewards ({config.achievementTiers.length})
+              </h3>
+              
+              <div style={{
+                background: '#F9FAFB',
+                borderRadius: '0.75rem',
+                padding: '1rem'
+              }}>
+                <div style={{ display: 'grid', gap: '0.75rem' }}>
+                  {config.achievementTiers.map((tier, index) => (
+                    <div key={index} style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 2fr',
+                      gap: '1rem',
+                      alignItems: 'center',
+                      padding: '1rem',
+                      background: 'white',
+                      borderRadius: '0.5rem',
+                      border: '1px solid #E5E7EB'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <span style={{
+                          width: '2.5rem',
+                          height: '2.5rem',
+                          background: 'linear-gradient(135deg, #C3E0DE, #A1E5DB)',
+                          borderRadius: '50%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white',
+                          fontWeight: 'bold',
+                          fontSize: '1.125rem'
+                        }}>
+                          {tier.books}
+                        </span>
+                        <div>
+                          <div style={{ fontWeight: '600', color: '#1F2937', fontSize: '0.875rem' }}>
+                            {tier.books} book{tier.books > 1 ? 's' : ''}
+                          </div>
+                          {tier.type === 'lifetime' && (
+                            <div style={{ fontSize: '0.75rem', color: '#6B7280', fontStyle: 'italic' }}>
+                              Multi-year goal
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div style={{
+                        padding: '0.75rem',
+                        background: '#F8FAFC',
+                        borderRadius: '0.5rem',
+                        border: '1px solid #E2E8F0'
+                      }}>
+                        <div style={{
+                          fontSize: '0.875rem',
+                          fontWeight: '600',
+                          color: '#374151'
+                        }}>
+                          {tier.reward}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        // EXISTING INTERACTIVE DISPLAY for TEACHER_SELECTION phase
+        <div style={{ display: 'grid', gap: '1.5rem' }}>
+          {/* Configuration Status */}
+          <div style={{
+            background: yearOverYearStatus?.hasCompletedThisYear ? '#ecfdf5' : '#fef3c7',
+            border: `1px solid ${yearOverYearStatus?.hasCompletedThisYear ? '#10b981' : '#f59e0b'}`,
+            borderRadius: '0.5rem',
+            padding: '1rem'
+          }}>
+            <p style={{ 
+              color: yearOverYearStatus?.hasCompletedThisYear ? '#065f46' : '#92400e', 
+              margin: 0, 
+              fontWeight: '600' 
+            }}>
+              {yearOverYearStatus?.hasCompletedThisYear ? 
+                `✅ Configuration complete for ${yearOverYearStatus.currentYear}` :
+                `⏳ Configuration not yet set for ${yearOverYearStatus.currentYear}`
+              }
+            </p>
+          </div>
+
+          {/* Release Status and Button */}
+          {yearOverYearStatus?.hasCompletedThisYear && releaseStatus && (
+            <div style={{
+              background: releaseStatus.hasReleased ? '#ecfdf5' : '#fef3c7',
+              border: `1px solid ${releaseStatus.hasReleased ? '#10b981' : '#f59e0b'}`,
+              borderRadius: '0.5rem',
+              padding: '1.5rem'
+            }}>
+              {releaseStatus.hasReleased ? (
+                // Already Released
+                <div style={{ textAlign: 'center' }}>
+                  <h4 style={{
+                    fontSize: '1.125rem',
+                    fontWeight: '600',
+                    color: '#065f46',
+                    margin: '0 0 0.5rem 0'
+                  }}>
+                    🎉 Books Released to Students!
+                  </h4>
+                  <p style={{
+                    color: '#047857',
+                    margin: '0 0 0.5rem 0',
+                    fontSize: '0.875rem'
+                  }}>
+                    {releaseStatus.booksCount} books are now available to your students for {releaseStatus.academicYear}.
+                  </p>
+                  {releaseStatus.releaseDate && (
+                    <p style={{
+                      color: '#065f46',
+                      margin: 0,
+                      fontSize: '0.75rem',
+                      fontStyle: 'italic'
+                    }}>
+                      Released on: {new Date(releaseStatus.releaseDate.seconds * 1000).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+              ) : releaseStatus.canRelease ? (
+                // Can Release
+                <div style={{ textAlign: 'center' }}>
+                  <h4 style={{
+                    fontSize: '1.125rem',
+                    fontWeight: '600',
+                    color: '#92400e',
+                    margin: '0 0 0.5rem 0'
+                  }}>
+                    📚 Ready to Release Books?
+                  </h4>
+                  <p style={{
+                    color: '#b45309',
+                    margin: '0 0 1rem 0',
+                    fontSize: '0.875rem'
+                  }}>
+                    Your {releaseStatus.booksCount} selected books are ready. Release them to make them available to your students.
+                  </p>
+                  <button
+                    onClick={onReleaseToStudents}
+                    disabled={isProcessing}
+                    style={{
+                      padding: '1rem 2rem',
+                      background: 'linear-gradient(135deg, #059669, #047857)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '0.5rem',
+                      fontSize: '1rem',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      opacity: isProcessing ? 0.7 : 1
+                    }}
+                  >
+                    {isProcessing ? '🚀 Releasing...' : '🚀 Release to Students'}
+                  </button>
+                </div>
+              ) : (
+                // Cannot Release
+                <div style={{ textAlign: 'center' }}>
+                  <h4 style={{
+                    fontSize: '1.125rem',
+                    fontWeight: '600',
+                    color: '#92400e',
+                    margin: '0 0 0.5rem 0'
+                  }}>
+                    ⏳ Configuration Needed
+                  </h4>
+                  <p style={{
+                    color: '#b45309',
+                    margin: 0,
+                    fontSize: '0.875rem'
+                  }}>
+                    Complete your book selection and configuration before releasing to students.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

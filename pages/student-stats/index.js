@@ -21,6 +21,10 @@ export default function StudentStatsMain() {
   const [showFirstBookCelebration, setShowFirstBookCelebration] = useState(false);
   const [showBraggingRights, setShowBraggingRights] = useState(false);
   
+  // NEW STATE VARIABLES FOR BADGE CHALLENGE
+  const [showBadgeChallenge, setShowBadgeChallenge] = useState(false);
+  const [challengeProgress, setChallengeProgress] = useState(null);
+  
   // Light overview data
   const [quickStats, setQuickStats] = useState(null);
   const [earnedBadges, setEarnedBadges] = useState([]);
@@ -144,7 +148,266 @@ export default function StudentStatsMain() {
     { name: 'Family Battle', path: '/student-stats/family-battle', icon: '👨‍👩‍👧‍👦', description: 'Coming soon!', disabled: true }
   ], []);
 
-  // Close nav menus when clicking outside
+  // NEW BADGE CHALLENGE FUNCTIONS
+  // Calculate progress toward current week's challenge
+  const calculateChallengeProgress = useCallback(async (studentData, weekBadge) => {
+    if (!weekBadge || !studentData) return null;
+    
+    try {
+      const sessionsRef = collection(db, `entities/${studentData.entityId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
+      
+      // Get current week's sessions (Monday to Sunday)
+      const today = new Date();
+      const currentDay = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+      const daysFromMonday = currentDay === 0 ? 6 : currentDay - 1; // Adjust so Monday = 0
+      
+      const weekStart = new Date(today);
+      weekStart.setDate(today.getDate() - daysFromMonday);
+      weekStart.setHours(0, 0, 0, 0);
+      
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      weekEnd.setHours(23, 59, 59, 999);
+      
+      // Format dates for Firestore query
+      const getLocalDateString = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+      
+      const startDateStr = getLocalDateString(weekStart);
+      const endDateStr = getLocalDateString(weekEnd);
+      
+      // Get this week's sessions
+      const weekQuery = query(
+        sessionsRef,
+        where('date', '>=', startDateStr),
+        where('date', '<=', endDateStr)
+      );
+      const weekSnapshot = await getDocs(weekQuery);
+      
+      const sessions = [];
+      const dailySessions = {};
+      let totalMinutes = 0;
+      let completedSessions = 0;
+      
+      weekSnapshot.forEach(doc => {
+        const session = doc.data();
+        sessions.push(session);
+        totalMinutes += session.duration || 0;
+        
+        if (session.completed) {
+          completedSessions++;
+          dailySessions[session.date] = true;
+        }
+      });
+      
+      const daysWithReading = Object.keys(dailySessions).length;
+      const todayStr = getLocalDateString(today);
+      const hasReadToday = dailySessions[todayStr] || false;
+      
+      // Calculate progress based on badge type and requirements
+      let progress = null;
+      
+      switch (weekBadge.name) {
+        case "Hummingbird Herald":
+          // "Celebrate the new nominee list by adding your first book to your shelf"
+          const booksInShelf = studentData.bookshelf?.length || 0;
+          progress = {
+            type: 'books_added',
+            current: booksInShelf,
+            target: 1,
+            percentage: Math.min(100, (booksInShelf / 1) * 100),
+            description: 'Books added to shelf',
+            completed: booksInShelf >= 1
+          };
+          break;
+          
+        case "Kingfisher Kickoff":
+        case "Pigeon Starter":
+          // "Complete your first 20-minute reading session"
+          progress = {
+            type: 'first_session',
+            current: completedSessions,
+            target: 1,
+            percentage: Math.min(100, (completedSessions / 1) * 100),
+            description: 'Reading sessions completed',
+            completed: completedSessions >= 1
+          };
+          break;
+          
+        case "Cardinal Courage":
+        case "Ostrich Odyssey":
+          // "Read 30+ minutes in a single session this week"
+          const longSessions = sessions.filter(s => s.duration >= 30).length;
+          progress = {
+            type: 'long_session',
+            current: longSessions,
+            target: 1,
+            percentage: Math.min(100, (longSessions / 1) * 100),
+            description: '30+ minute sessions',
+            completed: longSessions >= 1
+          };
+          break;
+          
+        case "Toucan Triumph":
+          // "Complete a 45+ minute reading session"
+          const extraLongSessions = sessions.filter(s => s.duration >= 45).length;
+          progress = {
+            type: 'extra_long_session',
+            current: extraLongSessions,
+            target: 1,
+            percentage: Math.min(100, (extraLongSessions / 1) * 100),
+            description: '45+ minute sessions',
+            completed: extraLongSessions >= 1
+          };
+          break;
+          
+        case "Flamingo Focus":
+          // "Read on 4 different days this week"
+          progress = {
+            type: 'reading_days',
+            current: daysWithReading,
+            target: 4,
+            percentage: Math.min(100, (daysWithReading / 4) * 100),
+            description: 'Days with reading',
+            completed: daysWithReading >= 4
+          };
+          break;
+          
+        case "Duck Dedication":
+        case "Lyre Bird Perfection":
+          // "Read every day this week (7 days straight)"
+          progress = {
+            type: 'daily_reading',
+            current: daysWithReading,
+            target: 7,
+            percentage: Math.min(100, (daysWithReading / 7) * 100),
+            description: 'Days completed',
+            completed: daysWithReading >= 7
+          };
+          break;
+          
+        case "Pelican Persistence":
+        case "Cassowary Challenge":
+        case "Sandgrouse Summer":
+          // "Read 3+ hours total this week (180+ minutes)"
+          progress = {
+            type: 'total_minutes',
+            current: totalMinutes,
+            target: 180,
+            percentage: Math.min(100, (totalMinutes / 180) * 100),
+            description: 'Minutes read',
+            completed: totalMinutes >= 180
+          };
+          break;
+          
+        case "Bald Eagle Excellence":
+        case "Crow Marathon":
+          // "Complete 4+ hours of reading this week (240+ minutes)"
+          progress = {
+            type: 'marathon_minutes',
+            current: totalMinutes,
+            target: 240,
+            percentage: Math.min(100, (totalMinutes / 240) * 100),
+            description: 'Minutes read',
+            completed: totalMinutes >= 240
+          };
+          break;
+          
+        case "Macaw Motivation":
+        case "Pheasant Focus":
+        case "Booby Morning":
+          // "Complete 2+ morning sessions (before 9am) this week"
+          const morningSessions = sessions.filter(s => {
+            const sessionTime = s.startTime?.toDate ? s.startTime.toDate() : new Date(s.startTime);
+            return sessionTime.getHours() < 9 && s.completed;
+          }).length;
+          progress = {
+            type: 'morning_sessions',
+            current: morningSessions,
+            target: 2,
+            percentage: Math.min(100, (morningSessions / 2) * 100),
+            description: 'Morning sessions (before 9am)',
+            completed: morningSessions >= 2
+          };
+          break;
+          
+        case "Barn Owl Night Reader":
+          // "Complete 2+ evening sessions (after 7pm) this week"
+          const eveningSessions = sessions.filter(s => {
+            const sessionTime = s.startTime?.toDate ? s.startTime.toDate() : new Date(s.startTime);
+            return sessionTime.getHours() >= 19 && s.completed;
+          }).length;
+          progress = {
+            type: 'evening_sessions',
+            current: eveningSessions,
+            target: 2,
+            percentage: Math.min(100, (eveningSessions / 2) * 100),
+            description: 'Evening sessions (after 7pm)',
+            completed: eveningSessions >= 2
+          };
+          break;
+          
+        case "Puffin Power":
+        case "Secretary Bird Weekend":
+          // "Read during weekend days (Saturday or Sunday)" or "Read 20+ minutes both Saturday AND Sunday"
+          const weekendSessions = sessions.filter(s => {
+            const sessionDate = new Date(s.date + 'T00:00:00');
+            const dayOfWeek = sessionDate.getDay();
+            return (dayOfWeek === 0 || dayOfWeek === 6) && s.completed; // Sunday or Saturday
+          }).length;
+          progress = {
+            type: 'weekend_reading',
+            current: weekendSessions,
+            target: weekBadge.name === "Secretary Bird Weekend" ? 2 : 1,
+            percentage: Math.min(100, (weekendSessions / (weekBadge.name === "Secretary Bird Weekend" ? 2 : 1)) * 100),
+            description: 'Weekend reading sessions',
+            completed: weekendSessions >= (weekBadge.name === "Secretary Bird Weekend" ? 2 : 1)
+          };
+          break;
+          
+        default:
+          // Generic weekly challenge
+          progress = {
+            type: 'general',
+            current: completedSessions,
+            target: 3,
+            percentage: Math.min(100, (completedSessions / 3) * 100),
+            description: 'Reading sessions',
+            completed: completedSessions >= 3
+          };
+          break;
+      }
+      
+      return {
+        ...progress,
+        sessionsThisWeek: sessions.length,
+        daysWithReading,
+        totalMinutes,
+        hasReadToday,
+        weekStart: weekStart.toLocaleDateString(),
+        weekEnd: weekEnd.toLocaleDateString()
+      };
+      
+    } catch (error) {
+      console.error('Error calculating challenge progress:', error);
+      return null;
+    }
+  }, []);
+
+  // Handle badge challenge click
+  const handleBadgeChallengeClick = async () => {
+    if (currentWeekBadge && studentData) {
+      const progress = await calculateChallengeProgress(studentData, currentWeekBadge);
+      setChallengeProgress(progress);
+      setShowBadgeChallenge(true);
+    }
+  };
+
+  // Close nav menus when clicking outside - UPDATED TO INCLUDE BADGE CHALLENGE
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (showNavMenu && !event.target.closest('.nav-menu-container')) {
@@ -161,10 +424,11 @@ export default function StudentStatsMain() {
         setShowStatsDropdown(false);
         setShowFirstBookCelebration(false);
         setShowBraggingRights(false);
+        setShowBadgeChallenge(false); // ADDED
       }
     };
 
-    if (showNavMenu || showStatsDropdown || showFirstBookCelebration || showBraggingRights) {
+    if (showNavMenu || showStatsDropdown || showFirstBookCelebration || showBraggingRights || showBadgeChallenge) { // ADDED showBadgeChallenge
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('keydown', handleEscape);
     }
@@ -173,7 +437,7 @@ export default function StudentStatsMain() {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscape);
     };
-  }, [showNavMenu, showStatsDropdown, showFirstBookCelebration, showBraggingRights]);
+  }, [showNavMenu, showStatsDropdown, showFirstBookCelebration, showBraggingRights, showBadgeChallenge]); // ADDED showBadgeChallenge
 
   // Generate dynamic celebration messages based on performance
   const generateCelebrationMessages = useCallback((stats) => {
@@ -892,63 +1156,94 @@ if (books >= 10) {
         {/* MAIN CONTENT - ENHANCED WITH CELEBRATIONS */}
         <div style={{ padding: 'clamp(16px, 5vw, 20px)', maxWidth: '400px', margin: '0 auto' }}>
           
-          {/* SMALL PILL: THIS WEEK'S CHALLENGE */}
+          {/* CLICKABLE BADGE CHALLENGE PILL - UPDATED */}
           {currentWeekBadge && (
-  <div style={{
-    backgroundColor: currentTheme.surface,
-    borderRadius: '50px',
-    padding: '12px 20px',
-    marginBottom: '20px',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-    textAlign: 'center',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '12px'
-  }}>
-    {/* UPDATED: Use PNG image instead of emoji */}
-    <div style={{
-      width: '32px',
-      height: '32px',
-      borderRadius: '50%',
-      backgroundColor: `${currentTheme.primary}20`,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      flexShrink: 0,
-      padding: '4px'
-    }}>
-      <img 
-        src={`/badges/${currentWeekBadge.pngName}`}
-        alt={currentWeekBadge.name}
-        style={{
-          width: '24px',
-          height: '24px',
-          objectFit: 'contain'
-        }}
-        onError={(e) => {
-          // Fallback to a default badge image if the specific badge image fails to load
-          e.target.src = '/badges/hummingbird.png';
-        }}
-      />
-    </div>
-    <div>
-      <div style={{
-        fontSize: 'clamp(12px, 3.5vw, 14px)',
-        fontWeight: '600',
-        color: currentTheme.textPrimary
-      }}>
-        {currentWeekBadge.week === 0 ? 'Challenge Starting Soon!' : 'This Week\'s Challenge'}
-      </div>
-      <div style={{
-        fontSize: 'clamp(10px, 3vw, 11px)',
-        color: currentTheme.textSecondary
-      }}>
-        {currentWeekBadge.name}
-      </div>
-    </div>
-  </div>
-)}
+            <button
+              onClick={handleBadgeChallengeClick}
+              style={{
+                backgroundColor: currentTheme.surface,
+                borderRadius: '50px',
+                padding: '12px 20px',
+                marginBottom: '20px',
+                boxShadow: 'none',
+                textAlign: 'center',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '12px',
+                border: `1px solid ${currentTheme.primary}20`,
+                cursor: 'pointer',
+                width: '100%',
+                transition: 'all 0.2s ease',
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent',
+                outline: 'none',
+                textShadow: 'none'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-1px)';
+                e.currentTarget.style.backgroundColor = `${currentTheme.primary}05`;
+                e.currentTarget.style.borderColor = `${currentTheme.primary}40`;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.backgroundColor = currentTheme.surface;
+                e.currentTarget.style.borderColor = `${currentTheme.primary}20`;
+              }}
+            >
+              <div style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                backgroundColor: `${currentTheme.primary}20`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                padding: '4px'
+              }}>
+                <img 
+                  src={`/badges/${currentWeekBadge.pngName}`}
+                  alt={currentWeekBadge.name}
+                  style={{
+                    width: '24px',
+                    height: '24px',
+                    objectFit: 'contain'
+                  }}
+                  onError={(e) => {
+                    e.target.src = '/badges/hummingbird.png';
+                  }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{
+                  fontSize: 'clamp(12px, 3.5vw, 14px)',
+                  fontWeight: '600',
+                  color: currentTheme.textPrimary,
+                  textShadow: 'none',
+                  textDecoration: 'none'
+                }}>
+                  {currentWeekBadge.week === 0 ? 'Challenge Starting Soon!' : 'This Week\'s Challenge'}
+                </div>
+                <div style={{
+                  fontSize: 'clamp(10px, 3vw, 11px)',
+                  color: currentTheme.textSecondary,
+                  textShadow: 'none',
+                  textDecoration: 'none'
+                }}>
+                  {currentWeekBadge.name} • Click for details
+                </div>
+              </div>
+              <div style={{
+                fontSize: '12px',
+                color: currentTheme.primary,
+                fontWeight: '600',
+                textShadow: 'none'
+              }}>
+                📋
+              </div>
+            </button>
+          )}
           
           {/* ENHANCED READING JOURNEY WITH DYNAMIC MESSAGING */}
           {(() => {
@@ -1632,6 +1927,311 @@ if (books >= 10) {
             </div>
           );
         })()}
+
+        {/* BADGE CHALLENGE MODAL - NEW */}
+        {showBadgeChallenge && currentWeekBadge && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.85)',
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}>
+            <div style={{
+              backgroundColor: currentTheme.surface,
+              borderRadius: '20px',
+              maxWidth: '400px',
+              width: '100%',
+              maxHeight: '85vh',
+              overflowY: 'auto',
+              position: 'relative',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.3)'
+            }}>
+              <button
+                onClick={() => setShowBadgeChallenge(false)}
+                style={{
+                  position: 'absolute',
+                  top: '12px',
+                  right: '12px',
+                  backgroundColor: 'rgba(0,0,0,0.7)',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '36px',
+                  height: '36px',
+                  fontSize: '18px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  color: 'white',
+                  zIndex: 10,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.2s ease',
+                  touchAction: 'manipulation',
+                  WebkitTapHighlightColor: 'transparent'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.9)';
+                  e.currentTarget.style.transform = 'scale(1.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.7)';
+                  e.currentTarget.style.transform = 'scale(1)';
+                }}
+              >
+                ✕
+              </button>
+
+              {/* Header */}
+              <div style={{
+                background: `linear-gradient(135deg, ${currentTheme.primary}, ${currentTheme.secondary})`,
+                borderRadius: '20px 20px 0 0',
+                padding: '24px',
+                textAlign: 'center',
+                color: 'white'
+              }}>
+                <div style={{
+                  width: '280px',
+                  height: '280px',
+                  margin: '0 auto 20px',
+                  borderRadius: '50%',
+                  backgroundColor: 'rgba(255,255,255,0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '20px'
+                }}>
+                  <img 
+                    src={`/badges/${currentWeekBadge.pngName}`}
+                    alt={currentWeekBadge.name}
+                    style={{
+                      width: '240px',
+                      height: '240px',
+                      objectFit: 'contain'
+                    }}
+                    onError={(e) => {
+                      e.target.src = '/badges/hummingbird.png';
+                    }}
+                  />
+                </div>
+                
+                <h2 style={{
+                  fontSize: '20px',
+                  fontWeight: '600',
+                  margin: '0 0 8px 0',
+                  fontFamily: 'Didot, "Times New Roman", serif'
+                }}>
+                  {currentWeekBadge.name}
+                </h2>
+                
+                <div style={{
+                  fontSize: '14px',
+                  opacity: 0.9,
+                  marginBottom: '8px'
+                }}>
+                  Week {currentWeekBadge.week} Challenge • {currentWeekBadge.xp} XP
+                </div>
+                
+                <div style={{
+                  fontSize: '12px',
+                  opacity: 0.8
+                }}>
+                  {challengeProgress?.weekStart} - {challengeProgress?.weekEnd}
+                </div>
+              </div>
+
+              <div style={{ padding: '24px' }}>
+                {/* Challenge Description */}
+                <div style={{
+                  backgroundColor: `${currentTheme.primary}15`,
+                  borderRadius: '16px',
+                  padding: '16px',
+                  marginBottom: '16px',
+                  border: `2px solid ${currentTheme.primary}30`
+                }}>
+                  <div style={{
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: currentTheme.textPrimary,
+                    marginBottom: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}>
+                    🎯 The Challenge
+                  </div>
+                  <div style={{
+                    fontSize: '14px',
+                    color: currentTheme.textPrimary,
+                    lineHeight: '1.4'
+                  }}>
+                    {currentWeekBadge.description}
+                  </div>
+                </div>
+
+                {/* Progress Tracking */}
+                {challengeProgress && (
+                  <div style={{
+                    backgroundColor: `${currentTheme.secondary}15`,
+                    borderRadius: '12px',
+                    padding: '12px',
+                    marginBottom: '16px',
+                    border: `2px solid ${currentTheme.secondary}30`
+                  }}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      marginBottom: '8px'
+                    }}>
+                      <div style={{
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        color: currentTheme.textPrimary,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}>
+                        📊 Progress: {challengeProgress.current}/{challengeProgress.target}
+                      </div>
+                      <div style={{
+                        fontSize: '13px',
+                        color: challengeProgress.completed ? '#4CAF50' : currentTheme.textSecondary,
+                        fontWeight: '600'
+                      }}>
+                        {challengeProgress.completed ? '✅ Complete!' : `${Math.round(challengeProgress.percentage)}%`}
+                      </div>
+                    </div>
+                    
+                    <div style={{
+                      height: '8px',
+                      backgroundColor: '#E0E0E0',
+                      borderRadius: '4px',
+                      overflow: 'hidden',
+                      marginBottom: '6px'
+                    }}>
+                      <div style={{
+                        height: '100%',
+                        width: `${challengeProgress.percentage}%`,
+                        background: challengeProgress.completed 
+                          ? 'linear-gradient(90deg, #4CAF50, #66BB6A)'
+                          : `linear-gradient(90deg, ${currentTheme.primary}, ${currentTheme.secondary})`,
+                        borderRadius: '4px',
+                        transition: 'width 0.5s ease'
+                      }} />
+                    </div>
+                    
+                    <div style={{
+                      fontSize: '11px',
+                      color: currentTheme.textSecondary,
+                      marginBottom: '6px'
+                    }}>
+                      {challengeProgress.description}
+                    </div>
+                    
+                    {/* Condensed stats */}
+                    <div style={{
+                      padding: '6px 8px',
+                      backgroundColor: 'rgba(255,255,255,0.5)',
+                      borderRadius: '6px',
+                      fontSize: '10px',
+                      color: currentTheme.textSecondary,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: '4px'
+                    }}>
+                      <span>📈 {challengeProgress.sessionsThisWeek} sessions • {challengeProgress.daysWithReading} days • {challengeProgress.totalMinutes}min</span>
+                      {challengeProgress.hasReadToday && <span style={{ color: '#4CAF50', fontWeight: '600' }}>✅ Read today!</span>}
+                    </div>
+                  </div>
+                )}
+
+                {/* Bird Fact */}
+                <div style={{
+                  backgroundColor: `${currentTheme.accent || currentTheme.primary}15`,
+                  borderRadius: '16px',
+                  padding: '16px',
+                  marginBottom: '16px'
+                }}>
+                  <div style={{
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: currentTheme.textPrimary,
+                    marginBottom: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}>
+                    🐦 Amazing Bird Fact!
+                  </div>
+                  <div style={{
+                    fontSize: '14px',
+                    color: currentTheme.textPrimary,
+                    lineHeight: '1.5'
+                  }}>
+                    {currentWeekBadge.birdFact}
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '12px'
+                }}>
+                  <button
+                    onClick={() => {
+                      setShowBadgeChallenge(false);
+                      router.push('/student-healthy-habits');
+                    }}
+                    style={{
+                      backgroundColor: currentTheme.primary,
+                      color: currentTheme.textPrimary,
+                      border: 'none',
+                      borderRadius: '16px',
+                      padding: '16px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      minHeight: '44px',
+                      touchAction: 'manipulation',
+                      WebkitTapHighlightColor: 'transparent'
+                    }}
+                  >
+                    📖 Start Reading
+                  </button>
+                  
+                  <button
+                    onClick={() => setShowBadgeChallenge(false)}
+                    style={{
+                      backgroundColor: currentTheme.textSecondary,
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '16px',
+                      padding: '16px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      minHeight: '44px',
+                      touchAction: 'manipulation',
+                      WebkitTapHighlightColor: 'transparent'
+                    }}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <style jsx>{`
           @keyframes spin {

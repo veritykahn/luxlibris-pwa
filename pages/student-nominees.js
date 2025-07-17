@@ -1,13 +1,18 @@
-// pages/student-nominees.js - COMPLETE UPDATED version with circular navigation and category sorting
+// pages/student-nominees.js - COMPLETE version with phase locking, circular navigation, and hamburger menu
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
+import { usePhaseAccess } from '../hooks/usePhaseAccess'; // PHASE LOCKING IMPORT
 import { getStudentDataEntities, getSchoolNomineesEntities, addBookToBookshelfEntities, addBookToBookshelfEntitiesWithYear, removeBookFromBookshelfEntities, getCurrentAcademicYear } from '../lib/firebase';
 import Head from 'next/head';
 
 export default function StudentNominees() {
   const router = useRouter();
   const { user, userProfile, isAuthenticated, loading } = useAuth();
+  
+  // PHASE ACCESS HOOK
+  const { hasAccess, getPhaseMessage, getPhaseInfo } = usePhaseAccess();
+  
   const [studentData, setStudentData] = useState(null);
   const [nominees, setNominees] = useState([]);
   const [currentTheme, setCurrentTheme] = useState(null);
@@ -560,6 +565,402 @@ useEffect(() => {
           <p style={{ color: '#223848' }}>Loading your books...</p>
         </div>
       </div>
+    );
+  }
+
+  // PHASE LOCK CHECK - Show locked state if nominees browsing is disabled
+  if (!hasAccess('nomineesBrowsing')) {
+    const phaseInfo = getPhaseInfo();
+    
+    return (
+      <>
+        <Head>
+          <title>Book Nominees - Lux Libris</title>
+          <meta name="description" content="Browse and select books from your school's curated reading collection" />
+          <link rel="icon" href="/images/lux_libris_logo.png" />
+        </Head>
+        <div style={{
+          backgroundColor: currentTheme.background,
+          minHeight: '100vh',
+          width: '100vw',
+          maxWidth: '100%',
+          overflowX: 'hidden',
+          fontFamily: 'system-ui, -apple-system, sans-serif'
+        }}>
+          {/* 🍔 HEADER WITH HAMBURGER MENU - KEEP DURING LOCKED PHASES */}
+          <div style={{
+            background: `linear-gradient(135deg, ${currentTheme.primary}F0, ${currentTheme.secondary}F0)`,
+            backdropFilter: 'blur(20px)',
+            padding: '30px 20px 12px',
+            position: 'relative',
+            borderRadius: '0 0 25px 25px',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+            zIndex: 100,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
+            <button
+              onClick={() => router.back()}
+              style={{
+                backgroundColor: 'rgba(255,255,255,0.3)',
+                border: 'none',
+                borderRadius: '50%',
+                width: '44px',
+                height: '44px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '18px',
+                cursor: 'pointer',
+                color: currentTheme.textPrimary,
+                backdropFilter: 'blur(10px)',
+                flexShrink: 0,
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent'
+              }}
+            >
+              ←
+            </button>
+
+            <h1 style={{
+              fontSize: '24px',
+              fontWeight: '400',
+              color: currentTheme.textPrimary,
+              margin: '0',
+              letterSpacing: '1px',
+              fontFamily: 'Didot, "Times New Roman", serif',
+              textAlign: 'center',
+              flex: 1
+            }}>
+              Nominees
+            </h1>
+
+            {/* 🍔 Hamburger Menu - KEEP AVAILABLE */}
+            <div className="nav-menu-container" style={{ position: 'relative' }}>
+              <button
+                onClick={() => setShowNavMenu(!showNavMenu)}
+                style={{
+                  backgroundColor: 'rgba(255,255,255,0.3)',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '44px',
+                  height: '44px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '18px',
+                  cursor: 'pointer',
+                  color: currentTheme.textPrimary,
+                  backdropFilter: 'blur(10px)',
+                  flexShrink: 0,
+                  touchAction: 'manipulation',
+                  WebkitTapHighlightColor: 'transparent'
+                }}
+              >
+                ☰
+              </button>
+
+              {/* Dropdown Menu */}
+              {showNavMenu && (
+                <div style={{
+                  position: 'absolute',
+                  top: '50px',
+                  right: '0',
+                  backgroundColor: currentTheme.surface,
+                  borderRadius: '12px',
+                  minWidth: '180px',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                  backdropFilter: 'blur(20px)',
+                  border: `2px solid ${currentTheme.primary}60`,
+                  overflow: 'hidden',
+                  zIndex: 9999
+                }}>
+                  {navMenuItems.map((item, index) => (
+                    <button
+                      key={item.path}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setShowNavMenu(false);
+                        if (!item.current) {
+                          setTimeout(() => router.push(item.path), 100);
+                        }
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        backgroundColor: item.current ? `${currentTheme.primary}30` : 'transparent',
+                        border: 'none',
+                        borderBottom: index < navMenuItems.length - 1 ? `1px solid ${currentTheme.primary}40` : 'none',
+                        cursor: item.current ? 'default' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        fontSize: '14px',
+                        color: currentTheme.textPrimary,
+                        fontWeight: item.current ? '600' : '500',
+                        textAlign: 'left',
+                        touchAction: 'manipulation',
+                        WebkitTapHighlightColor: 'transparent',
+                        transition: 'background-color 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!item.current) {
+                          e.target.style.backgroundColor = `${currentTheme.primary}20`;
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!item.current) {
+                          e.target.style.backgroundColor = 'transparent';
+                        }
+                      }}
+                    >
+                      <span style={{ fontSize: '16px' }}>{item.icon}</span>
+                      <span>{item.name}</span>
+                      {item.current && (
+                        <span style={{ marginLeft: 'auto', fontSize: '12px', color: currentTheme.primary }}>●</span>
+                      )}
+                    </button>
+                  ))}
+                  
+                  {/* 🔔 Notification Toggle */}
+                  <div style={{
+                    padding: '12px 16px',
+                    borderTop: `1px solid ${currentTheme.primary}40`,
+                    backgroundColor: `${currentTheme.primary}10`
+                  }}>
+                    <button
+                      onClick={async (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (notificationProcessing) return;
+                        setNotificationProcessing(true);
+                        try {
+                          const enabled = await requestNotificationPermission();
+                        } catch (error) {
+                          console.error('Notification error:', error);
+                        } finally {
+                          setNotificationProcessing(false);
+                          setTimeout(() => setShowNavMenu(false), 1000);
+                        }
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        backgroundColor: notificationsEnabled ? `${currentTheme.primary}30` : currentTheme.surface,
+                        border: `2px solid ${notificationsEnabled ? currentTheme.primary : currentTheme.textSecondary}60`,
+                        borderRadius: '8px',
+                        cursor: notificationProcessing ? 'wait' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        fontSize: '12px',
+                        color: currentTheme.textPrimary,
+                        fontWeight: '600',
+                        touchAction: 'manipulation',
+                        WebkitTapHighlightColor: 'transparent',
+                        transition: 'all 0.2s ease',
+                        opacity: notificationProcessing ? 0.7 : 1
+                      }}
+                    >
+                      <span>
+                        {notificationProcessing ? '⏳' : (notificationsEnabled ? '🔔' : '🔕')}
+                      </span>
+                      <span>
+                        {notificationProcessing ? 'Processing...' : (notificationsEnabled ? 'Notifications On' : 'Enable Notifications')}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* PHASE LOCKED MESSAGE */}
+          <div style={{
+            padding: '40px 20px',
+            textAlign: 'center',
+            maxWidth: '400px',
+            margin: '0 auto'
+          }}>
+            <div style={{
+              backgroundColor: currentTheme.surface,
+              borderRadius: '20px',
+              padding: '40px 30px',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
+              border: `3px solid ${phaseInfo.color || currentTheme.primary}`
+            }}>
+              <div style={{ 
+                fontSize: '80px', 
+                marginBottom: '24px',
+                opacity: 0.8
+              }}>
+                {phaseInfo.icon}
+              </div>
+              
+              <h2 style={{
+                fontSize: '24px',
+                fontWeight: '600',
+                color: currentTheme.textPrimary,
+                marginBottom: '16px',
+                fontFamily: 'Didot, "Times New Roman", serif'
+              }}>
+                {phaseInfo.name === 'Voting Period' ? 'Voting Time!' : 
+                 phaseInfo.name === 'Results' ? 'Happy Reading!' : 
+                 'Nominees Closed'}
+              </h2>
+              
+              <p style={{
+                fontSize: '16px',
+                color: currentTheme.textSecondary,
+                lineHeight: '1.6',
+                marginBottom: '24px'
+              }}>
+                {phaseInfo.name === 'Voting Period' ? 
+                  "Book selection is closed during voting. Focus on choosing your favorite from the books you've already read!" :
+                 phaseInfo.name === 'Results' ?
+                  "Keep the reading adventure going! Explore your bookshelf, hit up the library, and collect XP and Luxlings™ while we cook up next year's awesome nominees! 📖⭐" :
+                  getPhaseMessage()}
+              </p>
+              
+              {/* Action buttons based on phase */}
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                alignItems: 'center'
+              }}>
+                {phaseInfo.name === 'Voting Period' && (
+                  <button
+                    onClick={() => router.push('/student-dashboard')}
+                    style={{
+                      backgroundColor: phaseInfo.color || currentTheme.primary,
+                      color: 'white',
+                      border: 'none',
+                      padding: '14px 28px',
+                      borderRadius: '12px',
+                      fontSize: '16px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    🗳️ Go Vote Now
+                  </button>
+                )}
+                
+                {phaseInfo.name === 'Results' && (
+                  <>
+                    <button
+                      onClick={() => router.push('/student-dashboard')}
+                      style={{
+                        backgroundColor: phaseInfo.color || currentTheme.primary,
+                        color: 'white',
+                        border: 'none',
+                        padding: '14px 28px',
+                        borderRadius: '12px',
+                        fontSize: '16px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        marginBottom: '8px'
+                      }}
+                    >
+                      🏆 See Results
+                    </button>
+                    
+                    <div style={{
+                      display: 'flex',
+                      gap: '12px',
+                      flexWrap: 'wrap',
+                      justifyContent: 'center'
+                    }}>
+                      <button
+                        onClick={() => router.push('/student-healthy-habits')}
+                        style={{
+                          backgroundColor: 'transparent',
+                          color: currentTheme.textPrimary,
+                          border: `2px solid ${currentTheme.primary}`,
+                          padding: '12px 20px',
+                          borderRadius: '12px',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}
+                      >
+                        ○ Healthy Habits
+                      </button>
+                      
+                      <button
+                        onClick={() => router.push('/student-saints')}
+                        style={{
+                          backgroundColor: 'transparent',
+                          color: currentTheme.textPrimary,
+                          border: `2px solid ${currentTheme.primary}`,
+                          padding: '12px 20px',
+                          borderRadius: '12px',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}
+                      >
+                        ♔ Saints
+                      </button>
+                    </div>
+                  </>
+                )}
+                
+                {phaseInfo.name === 'Voting Period' && (
+                  <button
+                    onClick={() => router.push('/student-bookshelf')}
+                    style={{
+                      backgroundColor: 'transparent',
+                      color: currentTheme.textPrimary,
+                      border: `2px solid ${currentTheme.primary}`,
+                      padding: '12px 24px',
+                      borderRadius: '12px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    ⚏ View My Bookshelf
+                  </button>
+                )}
+                
+                <button
+                  onClick={() => router.push('/student-dashboard')}
+                  style={{
+                    backgroundColor: 'transparent',
+                    color: currentTheme.textSecondary,
+                    border: 'none',
+                    padding: '8px 16px',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    textDecoration: 'underline'
+                  }}
+                >
+                  ← Back to Dashboard
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </>
     );
   }
 

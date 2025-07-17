@@ -1,10 +1,394 @@
-// pages/teacher/students.js - FIXED Complete Student Management System
+// pages/teacher/students.js - Complete Student Management System with Voting
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
 import { db } from '../../lib/firebase'
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, getDoc, query, where, orderBy } from 'firebase/firestore'
+
+// Manual Student Voting Interface Component
+function ManualStudentVotingInterface({ 
+  manualStudents, 
+  teacherNominees, 
+  userProfile, 
+  onVoteCast, 
+  isProcessing 
+}) {
+  const [selectedVotes, setSelectedVotes] = useState({}) // studentId -> bookId
+  const [votingStatus, setVotingStatus] = useState({}) // studentId -> voting state
+  
+  // Check if student has already voted
+  const hasStudentVoted = (student) => {
+    return student.hasVotedThisYear === true || student.vote || student.votes?.length > 0
+  }
+
+  // Get students who need votes
+  const studentsNeedingVotes = manualStudents.filter(student => 
+    student.status !== 'inactive' && !hasStudentVoted(student)
+  )
+  
+  // Get students who have voted
+  const studentsWhoVoted = manualStudents.filter(student => 
+    student.status !== 'inactive' && hasStudentVoted(student)
+  )
+
+  // Handle vote selection
+  const handleVoteSelection = (studentId, bookId) => {
+    setSelectedVotes(prev => ({
+      ...prev,
+      [studentId]: bookId
+    }))
+  }
+
+  // Cast vote for a student
+  const handleCastVote = async (student, bookId) => {
+    if (!bookId) return
+    
+    const confirmed = window.confirm(`Cast vote for ${student.firstName} ${student.lastInitial}?
+
+Selected Book: ${teacherNominees.find(b => b.id === bookId)?.title}
+
+⚠️ This vote is PERMANENT and cannot be changed.
+
+Continue?`)
+    
+    if (!confirmed) return
+
+    setVotingStatus(prev => ({ ...prev, [student.id]: 'voting' }))
+    
+    try {
+      await onVoteCast(student, bookId)
+      setVotingStatus(prev => ({ ...prev, [student.id]: 'completed' }))
+      // Clear the selection for this student
+      setSelectedVotes(prev => {
+        const updated = { ...prev }
+        delete updated[student.id]
+        return updated
+      })
+    } catch (error) {
+      console.error('Error casting vote:', error)
+      setVotingStatus(prev => ({ ...prev, [student.id]: 'error' }))
+      setTimeout(() => {
+        setVotingStatus(prev => {
+          const updated = { ...prev }
+          delete updated[student.id]
+          return updated
+        })
+      }, 3000)
+    }
+  }
+
+  if (teacherNominees.length === 0) {
+    return (
+      <div style={{
+        background: 'white',
+        borderRadius: '1rem',
+        padding: '1.5rem',
+        marginBottom: '1.5rem',
+        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+        border: '2px solid #FEF3C7'
+      }}>
+        <h3 style={{
+          fontSize: '1.25rem',
+          fontWeight: 'bold',
+          color: '#92400e',
+          margin: '0 0 1rem 0',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem'
+        }}>
+          🗳️ Manual Student Voting
+        </h3>
+        <div style={{
+          textAlign: 'center',
+          padding: '2rem',
+          color: '#92400e'
+        }}>
+          <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>📚</div>
+          <p style={{ margin: 0 }}>
+            No books available for voting. Please configure your book selection in Settings.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{
+      background: 'white',
+      borderRadius: '1rem',
+      padding: '1.5rem',
+      marginBottom: '1.5rem',
+      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+      border: '2px solid #10B981'
+    }}>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: '1.5rem'
+      }}>
+        <h3 style={{
+          fontSize: '1.25rem',
+          fontWeight: 'bold',
+          color: '#223848',
+          margin: 0,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem'
+        }}>
+          🗳️ Manual Student Voting
+        </h3>
+        <div style={{
+          background: '#10B981',
+          color: 'white',
+          padding: '0.5rem 1rem',
+          borderRadius: '0.5rem',
+          fontSize: '0.75rem',
+          fontWeight: '600'
+        }}>
+          Voting Period Active
+        </div>
+      </div>
+
+      <div style={{
+        background: '#ECFDF5',
+        border: '1px solid #10B981',
+        borderRadius: '0.5rem',
+        padding: '1rem',
+        marginBottom: '1.5rem'
+      }}>
+        <p style={{ 
+          color: '#065F46', 
+          margin: '0 0 0.5rem 0', 
+          fontWeight: '600',
+          fontSize: '0.875rem'
+        }}>
+          📋 Manual Student Voting Instructions:
+        </p>
+        <ul style={{ 
+          color: '#047857', 
+          margin: 0,
+          paddingLeft: '1.5rem',
+          fontSize: '0.875rem'
+        }}>
+          <li>Cast votes on behalf of your manual students</li>
+          <li>Each student gets ONE vote for their favorite book</li>
+          <li>Votes are PERMANENT and cannot be changed</li>
+          <li>Only students who have completed books can participate</li>
+        </ul>
+      </div>
+
+      {/* Students Needing Votes */}
+      {studentsNeedingVotes.length > 0 && (
+        <div style={{ marginBottom: '2rem' }}>
+          <h4 style={{
+            fontSize: '1.125rem',
+            fontWeight: '600',
+            color: '#223848',
+            margin: '0 0 1rem 0',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
+          }}>
+            📊 Cast Votes ({studentsNeedingVotes.length} students)
+          </h4>
+          
+          <div style={{ display: 'grid', gap: '1rem' }}>
+            {studentsNeedingVotes.map(student => (
+              <div
+                key={student.id}
+                style={{
+                  border: '1px solid #E5E7EB',
+                  borderRadius: '0.75rem',
+                  padding: '1rem',
+                  backgroundColor: '#F9FAFB'
+                }}
+              >
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  justifyContent: 'space-between',
+                  gap: '1rem',
+                  marginBottom: '1rem'
+                }}>
+                  <div>
+                    <h5 style={{
+                      fontSize: '1rem',
+                      fontWeight: 'bold',
+                      color: '#223848',
+                      margin: '0 0 0.25rem 0'
+                    }}>
+                      {student.firstName} {student.lastInitial}.
+                    </h5>
+                    <div style={{
+                      fontSize: '0.875rem',
+                      color: '#6B7280'
+                    }}>
+                      Grade {student.grade} • {student.totalBooksThisYear || 0} books completed
+                    </div>
+                  </div>
+                  
+                  <div style={{
+                    background: votingStatus[student.id] === 'completed' ? '#ECFDF5' : 
+                              votingStatus[student.id] === 'error' ? '#FEF2F2' : '#FEF3C7',
+                    color: votingStatus[student.id] === 'completed' ? '#065F46' : 
+                           votingStatus[student.id] === 'error' ? '#991B1B' : '#92400E',
+                    padding: '0.25rem 0.75rem',
+                    borderRadius: '0.25rem',
+                    fontSize: '0.75rem',
+                    fontWeight: '600'
+                  }}>
+                    {votingStatus[student.id] === 'voting' ? '⏳ Voting...' :
+                     votingStatus[student.id] === 'completed' ? '✅ Vote Cast!' :
+                     votingStatus[student.id] === 'error' ? '❌ Error' : '⏳ Needs Vote'}
+                  </div>
+                </div>
+
+                {votingStatus[student.id] !== 'completed' && (
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr auto',
+                    gap: '0.75rem',
+                    alignItems: 'center'
+                  }}>
+                    <select
+                      value={selectedVotes[student.id] || ''}
+                      onChange={(e) => handleVoteSelection(student.id, e.target.value)}
+                      disabled={votingStatus[student.id] === 'voting'}
+                      style={{
+                        padding: '0.75rem',
+                        border: '1px solid #D1D5DB',
+                        borderRadius: '0.5rem',
+                        fontSize: '0.875rem',
+                        backgroundColor: 'white',
+                        color: '#374151'
+                      }}
+                    >
+                      <option value="">Select {student.firstName}'s favorite book...</option>
+                      {teacherNominees.map(book => (
+                        <option key={book.id} value={book.id}>
+                          {book.title} by {book.authors}
+                        </option>
+                      ))}
+                    </select>
+                    
+                    <button
+                      onClick={() => handleCastVote(student, selectedVotes[student.id])}
+                      disabled={!selectedVotes[student.id] || votingStatus[student.id] === 'voting'}
+                      style={{
+                        padding: '0.75rem 1.5rem',
+                        background: selectedVotes[student.id] ? 
+                          'linear-gradient(135deg, #10B981, #059669)' : '#E5E7EB',
+                        color: selectedVotes[student.id] ? 'white' : '#9CA3AF',
+                        border: 'none',
+                        borderRadius: '0.5rem',
+                        fontSize: '0.875rem',
+                        fontWeight: '600',
+                        cursor: selectedVotes[student.id] ? 'pointer' : 'not-allowed',
+                        minWidth: '100px'
+                      }}
+                    >
+                      {votingStatus[student.id] === 'voting' ? '⏳' : '🗳️ Cast Vote'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Students Who Have Voted */}
+      {studentsWhoVoted.length > 0 && (
+        <div>
+          <h4 style={{
+            fontSize: '1.125rem',
+            fontWeight: '600',
+            color: '#223848',
+            margin: '0 0 1rem 0',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
+          }}>
+            ✅ Votes Cast ({studentsWhoVoted.length} students)
+          </h4>
+          
+          <div style={{ display: 'grid', gap: '0.75rem' }}>
+            {studentsWhoVoted.map(student => {
+              const votedBook = student.vote ? 
+                teacherNominees.find(book => book.id === student.vote.bookId) : null
+              
+              return (
+                <div
+                  key={student.id}
+                  style={{
+                    border: '1px solid #D1FAE5',
+                    borderRadius: '0.5rem',
+                    padding: '1rem',
+                    backgroundColor: '#ECFDF5',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}
+                >
+                  <div>
+                    <div style={{
+                      fontSize: '1rem',
+                      fontWeight: '600',
+                      color: '#065F46'
+                    }}>
+                      {student.firstName} {student.lastInitial}.
+                    </div>
+                    <div style={{
+                      fontSize: '0.875rem',
+                      color: '#047857'
+                    }}>
+                      Voted for: {votedBook?.title || 'Unknown Book'}
+                    </div>
+                  </div>
+                  
+                  <div style={{
+                    background: '#10B981',
+                    color: 'white',
+                    padding: '0.25rem 0.75rem',
+                    borderRadius: '0.25rem',
+                    fontSize: '0.75rem',
+                    fontWeight: '600'
+                  }}>
+                    🔒 Vote Locked
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* No Manual Students Message */}
+      {manualStudents.length === 0 && (
+        <div style={{
+          textAlign: 'center',
+          padding: '3rem 2rem',
+          color: '#6B7280'
+        }}>
+          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>👥</div>
+          <h4 style={{
+            fontSize: '1.25rem',
+            fontWeight: 'bold',
+            color: '#223848',
+            marginBottom: '0.5rem'
+          }}>
+            No Manual Students
+          </h4>
+          <p style={{ margin: 0 }}>
+            Add manual students to vote on their behalf during the voting period.
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function TeacherStudents() {
   const router = useRouter()
@@ -129,7 +513,7 @@ export default function TeacherStudents() {
     }
   }, [])
 
-  // NEW: Load teacher's configuration (nominees and submission options)
+  // Load teacher's configuration (nominees and submission options)
   const loadTeacherConfiguration = async () => {
     try {
       console.log('🔧 Loading teacher configuration...')
@@ -277,6 +661,52 @@ export default function TeacherStudents() {
     }
   }
 
+  // NEW: Handle vote casting for manual students
+  const handleVoteCast = async (student, bookId) => {
+    try {
+      console.log('🗳️ Casting vote for student:', student.firstName, 'Book:', bookId)
+      
+      // Find teacher document ID
+      const teachersRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers`)
+      const teacherQuery = query(teachersRef, where('uid', '==', userProfile.uid))
+      const teacherSnapshot = await getDocs(teacherQuery)
+      const teacherId = teacherSnapshot.docs[0].id
+
+      // Create vote object
+      const voteData = {
+        bookId: bookId,
+        votedAt: new Date(),
+        votedBy: 'teacher'
+      }
+
+      // Update the manual student with vote data
+      const studentRef = doc(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers/${teacherId}/manualStudents`, student.id)
+      await updateDoc(studentRef, {
+        vote: voteData,
+        hasVotedThisYear: true,
+        lastModified: new Date()
+      })
+
+      // Update local state
+      setManualStudents(prev => 
+        prev.map(s => 
+          s.id === student.id 
+            ? { ...s, vote: voteData, hasVotedThisYear: true }
+            : s
+        )
+      )
+
+      setShowSuccess(`🗳️ Vote cast for ${student.firstName}!`)
+      setTimeout(() => setShowSuccess(''), 3000)
+
+    } catch (error) {
+      console.error('❌ Error casting vote:', error)
+      setShowSuccess('❌ Error casting vote. Please try again.')
+      setTimeout(() => setShowSuccess(''), 3000)
+      throw error // Re-throw to trigger error handling in the component
+    }
+  }
+
   // Toggle app student status
   const toggleAppStudentStatus = async (student) => {
     setIsProcessing(true)
@@ -309,7 +739,7 @@ export default function TeacherStudents() {
     }
   }
 
-  // Add manual student - FIXED to refresh stats properly
+  // Add manual student
   const addManualStudent = async () => {
     if (!newManualStudent.firstName || !newManualStudent.lastInitial) {
       setShowSuccess('❌ Please fill in all required fields')
@@ -339,10 +769,8 @@ export default function TeacherStudents() {
 
       const newStudent = { id: docRef.id, ...studentData }
       
-      // FIXED: Update both local state AND stats
       setManualStudents(prev => {
         const updated = [...prev, newStudent]
-        // Update stats immediately to prevent count mismatch
         setStatsData(prevStats => ({
           ...prevStats,
           totalManualStudents: updated.length,
@@ -370,7 +798,7 @@ export default function TeacherStudents() {
     }
   }
 
-  // FIXED: Add book submission for manual student with book selection
+  // Add book submission for manual student with book selection
   const addBookSubmission = async () => {
     if (!bookSubmission.bookId) {
       setShowSuccess('❌ Please select a book')
@@ -453,10 +881,8 @@ export default function TeacherStudents() {
       const studentRef = doc(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers/${teacherId}/manualStudents`, student.id)
       await deleteDoc(studentRef)
 
-      // FIXED: Update both local state AND stats
       setManualStudents(prev => {
         const updated = prev.filter(s => s.id !== student.id)
-        // Update stats immediately
         setStatsData(prevStats => ({
           ...prevStats,
           totalManualStudents: updated.length,
@@ -491,7 +917,7 @@ export default function TeacherStudents() {
     })
   }
 
-  // NEW: Get all students combined for "All" tab
+  // Get all students combined for "All" tab
   const getAllStudents = () => {
     const combined = [
       ...appStudents.map(s => ({ ...s, type: 'app' })),
@@ -500,7 +926,7 @@ export default function TeacherStudents() {
     return combined.sort((a, b) => a.firstName.localeCompare(b.firstName))
   }
 
-  // NEW: Load student's completed books
+  // Load student's completed books
   const loadStudentBooks = async (student) => {
     try {
       console.log('📚 Loading books for student:', student.firstName)
@@ -576,7 +1002,7 @@ export default function TeacherStudents() {
     }
   }
 
-  // NEW: Get available books for this student (filtering out already completed)
+  // Get available books for this student (filtering out already completed)
   const getAvailableBooksForStudent = (student) => {
     if (!student || !teacherNominees.length) return []
     
@@ -600,7 +1026,7 @@ export default function TeacherStudents() {
     return teacherNominees.filter(book => !completedBookIds.has(book.id))
   }
 
-  // NEW: Get available submission options for manual students (excluding quiz)
+  // Get available submission options for manual students (excluding quiz)
   const getAvailableSubmissionOptions = () => {
     const options = []
     
@@ -904,6 +1330,15 @@ export default function TeacherStudents() {
             />
           </div>
 
+          {/* Manual Student Voting Interface */}
+          <ManualStudentVotingInterface
+            manualStudents={manualStudents}
+            teacherNominees={teacherNominees}
+            userProfile={userProfile}
+            onVoteCast={handleVoteCast}
+            isProcessing={isProcessing}
+          />
+
           {/* Search and Filter */}
           <div style={{
             background: 'white',
@@ -957,7 +1392,7 @@ export default function TeacherStudents() {
             </div>
           </div>
 
-          {/* UPDATED: Tabs with All Students option */}
+          {/* Tabs with All Students option */}
           <div style={{
             background: 'white',
             borderRadius: '1rem',
@@ -1255,7 +1690,7 @@ export default function TeacherStudents() {
           </Modal>
         )}
 
-        {/* UPDATED: Book Submission Modal with filtered dropdown and teacher submission options */}
+        {/* Book Submission Modal with filtered dropdown and teacher submission options */}
         {showBookSubmissionModal && selectedStudent && (
           <Modal
             title={`📚 Add Book for ${selectedStudent.firstName}`}
@@ -1434,7 +1869,7 @@ export default function TeacherStudents() {
           </Modal>
         )}
 
-        {/* NEW: Student Books Modal */}
+        {/* Student Books Modal */}
         {showStudentBooksModal && selectedStudent && (
           <Modal
             title={`📖 Books for ${selectedStudent.firstName} ${selectedStudent.lastInitial}.`}
@@ -1731,7 +2166,7 @@ function StatCard({ icon, title, value, subtitle, color }) {
   )
 }
 
-// NEW: All Students Section combining both types
+// All Students Section combining both types
 function AllStudentsSection({ students, onToggleAppStatus, onEditManualStudent, onDeleteManualStudent, onAddBookSubmission, onViewDetails, onViewBooks, isProcessing }) {
   if (students.length === 0) {
     return (
