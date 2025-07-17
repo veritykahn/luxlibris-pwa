@@ -1,13 +1,15 @@
-// pages/admin/school-dashboard.js - Teacher Dashboard with Join Codes and Enhanced Phase Status
+// pages/admin/school-dashboard.js - Teacher Dashboard with usePhaseAccess Hook
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
+import { usePhaseAccess } from '../../hooks/usePhaseAccess'  // Add this import
 import { db, dbHelpers, getCurrentAcademicYear } from '../../lib/firebase'
 import { collection, getDocs, query, where, orderBy, limit, doc, updateDoc, getDoc } from 'firebase/firestore'
+import TeacherResultsInterface from '../../components/TeacherResultsInterface'
 
 // Enhanced Phase Details Section Component
-function PhaseDetailsSection({ currentPhase, router }) {
+function PhaseDetailsSection({ currentPhase, router, userProfile, onClearManualStudents }) {
   const getPhaseDetails = (phase) => {
     switch (phase) {
       case 'ACTIVE':
@@ -48,9 +50,11 @@ function PhaseDetailsSection({ currentPhase, router }) {
           statusText: 'Results Published',
           timeline: 'April 15 - May 23',
           actions: [
-            { text: 'View Voting Results', route: '/teacher/achievements', icon: '🏆', highlight: true },
-            { text: 'See Student Votes', route: '/teacher/students', icon: '🗳️' },
-            { text: 'Download Reports', route: '/teacher/achievements', icon: '📊' }
+            { text: 'View Voting Results', route: '#results', icon: '🏆', highlight: true },
+            { text: 'Review Class Votes', route: '/teacher/students', icon: '🗳️' },
+            { text: 'Download Reports', route: '/teacher/achievements', icon: '📊' },
+            { text: 'Clear Manual Students Data', action: 'clearManualStudents', icon: '🗑️', 
+              style: 'warning', description: 'Prepare for next year' }
           ],
           nextPhase: 'Teacher book selection starts May 24th for next year!'
         }
@@ -65,7 +69,9 @@ function PhaseDetailsSection({ currentPhase, router }) {
           actions: [
             { text: 'Select Books for Next Year', route: '/teacher/settings', icon: '📚', highlight: true },
             { text: 'Configure Achievement Tiers', route: '/teacher/settings', icon: '🎯' },
-            { text: 'Set Submission Options', route: '/teacher/settings', icon: '⚙️' }
+            { text: 'Set Submission Options', route: '/teacher/settings', icon: '⚙️' },
+            { text: 'Clear Manual Students Data', action: 'clearManualStudents', icon: '🗑️', 
+              style: 'warning', description: 'Reset for new year' }
           ],
           nextPhase: 'New academic year begins June 1st with fresh student data!'
         }
@@ -189,25 +195,45 @@ function PhaseDetailsSection({ currentPhase, router }) {
             {phaseInfo.actions.map((action, index) => (
               <button
                 key={index}
-                onClick={() => router.push(action.route)}
+                onClick={() => {
+                  if (action.route === '#results') {
+                    // Scroll to results section
+                    const resultsElement = document.getElementById('results-section')
+                    if (resultsElement) {
+                      resultsElement.scrollIntoView({ behavior: 'smooth' })
+                    }
+                  } else if (action.action === 'clearManualStudents') {
+                    // Handle manual student clearing
+                    onClearManualStudents()
+                  } else {
+                    router.push(action.route)
+                  }
+                }}
                 style={{
                   background: action.highlight 
                     ? `linear-gradient(135deg, ${colors.border}20, ${colors.border}30)`
+                    : action.style === 'warning'
+                    ? 'linear-gradient(135deg, #FEF3C720, #F59E0B20)'
                     : 'linear-gradient(135deg, #F8FAFC, #F1F5F9)',
                   border: action.highlight 
                     ? `2px solid ${colors.border}60`
+                    : action.style === 'warning'
+                    ? '2px solid #F59E0B60'
                     : '1px solid #E2E8F0',
                   borderRadius: '0.5rem',
                   padding: '0.75rem',
                   cursor: 'pointer',
                   textAlign: 'left',
                   display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                  gap: '0.25rem',
                   transition: 'all 0.2s ease',
                   fontSize: '0.875rem',
                   fontWeight: '600',
-                  color: action.highlight ? colors.text : '#374151'
+                  color: action.highlight ? colors.text 
+                        : action.style === 'warning' ? '#92400E' 
+                        : '#374151'
                 }}
                 onMouseOver={(e) => {
                   e.currentTarget.style.transform = 'translateY(-1px)'
@@ -218,8 +244,19 @@ function PhaseDetailsSection({ currentPhase, router }) {
                   e.currentTarget.style.boxShadow = 'none'
                 }}
               >
-                <span style={{ fontSize: '1.125rem' }}>{action.icon}</span>
-                {action.text}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ fontSize: '1.125rem' }}>{action.icon}</span>
+                  {action.text}
+                </div>
+                {action.description && (
+                  <span style={{ 
+                    fontSize: '0.75rem', 
+                    color: '#6B7280',
+                    fontWeight: '400'
+                  }}>
+                    {action.description}
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -276,6 +313,17 @@ export default function TeacherDashboard() {
     updateLastActivity
   } = useAuth()
 
+  // ✅ UPDATED: Use the new usePhaseAccess hook instead of local state
+  const { 
+    phaseData, 
+    permissions, 
+    hasAccess, 
+    getPhaseMessage, 
+    getPhaseInfo,
+    refreshPhase,
+    isLoading: phaseLoading 
+  } = usePhaseAccess(userProfile)
+
   const [loading, setLoading] = useState(true)
   const [dashboardData, setDashboardData] = useState({
     totalStudents: 0,
@@ -299,12 +347,14 @@ export default function TeacherDashboard() {
   const [codesLoading, setCodesLoading] = useState(true)
   const [copySuccess, setCopySuccess] = useState('')
 
-  // Phase status state
-  const [phaseStatus, setPhaseStatus] = useState({
-    currentPhase: 'ACTIVE',
-    academicYear: '2025-26',
-    loading: true
-  })
+  // ✅ REMOVED: No longer need local phaseStatus state - now handled by usePhaseAccess
+  // const [phaseStatus, setPhaseStatus] = useState({...})
+
+  // Manual student clearing state
+  const [showClearConfirmation, setShowClearConfirmation] = useState(false)
+  const [showFinalConfirmation, setShowFinalConfirmation] = useState(false)
+  const [clearingInProgress, setClearingInProgress] = useState(false)
+  const [clearingResult, setClearingResult] = useState(null)
 
   // Authentication check
   useEffect(() => {
@@ -329,7 +379,7 @@ export default function TeacherDashboard() {
       if (userProfile) {
         loadDashboardData()
         loadJoinCodes()
-        loadPhaseStatus()
+        // ✅ REMOVED: loadPhaseStatus() - now handled by usePhaseAccess
       }
     }
 
@@ -371,6 +421,83 @@ export default function TeacherDashboard() {
       document.removeEventListener('keypress', handleUserActivity)
     }
   }, [])
+
+  // Clear teacher's manual students data
+  const clearTeacherManualStudents = async () => {
+    setClearingInProgress(true)
+    try {
+      console.log('🗑️ Clearing manual students for teacher...')
+      
+      if (!userProfile?.entityId || !userProfile?.schoolId || !userProfile?.uid) {
+        throw new Error('Missing teacher profile data')
+      }
+
+      // Find teacher document ID
+      const teachersRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers`)
+      const teacherQuery = query(teachersRef, where('uid', '==', userProfile.uid))
+      const teacherSnapshot = await getDocs(teacherQuery)
+      
+      if (teacherSnapshot.empty) {
+        throw new Error('Teacher document not found')
+      }
+
+      const teacherId = teacherSnapshot.docs[0].id
+      const currentYear = getCurrentAcademicYear()
+
+      // Get manual students for this teacher
+      const manualStudentsRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers/${teacherId}/manualStudents`)
+      const manualStudentsSnapshot = await getDocs(manualStudentsRef)
+      
+      let studentsCleared = 0
+
+      // Clear each manual student's data
+      for (const studentDoc of manualStudentsSnapshot.docs) {
+        const studentData = studentDoc.data()
+        
+        // Use the existing individual clearing function
+        await dbHelpers.clearIndividualManualStudentData(studentDoc.ref, studentData, currentYear)
+        studentsCleared++
+      }
+
+      setClearingResult({
+        success: true,
+        studentsCleared,
+        academicYear: currentYear
+      })
+
+      console.log(`✅ Cleared data for ${studentsCleared} manual students`)
+
+      // Reload dashboard data to reflect changes
+      await loadDashboardData()
+
+    } catch (error) {
+      console.error('❌ Error clearing manual students:', error)
+      setClearingResult({
+        success: false,
+        error: error.message
+      })
+    }
+    setClearingInProgress(false)
+  }
+
+  // Handle manual student clearing workflow
+  const handleClearManualStudents = () => {
+    setShowClearConfirmation(true)
+  }
+
+  const handleConfirmClearing = () => {
+    setShowClearConfirmation(false)
+    setShowFinalConfirmation(true)
+  }
+
+  const handleFinalConfirm = async () => {
+    setShowFinalConfirmation(false)
+    await clearTeacherManualStudents()
+  }
+
+  const closeClearingResult = () => {
+    setClearingResult(null)
+  }
 
   // Generate parent quiz code
   const generateParentQuizCode = () => {
@@ -480,31 +607,7 @@ export default function TeacherDashboard() {
     }
   }
 
-  // Load phase status
-  const loadPhaseStatus = async () => {
-    try {
-      console.log('📊 Loading phase status...')
-      
-      // Get current system configuration
-      const config = await dbHelpers.getSystemConfig()
-      const currentYear = getCurrentAcademicYear()
-      
-      setPhaseStatus({
-        currentPhase: config.programPhase || 'ACTIVE',
-        academicYear: currentYear,
-        loading: false
-      })
-      
-      console.log('✅ Phase status loaded:', {
-        phase: config.programPhase,
-        year: currentYear
-      })
-      
-    } catch (error) {
-      console.error('❌ Error loading phase status:', error)
-      setPhaseStatus(prev => ({ ...prev, loading: false }))
-    }
-  }
+  // ✅ REMOVED: loadPhaseStatus function - now handled by usePhaseAccess hook
 
   // Copy to clipboard function
   const copyToClipboard = async (text, type) => {
@@ -710,33 +813,8 @@ export default function TeacherDashboard() {
     await signOut({ redirectTo: '/sign-in?reason=session-expired' })
   }
 
-  // Phase helper functions
-  function getPhaseIcon(phase) {
-    const icons = {
-      'SETUP': '📝',
-      'TEACHER_SELECTION': '👩‍🏫',
-      'ACTIVE': '📚',
-      'VOTING': '🗳️',
-      'RESULTS': '🏆',
-      'CLOSED': '❄️'
-    }
-    return icons[phase] || '📋'
-  }
-
-  function getPhaseDisplayName(phase) {
-    const names = {
-      'SETUP': 'Setup',
-      'TEACHER_SELECTION': 'Teacher Selection',
-      'ACTIVE': 'Active Reading',
-      'VOTING': 'Voting Period',
-      'RESULTS': 'Results Available',
-      'CLOSED': 'Closed'
-    }
-    return names[phase] || 'Unknown'
-  }
-
   // Show loading
-  if (authLoading || loading || !userProfile) {
+  if (authLoading || loading || !userProfile || phaseLoading) {  // ✅ UPDATED: Added phaseLoading
     return (
       <div style={{
         minHeight: '100vh',
@@ -856,6 +934,324 @@ export default function TeacherDashboard() {
                   Continue Working
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Manual Student Clearing Confirmation - Step 1 */}
+        {showClearConfirmation && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+            padding: '1rem'
+          }}>
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '1rem',
+              padding: '2rem',
+              maxWidth: '500px',
+              width: '100%',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
+            }}>
+              <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🗑️</div>
+                <h3 style={{
+                  fontSize: '1.5rem',
+                  fontWeight: 'bold',
+                  color: '#223848',
+                  marginBottom: '0.5rem'
+                }}>
+                  Clear Manual Students Data?
+                </h3>
+              </div>
+              
+              <div style={{
+                background: '#FEF3C7',
+                border: '1px solid #F59E0B',
+                borderRadius: '0.5rem',
+                padding: '1rem',
+                marginBottom: '1.5rem'
+              }}>
+                <p style={{ 
+                  color: '#92400E', 
+                  margin: '0 0 0.75rem 0', 
+                  fontWeight: '600',
+                  fontSize: '0.875rem'
+                }}>
+                  ⚠️ This will clear reading data for ALL your manual students:
+                </p>
+                <ul style={{ 
+                  color: '#B45309', 
+                  margin: 0,
+                  paddingLeft: '1.5rem',
+                  fontSize: '0.875rem'
+                }}>
+                  <li>All completed books will be reset</li>
+                  <li>Book counts will be set to 0</li>
+                  <li>Voting data will be cleared</li>
+                  <li>Student names and grades will be preserved</li>
+                </ul>
+              </div>
+
+              <div style={{
+                background: '#E5E7EB',
+                borderRadius: '0.5rem',
+                padding: '1rem',
+                marginBottom: '1.5rem'
+              }}>
+                <p style={{ 
+                  color: '#374151', 
+                  margin: 0, 
+                  fontSize: '0.875rem',
+                  fontStyle: 'italic'
+                }}>
+                  💡 <strong>Note:</strong> This normally happens automatically on May 24th when the new academic year begins. Only use this if you need to reset data early.
+                </p>
+              </div>
+
+              <div style={{
+                display: 'flex',
+                gap: '0.75rem',
+                justifyContent: 'center'
+              }}>
+                <button
+                  onClick={() => setShowClearConfirmation(false)}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    backgroundColor: '#f3f4f6',
+                    color: '#374151',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmClearing}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    background: 'linear-gradient(135deg, #F59E0B, #D97706)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem',
+                    fontWeight: '600'
+                  }}
+                >
+                  Continue
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Manual Student Clearing Confirmation - Step 2 */}
+        {showFinalConfirmation && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+            padding: '1rem'
+          }}>
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '1rem',
+              padding: '2rem',
+              maxWidth: '400px',
+              width: '100%',
+              textAlign: 'center',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
+            }}>
+              <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⚠️</div>
+              <h3 style={{
+                fontSize: '1.25rem',
+                fontWeight: 'bold',
+                color: '#DC2626',
+                marginBottom: '1rem'
+              }}>
+                Final Confirmation
+              </h3>
+              <p style={{
+                color: '#6b7280',
+                marginBottom: '1.5rem',
+                lineHeight: '1.4'
+              }}>
+                Are you absolutely sure? This will clear reading data for <strong>{dashboardData.totalManualStudents} manual students</strong> and cannot be undone.
+              </p>
+              <div style={{
+                display: 'flex',
+                gap: '0.75rem',
+                justifyContent: 'center'
+              }}>
+                <button
+                  onClick={() => setShowFinalConfirmation(false)}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    backgroundColor: '#f3f4f6',
+                    color: '#374151',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleFinalConfirm}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    background: 'linear-gradient(135deg, #DC2626, #B91C1C)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem',
+                    fontWeight: '600'
+                  }}
+                >
+                  Yes, Clear Data
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Clearing in Progress Modal */}
+        {clearingInProgress && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+            padding: '1rem'
+          }}>
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '1rem',
+              padding: '2rem',
+              maxWidth: '400px',
+              width: '100%',
+              textAlign: 'center',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
+            }}>
+              <div style={{
+                width: '3rem',
+                height: '3rem',
+                border: '4px solid #F59E0B',
+                borderTop: '4px solid #DC2626',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite',
+                margin: '0 auto 1rem'
+              }}></div>
+              <h3 style={{
+                fontSize: '1.25rem',
+                fontWeight: 'bold',
+                color: '#223848',
+                marginBottom: '0.5rem'
+              }}>
+                Clearing Student Data...
+              </h3>
+              <p style={{
+                color: '#6b7280',
+                margin: 0
+              }}>
+                Please wait while we reset your manual students' reading data.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Clearing Result Modal */}
+        {clearingResult && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+            padding: '1rem'
+          }}>
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '1rem',
+              padding: '2rem',
+              maxWidth: '400px',
+              width: '100%',
+              textAlign: 'center',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
+            }}>
+              <div style={{ 
+                fontSize: '3rem', 
+                marginBottom: '1rem',
+                color: clearingResult.success ? '#10B981' : '#DC2626'
+              }}>
+                {clearingResult.success ? '✅' : '❌'}
+              </div>
+              <h3 style={{
+                fontSize: '1.25rem',
+                fontWeight: 'bold',
+                color: '#223848',
+                marginBottom: '1rem'
+              }}>
+                {clearingResult.success ? 'Data Cleared Successfully!' : 'Clearing Failed'}
+              </h3>
+              <p style={{
+                color: '#6b7280',
+                marginBottom: '1.5rem',
+                lineHeight: '1.4'
+              }}>
+                {clearingResult.success 
+                  ? `Successfully cleared reading data for ${clearingResult.studentsCleared} manual students for academic year ${clearingResult.academicYear}.`
+                  : `Error: ${clearingResult.error}`
+                }
+              </p>
+              <button
+                onClick={closeClearingResult}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  background: clearingResult.success 
+                    ? 'linear-gradient(135deg, #10B981, #059669)' 
+                    : 'linear-gradient(135deg, #ADD4EA, #C3E0DE)',
+                  color: clearingResult.success ? 'white' : '#223848',
+                  border: 'none',
+                  borderRadius: '0.5rem',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: '600'
+                }}
+              >
+                Close
+              </button>
             </div>
           </div>
         )}
@@ -1192,82 +1588,106 @@ export default function TeacherDashboard() {
               gap: '0.5rem'
             }}>
               📊 Program Status
+              {/* ✅ NEW: Add refresh button for manual updates */}
+              <button
+                onClick={refreshPhase}
+                style={{
+                  marginLeft: 'auto',
+                  padding: '0.25rem 0.5rem',
+                  background: 'transparent',
+                  border: '1px solid #D1D5DB',
+                  borderRadius: '0.375rem',
+                  cursor: 'pointer',
+                  fontSize: '0.75rem',
+                  color: '#6B7280'
+                }}
+                title="Refresh phase status"
+              >
+                🔄 Refresh
+              </button>
             </h3>
             
-            {phaseStatus.loading ? (
-              <div style={{ textAlign: 'center', padding: '1rem' }}>
+            {/* ✅ UPDATED: Use phaseData from hook instead of local state */}
+            <>
+              {/* Current Status Cards */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gap: '1rem',
+                marginBottom: '1.5rem'
+              }}>
+                {/* Academic Year */}
                 <div style={{
-                  width: '2rem',
-                  height: '2rem',
-                  border: '3px solid #C3E0DE',
-                  borderTop: '3px solid #223848',
-                  borderRadius: '50%',
-                  animation: 'spin 1s linear infinite',
-                  margin: '0 auto 1rem'
-                }}></div>
-                <p style={{ color: '#6b7280' }}>Loading status...</p>
-              </div>
-            ) : (
-              <>
-                {/* Current Status Cards */}
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                  gap: '1rem',
-                  marginBottom: '1.5rem'
+                  background: 'linear-gradient(135deg, #ADD4EA15, #ADD4EA25)',
+                  borderRadius: '0.75rem',
+                  padding: '1.25rem',
+                  border: '1px solid #ADD4EA',
+                  textAlign: 'center'
                 }}>
-                  {/* Academic Year */}
+                  <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>📅</div>
                   <div style={{
-                    background: 'linear-gradient(135deg, #ADD4EA15, #ADD4EA25)',
-                    borderRadius: '0.75rem',
-                    padding: '1.25rem',
-                    border: '1px solid #ADD4EA',
-                    textAlign: 'center'
+                    fontSize: '1.125rem',
+                    fontWeight: 'bold',
+                    color: '#223848',
+                    marginBottom: '0.25rem'
                   }}>
-                    <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>📅</div>
-                    <div style={{
-                      fontSize: '1.125rem',
-                      fontWeight: 'bold',
-                      color: '#223848',
-                      marginBottom: '0.25rem'
-                    }}>
-                      {phaseStatus.academicYear}
-                    </div>
-                    <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                      Academic Year
-                    </div>
+                    {phaseData?.academicYear}
                   </div>
-
-                  {/* Current Phase */}
-                  <div style={{
-                    background: 'linear-gradient(135deg, #C3E0DE15, #C3E0DE25)',
-                    borderRadius: '0.75rem',
-                    padding: '1.25rem',
-                    border: '1px solid #C3E0DE',
-                    textAlign: 'center'
-                  }}>
-                    <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>
-                      {getPhaseIcon(phaseStatus.currentPhase)}
-                    </div>
-                    <div style={{
-                      fontSize: '1.125rem',
-                      fontWeight: 'bold',
-                      color: '#223848',
-                      marginBottom: '0.25rem'
-                    }}>
-                      {getPhaseDisplayName(phaseStatus.currentPhase)}
-                    </div>
-                    <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                      Current Phase
-                    </div>
+                  <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                    Academic Year
                   </div>
                 </div>
 
-                {/* Phase Details */}
-                <PhaseDetailsSection currentPhase={phaseStatus.currentPhase} router={router} />
-              </>
-            )}
+                {/* Current Phase */}
+                <div style={{
+                  background: 'linear-gradient(135deg, #C3E0DE15, #C3E0DE25)',
+                  borderRadius: '0.75rem',
+                  padding: '1.25rem',
+                  border: '1px solid #C3E0DE',
+                  textAlign: 'center'
+                }}>
+                  <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>
+                    {getPhaseInfo().icon}
+                  </div>
+                  <div style={{
+                    fontSize: '1.125rem',
+                    fontWeight: 'bold',
+                    color: '#223848',
+                    marginBottom: '0.25rem'
+                  }}>
+                    {getPhaseInfo().name}
+                  </div>
+                  <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                    Current Phase
+                  </div>
+                </div>
+              </div>
+
+              {/* Phase Details - Updated to use phaseData */}
+              <PhaseDetailsSection 
+                currentPhase={phaseData?.currentPhase} 
+                router={router}
+                userProfile={userProfile}
+                onClearManualStudents={handleClearManualStudents}
+              />
+            </>
           </div>
+
+          {/* Teacher Results Interface - Only During Results Phase */}
+          {phaseData && phaseData.currentPhase === 'RESULTS' && (
+            <div id="results-section">
+              <TeacherResultsInterface 
+                userProfile={userProfile} 
+                currentTheme={{
+                  surface: 'white',
+                  textPrimary: '#223848',
+                  textSecondary: '#6b7280',
+                  primary: '#ADD4EA',
+                  accent: '#A1E5DB'
+                }}
+              />
+            </div>
+          )}
 
           {/* Quick Stats Grid */}
           <div style={{

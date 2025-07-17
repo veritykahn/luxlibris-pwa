@@ -1,72 +1,59 @@
-// hooks/usePhaseAccess.js - UPDATED to lock bookshelf during RESULTS
+// hooks/usePhaseAccess.js - UPDATED with proper system config fallback
 import { useState, useEffect } from 'react';
 import { dbHelpers } from '../lib/firebase';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
-export const usePhaseAccess = () => {
+export const usePhaseAccess = (userProfile = null) => {
   const [phaseData, setPhaseData] = useState({
     currentPhase: 'ACTIVE',
     academicYear: '2025-26',
     loading: true
   });
 
-  // Phase permission configurations
+  // Phase permission configurations (same as before)
   const phasePermissions = {
     SETUP: {
-      // During setup, students are completely locked out
       bookSelection: false,
       bookSubmission: false,
       nomineesBrowsing: false,
       bookshelfEditing: false,
-      bookshelfViewing: false,  // NEW: Block bookshelf completely
+      bookshelfViewing: false,
       votingInterface: false,
-      
-      // Year-round features stay available
       saintsPages: true,
       healthyHabits: true,
       readingTimer: true,
       basicStats: true,
       bookDetails: true,
-      
-      // Advanced features locked
       advancedStats: false,
       achievements: false,
-      
       message: "📝 System is being set up for the new academic year. Enjoy exploring your saints and healthy habits!"
     },
     
     TEACHER_SELECTION: {
-      // During teacher selection, students wait
       bookSelection: false,
       bookSubmission: false,
       nomineesBrowsing: false,
       bookshelfEditing: false,
-      bookshelfViewing: false,  // NEW: Block bookshelf completely
+      bookshelfViewing: false,
       votingInterface: false,
-      
-      // Year-round features available
       saintsPages: true,
       healthyHabits: true,
       readingTimer: true,
       basicStats: true,
       bookDetails: true,
-      
-      // Advanced features locked
       advancedStats: false,
       achievements: false,
-      
       message: "👩‍🏫 Teachers are selecting amazing books for you! Check back soon to start reading!"
     },
     
     ACTIVE: {
-      // Full access during active reading period
       bookSelection: true,
       bookSubmission: true,
       nomineesBrowsing: true,
       bookshelfEditing: true,
-      bookshelfViewing: true,  // NEW: Full bookshelf access
+      bookshelfViewing: true,
       votingInterface: false,
-      
-      // All features available
       saintsPages: true,
       healthyHabits: true,
       readingTimer: true,
@@ -74,102 +61,155 @@ export const usePhaseAccess = () => {
       bookDetails: true,
       advancedStats: true,
       achievements: true,
-      
       message: "📚 Happy reading! Explore books, earn achievements, and unlock saints!"
     },
     
     VOTING: {
-      // Selective locking during voting
-      bookSelection: false,     // Can't add new books
-      bookSubmission: false,    // Can't submit completions
-      nomineesBrowsing: false,  // Can't browse for new books
-      bookshelfEditing: false,  // Can't edit bookshelf
-      bookshelfViewing: true,   // NEW: Can view bookshelf (read-only)
-      votingInterface: true,    // Voting is active!
-      
-      // Year-round features stay open
-      saintsPages: true,
-      healthyHabits: true,
-      readingTimer: true,
-      basicStats: true,
-      bookDetails: true,        // Can view book details
-      
-      // Program-specific features locked
-      advancedStats: false,     // No new program stats
-      achievements: false,      // No new achievement earning
-      
-      message: "🗳️ Voting time! Choose your favorite books you've read this year!"
-    },
-    
-    RESULTS: {
-      // UPDATED: Lock down both nominees AND bookshelf completely
-      bookSelection: false,
-      bookSubmission: false,
-      nomineesBrowsing: false,  // Locked completely
-      bookshelfEditing: false,  // Locked completely
-      bookshelfViewing: false,  // NEW: Lock bookshelf completely during results
-      votingInterface: false,
-      votingResults: true,      // Show results to students
-      
-      // Year-round features available
-      saintsPages: true,
-      healthyHabits: true,
-      readingTimer: true,
-      basicStats: true,
-      bookDetails: false,       // NEW: Lock book details too
-      
-      // Program features locked
-      advancedStats: false,
-      achievements: false,
-      
-      message: "🏆 Carry on with your reading habits and collecting XP and saints while we prepare next year's nominees!"
-    },
-    
-    CLOSED: {
-      // Between academic years
       bookSelection: false,
       bookSubmission: false,
       nomineesBrowsing: false,
       bookshelfEditing: false,
-      bookshelfViewing: false,  // NEW: Block bookshelf completely
+      bookshelfViewing: true,
+      votingInterface: true,
+      saintsPages: true,
+      healthyHabits: true,
+      readingTimer: true,
+      basicStats: true,
+      bookDetails: true,
+      advancedStats: false,
+      achievements: false,
+      message: "🗳️ Voting time! Choose your favorite books you've read this year!"
+    },
+    
+    RESULTS: {
+      bookSelection: false,
+      bookSubmission: false,
+      nomineesBrowsing: false,
+      bookshelfEditing: false,
+      bookshelfViewing: false,
       votingInterface: false,
-      
-      // Only year-round features
+      votingResults: true,
       saintsPages: true,
       healthyHabits: true,
       readingTimer: true,
       basicStats: true,
       bookDetails: false,
-      
-      // Everything else locked
       advancedStats: false,
       achievements: false,
-      
+      message: "🏆 Carry on with your reading habits and collecting XP and saints while we prepare next year's nominees!"
+    },
+    
+    CLOSED: {
+      bookSelection: false,
+      bookSubmission: false,
+      nomineesBrowsing: false,
+      bookshelfEditing: false,
+      bookshelfViewing: false,
+      votingInterface: false,
+      saintsPages: true,
+      healthyHabits: true,
+      readingTimer: true,
+      basicStats: true,
+      bookDetails: false,
+      advancedStats: false,
+      achievements: false,
       message: "❄️ Taking a break between school years. Keep up your reading habits!"
     }
   };
 
-  // Load current phase data
+  // Load current phase data with real-time listener
   useEffect(() => {
-    const loadPhaseData = async () => {
+    let unsubscribe = null;
+
+    const setupPhaseListener = async () => {
       try {
-        const config = await dbHelpers.getSystemConfig();
+        // ✅ ALWAYS load system config first as fallback
+        const systemConfig = await dbHelpers.getSystemConfig();
         const currentYear = dbHelpers.getCurrentAcademicYear();
         
-        setPhaseData({
-          currentPhase: config.programPhase || 'ACTIVE',
-          academicYear: currentYear,
-          loading: false,
-          config: config
-        });
-        
-        console.log('✅ Phase data loaded:', {
-          phase: config.programPhase,
+        console.log('🔄 System config loaded:', {
+          phase: systemConfig.programPhase,
           year: currentYear
         });
+
+        // If we have user profile, try to listen to school-specific phase
+        if (userProfile?.entityId && userProfile?.schoolId) {
+          console.log('🔄 Setting up school-specific phase listener...');
+          
+          const schoolRef = doc(db, `entities/${userProfile.entityId}/schools`, userProfile.schoolId);
+          
+          unsubscribe = onSnapshot(schoolRef, (doc) => {
+            if (doc.exists()) {
+              const schoolData = doc.data();
+              
+              // ✅ FIXED: Check if school has its own phase status, otherwise use system config
+              const schoolPhase = schoolData.phaseStatus?.currentPhase;
+              const currentPhase = schoolPhase || systemConfig.programPhase || 'ACTIVE';
+              
+              setPhaseData({
+                currentPhase: currentPhase,
+                academicYear: currentYear,
+                loading: false,
+                config: schoolData.phaseStatus || systemConfig,
+                source: schoolPhase ? 'school' : 'system'
+              });
+              
+              console.log('✅ Phase updated:', {
+                phase: currentPhase,
+                source: schoolPhase ? 'school-specific' : 'system-wide',
+                year: currentYear
+              });
+            } else {
+              // School doesn't exist, use system config
+              setPhaseData({
+                currentPhase: systemConfig.programPhase || 'ACTIVE',
+                academicYear: currentYear,
+                loading: false,
+                config: systemConfig,
+                source: 'system'
+              });
+            }
+          }, (error) => {
+            console.error('❌ Error in school phase listener:', error);
+            // Fallback to system config
+            setPhaseData({
+              currentPhase: systemConfig.programPhase || 'ACTIVE',
+              academicYear: currentYear,
+              loading: false,
+              config: systemConfig,
+              source: 'system'
+            });
+          });
+          
+        } else {
+          // No user profile, use system-wide phase config
+          setPhaseData({
+            currentPhase: systemConfig.programPhase || 'ACTIVE',
+            academicYear: currentYear,
+            loading: false,
+            config: systemConfig,
+            source: 'system'
+          });
+          
+          // Set up polling as backup for system config
+          const interval = setInterval(async () => {
+            try {
+              const updatedConfig = await dbHelpers.getSystemConfig();
+              setPhaseData(prev => ({
+                ...prev,
+                currentPhase: updatedConfig.programPhase || 'ACTIVE',
+                config: updatedConfig
+              }));
+            } catch (error) {
+              console.error('❌ Error in phase polling:', error);
+            }
+          }, 60 * 1000); // Poll every 1 minute
+          
+          return () => clearInterval(interval);
+        }
         
       } catch (error) {
-        console.error('❌ Error loading phase data:', error);
+        console.error('❌ Error setting up phase listener:', error);
         setPhaseData(prev => ({ 
           ...prev, 
           loading: false,
@@ -177,13 +217,15 @@ export const usePhaseAccess = () => {
         }));
       }
     };
+
+    setupPhaseListener();
     
-    loadPhaseData();
-    
-    // Check for phase updates every 5 minutes
-    const interval = setInterval(loadPhaseData, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, []);
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [userProfile?.entityId, userProfile?.schoolId]);
 
   // Get permissions for current phase
   const getPermissions = () => {
@@ -228,17 +270,78 @@ export const usePhaseAccess = () => {
     return phaseIcons[phaseData.currentPhase] || phaseIcons.ACTIVE;
   };
 
+  // Force refresh phase data (useful for manual testing)
+  const refreshPhase = async () => {
+    console.log('🔄 Force refreshing phase data...');
+    setPhaseData(prev => ({ ...prev, loading: true }));
+    
+    try {
+      // ✅ ALWAYS load system config first
+      const systemConfig = await dbHelpers.getSystemConfig();
+      const currentYear = dbHelpers.getCurrentAcademicYear();
+      
+      if (userProfile?.entityId && userProfile?.schoolId) {
+        // Try to reload school phase
+        const schoolRef = doc(db, `entities/${userProfile.entityId}/schools`, userProfile.schoolId);
+        const schoolSnap = await getDoc(schoolRef);
+        
+        if (schoolSnap.exists()) {
+          const schoolData = schoolSnap.data();
+          
+          // Use school phase if available, otherwise system config
+          const schoolPhase = schoolData.phaseStatus?.currentPhase;
+          const currentPhase = schoolPhase || systemConfig.programPhase || 'ACTIVE';
+          
+          setPhaseData({
+            currentPhase: currentPhase,
+            academicYear: currentYear,
+            loading: false,
+            config: schoolData.phaseStatus || systemConfig,
+            source: schoolPhase ? 'school' : 'system'
+          });
+          
+          console.log('✅ Phase refreshed:', {
+            phase: currentPhase,
+            source: schoolPhase ? 'school-specific' : 'system-wide'
+          });
+        } else {
+          // School doesn't exist, use system config
+          setPhaseData({
+            currentPhase: systemConfig.programPhase || 'ACTIVE',
+            academicYear: currentYear,
+            loading: false,
+            config: systemConfig,
+            source: 'system'
+          });
+        }
+      } else {
+        // No user profile, use system config
+        setPhaseData({
+          currentPhase: systemConfig.programPhase || 'ACTIVE',
+          academicYear: currentYear,
+          loading: false,
+          config: systemConfig,
+          source: 'system'
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error refreshing phase:', error);
+      setPhaseData(prev => ({ ...prev, loading: false }));
+    }
+  };
+
   return {
     phaseData,
     permissions: getPermissions(),
     hasAccess,
     getPhaseMessage,
     getPhaseInfo,
+    refreshPhase,
     isLoading: phaseData.loading
   };
 };
 
-// HOC for wrapping components with phase protection
+// HOC for wrapping components with phase protection (same as before)
 export const withPhaseProtection = (WrappedComponent, requiredFeature, fallbackMessage) => {
   return function PhaseProtectedComponent(props) {
     const { hasAccess, getPhaseMessage, getPhaseInfo } = usePhaseAccess();

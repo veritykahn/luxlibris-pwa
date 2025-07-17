@@ -249,7 +249,7 @@ export default function VotingInterface({ studentData, currentTheme }) {
             color: currentTheme.textSecondary,
             margin: 0
           }}>
-            Winners will be announced on <strong>April 14th</strong>
+            Winners will be announced on <strong>April 15th</strong>
           </p>
         </div>
 

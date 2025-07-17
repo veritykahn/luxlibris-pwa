@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
+import { usePhaseAccess } from '../../hooks/usePhaseAccess' // Import the hook
 import { db } from '../../lib/firebase'
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, getDoc, query, where, orderBy } from 'firebase/firestore'
 
@@ -402,6 +403,17 @@ export default function TeacherStudents() {
     updateLastActivity
   } = useAuth()
 
+  // Use the updated phase access hook instead of custom loading
+  const { 
+    phaseData, 
+    permissions, 
+    hasAccess, 
+    getPhaseMessage, 
+    getPhaseInfo,
+    refreshPhase,
+    isLoading: phaseLoading 
+  } = usePhaseAccess(userProfile)
+
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('all') // 'all', 'app', or 'manual'
   const [searchTerm, setSearchTerm] = useState('')
@@ -451,7 +463,7 @@ export default function TeacherStudents() {
   // Authentication check
   useEffect(() => {
     const checkAuth = async () => {
-      if (authLoading) return
+      if (authLoading || phaseLoading) return
 
       if (!isAuthenticated) {
         router.push('/sign-in')
@@ -469,13 +481,14 @@ export default function TeacherStudents() {
       }
 
       if (userProfile) {
+        // Remove loadPhaseStatus() - now handled by usePhaseAccess hook
         loadTeacherConfiguration()
         loadStudentsData()
       }
     }
 
     checkAuth()
-  }, [authLoading, isAuthenticated, userProfile, router, isSessionExpired, signOut])
+  }, [authLoading, phaseLoading, isAuthenticated, userProfile, router, isSessionExpired, signOut])
 
   // Session timeout checking
   useEffect(() => {
@@ -661,7 +674,7 @@ export default function TeacherStudents() {
     }
   }
 
-  // NEW: Handle vote casting for manual students
+  // Handle vote casting for manual students
   const handleVoteCast = async (student, bookId) => {
     try {
       console.log('🗳️ Casting vote for student:', student.firstName, 'Book:', bookId)
@@ -1064,7 +1077,7 @@ export default function TeacherStudents() {
   }
 
   // Show loading
-  if (authLoading || loading || !userProfile) {
+  if (authLoading || loading || phaseLoading || !userProfile) {
     return (
       <div style={{
         minHeight: '100vh',
@@ -1293,6 +1306,41 @@ export default function TeacherStudents() {
           padding: '1rem'
         }}>
 
+          {/* Phase Status Display - Now using hook data */}
+          <div style={{
+            background: 'white',
+            borderRadius: '1rem',
+            padding: '1rem',
+            marginBottom: '1.5rem',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+            border: `2px solid ${getPhaseInfo().color}`
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+              <span style={{ fontSize: '1.25rem' }}>{getPhaseInfo().icon}</span>
+              <h3 style={{ fontSize: '1rem', fontWeight: '600', color: '#223848', margin: 0 }}>
+                {getPhaseInfo().name} Mode
+              </h3>
+              {/* Optional: Add refresh button for manual testing */}
+              <button
+                onClick={refreshPhase}
+                style={{
+                  marginLeft: 'auto',
+                  padding: '0.25rem 0.5rem',
+                  backgroundColor: '#f3f4f6',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '0.25rem',
+                  fontSize: '0.75rem',
+                  cursor: 'pointer'
+                }}
+              >
+                🔄 Refresh
+              </button>
+            </div>
+            <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>
+              {getPhaseMessage()}
+            </p>
+          </div>
+
           {/* Stats Cards - Compact Version */}
           <div style={{
             display: 'grid',
@@ -1330,14 +1378,16 @@ export default function TeacherStudents() {
             />
           </div>
 
-          {/* Manual Student Voting Interface */}
-          <ManualStudentVotingInterface
-            manualStudents={manualStudents}
-            teacherNominees={teacherNominees}
-            userProfile={userProfile}
-            onVoteCast={handleVoteCast}
-            isProcessing={isProcessing}
-          />
+          {/* Manual Student Voting Interface - Updated condition */}
+          {permissions.currentPhase === 'VOTING' && (
+            <ManualStudentVotingInterface
+              manualStudents={manualStudents}
+              teacherNominees={teacherNominees}
+              userProfile={userProfile}
+              onVoteCast={handleVoteCast}
+              isProcessing={isProcessing}
+            />
+          )}
 
           {/* Search and Filter */}
           <div style={{
@@ -2282,7 +2332,7 @@ function AppStudentsSection({ students, onToggleStatus, onViewDetails, onViewBoo
   )
 }
 
-function ManualStudentsSection({ students, onAddStudent, onEditStudent, onDeleteStudent, onAddBookSubmission, isProcessing }) {
+function ManualStudentsSection({ students, onAddStudent, onEditStudent, onDeleteStudent, onAddBookSubmission, onViewBooks, isProcessing }) {
   return (
     <div style={{
       background: 'white',
@@ -2346,6 +2396,7 @@ function ManualStudentsSection({ students, onAddStudent, onEditStudent, onDelete
               onEditStudent={() => onEditStudent(student)}
               onDeleteStudent={() => onDeleteStudent(student)}
               onAddBookSubmission={() => onAddBookSubmission(student)}
+              onViewBooks={() => onViewBooks(student)}
               isProcessing={isProcessing}
             />
           ))}

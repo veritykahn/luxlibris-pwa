@@ -4,6 +4,7 @@ import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
 import { dbHelpers, getCurrentAcademicYear } from '../../lib/firebase'
+import { usePhaseAccess } from '../../hooks/usePhaseAccess'
 
 export default function TeacherSettings() {
   const router = useRouter()
@@ -18,7 +19,15 @@ export default function TeacherSettings() {
   } = useAuth()
 
   const [loading, setLoading] = useState(true)
-  const [phaseStatus, setPhaseStatus] = useState(null)
+  const { 
+    phaseData, 
+    permissions, 
+    hasAccess, 
+    getPhaseMessage, 
+    getPhaseInfo,
+    refreshPhase,
+    isLoading: phaseLoading 
+  } = usePhaseAccess(userProfile)
   const [yearOverYearStatus, setYearOverYearStatus] = useState(null)
   const [releaseStatus, setReleaseStatus] = useState(null)
   const [availableNominees, setAvailableNominees] = useState([])
@@ -58,19 +67,6 @@ export default function TeacherSettings() {
 
     checkAuth()
   }, [authLoading, isAuthenticated, userProfile, router, isSessionExpired, signOut])
-
-  // Load phase status
-  const loadPhaseStatus = async () => {
-    try {
-      const config = await dbHelpers.getSystemConfig()
-      setPhaseStatus({
-        currentPhase: config.programPhase || 'ACTIVE',
-        academicYear: getCurrentAcademicYear()
-      })
-    } catch (error) {
-      console.error('Error loading phase status:', error)
-    }
-  }
 
   // Load selected books details
   const loadSelectedBooksDetails = async (selectedNominees) => {
@@ -121,9 +117,6 @@ export default function TeacherSettings() {
         setLoading(false)
         return
       }
-
-      // Get current phase status
-      await loadPhaseStatus()
 
       // Check year-over-year status
       const yoyStatus = await dbHelpers.checkTeacherYearOverYearStatus(
@@ -274,7 +267,7 @@ export default function TeacherSettings() {
   }
 
   // Show loading
-  if (authLoading || loading || !userProfile) {
+  if (authLoading || loading || !userProfile || phaseLoading) {
     return (
       <div style={{
         minHeight: '100vh',
@@ -419,150 +412,157 @@ export default function TeacherSettings() {
           padding: '1rem'
         }}>
 
-          {/* Enhanced Phase Status Display with Configuration Summary */}
-          {phaseStatus && (
-            <div style={{
-              background: 'white',
-              borderRadius: '1rem',
-              padding: '1.5rem',
-              marginBottom: '1.5rem',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
-              border: '2px solid #E5E7EB'
+          {/* Enhanced Phase Status Display with real-time data */}
+          <div style={{
+            background: 'white',
+            borderRadius: '1rem',
+            padding: '1.5rem',
+            marginBottom: '1.5rem',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+            border: '2px solid #E5E7EB'
+          }}>
+            <h3 style={{
+              fontSize: '1.25rem',
+              fontWeight: 'bold',
+              color: '#223848',
+              margin: '0 0 1rem 0',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
             }}>
-              <h3 style={{
-                fontSize: '1.25rem',
-                fontWeight: 'bold',
-                color: '#223848',
-                margin: '0 0 1rem 0',
+              📊 Program Status
+              {/* ADD: Refresh button */}
+              <button
+                onClick={refreshPhase}
+                style={{
+                  marginLeft: 'auto',
+                  padding: '0.25rem 0.5rem',
+                  background: 'transparent',
+                  border: '1px solid #D1D5DB',
+                  borderRadius: '0.375rem',
+                  cursor: 'pointer',
+                  fontSize: '0.75rem',
+                  color: '#6B7280'
+                }}
+                title="Refresh phase status"
+              >
+                🔄 Refresh
+              </button>
+            </h3>
+            
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: '1rem',
+              marginBottom: '1.5rem'
+            }}>
+              {/* Academic Year */}
+              <div style={{
+                background: 'linear-gradient(135deg, #ADD4EA15, #ADD4EA25)',
+                borderRadius: '0.75rem',
+                padding: '1.25rem',
+                border: '1px solid #ADD4EA',
+                textAlign: 'center'
+              }}>
+                <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>📅</div>
+                <div style={{
+                  fontSize: '1.125rem',
+                  fontWeight: 'bold',
+                  color: '#223848',
+                  marginBottom: '0.25rem'
+                }}>
+                  {phaseData.academicYear}
+                </div>
+                <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                  Academic Year
+                </div>
+              </div>
+
+              {/* Current Phase */}
+              <div style={{
+                background: 'linear-gradient(135deg, #C3E0DE15, #C3E0DE25)',
+                borderRadius: '0.75rem',
+                padding: '1.25rem',
+                border: '1px solid #C3E0DE',
+                textAlign: 'center'
+              }}>
+                <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>
+                  {getPhaseInfo().icon}
+                </div>
+                <div style={{
+                  fontSize: '1.125rem',
+                  fontWeight: 'bold',
+                  color: '#223848',
+                  marginBottom: '0.25rem'
+                }}>
+                  {getPhaseInfo().name}
+                </div>
+                <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                  Current Phase
+                </div>
+              </div>
+            </div>
+
+            {/* Configuration Summary */}
+            <div style={{
+              background: 'linear-gradient(135deg, #EDF2F7, #E2E8F0)',
+              border: '1px solid #CBD5E0',
+              borderRadius: '0.75rem',
+              padding: '1.25rem'
+            }}>
+              <h4 style={{
+                fontSize: '1rem',
+                fontWeight: '600',
+                color: '#2D3748',
+                margin: '0 0 0.75rem 0',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.5rem'
               }}>
-                📊 Program Status
-              </h3>
-              
+                📊 Configuration Summary
+              </h4>
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
                 gap: '1rem',
-                marginBottom: '1.5rem'
+                fontSize: '0.875rem',
+                color: '#4A5568'
               }}>
-                {/* Academic Year */}
-                <div style={{
-                  background: 'linear-gradient(135deg, #ADD4EA15, #ADD4EA25)',
-                  borderRadius: '0.75rem',
-                  padding: '1.25rem',
-                  border: '1px solid #ADD4EA',
-                  textAlign: 'center'
-                }}>
-                  <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>📅</div>
-                  <div style={{
-                    fontSize: '1.125rem',
-                    fontWeight: 'bold',
-                    color: '#223848',
-                    marginBottom: '0.25rem'
-                  }}>
-                    {phaseStatus.academicYear}
-                  </div>
-                  <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                    Academic Year
-                  </div>
+                <div>
+                  <strong>Books Available:</strong> {selectedBooksWithDetails.length}
                 </div>
-
-                {/* Current Phase */}
-                <div style={{
-                  background: 'linear-gradient(135deg, #C3E0DE15, #C3E0DE25)',
-                  borderRadius: '0.75rem',
-                  padding: '1.25rem',
-                  border: '1px solid #C3E0DE',
-                  textAlign: 'center'
-                }}>
-                  <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>
-                    {phaseStatus.currentPhase === 'ACTIVE' ? '📚' : 
-                     phaseStatus.currentPhase === 'VOTING' ? '🗳️' : 
-                     phaseStatus.currentPhase === 'RESULTS' ? '🏆' : 
-                     phaseStatus.currentPhase === 'TEACHER_SELECTION' ? '👩‍🏫' : '📋'}
-                  </div>
-                  <div style={{
-                    fontSize: '1.125rem',
-                    fontWeight: 'bold',
-                    color: '#223848',
-                    marginBottom: '0.25rem'
-                  }}>
-                    {phaseStatus.currentPhase === 'ACTIVE' ? 'Active Reading' : 
-                     phaseStatus.currentPhase === 'VOTING' ? 'Voting Period' : 
-                     phaseStatus.currentPhase === 'RESULTS' ? 'Results Available' : 
-                     phaseStatus.currentPhase === 'TEACHER_SELECTION' ? 'Book Selection' : 'Setup'}
-                  </div>
-                  <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                    Current Phase
-                  </div>
+                <div>
+                  <strong>Completion Methods:</strong> {(() => {
+                    const enabledTeacherOptions = Object.keys(currentConfig.submissionOptions || {})
+                      .filter(key => key !== 'quiz' && currentConfig.submissionOptions[key]).length
+                    return enabledTeacherOptions + 1
+                  })()}
+                </div>
+                <div>
+                  <strong>Achievement Tiers:</strong> {currentConfig.achievementTiers?.length || 0}
+                </div>
+                <div>
+                  <strong>Status:</strong> <span style={{ color: '#38A169', fontWeight: '600' }}>
+                    {yearOverYearStatus?.hasCompletedThisYear ? 'Active' : 'Setup Needed'}
+                  </span>
                 </div>
               </div>
-
-              {/* Configuration Summary */}
-              <div style={{
-                background: 'linear-gradient(135deg, #EDF2F7, #E2E8F0)',
-                border: '1px solid #CBD5E0',
-                borderRadius: '0.75rem',
-                padding: '1.25rem'
-              }}>
-                <h4 style={{
-                  fontSize: '1rem',
-                  fontWeight: '600',
-                  color: '#2D3748',
-                  margin: '0 0 0.75rem 0',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem'
-                }}>
-                  📊 Configuration Summary
-                </h4>
+              {phaseData.currentPhase !== 'TEACHER_SELECTION' && (
                 <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-                  gap: '1rem',
-                  fontSize: '0.875rem',
-                  color: '#4A5568'
+                  marginTop: '0.75rem',
+                  padding: '0.75rem',
+                  background: 'rgba(255, 255, 255, 0.7)',
+                  borderRadius: '0.5rem',
+                  fontSize: '0.75rem',
+                  color: '#718096',
+                  fontStyle: 'italic'
                 }}>
-                  <div>
-                    <strong>Books Available:</strong> {selectedBooksWithDetails.length}
-                  </div>
-                  <div>
-                    <strong>Completion Methods:</strong> {(() => {
-                      // Count enabled teacher options (excluding quiz which is always available)
-                      const enabledTeacherOptions = Object.keys(currentConfig.submissionOptions || {})
-                        .filter(key => key !== 'quiz' && currentConfig.submissionOptions[key]).length
-                      // Add 1 for quiz (always available)
-                      return enabledTeacherOptions + 1
-                    })()}
-                  </div>
-                  <div>
-                    <strong>Achievement Tiers:</strong> {currentConfig.achievementTiers?.length || 0}
-                  </div>
-                  <div>
-                    <strong>Status:</strong> <span style={{ color: '#38A169', fontWeight: '600' }}>
-                      {yearOverYearStatus?.hasCompletedThisYear ? 'Active' : 'Setup Needed'}
-                    </span>
-                  </div>
+                  💡 This configuration will remain active until the Teacher Selection phase begins on May 24th. 
+                  Students can read and submit books using the options below.
                 </div>
-                {phaseStatus.currentPhase !== 'TEACHER_SELECTION' && (
-                  <div style={{
-                    marginTop: '0.75rem',
-                    padding: '0.75rem',
-                    background: 'rgba(255, 255, 255, 0.7)',
-                    borderRadius: '0.5rem',
-                    fontSize: '0.75rem',
-                    color: '#718096',
-                    fontStyle: 'italic'
-                  }}>
-                    💡 This configuration will remain active until the Teacher Selection phase begins on May 24th. 
-                    Students can read and submit books using the options below.
-                  </div>
-                )}
-              </div>
+              )}
             </div>
-          )}
+          </div>
 
           {/* Year-Over-Year Book Selection (during TEACHER_SELECTION phase) */}
           {yearOverYearStatus?.needsYearOverYearSetup && (
@@ -588,7 +588,7 @@ export default function TeacherSettings() {
               isProcessing={isProcessing}
               selectedBooksWithDetails={selectedBooksWithDetails}
               teacherSubmissionOptions={currentConfig.submissionOptions}
-              phaseStatus={phaseStatus}
+              phaseStatus={phaseData}
             />
           )}
 

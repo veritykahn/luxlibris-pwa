@@ -1,8 +1,9 @@
-// pages/teacher/achievements.js - Achievement Tracking and Export
+// pages/teacher/achievements.js - Updated with real-time phase access
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
+import { usePhaseAccess } from '../../hooks/usePhaseAccess' // Use the updated hook
 import { db } from '../../lib/firebase'
 import { collection, getDocs, query, where } from 'firebase/firestore'
 
@@ -17,6 +18,17 @@ export default function TeacherAchievements() {
     signOut,
     updateLastActivity
   } = useAuth()
+
+  // Use the updated phase access hook
+  const { 
+    phaseData, 
+    permissions, 
+    hasAccess, 
+    getPhaseMessage, 
+    getPhaseInfo,
+    refreshPhase,
+    isLoading: phaseLoading 
+  } = usePhaseAccess(userProfile)
 
   const [loading, setLoading] = useState(true)
   const [achievementTiers, setAchievementTiers] = useState([])
@@ -287,8 +299,17 @@ export default function TeacherAchievements() {
     await signOut({ redirectTo: '/sign-in?reason=session-expired' })
   }
 
+  // Manual refresh for testing
+  const handleManualRefresh = async () => {
+    console.log('🔄 Manual refresh triggered')
+    await refreshPhase()
+    await loadAchievementsData()
+    setShowSuccess('🔄 Data refreshed!')
+    setTimeout(() => setShowSuccess(''), 2000)
+  }
+
   // Show loading
-  if (authLoading || loading || !userProfile) {
+  if (authLoading || loading || phaseLoading || !userProfile) {
     return (
       <div style={{
         minHeight: '100vh',
@@ -474,6 +495,38 @@ export default function TeacherAchievements() {
             </div>
             
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              {/* Phase indicator */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.25rem',
+                padding: '0.25rem 0.5rem',
+                background: 'rgba(173, 212, 234, 0.1)',
+                borderRadius: '0.5rem',
+                fontSize: '0.75rem',
+                color: '#223848'
+              }}>
+                <span>{getPhaseInfo().icon}</span>
+                <span>{phaseData.currentPhase}</span>
+              </div>
+              
+              {/* Manual refresh button for testing */}
+              <button
+                onClick={handleManualRefresh}
+                style={{
+                  padding: '0.5rem',
+                  background: 'rgba(173, 212, 234, 0.2)',
+                  color: '#223848',
+                  border: 'none',
+                  borderRadius: '0.5rem',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem'
+                }}
+                title="Refresh data"
+              >
+                🔄
+              </button>
+              
               <button
                 onClick={exportAchievements}
                 disabled={isExporting || studentAchievements.length === 0}
@@ -588,6 +641,117 @@ export default function TeacherAchievements() {
               />
             </div>
           </div>
+
+          {/* Phase-aware Achievement Display - Using real-time data */}
+          {phaseData.currentPhase === 'TEACHER_SELECTION' && (
+            <div style={{
+              background: 'linear-gradient(135deg, #FEF3C7, #FDE68A)',
+              borderRadius: '1rem',
+              padding: '1.5rem',
+              marginBottom: '1.5rem',
+              textAlign: 'center',
+              border: '2px solid #F59E0B'
+            }}>
+              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🎯</div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#92400E', marginBottom: '0.5rem' }}>
+                New Year Setup in Progress
+              </h3>
+              <p style={{ fontSize: '0.875rem', color: '#B45309', marginBottom: '1rem' }}>
+                {getPhaseMessage()}
+              </p>
+              <button
+                onClick={() => router.push('/teacher/settings')}
+                style={{
+                  background: '#F59E0B',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '0.5rem',
+                  padding: '0.75rem 1.5rem',
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Configure Achievements
+              </button>
+            </div>
+          )}
+
+          {phaseData.currentPhase === 'VOTING' && (
+            <div style={{
+              background: 'linear-gradient(135deg, #E0E7FF, #C7D2FE)',
+              borderRadius: '1rem',
+              padding: '1.5rem',
+              marginBottom: '1.5rem',
+              textAlign: 'center',
+              border: '2px solid #6366F1'
+            }}>
+              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🗳️</div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#4338CA', marginBottom: '0.5rem' }}>
+                Achievement Year Complete
+              </h3>
+              <p style={{ fontSize: '0.875rem', color: '#5B21B6', marginBottom: '1rem' }}>
+                {getPhaseMessage()}
+              </p>
+            </div>
+          )}
+
+          {phaseData.currentPhase === 'RESULTS' && (
+            <div style={{
+              background: 'linear-gradient(135deg, #DCFCE7, #BBF7D0)',
+              borderRadius: '1rem',
+              padding: '1.5rem',
+              marginBottom: '1.5rem',
+              textAlign: 'center',
+              border: '2px solid #10B981'
+            }}>
+              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🏆</div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#047857', marginBottom: '0.5rem' }}>
+                Final Achievement Results
+              </h3>
+              <p style={{ fontSize: '0.875rem', color: '#065F46', marginBottom: '1rem' }}>
+                {getPhaseMessage()}
+              </p>
+            </div>
+          )}
+
+          {phaseData.currentPhase === 'SETUP' && (
+            <div style={{
+              background: 'linear-gradient(135deg, #FEF3C7, #FDE68A)',
+              borderRadius: '1rem',
+              padding: '1.5rem',
+              marginBottom: '1.5rem',
+              textAlign: 'center',
+              border: '2px solid #F59E0B'
+            }}>
+              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📝</div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#92400E', marginBottom: '0.5rem' }}>
+                System Setup Mode
+              </h3>
+              <p style={{ fontSize: '0.875rem', color: '#B45309', marginBottom: '1rem' }}>
+                {getPhaseMessage()}
+              </p>
+            </div>
+          )}
+
+          {phaseData.currentPhase === 'CLOSED' && (
+            <div style={{
+              background: 'linear-gradient(135deg, #F9FAFB, #F3F4F6)',
+              borderRadius: '1rem',
+              padding: '1.5rem',
+              marginBottom: '1.5rem',
+              textAlign: 'center',
+              border: '2px solid #6B7280'
+            }}>
+              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>❄️</div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
+                Program Closed
+              </h3>
+              <p style={{ fontSize: '0.875rem', color: '#6B7280', marginBottom: '1rem' }}>
+                {getPhaseMessage()}
+              </p>
+            </div>
+          )}
 
           {/* Achievement Levels */}
           {studentAchievements.length === 0 ? (

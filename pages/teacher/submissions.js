@@ -1,8 +1,9 @@
-// pages/teacher/submissions.js - Teacher Submissions Management
+// pages/teacher/submissions.js - Updated with real-time phase updates
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
+import { usePhaseAccess } from '../../hooks/usePhaseAccess' // Use the updated hook
 import { db } from '../../lib/firebase'
 import { collection, getDocs, updateDoc, doc, query, where } from 'firebase/firestore'
 
@@ -17,6 +18,17 @@ export default function TeacherSubmissions() {
     signOut,
     updateLastActivity
   } = useAuth()
+
+  // Use the updated phase access hook
+  const { 
+    phaseData, 
+    permissions, 
+    hasAccess, 
+    getPhaseMessage, 
+    getPhaseInfo,
+    refreshPhase,
+    isLoading: phaseLoading 
+  } = usePhaseAccess(userProfile)
 
   const [loading, setLoading] = useState(true)
   const [submissions, setSubmissions] = useState([])
@@ -302,8 +314,17 @@ export default function TeacherSubmissions() {
     await signOut({ redirectTo: '/sign-in?reason=session-expired' })
   }
 
+  // Manual refresh for testing
+  const handleManualRefresh = async () => {
+    console.log('🔄 Manual refresh triggered')
+    await refreshPhase()
+    await loadSubmissions()
+    setShowSuccess('🔄 Data refreshed!')
+    setTimeout(() => setShowSuccess(''), 2000)
+  }
+
   // Show loading
-  if (authLoading || loading || !userProfile) {
+  if (authLoading || loading || phaseLoading || !userProfile) {
     return (
       <div style={{
         minHeight: '100vh',
@@ -489,6 +510,38 @@ export default function TeacherSubmissions() {
             </div>
             
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              {/* Phase indicator */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.25rem',
+                padding: '0.25rem 0.5rem',
+                background: 'rgba(173, 212, 234, 0.1)',
+                borderRadius: '0.5rem',
+                fontSize: '0.75rem',
+                color: '#223848'
+              }}>
+                <span>{getPhaseInfo().icon}</span>
+                <span>{phaseData.currentPhase}</span>
+              </div>
+              
+              {/* Manual refresh button for testing */}
+              <button
+                onClick={handleManualRefresh}
+                style={{
+                  padding: '0.5rem',
+                  background: 'rgba(173, 212, 234, 0.2)',
+                  color: '#223848',
+                  border: 'none',
+                  borderRadius: '0.5rem',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem'
+                }}
+                title="Refresh data"
+              >
+                🔄
+              </button>
+              
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -527,6 +580,62 @@ export default function TeacherSubmissions() {
           padding: '1rem'
         }}>
 
+          {/* Phase Status Alerts - Using real-time data */}
+          {phaseData.currentPhase === 'TEACHER_SELECTION' && (
+            <div style={{
+              background: 'linear-gradient(135deg, #DBEAFE, #BFDBFE)',
+              borderRadius: '1rem',
+              padding: '1.5rem',
+              marginBottom: '1.5rem',
+              textAlign: 'center',
+              border: '2px solid #3B82F6'
+            }}>
+              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>👩‍🏫</div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#1E40AF', marginBottom: '0.5rem' }}>
+                Teacher Book Selection Period
+              </h3>
+              <p style={{ fontSize: '0.875rem', color: '#1D4ED8', margin: 0 }}>
+                {getPhaseMessage()}
+              </p>
+            </div>
+          )}
+
+          {phaseData.currentPhase === 'VOTING' && (
+            <div style={{
+              background: 'linear-gradient(135deg, #F3E8FF, #E9D5FF)',
+              borderRadius: '1rem',
+              padding: '1rem',
+              marginBottom: '1.5rem',
+              textAlign: 'center',
+              border: '2px solid #8B5CF6'
+            }}>
+              <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🗳️</div>
+              <p style={{ fontSize: '0.875rem', color: '#6B21A8', margin: 0 }}>
+                <strong>Voting Period:</strong> {getPhaseMessage()}
+              </p>
+            </div>
+          )}
+
+          {phaseData.currentPhase === 'RESULTS' && (
+            <div style={{
+              background: 'linear-gradient(135deg, #FEF3C7, #FBBF24)',
+              borderRadius: '1rem',
+              padding: '1.5rem',
+              marginBottom: '1.5rem',
+              textAlign: 'center',
+              border: '2px solid #F59E0B'
+            }}>
+              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🏆</div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#92400E', marginBottom: '0.5rem' }}>
+                Results Phase Active
+              </h3>
+              <p style={{ fontSize: '0.875rem', color: '#B45309', margin: 0 }}>
+                {getPhaseMessage()}
+              </p>
+            </div>
+          )}
+
+          {/* Rest of the component remains the same... */}
           {/* Summary */}
           <div style={{
             background: 'white',
@@ -576,7 +685,7 @@ export default function TeacherSubmissions() {
             </div>
           </div>
 
-          {/* Submissions List */}
+          {/* Submissions List (same as before...) */}
           {submissions.length === 0 ? (
             <div style={{
               background: 'white',
@@ -731,6 +840,7 @@ export default function TeacherSubmissions() {
           )}
         </div>
 
+        {/* Notes Modal and Bottom Navigation remain the same... */}
         {/* Notes Modal */}
         {showNotesModal && selectedSubmission && (
           <div style={{
