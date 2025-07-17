@@ -360,7 +360,7 @@ export default function EnhancedBraggingRightsModal({
                   fontSize: 'clamp(9px, 2.5vw, 10px)',
                   color: '#666666'
                 }}>
-                  Real Achievements
+                  Achievements
                 </div>
               </div>
               <div style={{
