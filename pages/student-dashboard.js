@@ -967,33 +967,7 @@ export default function StudentDashboard() {
   };
 
   // UPDATED: Better motivational messages - celebrate achievements
-  const getMotivationalMessage = () => {
-    const { booksReadThisYear, currentYearGoal } = dashboardData;
-    const { streak } = readingStats;
-    const daysUntilEnd = getDaysUntilCompetitionEnd();
-
-    // Natural motivational messages based on what's happening
-    if (daysUntilEnd <= 30) {
-      return `📅 ${daysUntilEnd} days left in the reading challenge!`;
-    }
-    if (booksReadThisYear >= currentYearGoal) {
-      return '🎉 Goal conquered! You\'re officially a reading champion!';
-    }
-    if (booksReadThisYear >= currentYearGoal * 0.9) {
-      return '⚡ SO close to your goal! One more book might do it!';
-    }
-    if (streak >= 14) {
-      return '🔥 Two week streak! You\'re absolutely unstoppable!';
-    }
-    if (streak >= 7) {
-      return '🔥 One week streak! The reading force is strong with you!';
-    }
-    if (actionItems.some(item => item.type === 'ready_submit')) {
-      return '🎉 You have books ready to submit! Let\'s celebrate!';
-    }
-    // UPDATED: Better motivational messages - celebrate achievements
 const getMotivationalMessage = () => {
-  // Add error handling and logging
   try {
     const { booksReadThisYear, currentYearGoal } = dashboardData || {};
     const { streak } = readingStats || {};
@@ -1050,7 +1024,6 @@ const getMotivationalMessage = () => {
     return '📚 Happy reading!'; // Safe fallback
   }
 };
-  };
 
   // NEW: Handle grade update
   const handleGradeUpdate = async () => {
