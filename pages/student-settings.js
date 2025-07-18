@@ -1843,7 +1843,7 @@ export default function StudentSettings() {
                     color: previewTheme.textPrimary,
                     marginBottom: '6px'
                   }}>
-                    Type "DELETE MY ACCOUNT" to confirm:
+                    Type &quot;DELETE MY ACCOUNT&quot; to confirm:
                   </label>
                   <input
                     type="text"

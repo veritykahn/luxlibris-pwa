@@ -888,7 +888,7 @@ export default function ParentOnboarding() {
                     margin: 0,
                     lineHeight: '1.4'
                   }}>
-                    🚀 <strong>Almost ready!</strong> Click "Complete Setup" to finish creating your family dashboard.
+                    🚀 <strong>Almost ready!</strong> &apos;Click Complete Setup&apos; to finish creating your family dashboard.
                   </p>
                 </div>
               </div>
