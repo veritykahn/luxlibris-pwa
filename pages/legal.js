@@ -111,7 +111,7 @@ export default function StudentLegal() {
             {isReturningUser ? (
               <>You have already accepted our Terms and Privacy Policy. This page is for reference only.</>
             ) : (
-              <>Your teacher or librarian gave your parent a special join code so you can join Lux Libris! As you read amazing books, you'll unlock beautiful <strong>Luxlings™</strong> saint achievements. Your reading journey starts here!</>
+              <>Your teacher or librarian gave your parent a special join code so you can join Lux Libris! As you read amazing books, you&apos;ll unlock beautiful <strong>Luxlings™</strong> saint achievements. Your reading journey starts here!</>
             )}
           </p>
         </div>
