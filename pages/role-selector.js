@@ -311,7 +311,7 @@ export default function RoleSelector() {
                 "🎉 Celebrate achievements"
               ]}
               buttonText="Support My Child"
-              onClick={() => router.push('/parent-account-creation')}
+              onClick={() => router.push('/parent/account-creation')}
               gradient="from-green-400 to-teal-500"
               highlight="Basic access FREE with school!"
             />

@@ -2056,6 +2056,964 @@ const CURRENT_YEAR_BOOK_QUIZZES = [
         "answer": "A cellphone"
       }
     ]
+  },
+  {
+    "book_id": "015",
+    "title": "Scare School Diaries Quiz",
+    "grades": "4-8",
+    "questions": [
+      {
+        "question": "What is the main character's name?",
+        "options": ["Boo", "Bash", "Bell", "Bob"],
+        "answer": "Bash"
+      },
+      {
+        "question": "What type of creature is the main character?",
+        "options": ["Vampire", "Werewolf", "Ghost", "Zombie"],
+        "answer": "Ghost"
+      },
+      {
+        "question": "Who is Bash's sister?",
+        "options": ["Bella", "Betty", "Brianna", "Bonnie"],
+        "answer": "Bella"
+      },
+      {
+        "question": "What is special about Bash's sister's experience at Scare School?",
+        "options": ["She failed all her classes", "She was expelled", "She loved it and did well", "She never attended"],
+        "answer": "She loved it and did well"
+      },
+      {
+        "question": "Who is Bash's roommate?",
+        "options": ["Vlad", "Itsy", "Wes", "Mumford"],
+        "answer": "Itsy"
+      },
+      {
+        "question": "What type of creature is Bash's roommate?",
+        "options": ["Spider", "Bat", "Snake", "Troll"],
+        "answer": "Spider"
+      },
+      {
+        "question": "Which teacher is Bash's homeroom teacher?",
+        "options": ["Mr. Crane", "Professor Snekk", "Ms. Graves", "Captain Loosebeard"],
+        "answer": "Ms. Graves"
+      },
+      {
+        "question": "What does C.A.T. stand for?",
+        "options": ["Creatures Are Terrifying", "Creepy Animal Test", "Creature Aptitude Test", "Cool And Terrifying"],
+        "answer": "Creature Aptitude Test"
+      },
+      {
+        "question": "Who are the main bullies in the story?",
+        "options": ["Wes and Mumford", "Vlad and Vicky", "Zara and Batslee", "Mimi and Itsy"],
+        "answer": "Vlad and Vicky"
+      },
+      {
+        "question": "What type of creatures are the bullies?",
+        "options": ["Werewolves", "Zombies", "Vampires", "Ghosts"],
+        "answer": "Vampires"
+      },
+      {
+        "question": "Which ghost skill does Bash struggle with the most?",
+        "options": ["Flying", "Making scary noises", "Passing through walls", "Disappearing completely"],
+        "answer": "Passing through walls"
+      },
+      {
+        "question": "What subject does Mr. Crane teach?",
+        "options": ["Introduction to Scare Tactics", "Human Behavior", "Creature Intensive", "Philosophy of Fear"],
+        "answer": "Creature Intensive"
+      },
+      {
+        "question": "Who teaches \"Advanced Creeping and Crawling\"?",
+        "options": ["Ms. Graves", "Mr. Crane", "Professor Snekk", "Ms. Scully"],
+        "answer": "Professor Snekk"
+      },
+      {
+        "question": "What is Captain Loosebeard's job at the school?",
+        "options": ["Principal", "Librarian", "School cook", "Security guard"],
+        "answer": "School cook"
+      },
+      {
+        "question": "How many special creature skills must students demonstrate to pass the C.A.T.?",
+        "options": ["One", "Two", "Three", "Four"],
+        "answer": "Two"
+      },
+      {
+        "question": "Why does Bash finally succeed in passing through the wall?",
+        "options": ["He practiced more", "He used a magic potion", "He wanted to help Itsy who was in trouble", "Mr. Crane helped him"],
+        "answer": "He wanted to help Itsy who was in trouble"
+      },
+      {
+        "question": "What does Bash receive from Bella during his time at school?",
+        "options": ["A care package", "A phone call", "A letter", "A visit"],
+        "answer": "A letter"
+      },
+      {
+        "question": "How does Mr. Crane's attitude toward Bash change by the end?",
+        "options": ["He becomes meaner", "He stays the same", "He becomes more encouraging", "He ignores Bash completely"],
+        "answer": "He becomes more encouraging"
+      },
+      {
+        "question": "What does Bash plan to do after passing his test?",
+        "options": ["Transfer to a different school", "Go home and never return", "Return to Scare School for more learning", "Become a teacher"],
+        "answer": "Return to Scare School for more learning"
+      },
+      {
+        "question": "What is the main theme of the story?",
+        "options": ["Being scary is the most important thing", "Friendship and courage help you overcome challenges", "School is always terrible", "Ghosts are better than other creatures"],
+        "answer": "Friendship and courage help you overcome challenges"
+      }
+    ]
+  },
+  {
+    "book_id": "002",
+    "title": "When We Flew Away Quiz",
+    "author": "Alice Hoffman",
+    "grades": "4-8",
+    "questions": [
+      {
+        "question": "What did Anne and Margot call their father?",
+        "options": ["Papa", "Daddy", "Pim", "Father"],
+        "answer": "Pim"
+      },
+      {
+        "question": "Where did Anne imagine she would go one day?",
+        "options": ["California", "England", "Canada", "Australia"],
+        "answer": "California"
+      },
+      {
+        "question": "What were bolus?",
+        "options": ["German soldiers", "Dutch sweet rolls with cinnamon, raisins, and candied citrus peel", "Jewish identification cards", "Bird nests"],
+        "answer": "Dutch sweet rolls with cinnamon, raisins, and candied citrus peel"
+      },
+      {
+        "question": "What animal followed Anne home?",
+        "options": ["A crow", "A pigeon", "A magpie", "A sparrow"],
+        "answer": "A magpie"
+      },
+      {
+        "question": "What did the family first think was thunder one morning?",
+        "options": ["A storm approaching", "Construction work", "German bombers", "Artillery practice"],
+        "answer": "German bombers"
+      },
+      {
+        "question": "What did Pim's company sell?",
+        "options": ["Jam and preserves", "Opekta, a thickening agent for jam", "Baking supplies", "Newspapers"],
+        "answer": "Opekta, a thickening agent for jam"
+      },
+      {
+        "question": "What were all Jewish residents required to do?",
+        "options": ["Move to a different neighborhood", "Register with the Civic Registry", "Pay extra taxes", "Attend special schools"],
+        "answer": "Register with the Civic Registry"
+      },
+      {
+        "question": "What tragic statistic is mentioned about the Netherlands?",
+        "options": ["It had the most Jewish refugees", "It had the longest occupation", "It would have the greatest percentage of Jews murdered of any Western European country", "It had the most resistance fighters"],
+        "answer": "It would have the greatest percentage of Jews murdered of any Western European country"
+      },
+      {
+        "question": "How many countries wanted Jewish refugees?",
+        "options": ["Many countries", "A few countries", "Most European countries", "No country"],
+        "answer": "No country"
+      },
+      {
+        "question": "How many Jewish men were arrested and deported to Mauthausen?",
+        "options": ["200", "300", "400", "500"],
+        "answer": "400"
+      },
+      {
+        "question": "What did Anne find in a stork's nest?",
+        "options": ["A blue hair ribbon", "A gold coin", "A letter", "A small bird"],
+        "answer": "A blue hair ribbon"
+      },
+      {
+        "question": "What did many Dutch children join?",
+        "options": ["The resistance", "Youth clubs", "The Jeugdstorm (Youth Storm)", "Sports teams"],
+        "answer": "The Jeugdstorm (Youth Storm)"
+      },
+      {
+        "question": "What did the signs say that were posted everywhere?",
+        "options": ["Germans Welcome", "Voor Juden Verboden (Forbidden For Jews)", "Registration Required", "Curfew in Effect"],
+        "answer": "Voor Juden Verboden (Forbidden For Jews)"
+      },
+      {
+        "question": "What did Edith give to Margot on her sixteenth birthday?",
+        "options": ["A diary", "Oma's gold necklace", "A silver bracelet", "A book"],
+        "answer": "Oma's gold necklace"
+      },
+      {
+        "question": "What is Purim?",
+        "options": ["A type of food", "A festival that marks Queen Esther saving her people", "A German holiday", "A Jewish prayer"],
+        "answer": "A festival that marks Queen Esther saving her people"
+      },
+      {
+        "question": "What were Jewish people forced to sew on their clothes?",
+        "options": ["A red circle", "A black square", "A yellow star", "A blue triangle"],
+        "answer": "A yellow star"
+      },
+      {
+        "question": "What was special about the Jewish market?",
+        "options": ["It had the best food", "It was open all day", "It only had the food no one else wanted", "It was free"],
+        "answer": "It only had the food no one else wanted"
+      },
+      {
+        "question": "What was Helmut Silberberg's nickname?",
+        "options": ["Hank", "Harry", "Hello", "Henry"],
+        "answer": "Hello"
+      },
+      {
+        "question": "What did Anne leave on an Elm Tree?",
+        "options": ["A letter to her friend", "A wish: \"Remember us - Remember me\"", "A blue ribbon", "A small gift"],
+        "answer": "A wish: \"Remember us - Remember me\""
+      },
+      {
+        "question": "What was Anne looking for throughout the story?",
+        "options": ["A new home", "A place where she wouldn't have to be afraid of soldiers on the streets", "Her lost pet", "A way to help other families"],
+        "answer": "A place where she wouldn't have to be afraid of soldiers on the streets"
+      }
+    ]
+  },
+  {
+    "book_id": "006",
+    "title": "Legendarios: Wrath of the Rain God - Quiz",
+    "questions": [
+      {
+        "question": "Where are Emma and Martín moving from and to?",
+        "options": ["From Chicago to Mexico City", "From Cuernavaca, Mexico to Chicago", "From Mexico City to Los Angeles", "From Chicago to Cuernavaca"],
+        "answer": "From Cuernavaca, Mexico to Chicago"
+      },
+      {
+        "question": "What special gift does Abuela give the twins before they move?",
+        "options": ["A magic mirror", "A book of Mexican legends", "An obsidian necklace", "A lightning bolt"],
+        "answer": "A book of Mexican legends"
+      },
+      {
+        "question": "What is the name of the rain god in the story?",
+        "options": ["Tezcatlipoca", "Quetzalcoatl", "Tlaloc", "Smoking Mirror"],
+        "answer": "Tlaloc"
+      },
+      {
+        "question": "What has been stolen from Tlaloc that is causing the storms?",
+        "options": ["His mirror", "His crown", "His lightning bolt", "His temple"],
+        "answer": "His lightning bolt"
+      },
+      {
+        "question": "What is Tezcatlipoca also known as?",
+        "options": ["Rain God", "Smoking Mirror", "Lightning Lord", "Storm Bringer"],
+        "answer": "Smoking Mirror"
+      },
+      {
+        "question": "What type of animal form does Tezcatlipoca take?",
+        "options": ["Eagle", "Serpent", "Jaguar", "Butterfly"],
+        "answer": "Jaguar"
+      },
+      {
+        "question": "What is the name of the girl who helps Emma and Martín in the magical world?",
+        "options": ["Nelli", "Carmela", "Victoria", "Beatriz"],
+        "answer": "Nelli"
+      },
+      {
+        "question": "What is Nelli's grandmother called?",
+        "options": ["Abuela", "Cihtli", "Mami", "Nana"],
+        "answer": "Cihtli"
+      },
+      {
+        "question": "What object does Martín treasure that was supposed to bring good luck?",
+        "options": ["A jade bracelet", "A maneki-neko (Japanese cat statue)", "A silver coin", "A crystal pendant"],
+        "answer": "A maneki-neko (Japanese cat statue)"
+      },
+      {
+        "question": "What does Emma wear around her neck that has magical properties?",
+        "options": ["A jade necklace", "A silver chain", "An obsidian necklace", "A golden amulet"],
+        "answer": "An obsidian necklace"
+      },
+      {
+        "question": "What creates the magical archways that transport the characters?",
+        "options": ["Tlaloc's storms", "Emma's necklace activating", "The book glowing", "Tezcatlipoca's mirror"],
+        "answer": "Emma's necklace activating"
+      },
+      {
+        "question": "What gift does Abuela give Martín before leaving?",
+        "options": ["A book", "An abalone shell", "A wooden flute", "A painted mask"],
+        "answer": "An abalone shell"
+      },
+      {
+        "question": "What does the message on Martín's shell say?",
+        "options": ["Magic awaits you", "Beauty is sometimes hard to find, unless you know where to look for it", "Home is where the heart is", "Adventure calls to the brave"],
+        "answer": "Beauty is sometimes hard to find, unless you know where to look for it"
+      },
+      {
+        "question": "What does Nelli's brother Manauia create from the abalone shell?",
+        "options": ["A magical mirror", "A beautiful necklace for Tezcatlipoca", "A ceremonial mask", "A lightning rod"],
+        "answer": "A beautiful necklace for Tezcatlipoca"
+      },
+      {
+        "question": "How do the children \"charge\" Tlaloc to give him energy?",
+        "options": ["They perform a rain dance", "They place their hands on his stone head", "They give him the lightning bolt", "They sing ancient songs"],
+        "answer": "They place their hands on his stone head"
+      },
+      {
+        "question": "What is the name of Emma and Martín's home city in Mexico?",
+        "options": ["Mexico City", "Texcoco", "Cuernavaca", "Tenochtitlan"],
+        "answer": "Cuernavaca"
+      },
+      {
+        "question": "Why is Cuernavaca called \"the City of the Eternal Spring\"?",
+        "options": ["It has many flowers", "It has springlike weather all year", "It was built near a spring", "It has eternal youth magic"],
+        "answer": "It has springlike weather all year"
+      },
+      {
+        "question": "What does \"Tlaloc\" mean in Nahuatl?",
+        "options": ["Rain Maker", "Storm Bringer", "He Who Makes Things Sprout", "Lightning God"],
+        "answer": "He Who Makes Things Sprout"
+      },
+      {
+        "question": "At the beginning of the story, what are Emma and Martín doing in Abuela's kitchen?",
+        "options": ["Cooking dinner", "Packing boxes", "Eating chocolate and churros", "Reading books"],
+        "answer": "Eating chocolate and churros"
+      },
+      {
+        "question": "What promise does Tlaloc make to Nelli's village at the end?",
+        "options": ["He will never make it rain again", "He will guard their village with special care", "He will give them magical powers", "He will move his temple there"],
+        "answer": "He will guard their village with special care"
+      }
+    ]
+  },
+  {
+    "book_id": "004",
+    "title": "It came from the trees",
+    "author": "Ally Russell",
+    "questions": [
+      {
+        "question": "What scout organization does Jenna initially join with her best friend Reese?",
+        "options": ["Owlet Scouts", "Cottontail Scouts", "Wilderness Scouts", "Pine Tree Scouts"],
+        "answer": "Cottontail Scouts"
+      },
+      {
+        "question": "What does Jenna first spot watching them from the trees during their hike?",
+        "options": ["A black bear", "A park ranger", "A large, mysterious creature", "A lost hiker"],
+        "answer": "A large, mysterious creature"
+      },
+      {
+        "question": "How does Reese disappear from their tent?",
+        "options": ["She runs away after fighting with the troop leader", "She gets lost looking for the bathroom", "A creature breaks into their tent and takes her", "She falls into a hidden cave"],
+        "answer": "A creature breaks into their tent and takes her"
+      },
+      {
+        "question": "What do the police and adults initially believe happened to Reese?",
+        "options": ["She was taken by a wild animal", "She ran away from camp", "She got lost in the woods", "She was kidnapped by a person"],
+        "answer": "She ran away from camp"
+      },
+      {
+        "question": "What is the name of the blog that helps Jenna understand what she encountered?",
+        "options": ["Wilderness Mysteries", "It Came from the Trees", "Forest Creature Reports", "Missing in the Woods"],
+        "answer": "It Came from the Trees"
+      },
+      {
+        "question": "What scout organization does Jenna join for her second camping trip?",
+        "options": ["Cottontail Scouts", "Forest Rangers", "Owlet Scouts", "Adventure Scouts"],
+        "answer": "Owlet Scouts"
+      },
+      {
+        "question": "Who becomes Jenna's closest friend among the new scouts?",
+        "options": ["Ana", "Ashley", "Rosie", "Norrie"],
+        "answer": "Norrie"
+      },
+      {
+        "question": "What disturbing signs do the new scouts find that indicate they're being stalked?",
+        "options": ["Human footprints only", "Large footprints, claw marks, and strange sounds", "Broken camping equipment", "Written messages on trees"],
+        "answer": "Large footprints, claw marks, and strange sounds"
+      },
+      {
+        "question": "What does Jenna secretly do to try to help Reese?",
+        "options": ["Leaves food caches and pink chalk marks on trees", "Builds signal fires every night", "Sends radio messages", "Leaves written notes in bottles"],
+        "answer": "Leaves food caches and pink chalk marks on trees"
+      },
+      {
+        "question": "What happens when the creature stalks their camp at night?",
+        "options": ["It steals their food and leaves", "It makes threatening sounds and tries to get into their tent", "It attacks them immediately", "It just watches from a distance"],
+        "answer": "It makes threatening sounds and tries to get into their tent"
+      },
+      {
+        "question": "What disturbing discovery do they make in the creature's territory?",
+        "options": ["Human bones scattered around", "A dead coyote hanging in a tree", "An abandoned cabin", "Old camping equipment"],
+        "answer": "A dead coyote hanging in a tree"
+      },
+      {
+        "question": "What happens to Troop Leader Stacy during the creature's daylight attack?",
+        "options": ["She's taken by the creature", "She breaks her leg and becomes stranded", "She successfully fights off the creature", "She runs away in fear"],
+        "answer": "She breaks her leg and becomes stranded"
+      },
+      {
+        "question": "What does Jenna finally reveal to her fellow scouts when they're trapped?",
+        "options": ["That she's actually older than she claims", "That she knows the way out of the woods", "The truth about Reese's disappearance and the creature", "That she's related to a park ranger"],
+        "answer": "The truth about Reese's disappearance and the creature"
+      },
+      {
+        "question": "How do the scouts successfully fight the creature?",
+        "options": ["They use guns borrowed from rangers", "They hide until it goes away", "They use improvised weapons and set it on fire", "They call for help on a radio"],
+        "answer": "They use improvised weapons and set it on fire"
+      },
+      {
+        "question": "Who arrives to rescue them the next morning?",
+        "options": ["Their parents only", "Park rangers with a rescue team", "The police", "A helicopter crew"],
+        "answer": "Park rangers with a rescue team"
+      },
+      {
+        "question": "What is suspicious about one of the men who comes with the rescue team?",
+        "options": ["He's wearing the wrong uniform", "He's the same man who followed them in a pickup truck earlier", "He claims to be Jenna's relative", "He's carrying weapons"],
+        "answer": "He's the same man who followed them in a pickup truck earlier"
+      },
+      {
+        "question": "What happens during the creature's final attack near the van?",
+        "options": ["The creature successfully takes one of the scouts", "The united scouts scare it away together", "The rangers shoot and kill it", "It retreats when it sees the adults"],
+        "answer": "The united scouts scare it away together"
+      },
+      {
+        "question": "How does Jenna's family finally react to her story?",
+        "options": ["They still don't believe her", "They believe her after witnessing the creature themselves", "They think she's having nightmares", "They send her to therapy"],
+        "answer": "They believe her after witnessing the creature themselves"
+      },
+      {
+        "question": "What is revealed about Reese's fate at the end?",
+        "options": ["She's found dead in the woods", "She's never found", "She's found alive after surviving alone for weeks", "She's found living with a family who took her in"],
+        "answer": "She's found alive after surviving alone for weeks"
+      },
+      {
+        "question": "How did Reese ultimately find her way to safety?",
+        "options": ["She remembered the trail back to camp", "She followed a river to civilization", "She followed Jenna's pink chalk trail markers", "She was rescued by other campers"],
+        "answer": "She followed Jenna's pink chalk trail markers"
+      }
+    ]
+  },
+  {
+    "book_id": "011",
+    "title": "Dona Quixote: Rise of the Knight Quiz",
+    "questions": [
+      {
+        "question": "How did Lucia's Abuelo save his sister from el sombrerón?",
+        "options": ["He fought the creature with a sword", "He cut off her hair", "He gave the creature gold coins", "He chanted a magical spell"],
+        "answer": "He cut off her hair"
+      },
+      {
+        "question": "What is the name of Lucia's noble donkey steed?",
+        "options": ["Pedro", "Thunder", "Rocky", "Santiago"],
+        "answer": "Rocky"
+      },
+      {
+        "question": "Why is Lucia's family worried about Abuela being discovered by the mayor?",
+        "options": ["She owes money to the town", "She's not a legal citizen yet", "She's been practicing magic", "She's wanted by the police"],
+        "answer": "She's not a legal citizen yet"
+      },
+      {
+        "question": "According to the story, who originally owned Abuelo's lance, helmet, and shield?",
+        "options": ["A famous Spanish conquistador", "Lucia's great-grandfather", "Alonso Quijano Mancha (Don Quixote)", "A legendary Mexican knight"],
+        "answer": "Alonso Quijano Mancha (Don Quixote)"
+      },
+      {
+        "question": "What is Rule Number 8 of the Knight's Code that Sandro adds?",
+        "options": ["Always tell the truth", "You must always trust and listen to your best friend", "Never retreat from battle", "Protect the innocent"],
+        "answer": "You must always trust and listen to your best friend"
+      },
+      {
+        "question": "What is Rule Number 2 of the Knight's Code?",
+        "options": ["Always be brave in the face of danger", "Thous shalt support and protect they family and friends", "Never lie or deceive others", "Honor your elders"],
+        "answer": "Thous shalt support and protect they family and friends"
+      },
+      {
+        "question": "What physical reaction does the mayor cause in Lucia?",
+        "options": ["She gets dizzy", "She feels cold", "She gets a bad feeling in her tummy", "She gets a headache"],
+        "answer": "She gets a bad feeling in her tummy"
+      },
+      {
+        "question": "What kind of creature is the mayor revealed to be?",
+        "options": ["A vampire", "A shapeshifter who takes the form of a jaguar", "A werewolf", "A demon"],
+        "answer": "A shapeshifter who takes the form of a jaguar"
+      },
+      {
+        "question": "Who is La Mujer de Blanco in relation to Lucia?",
+        "options": ["Her long-lost aunt", "A spirit who pretends to be her friend", "Her grandmother's ghost", "A helpful witch"],
+        "answer": "A spirit who pretends to be her friend"
+      },
+      {
+        "question": "What did people used to call Lucia's Abuelo?",
+        "options": ["Abuelo Fuerte (Strong Grandfather)", "Abuelo Sabio (Wise Grandfather)", "Abuelo Loco (Crazy Grandfather)", "Abuelo Valiente (Brave Grandfather)"],
+        "answer": "Abuelo Loco (Crazy Grandfather)"
+      },
+      {
+        "question": "What creatures have actually been dumping out people's trash, not raccoons?",
+        "options": ["Goblins", "Chaneques (magical pixies)", "Sprites", "Gremlins"],
+        "answer": "Chaneques (magical pixies)"
+      },
+      {
+        "question": "What is a Sisimito described as?",
+        "options": ["A bird-like creature with human hands", "A snake with legs", "A gorilla-like creature with a human face, fur, and backwards feet", "A cat with wings"],
+        "answer": "A gorilla-like creature with a human face, fur, and backwards feet"
+      },
+      {
+        "question": "How does Sandro stop the Sisimito?",
+        "options": ["He sings to it", "He tricks it with food", "He dancing, causing it to trip and fall", "He uses magic"],
+        "answer": "He dancing, causing it to trip and fall"
+      },
+      {
+        "question": "What is the true purpose of the Chaneques?",
+        "options": ["They're thieves stealing valuable items", "They're guardians of the environment sorting recyclables", "They're messengers from the spirit world", "They're protectors of buried treasure"],
+        "answer": "They're guardians of the environment sorting recyclables"
+      },
+      {
+        "question": "What do Duendes eat, and what do they do for children?",
+        "options": ["Flowers and leaves; they grant wishes", "Termites, ants, and toenail clippings; they watch out and protect children", "Fruits and vegetables; they teach them magic", "Nothing; they're invisible spirits"],
+        "answer": "Termites, ants, and toenail clippings; they watch out and protect children"
+      },
+      {
+        "question": "What kind of creature is the pitmaster at Famous Barbeque BBQ?",
+        "options": ["A chupacabra", "A huay chivo (part goat)", "A vampire", "A wendigo"],
+        "answer": "A huay chivo (part goat)"
+      },
+      {
+        "question": "What are huay chivos' best friends, and what are they afraid of?",
+        "options": ["Dogs; spiders", "Birds; water", "Cats; butterflies", "Rabbits; loud noises"],
+        "answer": "Cats; butterflies"
+      },
+      {
+        "question": "What is the mayor's name, and what happened to make him evil?",
+        "options": ["Carlos; he was cursed by a witch", "Miguel; he sold his soul", "Jim; he met La Mujer de Blanco", "Roberto; he was possessed by a demon"],
+        "answer": "Jim; he met La Mujer de Blanco"
+      },
+      {
+        "question": "What is the arch that La Mujer de Blanco forces the mayor to build really called?",
+        "options": ["El Arco del Destino (The Arch of Destiny)", "El Arco de Pesadilla (The Nightmare Arch)", "El Arco de la Muerte (The Arch of Death)", "El Arco del Mal (The Arch of Evil)"],
+        "answer": "El Arco de Pesadilla (The Nightmare Arch)"
+      },
+      {
+        "question": "Who is La Mujer de Blanco revealed to be?",
+        "options": ["Moctezuma's daughter", "A fallen angel", "The Cihuacóatl (serpent goddess)", "The ghost of a Spanish queen"],
+        "answer": "The Cihuacóatl (serpent goddess)"
+      }
+    ]
+  },
+  {
+    "book_id": "008",
+    "title": "Tales From Cabin 23: The Boo Hag Flex Quiz",
+    "questions": [
+      {
+        "question": "What did the witch command Elaina to do?",
+        "options": ["Dance around a fire", "Listen to a story", "Find a magical herb", "Sing an ancient song"],
+        "answer": "Listen to a story"
+      },
+      {
+        "question": "What was special about Tasha's notebook?",
+        "options": ["It was enchanted with protective spells", "It contained her grandmother's recipes", "It was the last thing her mom had given her", "It was over 100 years old"],
+        "answer": "It was the last thing her mom had given her"
+      },
+      {
+        "question": "What kind of establishment was The Goal Line?",
+        "options": ["A coffee shop", "A sports bar", "A bookstore", "A movie theater"],
+        "answer": "A sports bar"
+      },
+      {
+        "question": "What book was Tasha reading?",
+        "options": ["A Guide to Southern Myths and Legends", "Ghost Stories of the South", "Witchcraft and Magic", "Tales of the Supernatural"],
+        "answer": "A Guide to Southern Myths and Legends"
+      },
+      {
+        "question": "What disturbing thing fell out from under the sheet?",
+        "options": ["A snake", "A hand", "A skull", "A bloody knife"],
+        "answer": "A hand"
+      },
+      {
+        "question": "What was the name of Ms. Greta's dog?",
+        "options": ["Bruno", "Fredo", "Max", "Charlie"],
+        "answer": "Fredo"
+      },
+      {
+        "question": "What did Ellie show Tasha?",
+        "options": ["A dead bird", "A dead cat", "A dead fish", "A dead mouse"],
+        "answer": "A dead cat"
+      },
+      {
+        "question": "Where did Tasha bump into Kim?",
+        "options": ["At the grocery store", "At school", "At the library", "At the park"],
+        "answer": "At the library"
+      },
+      {
+        "question": "What was unusual about how Tasha and her mom ordered at restaurants?",
+        "options": ["They always shared one meal", "They always started with dessert", "They never ordered drinks", "They always asked for the check first"],
+        "answer": "They always started with dessert"
+      },
+      {
+        "question": "According to the story, what did blinking lights on the water at night mean?",
+        "options": ["A ship was in distress", "Fishermen were working late", "A murder ghost was looking for something", "The coast guard was patrolling"],
+        "answer": "A murder ghost was looking for something"
+      },
+      {
+        "question": "What did the store clerk mistakenly think about Kim?",
+        "options": ["That she was Tasha's sister", "That she was Tasha's teacher", "That she was Tasha's mother", "That she was Tasha's aunt"],
+        "answer": "That she was Tasha's mother"
+      },
+      {
+        "question": "What do Boo Hags do when they go hunting?",
+        "options": ["They turn invisible", "They take off their skin", "They grow claws", "They fly through the air"],
+        "answer": "They take off their skin"
+      },
+      {
+        "question": "What did the girls find where John had been kneeling?",
+        "options": ["Something like fish skin", "Strange footprints", "A pool of blood", "Mysterious symbols"],
+        "answer": "Something like fish skin"
+      },
+      {
+        "question": "What habit did Mrs. Washington have?",
+        "options": ["She often fell asleep reading books", "She often fell asleep in front of the TV", "She often fell asleep in her garden", "She often fell asleep at the kitchen table"],
+        "answer": "She often fell asleep in front of the TV"
+      },
+      {
+        "question": "What pattern was on Tasha's new dress?",
+        "options": ["A mermaid swimming", "A dolphin jumping", "An octopus reading", "A whale singing"],
+        "answer": "An octopus reading"
+      },
+      {
+        "question": "How can someone defeat a Boo Hag?",
+        "options": ["By burning sage around them", "By saying a special prayer", "By making sure it can't put its skin back on", "By throwing salt at them"],
+        "answer": "By making sure it can't put its skin back on"
+      },
+      {
+        "question": "Where did Tasha go with John and Kim?",
+        "options": ["Charleston", "Savannah", "Atlanta", "Macon"],
+        "answer": "Savannah"
+      },
+      {
+        "question": "How did the creature move in the room?",
+        "options": ["It slithered like a snake", "It hopped like a frog", "It climbed onto the ceiling like a giant spider", "It floated like a ghost"],
+        "answer": "It climbed onto the ceiling like a giant spider"
+      },
+      {
+        "question": "What did the girls find in the closet that made them suspicious of John?",
+        "options": ["Kim's clothes", "Kim's skin", "Kim's diary", "Kim's jewelry"],
+        "answer": "Kim's skin"
+      },
+      {
+        "question": "What happens if beans are scattered in front of a witch?",
+        "options": ["She will become paralyzed", "She will disappear immediately", "She will have to pick them up and count them", "She will lose her magical powers"],
+        "answer": "She will have to pick them up and count them"
+      }
+    ]
+  },
+  {
+    "book_id": "013",
+    "title": "The Sherlock Society by James Ponti Quiz",
+    "questions": [
+      {
+        "question": "What did Ms. Compos do with the library?",
+        "options": ["She turned it into an escape room", "She converted it into a computer lab", "She made it into a study hall", "She transformed it into a detective museum"],
+        "answer": "She turned it into an escape room"
+      },
+      {
+        "question": "According to the story, when does information go from trivial to significant?",
+        "options": ["When you have enough facts", "When you understand the meaning behind it", "When you can prove it's true", "When you share it with others"],
+        "answer": "When you understand the meaning behind it"
+      },
+      {
+        "question": "Why is Miami nicknamed the \"Magic City\"?",
+        "options": ["Because of its beautiful beaches", "Because of its nightlife", "Because Northerners were tricked into buying land before it was even a city", "Because of its art scene"],
+        "answer": "Because Northerners were tricked into buying land before it was even a city"
+      },
+      {
+        "question": "What is a ventanita?",
+        "options": ["A small balcony", "A type of window shade", "A Cuban dance", "A type of Cuban café where you order food from the sidewalk"],
+        "answer": "A type of Cuban café where you order food from the sidewalk"
+      },
+      {
+        "question": "Who was revealed to be \"Desperate Dan\"?",
+        "options": ["Alex and Zoe's mother", "Their grandfather", "Their teacher", "A local criminal"],
+        "answer": "Alex and Zoe's mother"
+      },
+      {
+        "question": "What did Grandpa suggest they use to find unsolved mysteries?",
+        "options": ["The internet", "His old files", "Library archives", "Police reports"],
+        "answer": "His old files"
+      },
+      {
+        "question": "What are the five Ws in detective work?",
+        "options": ["Who, what, where, when, and why", "Who, what, where, when, and which", "Who, what, where, when, and with", "Who, what, where, when, and will"],
+        "answer": "Who, what, where, when, and why"
+      },
+      {
+        "question": "Who was featured in the Pizza Impossible advertisement?",
+        "options": ["Alex", "Zoe", "Yadi", "Lina"],
+        "answer": "Yadi"
+      },
+      {
+        "question": "Where did they find a hidden map?",
+        "options": ["Under a desk drawer", "Behind a picture frame", "In the spine of the botany book", "Inside a computer"],
+        "answer": "In the spine of the botany book"
+      },
+      {
+        "question": "What is Alligator Alley?",
+        "options": ["A tourist attraction", "A street in Miami", "A nature preserve", "The interstate that runs through the Everglades"],
+        "answer": "The interstate that runs through the Everglades"
+      },
+      {
+        "question": "What is the Skunk Ape?",
+        "options": ["Florida's version of Bigfoot", "A type of swamp animal", "A local urban legend about a ghost", "A character in local folklore"],
+        "answer": "Florida's version of Bigfoot"
+      },
+      {
+        "question": "What disturbing discovery did they make in the slough?",
+        "options": ["Toxic waste", "Dead animals", "Stolen goods", "Ancient artifacts"],
+        "answer": "Dead animals"
+      },
+      {
+        "question": "What kind of environment did the wet lab maintain?",
+        "options": ["Desert-like conditions", "Arctic temperatures", "A tropical environment", "Mountain climate"],
+        "answer": "A tropical environment"
+      },
+      {
+        "question": "Why did Zoe order chicken fingers at the seafood restaurant?",
+        "options": ["She was allergic to seafood", "She didn't like the other options", "She was vegetarian", "To be difficult"],
+        "answer": "To be difficult"
+      },
+      {
+        "question": "What did they examine to find more evidence?",
+        "options": ["Drone footage", "Security camera recordings", "Witness statements", "Police reports"],
+        "answer": "Drone footage"
+      },
+      {
+        "question": "What excuse did they use to talk to Morris Kane?",
+        "options": ["They were students doing research", "They pretended to be making a documentary", "They said they were tourists", "They claimed to be reporters"],
+        "answer": "They pretended to be making a documentary"
+      },
+      {
+        "question": "What mistake did Lina make during their investigation?",
+        "options": ["She didn't turn off the microphone", "She forgot to bring the camera", "She lost the evidence", "She called the wrong number"],
+        "answer": "She didn't turn off the microphone"
+      },
+      {
+        "question": "What did Zoe accidentally leave behind?",
+        "options": ["Her phone", "Her mask and flippers on Kane's sailboat", "Her notebook", "Her camera"],
+        "answer": "Her mask and flippers on Kane's sailboat"
+      },
+      {
+        "question": "Why did the Secret Service give them immunity?",
+        "options": ["They were minors", "They cooperated with the investigation", "They worked out where the counterfeiting plates were hidden", "They promised to stay quiet"],
+        "answer": "They worked out where the counterfeiting plates were hidden"
+      },
+      {
+        "question": "Where did they go for their family vacation?",
+        "options": ["Orlando", "Tampa", "Jacksonville", "The Keys"],
+        "answer": "The Keys"
+      }
+    ]
+  },
+  {
+    "book_id": "010",
+    "title": "Invisible Isabel by Sally J. Pla Quiz",
+    "questions": [
+      {
+        "question": "What random thought did Isabel have about squirrels?",
+        "options": ["She wondered what squirrels did with their tails when they sat on chairs", "She wondered if squirrels could swim", "She wondered why squirrels buried nuts", "She wondered if squirrels could see colors"],
+        "answer": "She wondered what squirrels did with their tails when they sat on chairs"
+      },
+      {
+        "question": "How did Monica Hicks view herself?",
+        "options": ["As a misunderstood artist", "As the brilliant queen of everything", "As a future scientist", "As a natural leader"],
+        "answer": "As the brilliant queen of everything"
+      },
+      {
+        "question": "What special event did the Beanes have on Sunday?",
+        "options": ["A graduation celebration", "A birthday party", "A big family party", "A holiday dinner"],
+        "answer": "A big family party"
+      },
+      {
+        "question": "What helped calm Isabel's worry moths?",
+        "options": ["Deep breathing exercises", "Listening to music", "Drawing pictures", "When they were rocked"],
+        "answer": "When they were rocked"
+      },
+      {
+        "question": "What was notable about Monica's behavior toward others?",
+        "options": ["She was kind to everyone", "She ignored most people", "She was competitive with everyone", "She was only nice to people who counted"],
+        "answer": "She was only nice to people who counted"
+      },
+      {
+        "question": "What sign did Isabel put on her bedroom door?",
+        "options": ["Do Not Disturb: Secret Project Underway", "Keep Out: Artist at Work", "Please Knock First", "Study Time: Do Not Enter"],
+        "answer": "Do Not Disturb: Secret Project Underway"
+      },
+      {
+        "question": "What piece of jewelry was Hayden wearing?",
+        "options": ["A silver bracelet", "A tiny silver horseshoe", "A gold necklace", "A friendship ring"],
+        "answer": "A tiny silver horseshoe"
+      },
+      {
+        "question": "How did the girls know their picture gifts were from Isabel?",
+        "options": ["Isabel signed her name on them", "They recognized her handwriting", "She had drawn Monica holding her", "Isabel told them directly"],
+        "answer": "She had drawn Monica holding her"
+      },
+      {
+        "question": "Where did Isabel's tears fall during class?",
+        "options": ["On her desk", "On her backpack", "Onto her maths worksheet", "On her textbook"],
+        "answer": "Onto her maths worksheet"
+      },
+      {
+        "question": "How was Isabel's new pain described?",
+        "options": ["Dull and aching", "Throbbing and constant", "Cold and numbing", "Sharp and fiery"],
+        "answer": "Sharp and fiery"
+      },
+      {
+        "question": "Who called for emergency medical help?",
+        "options": ["Nurse Ito", "Mrs. Pickel", "Isabel's mother", "The school principal"],
+        "answer": "Nurse Ito"
+      },
+      {
+        "question": "What were the other girls worried about regarding Isabel's illness?",
+        "options": ["That she might not come back to school", "That you could make someone sick by hurting their feelings", "That they would get in trouble", "That she would be angry with them"],
+        "answer": "That you could make someone sick by hurting their feelings"
+      },
+      {
+        "question": "What type of flowers were Monica's mother's favorite?",
+        "options": ["Red roses", "Purple violets", "Gold chrysanthemums", "White daisies"],
+        "answer": "Gold chrysanthemums"
+      },
+      {
+        "question": "What does MRI stand for?",
+        "options": ["Medical radiation imaging", "Multiple range inspection", "Molecular research investigation", "Magnetic resonance imaging"],
+        "answer": "Magnetic resonance imaging"
+      },
+      {
+        "question": "What did Mrs. Pickel offer the class during recess?",
+        "options": ["They could stay in to make get-well cards", "They could have extra free time", "They could watch a movie", "They could have a class party"],
+        "answer": "They could stay in to make get-well cards"
+      },
+      {
+        "question": "What medical procedure did Dr. Hicks perform on Isabel?",
+        "options": ["He set her broken arm", "He removed her appendix", "He treated her concussion", "He performed eye surgery"],
+        "answer": "He removed her appendix"
+      },
+      {
+        "question": "What changed about Isabel's social situation in the hospital?",
+        "options": ["She became more anxious", "She felt more lonely than ever", "She wasn't invisible anymore", "She made new enemies"],
+        "answer": "She wasn't invisible anymore"
+      },
+      {
+        "question": "What important information did Dr. Hicks share with Isabel about herself?",
+        "options": ["She was extremely intelligent", "She had a rare medical condition", "She needed to change schools", "She was neurodivergent"],
+        "answer": "She was neurodivergent"
+      },
+      {
+        "question": "Who helped Isabel develop coping strategies?",
+        "options": ["Counselor Wanda", "Dr. Hicks", "Nurse Ito", "Mrs. Pickel"],
+        "answer": "Counselor Wanda"
+      },
+      {
+        "question": "What did Counselor Wanda help Isabel create to manage her worries?",
+        "options": ["A list of coping strategies to fight off the worry moths", "A daily schedule to reduce stress", "A journal for recording her feelings", "A meditation routine for relaxation"],
+        "answer": "A list of coping strategies to fight off the worry moths"
+      }
+    ]
+  },
+  {
+    "book_id": "012",
+    "title": "Dog Town by Katherine Applegate & Gennifer Choldenko Quiz",
+    "questions": [
+      {
+        "question": "What gimmick did Dogtown 2.0 introduce to the shelter?",
+        "options": ["Robot dogs", "Virtual reality pet experiences", "Automated feeding machines", "Holographic displays"],
+        "answer": "Robot dogs"
+      },
+      {
+        "question": "What was Metal Head constantly doing?",
+        "options": ["Charging his battery", "Reading his manual", "Playing with toys", "Watching television"],
+        "answer": "Reading his manual"
+      },
+      {
+        "question": "What made Mouse special in terms of communication?",
+        "options": ["He could speak human words", "He could write messages", "He was trilingual - understanding mouse, human and dog", "He could use sign language"],
+        "answer": "He was trilingual - understanding mouse, human and dog"
+      },
+      {
+        "question": "What was Chance's particular genius with people?",
+        "options": ["She could predict their emotions", "She could perform amazing tricks", "She could find lost objects", "She made everyone feel like her favourite"],
+        "answer": "She made everyone feel like her favourite"
+      },
+      {
+        "question": "How did Quinn smell to the dogs?",
+        "options": ["Like buttered toast with a touch of toothpaste", "Like flowers and soap", "Like peanut butter and jelly", "Like coffee and vanilla"],
+        "answer": "Like buttered toast with a touch of toothpaste"
+      },
+      {
+        "question": "Why did Buster chew Quinn's book?",
+        "options": ["He was teething and needed something to gnaw", "He thought Geraldine needed help", "He was angry about being ignored", "He was trying to get attention"],
+        "answer": "He thought Geraldine needed help"
+      },
+      {
+        "question": "How do dogs make promises to each other?",
+        "options": ["By barking in a special way", "By wagging their tails", "By touching noses", "By pawing the ground"],
+        "answer": "By touching noses"
+      },
+      {
+        "question": "What was a \"tail-out\" at the shelter?",
+        "options": ["A special grooming technique", "A way to exercise the dogs", "A feeding schedule", "All the dogs turned away from patrons so they wouldn't be adopted"],
+        "answer": "All the dogs turned away from patrons so they wouldn't be adopted"
+      },
+      {
+        "question": "According to the story, why do dogs steal socks?",
+        "options": ["To understand a person by the way their feet smell", "Because they like the texture", "To play tug-of-war games", "Because they're bored"],
+        "answer": "To understand a person by the way their feet smell"
+      },
+      {
+        "question": "What food did Metal Head share with Chance and Mouse?",
+        "options": ["Hot dogs", "Cheese sandwiches", "Peanut butter cookies", "Chicken nuggets"],
+        "answer": "Cheese sandwiches"
+      },
+      {
+        "question": "Why didn't Johnny want Metal Head anymore?",
+        "options": ["The robot was broken", "His parents said no more pets", "He thought he was too old for a toy dog", "He preferred real dogs"],
+        "answer": "He thought he was too old for a toy dog"
+      },
+      {
+        "question": "Where did Professor Bessel and Jessie go together?",
+        "options": ["On a research trip to Japan", "To visit family in England", "On a vacation to France", "On a sabbatical to Italy"],
+        "answer": "On a sabbatical to Italy"
+      },
+      {
+        "question": "What tragic accident happened to Chance?",
+        "options": ["The baby-sitter's boyfriend ran over her in his truck", "She fell down a steep cliff", "She was hit by a delivery van", "She was injured by another dog"],
+        "answer": "The baby-sitter's boyfriend ran over her in his truck"
+      },
+      {
+        "question": "What happened to Quinn regarding the reading buddies program?",
+        "options": ["She was promoted to head volunteer", "She was suspended, which meant temporary removal", "She was transferred to a different location", "She was given additional responsibilities"],
+        "answer": "She was suspended, which meant temporary removal"
+      },
+      {
+        "question": "Where did Chance, Metal Head, and Mouse get accidentally trapped?",
+        "options": ["In the shelter's storage room", "In the car boot", "In a delivery truck", "In the veterinarian's office"],
+        "answer": "In the car boot"
+      },
+      {
+        "question": "What did Mouse retrieve at the fish market?",
+        "options": ["A whole fish", "Some seaweed", "A piece of shrimp", "A crab shell"],
+        "answer": "A piece of shrimp"
+      },
+      {
+        "question": "What harsh reality did Metal Head tell Chance about her situation?",
+        "options": ["That shelter life was temporary", "That she needed more training", "That her humans wouldn't be searching for a three-legged dog", "That robot dogs were replacing real ones"],
+        "answer": "That her humans wouldn't be searching for a three-legged dog"
+      },
+      {
+        "question": "According to the story, what happens when a metal dog misbehaves?",
+        "options": ["They blame the manufacturer", "They need to be reprogrammed", "They get sent back to the factory", "They lose their warranty"],
+        "answer": "They blame the manufacturer"
+      },
+      {
+        "question": "Who took Chance's place under the poker table?",
+        "options": ["Bear", "Mouse", "Metal Head", "Another shelter dog"],
+        "answer": "Bear"
+      },
+      {
+        "question": "What did the note under Chance's collar say?",
+        "options": ["Every dog deserves a loving home", "Friendship knows no boundaries", "Hope is the thing with feathers", "The heart is a muscle. It grows stronger the more you use it"],
+        "answer": "The heart is a muscle. It grows stronger the more you use it"
+      }
+    ]
   }
 ]
 

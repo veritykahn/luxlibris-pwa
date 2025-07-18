@@ -1,4 +1,4 @@
-// contexts/AuthContext.js - UPDATED for Entities Structure Only
+// contexts/AuthContext.js - FIXED to include parents collection
 import { createContext, useContext, useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import { auth, db } from '../lib/firebase'
@@ -88,12 +88,29 @@ export const AuthProvider = ({ children }) => {
     return timeSinceActivity > ADMIN_TIMEOUT
   }
 
-  // UPDATED: Complete entities-only getUserProfile
+  // FIXED: Complete getUserProfile with parents collection
   const getUserProfile = async (uid) => {
     try {
       console.log('🔍 Looking for user profile with UID:', uid)
       
-      // Search in entities structure for teachers, admins, AND students
+      // FIRST: Check parents collection
+      try {
+        const parentRef = doc(db, 'parents', uid)
+        const parentDoc = await getDoc(parentRef)
+        
+        if (parentDoc.exists()) {
+          const profile = {
+            id: parentDoc.id,
+            ...parentDoc.data()
+          }
+          console.log('✅ Found parent profile')
+          return profile
+        }
+      } catch (error) {
+        console.log('No parent found with UID')
+      }
+      
+      // SECOND: Search in entities structure for teachers, admins, and students
       const entitiesRef = collection(db, 'entities')
       const entitiesSnapshot = await getDocs(entitiesRef)
       
@@ -137,7 +154,7 @@ export const AuthProvider = ({ children }) => {
               return profile
             }
 
-            // NEW: Check students collection in entities structure
+            // Check students collection in entities structure
             const studentsRef = collection(db, `entities/${entityDoc.id}/schools/${schoolDoc.id}/students`)
             const studentQuery = query(studentsRef, where('uid', '==', uid))
             const studentSnapshot = await getDocs(studentQuery)
@@ -145,27 +162,27 @@ export const AuthProvider = ({ children }) => {
             if (!studentSnapshot.empty) {
               const studentDoc = studentSnapshot.docs[0]
               const profile = {
-  id: studentDoc.id,
-  entityId: entityDoc.id,
-  schoolId: schoolDoc.id,
-  ...studentDoc.data()
-}
+                id: studentDoc.id,
+                entityId: entityDoc.id,
+                schoolId: schoolDoc.id,
+                ...studentDoc.data()
+              }
 
-// NEW: Check if student needs grade progression
-if (profile.accountType === 'student') {
-  const { checkGradeProgression } = await import('../lib/firebase')
-  const progressionCheck = await checkGradeProgression(profile)
-  profile.needsGradeUpdate = progressionCheck.needsUpdate
-  profile.suggestedGrade = progressionCheck.suggestedGrade
-  profile.shouldBeAlumni = progressionCheck.shouldBeAlumni
-  
-  if (progressionCheck.needsUpdate) {
-    console.log('📈 Student needs grade progression:', profile.firstName)
-  }
-}
+              // Check if student needs grade progression
+              if (profile.accountType === 'student') {
+                const { checkGradeProgression } = await import('../lib/firebase')
+                const progressionCheck = await checkGradeProgression(profile)
+                profile.needsGradeUpdate = progressionCheck.needsUpdate
+                profile.suggestedGrade = progressionCheck.suggestedGrade
+                profile.shouldBeAlumni = progressionCheck.shouldBeAlumni
+                
+                if (progressionCheck.needsUpdate) {
+                  console.log('📈 Student needs grade progression:', profile.firstName)
+                }
+              }
 
-console.log('✅ Found student profile in entities structure')
-return profile
+              console.log('✅ Found student profile in entities structure')
+              return profile
             }
           }
         } catch (error) {
@@ -173,8 +190,7 @@ return profile
         }
       }
       
-      // REMOVED: No more fallback to users collection - entities structure only!
-      console.log('❌ User profile not found in entities structure')
+      console.log('❌ User profile not found')
       return null
       
     } catch (error) {
@@ -293,57 +309,58 @@ return profile
     }
   }
 
-  // Get appropriate dashboard URL based on user type
-const getDashboardUrl = () => {
-  if (!userProfile) {
-    console.log('❌ No user profile, redirecting to role selector')
-    return '/role-selector'
-  }
-  
-  console.log('🎯 Determining dashboard URL for:', {
-    accountType: userProfile.accountType,
-    email: userProfile.email
-  })
-
-  try {
-    switch (userProfile.accountType) {
-      case 'student':
-        const studentComplete = userProfile.onboardingCompleted === true
-        console.log('🧑‍🎓 Student onboarding status:', studentComplete)
-        return studentComplete ? '/student-dashboard' : '/student-onboarding'
-        
-      case 'teacher':
-        console.log('👩‍🏫 Using cached teacher onboarding status...')
-        const teacherComplete = userProfile.onboardingCompleted === true
-        console.log('📊 Teacher onboarding status:', teacherComplete)
-        
-        if (teacherComplete) {
-          console.log('✅ Teacher onboarding complete → dashboard')
-          return '/admin/school-dashboard'
-        } else {
-          console.log('⚠️ Teacher onboarding incomplete → onboarding')
-          return '/admin/school-onboarding'
-        }
-        
-      case 'admin':
-        const adminComplete = userProfile.schoolSetupCompleted === true
-        console.log('👑 Admin setup status:', adminComplete)
-        return adminComplete ? '/admin/school-dashboard' : '/admin/school-onboarding'
-        
-      case 'parent':
-        console.log('👨‍👩‍👧‍👦 Parent → dashboard')
-        return '/parent-dashboard'
-        
-      default:
-        console.log('❓ Unknown account type, redirecting to role selector')
-        return '/role-selector'
+  // FIXED: Get appropriate dashboard URL based on user type
+  const getDashboardUrl = () => {
+    if (!userProfile) {
+      console.log('❌ No user profile, redirecting to role selector')
+      return '/role-selector'
     }
-  } catch (error) {
-    console.error('❌ Error determining dashboard URL:', error)
-    // On error, send to role selector to be safe
-    return '/role-selector'
+    
+    console.log('🎯 Determining dashboard URL for:', {
+      accountType: userProfile.accountType,
+      email: userProfile.email
+    })
+
+    try {
+      switch (userProfile.accountType) {
+        case 'student':
+          const studentComplete = userProfile.onboardingCompleted === true
+          console.log('🧑‍🎓 Student onboarding status:', studentComplete)
+          return studentComplete ? '/student-dashboard' : '/student-onboarding'
+          
+        case 'teacher':
+          console.log('👩‍🏫 Using cached teacher onboarding status...')
+          const teacherComplete = userProfile.onboardingCompleted === true
+          console.log('📊 Teacher onboarding status:', teacherComplete)
+          
+          if (teacherComplete) {
+            console.log('✅ Teacher onboarding complete → dashboard')
+            return '/admin/school-dashboard'
+          } else {
+            console.log('⚠️ Teacher onboarding incomplete → onboarding')
+            return '/admin/school-onboarding'
+          }
+          
+        case 'admin':
+          const adminComplete = userProfile.schoolSetupCompleted === true
+          console.log('👑 Admin setup status:', adminComplete)
+          return adminComplete ? '/admin/school-dashboard' : '/admin/school-onboarding'
+          
+        case 'parent':
+          const parentComplete = userProfile.onboardingCompleted === true
+          console.log('👨‍👩‍👧‍👦 Parent onboarding status:', parentComplete)
+          return parentComplete ? '/parent/dashboard' : '/parent/onboarding'  // FIXED: correct paths
+          
+        default:
+          console.log('❓ Unknown account type, redirecting to role selector')
+          return '/role-selector'
+      }
+    } catch (error) {
+      console.error('❌ Error determining dashboard URL:', error)
+      // On error, send to role selector to be safe
+      return '/role-selector'
+    }
   }
-}
 
   // Helper function to prevent redirect loops
   const shouldRedirectToOnboarding = async () => {
@@ -360,6 +377,10 @@ const getDashboardUrl = () => {
       }
       
       if (userProfile.accountType === 'student') {
+        return !userProfile.onboardingCompleted
+      }
+      
+      if (userProfile.accountType === 'parent') {
         return !userProfile.onboardingCompleted
       }
       
@@ -452,6 +473,9 @@ const getDashboardUrl = () => {
         // Clear teacher onboarding data
         localStorage.removeItem('teacherProgramSelection')
         localStorage.removeItem('tempTeacherCodes')
+        // Clear parent data
+        localStorage.removeItem('tempParentData')
+        localStorage.removeItem('parentOnboardingData')
       }
       
       // Handle redirects
@@ -494,6 +518,10 @@ const getDashboardUrl = () => {
     
     if (userProfile.accountType === 'admin') {
       return userProfile.schoolSetupCompleted === true
+    }
+    
+    if (userProfile.accountType === 'parent') {
+      return userProfile.onboardingCompleted === true
     }
     
     return true
@@ -589,12 +617,11 @@ export const withAuth = (WrappedComponent, allowedAccountTypes = ['student', 'pa
     useEffect(() => {
       const checkAuth = async () => {
         if (!loading && initialized) {
-          // CORRECT - should redirect to homepage instead
-if (!isAuthenticated) {
-  // User not authenticated, redirect to homepage
-  router.push('/')  // ✅ This is correct!
-  return
-}
+          if (!isAuthenticated) {
+            // User not authenticated, redirect to homepage
+            router.push('/')
+            return
+          }
 
           // Check session expiry for admins
           if (userProfile?.accountType === 'admin' && isSessionExpired()) {
