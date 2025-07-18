@@ -103,7 +103,7 @@ export default function ParentSignIn() {
 
   const handleForgotPassword = () => {
     // TODO: Implement password reset
-    setError('Password reset feature coming soon! Please contact support at families@luxlibris.org')
+    setError('Password reset feature coming soon! Please contact support at support@luxlibris.org')
   }
 
   return (
@@ -393,7 +393,7 @@ export default function ParentSignIn() {
               margin: '0 0 0.5rem 0',
               lineHeight: '1.4'
             }}>
-              Need help? Contact us at families@luxlibris.org
+              Need help? Contact us at support@luxlibris.org
             </p>
             <button
               onClick={handleCreateAccount}

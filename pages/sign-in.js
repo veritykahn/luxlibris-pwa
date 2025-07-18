@@ -1,9 +1,10 @@
-// pages/sign-in.js - Updated with Personal Password Support and Visible Teacher Code
+// pages/sign-in.js - Updated with Parent Sign-In Support
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
-import { authHelpers, dbHelpers } from '../lib/firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { authHelpers, dbHelpers, auth } from '../lib/firebase';
 
 export default function SignIn() {
   const router = useRouter();
@@ -16,7 +17,7 @@ export default function SignIn() {
     accountType: '',
     username: '',
     teacherCode: '',
-    personalPassword: '', // NEW: Personal password field
+    personalPassword: '',
     email: '',
     password: '',
     teacherJoinCode: ''
@@ -29,45 +30,38 @@ export default function SignIn() {
     }
   }, [router.query]);
 
- const accountTypes = [
-  {
-    type: 'student',
-    title: 'Student',
-    icon: '📚',
-    description: 'Sign in with your username, teacher code, and personal password',
-    buttonText: 'Student Sign In'
-  },
-  {
-    type: 'educator',
-    title: 'Teacher/Librarian',
-    icon: '👨‍💼',
-    description: 'Manage your school\'s reading program',
-    buttonText: 'Teacher/Librarian Sign In'
-  },
-  {
-    type: 'parent',
-    title: 'Parent/Guardian',
-    icon: '👨‍👩‍👧‍👦',
-    description: 'Coming soon! Track your child\'s reading progress',
-    buttonText: 'Parent Sign In (Coming Soon)',
-    disabled: true
-  }
-];
+  const accountTypes = [
+    {
+      type: 'student',
+      title: 'Student',
+      icon: '📚',
+      description: 'Sign in with your username, teacher code, and personal password',
+      buttonText: 'Student Sign In'
+    },
+    {
+      type: 'educator',
+      title: 'Teacher/Librarian',
+      icon: '👨‍💼',
+      description: 'Manage your school\'s reading program',
+      buttonText: 'Teacher/Librarian Sign In'
+    },
+    {
+      type: 'parent',
+      title: 'Parent/Guardian',
+      icon: '👨‍👩‍👧‍👦',
+      description: 'Track your child\'s reading progress and family activities',
+      buttonText: 'Parent Sign In'
+    }
+  ];
 
   const handleAccountTypeSelect = (type) => {
-    if (type === 'parent') {
-      // Don't allow parent selection - coming soon
-      return;
-    }
-    
     setFormData({ ...formData, accountType: type });
     setError('');
     setShowSessionExpiredMessage(false);
-
     setStep(2);
   };
 
-  // NEW: Validate personal password
+  // Validate personal password
   const isPasswordValid = (password) => {
     return password && password.length >= 5 && /^[a-z]+$/.test(password);
   };
@@ -92,6 +86,47 @@ export default function SignIn() {
     } catch (error) {
       console.error('❌ Student sign-in error:', error);
       throw error;
+    }
+  };
+
+  // Perform parent sign-in
+  const performParentSignIn = async () => {
+    try {
+      console.log('🔐 Starting parent sign-in process...');
+      console.log('📧 Email:', formData.email);
+
+      // Sign in with Firebase Auth
+      const userCredential = await signInWithEmailAndPassword(
+        auth, 
+        formData.email.trim(), 
+        formData.password
+      );
+      
+      console.log('✅ Firebase sign-in successful:', userCredential.user.uid);
+      
+      // Redirect to parent dashboard
+      router.push('/parent/dashboard');
+
+    } catch (error) {
+      console.error('❌ Parent sign-in error:', error);
+      
+      // Handle specific Firebase auth errors
+      switch (error.code) {
+        case 'auth/user-not-found':
+          throw new Error('No account found with this email address. Please check your email or create a new account.');
+        case 'auth/wrong-password':
+          throw new Error('Incorrect password. Please try again.');
+        case 'auth/invalid-email':
+          throw new Error('Please enter a valid email address.');
+        case 'auth/too-many-requests':
+          throw new Error('Too many failed attempts. Please wait a moment and try again.');
+        case 'auth/user-disabled':
+          throw new Error('This account has been disabled. Please contact support.');
+        case 'auth/invalid-credential':
+          throw new Error('Invalid email or password. Please check your credentials and try again.');
+        default:
+          throw new Error('Failed to sign in. Please try again or contact support.');
+      }
     }
   };
 
@@ -141,10 +176,14 @@ export default function SignIn() {
         router.push('/admin/school-dashboard');
         
       } else if (formData.accountType === 'parent') {
-        // Parent sign-in coming soon
-        setError('Parent sign-in is coming soon! Please check back later.');
-        setLoading(false);
-        return;
+        if (!formData.email.trim() || !formData.password.trim()) {
+          setError('Please enter your email and password');
+          setLoading(false);
+          return;
+        }
+
+        // Handle parent sign-in
+        await performParentSignIn();
       }
     } catch (error) {
       console.error('❌ Sign in error:', error);
@@ -162,6 +201,10 @@ export default function SignIn() {
     } else {
       router.push('/');
     }
+  };
+
+  const handleForgotPassword = () => {
+    setError('Password reset feature coming soon! Please contact support at support@luxlibris.org');
   };
 
   return (
@@ -247,8 +290,6 @@ export default function SignIn() {
             </div>
           )}
 
-
-
           {/* Step 1: Account Type Selection */}
           {step === 1 && (
             <div>
@@ -267,60 +308,52 @@ export default function SignIn() {
                   <button
                     key={account.type}
                     onClick={() => handleAccountTypeSelect(account.type)}
-                    disabled={account.disabled}
                     style={{
                       padding: '1.25rem',
-                      background: account.disabled ? '#f9fafb' : 'white',
+                      background: 'white',
                       border: '2px solid #e5e7eb',
                       borderRadius: '0.75rem',
-                      cursor: account.disabled ? 'not-allowed' : 'pointer',
+                      cursor: 'pointer',
                       transition: 'all 0.2s',
                       textAlign: 'left',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '1rem',
-                      opacity: account.disabled ? 0.6 : 1
+                      gap: '1rem'
                     }}
                     onMouseEnter={(e) => {
-                      if (!account.disabled) {
-                        e.target.style.borderColor = '#ADD4EA';
-                        e.target.style.backgroundColor = '#f8fafc';
-                      }
+                      e.target.style.borderColor = '#ADD4EA';
+                      e.target.style.backgroundColor = '#f8fafc';
                     }}
                     onMouseLeave={(e) => {
-                      if (!account.disabled) {
-                        e.target.style.borderColor = '#e5e7eb';
-                        e.target.style.backgroundColor = 'white';
-                      }
+                      e.target.style.borderColor = '#e5e7eb';
+                      e.target.style.backgroundColor = 'white';
                     }}
                   >
-                  <div style={{ fontSize: '2rem' }}>{account.icon}</div>
+                    <div style={{ fontSize: '2rem' }}>{account.icon}</div>
                     <div style={{ flex: 1 }}>
                       <h3 style={{
                         fontSize: '1.125rem',
                         fontWeight: '600',
-                        color: account.disabled ? '#9ca3af' : '#223848',
+                        color: '#223848',
                         margin: '0 0 0.25rem 0'
                       }}>
                         {account.title}
                       </h3>
                       <p style={{
                         fontSize: '0.875rem',
-                        color: account.disabled ? '#9ca3af' : '#6b7280',
+                        color: '#6b7280',
                         margin: 0,
                         lineHeight: '1.3'
                       }}>
                         {account.description}
                       </p>
                     </div>
-                    {!account.disabled && (
-                      <div style={{
-                        color: '#ADD4EA',
-                        fontSize: '1.25rem'
-                      }}>
-                        →
-                      </div>
-                    )}
+                    <div style={{
+                      color: '#ADD4EA',
+                      fontSize: '1.25rem'
+                    }}>
+                      →
+                    </div>
                   </button>
                 ))}
               </div>
@@ -340,7 +373,7 @@ export default function SignIn() {
                 {accountTypes.find(a => a.type === formData.accountType)?.buttonText}
               </h2>
 
-              {/* Student Sign In - UPDATED */}
+              {/* Student Sign In */}
               {formData.accountType === 'student' && (
                 <div>
                   <p style={{
@@ -446,7 +479,6 @@ export default function SignIn() {
                     </p>
                   </div>
 
-                  {/* NEW: Personal Password Field */}
                   <div style={{ marginBottom: '1.5rem' }}>
                     <label style={{
                       display: 'block',
@@ -494,27 +526,26 @@ export default function SignIn() {
                     </p>
                   </div>
 
-
-                    <div style={{
-                      background: 'rgba(173, 212, 234, 0.1)',
-                      border: '1px solid rgba(173, 212, 234, 0.3)',
-                      borderRadius: '0.5rem',
-                      padding: '1rem',
-                      marginBottom: '1.5rem'
+                  <div style={{
+                    background: 'rgba(173, 212, 234, 0.1)',
+                    border: '1px solid rgba(173, 212, 234, 0.3)',
+                    borderRadius: '0.5rem',
+                    padding: '1rem',
+                    marginBottom: '1.5rem'
+                  }}>
+                    <p style={{
+                      color: '#223848',
+                      fontSize: '0.875rem',
+                      margin: 0,
+                      lineHeight: '1.4'
                     }}>
-                      <p style={{
-                        color: '#223848',
-                        fontSize: '0.875rem',
-                        margin: 0,
-                        lineHeight: '1.4'
-                      }}>
-                        🔐 <strong>Secure Sign-In:</strong> Your username and teacher code identify you, and your personal password keeps your account safe!
-                      </p>
-                    </div>
+                      🔐 <strong>Secure Sign-In:</strong> Your username and teacher code identify you, and your personal password keeps your account safe!
+                    </p>
+                  </div>
                 </div>
               )}
 
-              {/* Educator Sign In - UNCHANGED */}
+              {/* Educator Sign In */}
               {formData.accountType === 'educator' && (
                 <div>
                   <p style={{
@@ -662,15 +693,117 @@ export default function SignIn() {
                 </div>
               )}
 
-              {/* Parent Sign In - Coming Soon */}
+              {/* Parent Sign In */}
               {formData.accountType === 'parent' && (
                 <div>
+                  <p style={{
+                    color: '#6b7280',
+                    fontSize: '0.875rem',
+                    textAlign: 'center',
+                    marginBottom: '1.5rem',
+                    lineHeight: '1.4'
+                  }}>
+                    Welcome back! Sign in to access your family dashboard
+                  </p>
+
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{
+                      display: 'block',
+                      fontSize: '0.875rem',
+                      fontWeight: '600',
+                      color: '#374151',
+                      marginBottom: '0.5rem'
+                    }}>
+                      Email Address
+                    </label>
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData(prev => ({ 
+                        ...prev, 
+                        email: e.target.value 
+                      }))}
+                      placeholder="parent@example.com"
+                      style={{
+                        width: '100%',
+                        padding: '0.875rem',
+                        border: '2px solid #e5e7eb',
+                        borderRadius: '0.75rem',
+                        fontSize: '1rem',
+                        boxSizing: 'border-box',
+                        transition: 'border-color 0.2s',
+                        outline: 'none',
+                        color: '#1f2937',
+                        backgroundColor: 'white'
+                      }}
+                      onFocus={(e) => e.target.style.borderColor = '#ADD4EA'}
+                      onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{
+                      display: 'block',
+                      fontSize: '0.875rem',
+                      fontWeight: '600',
+                      color: '#374151',
+                      marginBottom: '0.5rem'
+                    }}>
+                      Password
+                    </label>
+                    <input
+                      type="password"
+                      value={formData.password}
+                      onChange={(e) => setFormData(prev => ({ 
+                        ...prev, 
+                        password: e.target.value 
+                      }))}
+                      placeholder="Your password"
+                      style={{
+                        width: '100%',
+                        padding: '0.875rem',
+                        border: '2px solid #e5e7eb',
+                        borderRadius: '0.75rem',
+                        fontSize: '1rem',
+                        boxSizing: 'border-box',
+                        transition: 'border-color 0.2s',
+                        outline: 'none',
+                        color: '#1f2937',
+                        backgroundColor: 'white'
+                      }}
+                      onFocus={(e) => e.target.style.borderColor = '#ADD4EA'}
+                      onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter' && formData.email.trim() && formData.password.trim()) {
+                          handleSignIn()
+                        }
+                      }}
+                    />
+                  </div>
+
+                  {/* Forgot Password Link */}
+                  <div style={{ textAlign: 'right', marginBottom: '1.5rem' }}>
+                    <button
+                      onClick={handleForgotPassword}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#ADD4EA',
+                        fontSize: '0.875rem',
+                        cursor: 'pointer',
+                        textDecoration: 'underline'
+                      }}
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
+
                   <div style={{
-                    background: 'rgba(34, 197, 94, 0.1)',
-                    border: '1px solid rgba(34, 197, 94, 0.3)',
+                    background: 'rgba(173, 212, 234, 0.1)',
+                    border: '1px solid rgba(173, 212, 234, 0.3)',
                     borderRadius: '0.5rem',
-                    padding: '1.5rem',
-                    textAlign: 'center'
+                    padding: '1rem',
+                    marginBottom: '1.5rem'
                   }}>
                     <p style={{
                       color: '#223848',
@@ -678,8 +811,7 @@ export default function SignIn() {
                       margin: 0,
                       lineHeight: '1.4'
                     }}>
-                      👨‍👩‍👧‍👦 <strong>Parent Access Coming Soon!</strong><br />
-                      For now, basic progress viewing is included with your school&apos;s subscription. Ask your child&apos;s teacher for access to their reading progress.
+                      ⌂ <strong>Family Dashboard:</strong> Track your children&apos;s reading progress, approve quiz codes, and participate in family reading battles!
                     </p>
                   </div>
                 </div>
@@ -733,7 +865,7 @@ export default function SignIn() {
               Back
             </button>
             
-            {step === 2 && formData.accountType !== 'parent' && (
+            {step === 2 && (
               <button
                 onClick={handleSignIn}
                 disabled={
@@ -742,6 +874,15 @@ export default function SignIn() {
                     !formData.username.trim() || 
                     !formData.teacherCode.trim() || 
                     !formData.personalPassword.trim()
+                  )) ||
+                  (formData.accountType === 'educator' && (
+                    !formData.email.trim() || 
+                    !formData.password.trim() || 
+                    !formData.teacherJoinCode.trim()
+                  )) ||
+                  (formData.accountType === 'parent' && (
+                    !formData.email.trim() || 
+                    !formData.password.trim()
                   ))
                 }
                 style={{
@@ -761,6 +902,15 @@ export default function SignIn() {
                       !formData.username.trim() || 
                       !formData.teacherCode.trim() || 
                       !formData.personalPassword.trim()
+                    )) ||
+                    (formData.accountType === 'educator' && (
+                      !formData.email.trim() || 
+                      !formData.password.trim() || 
+                      !formData.teacherJoinCode.trim()
+                    )) ||
+                    (formData.accountType === 'parent' && (
+                      !formData.email.trim() || 
+                      !formData.password.trim()
                     ))
                   ) ? 'not-allowed' : 'pointer',
                   display: 'flex',
@@ -775,6 +925,15 @@ export default function SignIn() {
                       !formData.username.trim() || 
                       !formData.teacherCode.trim() || 
                       !formData.personalPassword.trim()
+                    )) ||
+                    (formData.accountType === 'educator' && (
+                      !formData.email.trim() || 
+                      !formData.password.trim() || 
+                      !formData.teacherJoinCode.trim()
+                    )) ||
+                    (formData.accountType === 'parent' && (
+                      !formData.email.trim() || 
+                      !formData.password.trim()
                     ))
                   ) ? 0.7 : 1
                 }}
@@ -807,7 +966,10 @@ export default function SignIn() {
               margin: '0 0 0.5rem 0',
               lineHeight: '1.4'
             }}>
-              Need help signing in? Contact your teacher, librarian or school administrator.
+              {formData.accountType === 'parent' 
+                ? 'Need help? Contact us at support@luxlibris.org'
+                : 'Need help signing in? Contact your teacher, librarian or school administrator.'
+              }
             </p>
             <button
               onClick={() => router.push('/role-selector')}
