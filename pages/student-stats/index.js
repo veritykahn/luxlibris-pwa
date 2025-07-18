@@ -1210,7 +1210,7 @@ export default function StudentStatsMain() {
                 lineHeight: '1.5',
                 opacity: 0.95
               }}>
-                📊 Your stats will be refreshed for the new program, but don't worry - you'll keep your reading streaks, XP, and saints! Keep your reading habits strong this week while we prepare amazing new books for you! 📚✨
+                📊 Your stats will be refreshed for the new program, but don&apos;t worry - you&apos;ll keep your reading streaks, XP, and saints! Keep your reading habits strong this week while we prepare amazing new books for you! 📚✨
               </div>
               <div style={{
                 marginTop: '24px',
