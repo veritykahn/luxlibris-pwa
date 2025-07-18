@@ -1,7 +1,8 @@
-// pages/student-stats/school-stats.js - Enhanced School-Wide Stats with Expandable Real Achievement Tiers
+// pages/student-stats/school-stats.js - Enhanced School-Wide Stats with Phase Awareness
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePhaseAccess } from '../../hooks/usePhaseAccess'; // ADDED PHASE ACCESS
 import { getStudentDataEntities } from '../../lib/firebase';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
@@ -10,6 +11,7 @@ import Head from 'next/head';
 export default function SchoolStats() {
   const router = useRouter();
   const { user, isAuthenticated, loading } = useAuth();
+  const { phaseData, hasAccess, getPhaseMessage, getPhaseInfo } = usePhaseAccess(); // ADDED PHASE ACCESS
   const [studentData, setStudentData] = useState(null);
   const [currentTheme, setCurrentTheme] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -23,7 +25,7 @@ export default function SchoolStats() {
   const [schoolRealRewards, setSchoolRealRewards] = useState(null);
   const [readingHabits, setReadingHabits] = useState(null);
   
-  // NEW: Expandable state for school real rewards (copied from grade stats)
+  // Expandable state for school real rewards
   const [expandedSchoolRewards, setExpandedSchoolRewards] = useState(false);
 
   // Theme definitions (consistent)
@@ -110,28 +112,49 @@ export default function SchoolStats() {
     }
   }), []);
 
-  // Navigation menu items
+  // UPDATED: Navigation menu items with phase-aware locking
   const navMenuItems = useMemo(() => [
     { name: 'Dashboard', path: '/student-dashboard', icon: '⌂' },
-    { name: 'Nominees', path: '/student-nominees', icon: '□' },
-    { name: 'Bookshelf', path: '/student-bookshelf', icon: '⚏' },
+    { 
+      name: 'Nominees', 
+      path: '/student-nominees', 
+      icon: '□', 
+      locked: !hasAccess('nomineesBrowsing'), 
+      lockReason: phaseData.currentPhase === 'VOTING' ? 'Nominees locked during voting' : 
+                 phaseData.currentPhase === 'RESULTS' ? 'Nominees locked during results' :
+                 phaseData.currentPhase === 'TEACHER_SELECTION' ? 'New amazing nominees coming this week!' : 'Nominees not available'
+    },
+    { 
+      name: 'Bookshelf', 
+      path: '/student-bookshelf', 
+      icon: '⚏', 
+      locked: !hasAccess('bookshelfViewing'), 
+      lockReason: phaseData.currentPhase === 'RESULTS' ? 'Bookshelf locked during results' :
+                 phaseData.currentPhase === 'TEACHER_SELECTION' ? 'Stats refreshing - new bookshelf coming!' : 'Bookshelf not available'
+    },
     { name: 'Healthy Habits', path: '/student-healthy-habits', icon: '○' },
     { name: 'Saints', path: '/student-saints', icon: '♔' },
     { name: 'Stats', path: '/student-stats', icon: '△', current: true },
     { name: 'Settings', path: '/student-settings', icon: '⚙' }
-  ], []);
+  ], [hasAccess, phaseData.currentPhase]);
 
-  // Stats navigation options
+  // UPDATED: Stats navigation options with phase-aware Lux DNA messaging
   const statsNavOptions = useMemo(() => [
-  { name: 'Stats Dashboard', path: '/student-stats', icon: '📊', description: 'Fun overview' },
-  { name: 'My Stats', path: '/student-stats/my-stats', icon: '📈', description: 'Personal deep dive' },
-  { name: 'Grade Stats', path: '/student-stats/grade-stats', icon: '🎓', description: 'Compare with classmates' },
-  { name: 'School Stats', path: '/student-stats/school-stats', icon: '🏫', description: 'School-wide progress', current: true },
-  { name: 'Diocese Stats', path: '/student-stats/diocese-stats', icon: '⛪', description: 'Coming soon!', disabled: true },
-  { name: 'Global Stats', path: '/student-stats/global-stats', icon: '🌎', description: 'Coming soon!', disabled: true },
-  { name: 'Lux DNA Lab', path: '/student-stats/lux-dna-lab', icon: '🧬', description: 'Discover your reading personality' },
-  { name: 'Family Battle', path: '/student-stats/family-battle', icon: '👨‍👩‍👧‍👦', description: 'Coming soon!', disabled: true }
-], []);
+    { name: 'Stats Dashboard', path: '/student-stats', icon: '📊', description: 'Fun overview' },
+    { name: 'My Stats', path: '/student-stats/my-stats', icon: '📈', description: 'Personal deep dive' },
+    { name: 'Grade Stats', path: '/student-stats/grade-stats', icon: '🎓', description: 'Compare with classmates' },
+    { name: 'School Stats', path: '/student-stats/school-stats', icon: '🏫', description: 'School-wide progress', current: true },
+    { name: 'Diocese Stats', path: '/student-stats/diocese-stats', icon: '⛪', description: 'Coming soon!', disabled: true },
+    { name: 'Global Stats', path: '/student-stats/global-stats', icon: '🌎', description: 'Coming soon!', disabled: true },
+    { 
+      name: 'Lux DNA Lab', 
+      path: '/student-stats/lux-dna-lab', 
+      icon: '🧬', 
+      description: phaseData.currentPhase === 'RESULTS' ? 'Nominees DNA locked for year' : 'Discover your reading personality',
+      phaseNote: phaseData.currentPhase === 'RESULTS' ? 'Nominees DNA analysis is closed for this academic year' : null
+    },
+    { name: 'Family Battle', path: '/student-stats/family-battle', icon: '👨‍👩‍👧‍👦', description: 'Coming soon!', disabled: true }
+  ], [phaseData.currentPhase]);
 
   // Close nav menus when clicking outside
   useEffect(() => {
@@ -148,7 +171,7 @@ export default function SchoolStats() {
       if (event.key === 'Escape') {
         setShowNavMenu(false);
         setShowStatsDropdown(false);
-        setExpandedSchoolRewards(false); // NEW: Added school rewards to escape handling
+        setExpandedSchoolRewards(false);
       }
     };
 
@@ -179,7 +202,21 @@ export default function SchoolStats() {
     router.push(option.path);
   };
 
-  // Calculate School-Wide Real Rewards Tracker (PRIVACY-FIRST) - Updated to match grade stats structure
+  // UPDATED: Get phase-specific messaging for the school stats
+  const getPhaseSpecificMessage = () => {
+    switch (phaseData.currentPhase) {
+      case 'VOTING':
+        return "🗳️ This year's reading program is complete! Check out your school's final achievement stats, keep building XP and earning badges, and discover your Lux DNA! Time to vote for your favorites!";
+      case 'RESULTS':
+        return "🏆 Congratulations on an amazing reading year! Check out your school's incredible final stats, keep building XP and earning badges! Nominees DNA in Lux Lab is now closed for the year.";
+      case 'TEACHER_SELECTION':
+        return "📊 Your school stats will be refreshed for the new program, but don't worry - you'll keep your reading streaks, XP, and Luxlings™! Keep your reading habits strong this week while we prepare amazing new books for you! 📚✨";
+      default:
+        return null;
+    }
+  };
+
+  // Calculate School-Wide Real Rewards Tracker (PRIVACY-FIRST)
   const calculateSchoolRealRewards = useCallback(async (studentData) => {
     try {
       const entityId = studentData.entityId;
@@ -209,7 +246,7 @@ export default function SchoolStats() {
                 count: 0,
                 percentage: 0,
                 gradeBreakdown: {},
-                hasStudentsEarned: false // NEW: Track if any students have earned this
+                hasStudentsEarned: false
               });
             }
           });
@@ -231,7 +268,7 @@ export default function SchoolStats() {
         allAchievementTiers.forEach((tier, key) => {
           if (studentBooksCount >= tier.books) {
             tier.count++;
-            tier.hasStudentsEarned = true; // NEW: Mark that students have earned this
+            tier.hasStudentsEarned = true;
             
             // Track grade breakdown
             if (!tier.gradeBreakdown[studentGrade]) {
@@ -266,7 +303,7 @@ export default function SchoolStats() {
       studentEarnedTiers.sort((a, b) => a.books - b.books);
       
       setSchoolRealRewards({
-        schoolTiers: tierArray, // Renamed to match grade stats pattern
+        schoolTiers: tierArray,
         totalSchoolStudents,
         studentEarnedTiers,
         studentBooks,
@@ -307,7 +344,7 @@ export default function SchoolStats() {
       let studentsTrackingProgress = 0;
       let studentsWithStreaks = 0;
       
-      // NEW: School-wide Smart Superpower Tracking (same as grade stats)
+      // School-wide Smart Superpower Tracking
       let studentsWithAudiobooks = 0;
       let studentsWhoSpeedRead = 0;
       let studentsExploringGenres = 0;
@@ -321,7 +358,7 @@ export default function SchoolStats() {
       let totalRatingSum = 0;
       let readingLevelDistribution = {};
       
-      // NEW: Favorite Books Tracking (same as grade stats)
+      // Favorite Books Tracking
       const bookRatings = {}; // bookId -> { totalRating: X, count: Y, book: data }
       
       // Student's personal engagement for "YOU TOO!" messages
@@ -362,30 +399,30 @@ export default function SchoolStats() {
         const readingLevel = student.currentReadingLevel || 'faithful_flame';
         readingLevelDistribution[readingLevel] = (readingLevelDistribution[readingLevel] || 0) + 1;
         
-        // Analyze bookshelf for superpowers (same logic as grade stats)
+        // Analyze bookshelf for superpowers
         const bookshelf = student.bookshelf || [];
         
-        // ⭐ Book Rating Stars
+        // Book Rating Stars
         const hasRatings = bookshelf.some(book => book.rating > 0);
         if (hasRatings) studentsWithRatings++;
         
-        // 📝 Thoughtful Notes
+        // Thoughtful Notes
         const hasNotes = bookshelf.some(book => book.notes?.trim());
         if (hasNotes) studentsWithNotes++;
         
-        // 📊 Progress Tracking
+        // Progress Tracking
         const tracksProgress = bookshelf.some(book => book.currentProgress > 0);
         if (tracksProgress) studentsTrackingProgress++;
         
-        // 🔥 Daily Reading Fire (7+ day streak)
+        // Daily Reading Fire (7+ day streak)
         const currentStreak = student.currentStreak || 0;
         if (currentStreak >= 7) studentsWithStreaks++;
         
-        // 🎧 Audiobook Champions
+        // Audiobook Champions
         const usesAudiobooks = bookshelf.some(book => book.format === 'audiobook');
         if (usesAudiobooks) studentsWithAudiobooks++;
         
-        // 🏃‍♂️ Speed Readers (completed book in <7 days)
+        // Speed Readers (completed book in <7 days)
         const speedReads = bookshelf.some(book => {
           if (!book.completed || !book.addedAt || !book.submittedAt) return false;
           const addedDate = book.addedAt?.toDate ? book.addedAt.toDate() : new Date(book.addedAt);
@@ -395,7 +432,7 @@ export default function SchoolStats() {
         });
         if (speedReads) studentsWhoSpeedRead++;
         
-        // 🌈 Genre Explorers (3+ different categories)
+        // Genre Explorers (3+ different categories)
         const studentGenres = new Set();
         bookshelf.forEach(book => {
           const bookData = allNominees[book.bookId];
@@ -405,17 +442,17 @@ export default function SchoolStats() {
         });
         if (studentGenres.size >= 3) studentsExploringGenres++;
         
-        // 🗣️ Discussion Masters (uses presentation/discussion submissions)
+        // Discussion Masters (uses presentation/discussion submissions)
         const discusses = bookshelf.some(book => 
           book.submissionType && ['presentToTeacher', 'discussWithLibrarian'].includes(book.submissionType)
         );
         if (discusses) studentsDiscussing++;
         
-        // 📚 Book Collectors (3+ books in progress)
+        // Book Collectors (3+ books in progress)
         const booksInProgress = bookshelf.filter(book => !book.completed).length;
         if (booksInProgress >= 3) studentsCollecting++;
         
-        // ⭐ Five-Star Finders (gives 5-star ratings)
+        // Five-Star Finders (gives 5-star ratings)
         const givesFiveStars = bookshelf.some(book => book.rating === 5);
         if (givesFiveStars) studentsFiveStars++;
         
@@ -458,7 +495,7 @@ export default function SchoolStats() {
       const schoolAverage = totalStudents > 0 ? Math.round((totalBooksCompleted / totalStudents) * 10) / 10 : 0;
       const averageRating = totalRatings > 0 ? Math.round((totalRatingSum / totalRatings) * 10) / 10 : 0;
       
-      // NEW: Calculate School's Favorite Book (min 5 ratings for school-wide)
+      // Calculate School's Favorite Book (min 5 ratings for school-wide)
       let schoolFavoriteBook = null;
       let highestRating = 0;
       
@@ -476,7 +513,7 @@ export default function SchoolStats() {
         }
       });
       
-      // NEW: School-wide Smart Superpowers (25% threshold for school-wide)
+      // School-wide Smart Superpowers (25% threshold for school-wide)
       const superpowers = [];
       const threshold = 0.25; // 25% for school-wide (lower than grade's 30%)
       
@@ -582,8 +619,8 @@ export default function SchoolStats() {
         averageRating,
         ratingDistribution,
         readingLevelDistribution,
-        superpowers, // NEW: Add calculated superpowers
-        schoolFavoriteBook, // NEW: Add calculated favorite book
+        superpowers,
+        schoolFavoriteBook,
         totalStudents
       });
       
@@ -870,10 +907,10 @@ export default function SchoolStats() {
                       </div>
                       <div style={{
                         fontSize: '11px',
-                        color: currentTheme.textSecondary,
+                        color: option.phaseNote ? '#FF9800' : currentTheme.textSecondary,
                         opacity: 0.8
                       }}>
-                        {option.description}
+                        {option.phaseNote || option.description}
                       </div>
                     </div>
                     {option.current && (
@@ -897,7 +934,7 @@ export default function SchoolStats() {
             )}
           </div>
 
-          {/* Hamburger Menu */}
+          {/* UPDATED: Hamburger Menu with Phase-Aware Locking */}
           <div className="nav-menu-container" style={{ position: 'relative' }}>
             <button
               onClick={() => setShowNavMenu(!showNavMenu)}
@@ -941,6 +978,10 @@ export default function SchoolStats() {
                     key={item.path}
                     onClick={() => {
                       setShowNavMenu(false);
+                      if (item.locked) {
+                        alert(`🔒 ${item.lockReason}`);
+                        return;
+                      }
                       if (!item.current) {
                         router.push(item.path);
                       }
@@ -948,25 +989,47 @@ export default function SchoolStats() {
                     style={{
                       width: '100%',
                       padding: '12px 16px',
-                      backgroundColor: item.current ? `${currentTheme.primary}30` : 'transparent',
+                      backgroundColor: item.current ? `${currentTheme.primary}30` : 
+                                      item.locked ? `${currentTheme.textSecondary}10` : 'transparent',
                       border: 'none',
                       borderBottom: index < navMenuItems.length - 1 ? `1px solid ${currentTheme.primary}40` : 'none',
-                      cursor: item.current ? 'default' : 'pointer',
+                      cursor: item.locked ? 'not-allowed' : (item.current ? 'default' : 'pointer'),
                       display: 'flex',
                       alignItems: 'center',
                       gap: '12px',
                       fontSize: '14px',
-                      color: currentTheme.textPrimary,
+                      color: item.locked ? currentTheme.textSecondary : currentTheme.textPrimary,
                       fontWeight: item.current ? '600' : '500',
                       textAlign: 'left',
                       touchAction: 'manipulation',
-                      WebkitTapHighlightColor: 'transparent'
+                      WebkitTapHighlightColor: 'transparent',
+                      transition: 'background-color 0.2s ease',
+                      opacity: item.locked ? 0.5 : 1
                     }}
+                    onMouseEnter={(e) => {
+                      if (!item.current && !item.locked) {
+                        e.target.style.backgroundColor = `${currentTheme.primary}20`;
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!item.current && !item.locked) {
+                        e.target.style.backgroundColor = 'transparent';
+                      }
+                    }}
+                    title={item.locked ? item.lockReason : undefined}
                   >
-                    <span style={{ fontSize: '16px' }}>{item.icon}</span>
+                    <span style={{ 
+                      fontSize: '16px',
+                      filter: item.locked ? 'grayscale(1)' : 'none'
+                    }}>
+                      {item.icon}
+                    </span>
                     <span>{item.name}</span>
                     {item.current && (
                       <span style={{ marginLeft: 'auto', fontSize: '12px', color: currentTheme.primary }}>●</span>
+                    )}
+                    {item.locked && (
+                      <span style={{ marginLeft: 'auto', fontSize: '12px', color: currentTheme.textSecondary }}>🔒</span>
                     )}
                   </button>
                 ))}
@@ -975,642 +1038,784 @@ export default function SchoolStats() {
           </div>
         </div>
 
-        {/* MAIN CONTENT */}
-        <div style={{ padding: 'clamp(16px, 5vw, 20px)', maxWidth: '400px', margin: '0 auto' }}>
-          
-          {/* SCHOOL CELEBRATION */}
-          {schoolOverview && (
+        {/* TEACHER_SELECTION: Show only messaging box */}
+        {phaseData.currentPhase === 'TEACHER_SELECTION' ? (
+          <div style={{ padding: 'clamp(40px, 10vw, 60px) clamp(20px, 5vw, 40px)', textAlign: 'center' }}>
             <div style={{
-              backgroundColor: currentTheme.surface,
+              background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+              color: 'white',
+              padding: '40px 24px',
               borderRadius: '20px',
-              padding: '20px',
-              marginBottom: '20px',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-              textAlign: 'center'
+              boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+              maxWidth: '400px',
+              margin: '0 auto'
             }}>
+              <div style={{ fontSize: '64px', marginBottom: '20px' }}>🚧</div>
               <div style={{
-                fontSize: '14px',
+                fontSize: '24px',
                 fontWeight: '600',
-                color: currentTheme.textPrimary,
-                marginBottom: '16px'
+                marginBottom: '12px',
+                fontFamily: 'Didot, "Times New Roman", serif'
               }}>
-                🏫 {schoolOverview.schoolName} is Amazing!
+                New Program Starting Soon!
               </div>
-              
               <div style={{
-                backgroundColor: `${currentTheme.primary}20`,
-                borderRadius: '16px',
-                padding: '20px',
-                marginBottom: '16px'
+                fontSize: '16px',
+                fontWeight: '400',
+                lineHeight: '1.5',
+                opacity: 0.95
               }}>
-                <div style={{
-                  fontSize: 'clamp(48px, 15vw, 64px)',
-                  marginBottom: '12px'
-                }}>
-                  🎉
-                </div>
-                <div style={{
-                  fontSize: 'clamp(20px, 6vw, 24px)',
-                  fontWeight: 'bold',
-                  color: currentTheme.textPrimary,
-                  marginBottom: '8px'
-                }}>
-                  {schoolOverview.totalBooksCompleted}
-                </div>
-                <div style={{
-                  fontSize: 'clamp(14px, 4vw, 16px)',
-                  fontWeight: '600',
-                  color: currentTheme.textPrimary,
-                  marginBottom: '4px'
-                }}>
-                  Books Read Together This Year!
-                </div>
-                <div style={{
-                  fontSize: 'clamp(12px, 3.5vw, 14px)',
-                  color: currentTheme.textSecondary
-                }}>
-                  What an incredible reading community! 📚✨
-                </div>
+                📊 Your school stats will be refreshed for the new program, but don&apos;t worry - you&apos;ll keep your reading streaks, XP, and saints! Keep your reading habits strong this week while we prepare amazing new books for you! 📚✨
               </div>
-
               <div style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '16px'
+                marginTop: '24px',
+                display: 'flex',
+                gap: '12px',
+                justifyContent: 'center',
+                flexWrap: 'wrap'
               }}>
-                <div style={{
-                  backgroundColor: `${currentTheme.secondary}20`,
-                  borderRadius: '12px',
-                  padding: '12px',
-                  textAlign: 'center'
-                }}>
-                  <div style={{
-                    fontSize: 'clamp(20px, 6vw, 24px)',
-                    fontWeight: 'bold',
-                    color: currentTheme.textPrimary
-                  }}>
-                    {schoolOverview.totalStudents}
-                  </div>
-                  <div style={{
-                    fontSize: 'clamp(11px, 3vw, 12px)',
-                    color: currentTheme.textSecondary
-                  }}>
-                    Amazing Readers
-                  </div>
-                </div>
-                <div style={{
-                  backgroundColor: `${currentTheme.secondary}20`,
-                  borderRadius: '12px',
-                  padding: '12px',
-                  textAlign: 'center'
-                }}>
-                  <div style={{
-                    fontSize: 'clamp(20px, 6vw, 24px)',
-                    fontWeight: 'bold',
-                    color: currentTheme.textPrimary
-                  }}>
-                    {schoolOverview.schoolAverage}
-                  </div>
-                  <div style={{
-                    fontSize: 'clamp(11px, 3vw, 12px)',
-                    color: currentTheme.textSecondary
-                  }}>
-                    Books Each on Average!
-                  </div>
-                </div>
+                <button
+                  onClick={() => router.push('/student-healthy-habits')}
+                  style={{
+                    backgroundColor: 'rgba(255,255,255,0.2)',
+                    color: 'white',
+                    border: '2px solid rgba(255,255,255,0.3)',
+                    padding: '12px 20px',
+                    borderRadius: '12px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundColor = 'rgba(255,255,255,0.3)';
+                    e.target.style.borderColor = 'rgba(255,255,255,0.5)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = 'rgba(255,255,255,0.2)';
+                    e.target.style.borderColor = 'rgba(255,255,255,0.3)';
+                  }}
+                >
+                  ○ Healthy Habits
+                </button>
+                <button
+                  onClick={() => router.push('/student-saints')}
+                  style={{
+                    backgroundColor: 'rgba(255,255,255,0.2)',
+                    color: 'white',
+                    border: '2px solid rgba(255,255,255,0.3)',
+                    padding: '12px 20px',
+                    borderRadius: '12px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundColor = 'rgba(255,255,255,0.3)';
+                    e.target.style.borderColor = 'rgba(255,255,255,0.5)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = 'rgba(255,255,255,0.2)';
+                    e.target.style.borderColor = 'rgba(255,255,255,0.3)';
+                  }}
+                >
+                  ♔ Saints
+                </button>
               </div>
             </div>
-          )}
-
-          {/* EXPANDABLE SCHOOL-WIDE REAL REWARDS TRACKER (COPIED FROM GRADE STATS) */}
-          {schoolRealRewards && schoolRealRewards.schoolTiers.length > 0 && (
-            <div style={{
-              backgroundColor: currentTheme.surface,
-              borderRadius: '16px',
-              padding: '20px',
-              marginBottom: '20px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-            }}>
-              <div 
-                onClick={() => setExpandedSchoolRewards(!expandedSchoolRewards)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: '16px',
-                  cursor: 'pointer',
-                  padding: '4px',
-                  borderRadius: '8px',
-                  transition: 'background-color 0.2s ease',
-                  touchAction: 'manipulation',
-                  WebkitTapHighlightColor: 'transparent'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.backgroundColor = `${currentTheme.primary}10`;
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.backgroundColor = 'transparent';
-                }}
-              >
-                <h3 style={{
-                  fontSize: 'clamp(14px, 4vw, 16px)',
-                  fontWeight: '600',
-                  color: currentTheme.textPrimary,
-                  margin: 0,
-                  pointerEvents: 'none'
-                }}>
-                  🎯 School-Wide Real Rewards
-                </h3>
-                <div style={{
-                  color: currentTheme.primary,
-                  fontSize: 'clamp(12px, 3vw, 14px)',
-                  fontWeight: '600',
-                  pointerEvents: 'none'
-                }}>
-                  {expandedSchoolRewards ? '▼ Show Less' : '▶ Show All'}
-                </div>
-              </div>
-              
+          </div>
+        ) : (
+          /* ALL OTHER PHASES: Show normal school stats dashboard */
+          <>
+            {/* NEW: Compact but Beautiful Phase-Specific Alert Banner */}
+            {getPhaseSpecificMessage() && (
               <div style={{
+                background: phaseData.currentPhase === 'VOTING' ? 'linear-gradient(135deg, #8b5cf6, #a855f7)' : 
+                           phaseData.currentPhase === 'RESULTS' ? 'linear-gradient(135deg, #f59e0b, #f97316)' : 
+                           'linear-gradient(135deg, #3b82f6, #2563eb)',
+                color: 'white',
+                padding: '12px 16px',
+                margin: '0 16px 16px 16px',
+                borderRadius: '12px',
                 textAlign: 'center',
-                marginBottom: '16px'
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                animation: 'slideInDown 0.6s ease-out'
               }}>
+                <div style={{ fontSize: '32px', marginBottom: '8px' }}>
+                  {phaseData.currentPhase === 'VOTING' ? '🗳️' : 
+                   phaseData.currentPhase === 'RESULTS' ? '🏆' : '🚧'}
+                </div>
                 <div style={{
-                  fontSize: 'clamp(12px, 3.5vw, 14px)',
-                  color: currentTheme.textPrimary,
-                  fontWeight: '500',
-                  marginBottom: '12px'
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  marginBottom: '6px',
+                  lineHeight: '1.3'
                 }}>
-                  {schoolRealRewards.encouragingMessage}
+                  {phaseData.currentPhase === 'VOTING' ? 'Voting Time!' :
+                   phaseData.currentPhase === 'RESULTS' ? 'Amazing Reading Year!' :
+                   'New Program Starting Soon!'}
+                </div>
+                <div style={{
+                  fontSize: '11px',
+                  fontWeight: '400',
+                  lineHeight: '1.4',
+                  opacity: 0.95
+                }}>
+                  {getPhaseSpecificMessage()}
                 </div>
               </div>
+            )}
 
-              {(() => {
-                const earnedTiers = schoolRealRewards.schoolTiers.filter(tier => tier.hasStudentsEarned);
-                const unearnedTiers = schoolRealRewards.schoolTiers.filter(tier => !tier.hasStudentsEarned);
-                
-                // Find the next tier (lowest book requirement among unearned)
-                const nextTier = unearnedTiers.length > 0 
-                  ? unearnedTiers.reduce((next, current) => 
-                      current.books < next.books ? current : next
-                    )
-                  : null;
-                
-                const displayedTiers = expandedSchoolRewards 
-                  ? schoolRealRewards.schoolTiers 
-                  : earnedTiers.slice(0, 3);
-                
-                return (
-                  <>
-                    {displayedTiers.map((tier, index) => (
+            {/* MAIN CONTENT */}
+            <div style={{ padding: 'clamp(16px, 5vw, 20px)', maxWidth: '400px', margin: '0 auto' }}>
+              
+              {/* SCHOOL CELEBRATION */}
+              {schoolOverview && (
+                <div style={{
+                  backgroundColor: currentTheme.surface,
+                  borderRadius: '20px',
+                  padding: '20px',
+                  marginBottom: '20px',
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+                  textAlign: 'center'
+                }}>
+                  <div style={{
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: currentTheme.textPrimary,
+                    marginBottom: '16px'
+                  }}>
+                    🏫 {schoolOverview.schoolName} is Amazing!
+                  </div>
+                  
+                  <div style={{
+                    backgroundColor: `${currentTheme.primary}20`,
+                    borderRadius: '16px',
+                    padding: '20px',
+                    marginBottom: '16px'
+                  }}>
+                    <div style={{
+                      fontSize: 'clamp(48px, 15vw, 64px)',
+                      marginBottom: '12px'
+                    }}>
+                      🎉
+                    </div>
+                    <div style={{
+                      fontSize: 'clamp(20px, 6vw, 24px)',
+                      fontWeight: 'bold',
+                      color: currentTheme.textPrimary,
+                      marginBottom: '8px'
+                    }}>
+                      {schoolOverview.totalBooksCompleted}
+                    </div>
+                    <div style={{
+                      fontSize: 'clamp(14px, 4vw, 16px)',
+                      fontWeight: '600',
+                      color: currentTheme.textPrimary,
+                      marginBottom: '4px'
+                    }}>
+                      Books Read Together This Year!
+                    </div>
+                    <div style={{
+                      fontSize: 'clamp(12px, 3.5vw, 14px)',
+                      color: currentTheme.textSecondary
+                    }}>
+                      What an incredible reading community! 📚✨
+                    </div>
+                  </div>
+
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '16px'
+                  }}>
+                    <div style={{
+                      backgroundColor: `${currentTheme.secondary}20`,
+                      borderRadius: '12px',
+                      padding: '12px',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{
+                        fontSize: 'clamp(20px, 6vw, 24px)',
+                        fontWeight: 'bold',
+                        color: currentTheme.textPrimary
+                      }}>
+                        {schoolOverview.totalStudents}
+                      </div>
+                      <div style={{
+                        fontSize: 'clamp(11px, 3vw, 12px)',
+                        color: currentTheme.textSecondary
+                      }}>
+                        Amazing Readers
+                      </div>
+                    </div>
+                    <div style={{
+                      backgroundColor: `${currentTheme.secondary}20`,
+                      borderRadius: '12px',
+                      padding: '12px',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{
+                        fontSize: 'clamp(20px, 6vw, 24px)',
+                        fontWeight: 'bold',
+                        color: currentTheme.textPrimary
+                      }}>
+                        {schoolOverview.schoolAverage}
+                      </div>
+                      <div style={{
+                        fontSize: 'clamp(11px, 3vw, 12px)',
+                        color: currentTheme.textSecondary
+                      }}>
+                        Books Each on Average!
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* EXPANDABLE SCHOOL-WIDE REAL REWARDS TRACKER */}
+              {schoolRealRewards && schoolRealRewards.schoolTiers.length > 0 && (
+                <div style={{
+                  backgroundColor: currentTheme.surface,
+                  borderRadius: '16px',
+                  padding: '20px',
+                  marginBottom: '20px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                }}>
+                  <div 
+                    onClick={() => setExpandedSchoolRewards(!expandedSchoolRewards)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      marginBottom: '16px',
+                      cursor: 'pointer',
+                      padding: '4px',
+                      borderRadius: '8px',
+                      transition: 'background-color 0.2s ease',
+                      touchAction: 'manipulation',
+                      WebkitTapHighlightColor: 'transparent'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.backgroundColor = `${currentTheme.primary}10`;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    <h3 style={{
+                      fontSize: 'clamp(14px, 4vw, 16px)',
+                      fontWeight: '600',
+                      color: currentTheme.textPrimary,
+                      margin: 0,
+                      pointerEvents: 'none'
+                    }}>
+                      🎯 School-Wide Real Rewards
+                    </h3>
+                    <div style={{
+                      color: currentTheme.primary,
+                      fontSize: 'clamp(12px, 3vw, 14px)',
+                      fontWeight: '600',
+                      pointerEvents: 'none'
+                    }}>
+                      {expandedSchoolRewards ? '▼ Show Less' : '▶ Show All'}
+                    </div>
+                  </div>
+                  
+                  <div style={{
+                    textAlign: 'center',
+                    marginBottom: '16px'
+                  }}>
+                    <div style={{
+                      fontSize: 'clamp(12px, 3.5vw, 14px)',
+                      color: currentTheme.textPrimary,
+                      fontWeight: '500',
+                      marginBottom: '12px'
+                    }}>
+                      {schoolRealRewards.encouragingMessage}
+                    </div>
+                  </div>
+
+                  {(() => {
+                    const earnedTiers = schoolRealRewards.schoolTiers.filter(tier => tier.hasStudentsEarned);
+                    const unearnedTiers = schoolRealRewards.schoolTiers.filter(tier => !tier.hasStudentsEarned);
+                    
+                    // Find the next tier (lowest book requirement among unearned)
+                    const nextTier = unearnedTiers.length > 0 
+                      ? unearnedTiers.reduce((next, current) => 
+                          current.books < next.books ? current : next
+                        )
+                      : null;
+                    
+                    const displayedTiers = expandedSchoolRewards 
+                      ? schoolRealRewards.schoolTiers 
+                      : earnedTiers.slice(0, 3);
+                    
+                    return (
+                      <>
+                        {displayedTiers.map((tier, index) => (
+                          <div
+                            key={index}
+                            style={{
+                              backgroundColor: tier.isStudentEarned ? 
+                                `${currentTheme.primary}30` : 
+                                tier.hasStudentsEarned ? `${currentTheme.primary}20` : `${currentTheme.primary}10`,
+                              borderRadius: '12px',
+                              padding: '12px',
+                              marginBottom: index < displayedTiers.length - 1 ? '8px' : '0',
+                              border: tier.isStudentEarned ? 
+                                `2px solid ${currentTheme.primary}` : 
+                                tier.hasStudentsEarned ? 'none' : `1px dashed ${currentTheme.primary}60`,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between'
+                            }}
+                          >
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{
+                                fontSize: 'clamp(12px, 3.5vw, 14px)',
+                                fontWeight: '600',
+                                color: currentTheme.textPrimary,
+                                marginBottom: '2px'
+                              }}>
+                                {tier.reward}
+                              </div>
+                              <div style={{
+                                fontSize: 'clamp(10px, 3vw, 12px)',
+                                color: currentTheme.textSecondary,
+                                marginBottom: '4px'
+                              }}>
+                                {tier.books} books to unlock
+                                {tier.isStudentEarned && (
+                                  <span style={{
+                                    color: currentTheme.primary,
+                                    fontWeight: '600',
+                                    marginLeft: '8px'
+                                  }}>
+                                    - YOU EARNED THIS! 🎉
+                                  </span>
+                                )}
+                              </div>
+                              <div style={{
+                                fontSize: 'clamp(11px, 3vw, 12px)',
+                                fontWeight: '600',
+                                color: tier.count > 0 ? '#4CAF50' : currentTheme.textSecondary
+                              }}>
+                                {tier.count > 0 ? '🎯' : '⭕'} {tier.count} of {schoolRealRewards.totalSchoolStudents} students earned this ({tier.percentage}%)
+                              </div>
+                            </div>
+                            
+                            <div style={{
+                              minWidth: '40px',
+                              textAlign: 'center'
+                            }}>
+                              <div style={{
+                                fontSize: 'clamp(20px, 6vw, 24px)'
+                              }}>
+                                {tier.isStudentEarned ? '🏆' : tier.count > 0 ? '🎯' : '⭕'}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        
+                        {/* SMART STATUS MESSAGE */}
+                        {!expandedSchoolRewards && (
+                          <div style={{
+                            fontSize: 'clamp(11px, 3vw, 12px)',
+                            color: currentTheme.textSecondary,
+                            textAlign: 'center',
+                            marginTop: '12px',
+                            padding: '8px',
+                            backgroundColor: `${currentTheme.primary}10`,
+                            borderRadius: '8px'
+                          }}>
+                            {nextTier ? (
+                              <>
+                                📚 Next school milestone: <strong>{nextTier.books} books for {nextTier.reward}</strong>
+                              </>
+                            ) : earnedTiers.length > 0 ? (
+                              <>
+                                🎉 <strong>Our school has earned all available rewards!</strong> What an amazing reading community! 🏆
+                              </>
+                            ) : (
+                              <>
+                                🌟 <strong>Our school is just getting started!</strong> Work together to earn your first rewards! 📖
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* GRADE SUPERSTARS */}
+              {gradeComparison && (
+                <div style={{
+                  backgroundColor: currentTheme.surface,
+                  borderRadius: '16px',
+                  padding: '20px',
+                  marginBottom: '20px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                }}>
+                  <h3 style={{
+                    fontSize: 'clamp(14px, 4vw, 16px)',
+                    fontWeight: '600',
+                    color: currentTheme.textPrimary,
+                    margin: '0 0 16px 0'
+                  }}>
+                    🌟 Every Grade is Fantastic!
+                  </h3>
+                  
+                  {gradeComparison.gradeBreakdown.map((grade, index) => {
+                    // Find something positive to highlight about each grade
+                    let gradeHighlight = '';
+                    let gradeEmoji = '';
+                    
+                    if (grade.averageBooks >= Math.max(...gradeComparison.gradeBreakdown.map(g => g.averageBooks))) {
+                      gradeHighlight = 'Most books per student!';
+                      gradeEmoji = '📚';
+                    } else if (grade.activeReaders >= Math.max(...gradeComparison.gradeBreakdown.map(g => g.activeReaders))) {
+                      gradeHighlight = 'Amazing daily readers!';
+                      gradeEmoji = '🔥';
+                    } else if (grade.totalBooks >= Math.max(...gradeComparison.gradeBreakdown.map(g => g.totalBooks))) {
+                      gradeHighlight = 'Most total books read!';
+                      gradeEmoji = '🏆';
+                    } else if (grade.students >= Math.max(...gradeComparison.gradeBreakdown.map(g => g.students))) {
+                      gradeHighlight = 'Largest reading community!';
+                      gradeEmoji = '👥';
+                    } else {
+                      gradeHighlight = 'Incredible readers!';
+                      gradeEmoji = '⭐';
+                    }
+                    
+                    return (
                       <div
-                        key={index}
+                        key={grade.grade}
                         style={{
-                          backgroundColor: tier.isStudentEarned ? 
-                            `${currentTheme.primary}30` : 
-                            tier.hasStudentsEarned ? `${currentTheme.primary}20` : `${currentTheme.primary}10`,
+                          backgroundColor: grade.grade === studentData.grade ? 
+                            `${currentTheme.primary}30` : `${currentTheme.primary}10`,
                           borderRadius: '12px',
                           padding: '12px',
-                          marginBottom: index < displayedTiers.length - 1 ? '8px' : '0',
-                          border: tier.isStudentEarned ? 
-                            `2px solid ${currentTheme.primary}` : 
-                            tier.hasStudentsEarned ? 'none' : `1px dashed ${currentTheme.primary}60`,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between'
+                          marginBottom: index < gradeComparison.gradeBreakdown.length - 1 ? '8px' : '0',
+                          border: grade.grade === studentData.grade ? 
+                            `2px solid ${currentTheme.primary}` : 'none'
                         }}
                       >
-                        <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          marginBottom: '8px'
+                        }}>
                           <div style={{
-                            fontSize: 'clamp(12px, 3.5vw, 14px)',
+                            fontSize: 'clamp(14px, 4vw, 16px)',
                             fontWeight: '600',
-                            color: currentTheme.textPrimary,
-                            marginBottom: '2px'
+                            color: currentTheme.textPrimary
                           }}>
-                            {tier.reward}
-                          </div>
-                          <div style={{
-                            fontSize: 'clamp(10px, 3vw, 12px)',
-                            color: currentTheme.textSecondary,
-                            marginBottom: '4px'
-                          }}>
-                            {tier.books} books to unlock
-                            {tier.isStudentEarned && (
+                            Grade {grade.grade} {gradeEmoji}
+                            {grade.grade === studentData.grade && (
                               <span style={{
+                                fontSize: 'clamp(10px, 3vw, 11px)',
                                 color: currentTheme.primary,
                                 fontWeight: '600',
                                 marginLeft: '8px'
                               }}>
-                                - YOU EARNED THIS! 🎉
+                                (YOUR GRADE!)
                               </span>
                             )}
-                          </div>
-                          <div style={{
-                            fontSize: 'clamp(11px, 3vw, 12px)',
-                            fontWeight: '600',
-                            color: tier.count > 0 ? '#4CAF50' : currentTheme.textSecondary
-                          }}>
-                            {tier.count > 0 ? '🎯' : '⭕'} {tier.count} of {schoolRealRewards.totalSchoolStudents} students earned this ({tier.percentage}%)
                           </div>
                         </div>
                         
                         <div style={{
-                          minWidth: '40px',
-                          textAlign: 'center'
+                          fontSize: 'clamp(11px, 3vw, 12px)',
+                          color: currentTheme.primary,
+                          fontWeight: '600',
+                          marginBottom: '4px'
                         }}>
-                          <div style={{
-                            fontSize: 'clamp(20px, 6vw, 24px)'
-                          }}>
-                            {tier.isStudentEarned ? '🏆' : tier.count > 0 ? '🎯' : '⭕'}
-                          </div>
+                          {gradeHighlight}
+                        </div>
+                        
+                        <div style={{
+                          fontSize: 'clamp(10px, 3vw, 11px)',
+                          color: currentTheme.textSecondary
+                        }}>
+                          {grade.students} students • {grade.totalBooks} total books • {grade.averageBooks} average each
                         </div>
                       </div>
-                    ))}
-                    
-                    {/* SMART STATUS MESSAGE */}
-                    {!expandedSchoolRewards && (
-                      <div style={{
-                        fontSize: 'clamp(11px, 3vw, 12px)',
-                        color: currentTheme.textSecondary,
-                        textAlign: 'center',
-                        marginTop: '12px',
-                        padding: '8px',
-                        backgroundColor: `${currentTheme.primary}10`,
-                        borderRadius: '8px'
-                      }}>
-                        {nextTier ? (
-                          <>
-                            📚 Next school milestone: <strong>{nextTier.books} books for {nextTier.reward}</strong>
-                          </>
-                        ) : earnedTiers.length > 0 ? (
-                          <>
-                            🎉 <strong>Our school has earned all available rewards!</strong> What an amazing reading community! 🏆
-                          </>
-                        ) : (
-                          <>
-                            🌟 <strong>Our school is just getting started!</strong> Work together to earn your first rewards! 📖
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </>
-                );
-              })()}
-            </div>
-          )}
-
-          {/* GRADE SUPERSTARS */}
-          {gradeComparison && (
-            <div style={{
-              backgroundColor: currentTheme.surface,
-              borderRadius: '16px',
-              padding: '20px',
-              marginBottom: '20px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-            }}>
-              <h3 style={{
-                fontSize: 'clamp(14px, 4vw, 16px)',
-                fontWeight: '600',
-                color: currentTheme.textPrimary,
-                margin: '0 0 16px 0'
-              }}>
-                🌟 Every Grade is Fantastic!
-              </h3>
-              
-              {gradeComparison.gradeBreakdown.map((grade, index) => {
-                // Find something positive to highlight about each grade
-                let gradeHighlight = '';
-                let gradeEmoji = '';
-                
-                if (grade.averageBooks >= Math.max(...gradeComparison.gradeBreakdown.map(g => g.averageBooks))) {
-                  gradeHighlight = 'Most books per student!';
-                  gradeEmoji = '📚';
-                } else if (grade.activeReaders >= Math.max(...gradeComparison.gradeBreakdown.map(g => g.activeReaders))) {
-                  gradeHighlight = 'Amazing daily readers!';
-                  gradeEmoji = '🔥';
-                } else if (grade.totalBooks >= Math.max(...gradeComparison.gradeBreakdown.map(g => g.totalBooks))) {
-                  gradeHighlight = 'Most total books read!';
-                  gradeEmoji = '🏆';
-                } else if (grade.students >= Math.max(...gradeComparison.gradeBreakdown.map(g => g.students))) {
-                  gradeHighlight = 'Largest reading community!';
-                  gradeEmoji = '👥';
-                } else {
-                  gradeHighlight = 'Incredible readers!';
-                  gradeEmoji = '⭐';
-                }
-                
-                return (
-                  <div
-                    key={grade.grade}
-                    style={{
-                      backgroundColor: grade.grade === studentData.grade ? 
-                        `${currentTheme.primary}30` : `${currentTheme.primary}10`,
-                      borderRadius: '12px',
-                      padding: '12px',
-                      marginBottom: index < gradeComparison.gradeBreakdown.length - 1 ? '8px' : '0',
-                      border: grade.grade === studentData.grade ? 
-                        `2px solid ${currentTheme.primary}` : 'none'
-                    }}
-                  >
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      marginBottom: '8px'
-                    }}>
-                      <div style={{
-                        fontSize: 'clamp(14px, 4vw, 16px)',
-                        fontWeight: '600',
-                        color: currentTheme.textPrimary
-                      }}>
-                        Grade {grade.grade} {gradeEmoji}
-                        {grade.grade === studentData.grade && (
-                          <span style={{
-                            fontSize: 'clamp(10px, 3vw, 11px)',
-                            color: currentTheme.primary,
-                            fontWeight: '600',
-                            marginLeft: '8px'
-                          }}>
-                            (YOUR GRADE!)
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    
+                    );
+                  })}
+                  
+                  <div style={{
+                    backgroundColor: `${currentTheme.secondary}20`,
+                    borderRadius: '8px',
+                    padding: '12px',
+                    marginTop: '12px',
+                    textAlign: 'center'
+                  }}>
                     <div style={{
                       fontSize: 'clamp(11px, 3vw, 12px)',
-                      color: currentTheme.primary,
-                      fontWeight: '600',
-                      marginBottom: '4px'
-                    }}>
-                      {gradeHighlight}
-                    </div>
-                    
-                    <div style={{
-                      fontSize: 'clamp(10px, 3vw, 11px)',
                       color: currentTheme.textSecondary
                     }}>
-                      {grade.students} students • {grade.totalBooks} total books • {grade.averageBooks} average each
+                      Every grade brings something special to our reading community! 🌈
                     </div>
                   </div>
-                );
-              })}
-              
-              <div style={{
-                backgroundColor: `${currentTheme.secondary}20`,
-                borderRadius: '8px',
-                padding: '12px',
-                marginTop: '12px',
-                textAlign: 'center'
-              }}>
-                <div style={{
-                  fontSize: 'clamp(11px, 3vw, 12px)',
-                  color: currentTheme.textSecondary
-                }}>
-                  Every grade brings something special to our reading community! 🌈
                 </div>
-              </div>
-            </div>
-          )}
+              )}
 
-          {/* SCHOOL READING SUPERPOWERS - DYNAMIC! */}
-          {readingCulture && readingCulture.superpowers && readingCulture.superpowers.length > 0 && (
-            <div style={{
-              backgroundColor: currentTheme.surface,
-              borderRadius: '16px',
-              padding: '20px',
-              marginBottom: '20px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-            }}>
-              <h3 style={{
-                fontSize: 'clamp(14px, 4vw, 16px)',
-                fontWeight: '600',
-                color: currentTheme.textPrimary,
-                margin: '0 0 16px 0'
-              }}>
-                ⭐ Our School&apos;s Reading Superpowers!
-              </h3>
-              
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: readingCulture.superpowers.length === 1 ? '1fr' : '1fr 1fr',
-                gap: '12px',
-                marginBottom: '16px'
-              }}>
-                {readingCulture.superpowers.map((superpower, index) => (
-                  <div
-                    key={index}
-                    style={{
-                      backgroundColor: `${currentTheme.primary}20`,
-                      borderRadius: '12px',
-                      padding: '12px',
-                      textAlign: 'center'
-                    }}
-                  >
-                    <div style={{
-                      fontSize: 'clamp(20px, 6vw, 24px)',
-                      marginBottom: '4px'
-                    }}>
-                      {superpower.name.split(' ')[0]} {/* Extract emoji */}
-                    </div>
-                    <div style={{
-                      fontSize: 'clamp(11px, 3vw, 12px)',
-                      color: currentTheme.textPrimary,
-                      fontWeight: '600',
-                      marginBottom: '2px'
-                    }}>
-                      {superpower.name.substring(2)} {/* Remove emoji and space */}
-                    </div>
-                    <div style={{
-                      fontSize: 'clamp(9px, 2.5vw, 10px)',
-                      color: currentTheme.textSecondary,
-                      marginBottom: superpower.hasIt ? '4px' : '0'
-                    }}>
-                      {superpower.description}
-                    </div>
-                    {superpower.hasIt && (
-                      <div style={{
-                        fontSize: 'clamp(8px, 2.5vw, 9px)',
-                        color: currentTheme.primary,
-                        fontWeight: '600'
-                      }}>
-                        YOU TOO! {superpower.name.split(' ')[0]}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-              
-              <div style={{
-                backgroundColor: `${currentTheme.primary}10`,
-                borderRadius: '8px',
-                padding: '12px',
-                textAlign: 'center'
-              }}>
+              {/* SCHOOL READING SUPERPOWERS - DYNAMIC! */}
+              {readingCulture && readingCulture.superpowers && readingCulture.superpowers.length > 0 && (
                 <div style={{
-                  fontSize: 'clamp(11px, 3vw, 12px)',
-                  color: currentTheme.textSecondary,
-                  fontStyle: 'italic'
+                  backgroundColor: currentTheme.surface,
+                  borderRadius: '16px',
+                  padding: '20px',
+                  marginBottom: '20px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                 }}>
-                  Our school has incredible reading superpowers! Keep building our reading community! 🌟
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* SCHOOL'S FAVORITE BOOK */}
-          {readingCulture && readingCulture.schoolFavoriteBook && (
-            <div style={{
-              backgroundColor: currentTheme.surface,
-              borderRadius: '16px',
-              padding: '20px',
-              marginBottom: '20px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-            }}>
-              <h3 style={{
-                fontSize: 'clamp(14px, 4vw, 16px)',
-                fontWeight: '600',
-                color: currentTheme.textPrimary,
-                margin: '0 0 16px 0'
-              }}>
-                📚 Our School&apos;s Favorite Book
-              </h3>
-              
-              <div style={{
-                display: 'flex',
-                gap: '16px',
-                alignItems: 'center'
-              }}>
-                <div style={{
-                  width: '60px',
-                  height: '80px',
-                  borderRadius: '4px',
-                  overflow: 'hidden',
-                  backgroundColor: '#F5F5F5',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
-                }}>
-                  {readingCulture.schoolFavoriteBook.coverImageUrl ? (
-                    <img 
-                      src={readingCulture.schoolFavoriteBook.coverImageUrl} 
-                      alt={readingCulture.schoolFavoriteBook.title}
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover'
-                      }}
-                    />
-                  ) : (
-                    <span style={{ fontSize: '24px' }}>📚</span>
-                  )}
-                </div>
-                
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{
+                  <h3 style={{
                     fontSize: 'clamp(14px, 4vw, 16px)',
                     fontWeight: '600',
                     color: currentTheme.textPrimary,
-                    marginBottom: '4px',
-                    lineHeight: '1.2'
+                    margin: '0 0 16px 0'
                   }}>
-                    {readingCulture.schoolFavoriteBook.title}
-                  </div>
+                    ⭐ Our School&apos;s Reading Superpowers!
+                  </h3>
+                  
                   <div style={{
-                    fontSize: 'clamp(12px, 3.5vw, 14px)',
-                    color: currentTheme.textSecondary,
-                    marginBottom: '8px',
-                    fontStyle: 'italic'
+                    display: 'grid',
+                    gridTemplateColumns: readingCulture.superpowers.length === 1 ? '1fr' : '1fr 1fr',
+                    gap: '12px',
+                    marginBottom: '16px'
                   }}>
-                    by {readingCulture.schoolFavoriteBook.authors}
+                    {readingCulture.superpowers.map((superpower, index) => (
+                      <div
+                        key={index}
+                        style={{
+                          backgroundColor: `${currentTheme.primary}20`,
+                          borderRadius: '12px',
+                          padding: '12px',
+                          textAlign: 'center'
+                        }}
+                      >
+                        <div style={{
+                          fontSize: 'clamp(20px, 6vw, 24px)',
+                          marginBottom: '4px'
+                        }}>
+                          {superpower.name.split(' ')[0]} {/* Extract emoji */}
+                        </div>
+                        <div style={{
+                          fontSize: 'clamp(11px, 3vw, 12px)',
+                          color: currentTheme.textPrimary,
+                          fontWeight: '600',
+                          marginBottom: '2px'
+                        }}>
+                          {superpower.name.substring(2)} {/* Remove emoji and space */}
+                        </div>
+                        <div style={{
+                          fontSize: 'clamp(9px, 2.5vw, 10px)',
+                          color: currentTheme.textSecondary,
+                          marginBottom: superpower.hasIt ? '4px' : '0'
+                        }}>
+                          {superpower.description}
+                        </div>
+                        {superpower.hasIt && (
+                          <div style={{
+                            fontSize: 'clamp(8px, 2.5vw, 9px)',
+                            color: currentTheme.primary,
+                            fontWeight: '600'
+                          }}>
+                            YOU TOO! {superpower.name.split(' ')[0]}
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
+                  
                   <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    marginBottom: '4px'
+                    backgroundColor: `${currentTheme.primary}10`,
+                    borderRadius: '8px',
+                    padding: '12px',
+                    textAlign: 'center'
                   }}>
-                    <span style={{ fontSize: 'clamp(16px, 4vw, 18px)' }}>⭐</span>
-                    <span style={{
-                      fontSize: 'clamp(14px, 4vw, 16px)',
-                      fontWeight: '600',
-                      color: currentTheme.textPrimary
+                    <div style={{
+                      fontSize: 'clamp(11px, 3vw, 12px)',
+                      color: currentTheme.textSecondary,
+                      fontStyle: 'italic'
                     }}>
-                      {readingCulture.schoolFavoriteBook.averageRating}/5.0
-                    </span>
-                  </div>
-                  <div style={{
-                    fontSize: 'clamp(11px, 3vw, 12px)',
-                    color: currentTheme.textSecondary
-                  }}>
-                    from {readingCulture.schoolFavoriteBook.ratingCount} students
+                      Our school has incredible reading superpowers! Keep building our reading community! 🌟
+                    </div>
                   </div>
                 </div>
+              )}
+
+              {/* SCHOOL'S FAVORITE BOOK */}
+              {readingCulture && readingCulture.schoolFavoriteBook && (
+                <div style={{
+                  backgroundColor: currentTheme.surface,
+                  borderRadius: '16px',
+                  padding: '20px',
+                  marginBottom: '20px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                }}>
+                  <h3 style={{
+                    fontSize: 'clamp(14px, 4vw, 16px)',
+                    fontWeight: '600',
+                    color: currentTheme.textPrimary,
+                    margin: '0 0 16px 0'
+                  }}>
+                    📚 Our School&apos;s Favorite Book
+                  </h3>
+                  
+                  <div style={{
+                    display: 'flex',
+                    gap: '16px',
+                    alignItems: 'center'
+                  }}>
+                    <div style={{
+                      width: '60px',
+                      height: '80px',
+                      borderRadius: '4px',
+                      overflow: 'hidden',
+                      backgroundColor: '#F5F5F5',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                    }}>
+                      {readingCulture.schoolFavoriteBook.coverImageUrl ? (
+                        <img 
+                          src={readingCulture.schoolFavoriteBook.coverImageUrl} 
+                          alt={readingCulture.schoolFavoriteBook.title}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover'
+                          }}
+                        />
+                      ) : (
+                        <span style={{ fontSize: '24px' }}>📚</span>
+                      )}
+                    </div>
+                    
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontSize: 'clamp(14px, 4vw, 16px)',
+                        fontWeight: '600',
+                        color: currentTheme.textPrimary,
+                        marginBottom: '4px',
+                        lineHeight: '1.2'
+                      }}>
+                        {readingCulture.schoolFavoriteBook.title}
+                      </div>
+                      <div style={{
+                        fontSize: 'clamp(12px, 3.5vw, 14px)',
+                        color: currentTheme.textSecondary,
+                        marginBottom: '8px',
+                        fontStyle: 'italic'
+                      }}>
+                        by {readingCulture.schoolFavoriteBook.authors}
+                      </div>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        marginBottom: '4px'
+                      }}>
+                        <span style={{ fontSize: 'clamp(16px, 4vw, 18px)' }}>⭐</span>
+                        <span style={{
+                          fontSize: 'clamp(14px, 4vw, 16px)',
+                          fontWeight: '600',
+                          color: currentTheme.textPrimary
+                        }}>
+                          {readingCulture.schoolFavoriteBook.averageRating}/5.0
+                        </span>
+                      </div>
+                      <div style={{
+                        fontSize: 'clamp(11px, 3vw, 12px)',
+                        color: currentTheme.textSecondary
+                      }}>
+                        from {readingCulture.schoolFavoriteBook.ratingCount} students
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* QUICK LINKS */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '12px',
+                marginTop: '20px'
+              }}>
+                <button
+                  onClick={() => router.push('/student-stats/my-stats')}
+                  style={{
+                    backgroundColor: currentTheme.primary,
+                    color: currentTheme.textPrimary,
+                    border: 'none',
+                    borderRadius: '16px',
+                    padding: '14px 16px',
+                    fontSize: 'clamp(12px, 3.5vw, 14px)',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    minHeight: '44px',
+                    touchAction: 'manipulation',
+                    WebkitTapHighlightColor: 'transparent'
+                  }}
+                >
+                  📈 My Personal Stats
+                </button>
+                
+                <button
+                  onClick={() => router.push('/student-stats/grade-stats')}
+                  style={{
+                    backgroundColor: currentTheme.secondary,
+                    color: currentTheme.textPrimary,
+                    border: 'none',
+                    borderRadius: '16px',
+                    padding: '14px 16px',
+                    fontSize: 'clamp(12px, 3.5vw, 14px)',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    minHeight: '44px',
+                    touchAction: 'manipulation',
+                    WebkitTapHighlightColor: 'transparent'
+                  }}
+                >
+                  🎓 Grade Stats
+                </button>
               </div>
             </div>
-          )}
-
-          {/* QUICK LINKS */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '12px',
-            marginTop: '20px'
-          }}>
-            <button
-              onClick={() => router.push('/student-stats/my-stats')}
-              style={{
-                backgroundColor: currentTheme.primary,
-                color: currentTheme.textPrimary,
-                border: 'none',
-                borderRadius: '16px',
-                padding: '14px 16px',
-                fontSize: 'clamp(12px, 3.5vw, 14px)',
-                fontWeight: '600',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                minHeight: '44px',
-                touchAction: 'manipulation',
-                WebkitTapHighlightColor: 'transparent'
-              }}
-            >
-              📈 My Personal Stats
-            </button>
-            
-            <button
-              onClick={() => router.push('/student-stats/grade-stats')}
-              style={{
-                backgroundColor: currentTheme.secondary,
-                color: currentTheme.textPrimary,
-                border: 'none',
-                borderRadius: '16px',
-                padding: '14px 16px',
-                fontSize: 'clamp(12px, 3.5vw, 14px)',
-                fontWeight: '600',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                minHeight: '44px',
-                touchAction: 'manipulation',
-                WebkitTapHighlightColor: 'transparent'
-              }}
-            >
-              🎓 Grade Stats
-            </button>
-          </div>
-        </div>
+          </>
+        )}
 
         <style jsx>{`
           @keyframes spin {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
+          }
+          
+          @keyframes slideInDown {
+            from { 
+              opacity: 0; 
+              transform: translateY(-30px); 
+            }
+            to { 
+              opacity: 1; 
+              transform: translateY(0); 
+            }
           }
           
           button {

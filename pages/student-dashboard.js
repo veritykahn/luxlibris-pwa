@@ -867,6 +867,13 @@ export default function StudentDashboard() {
       }
       
       setStudentData(firebaseStudentData);
+
+      // SEAMLESS: Check for recent historical unlocks and show notification
+      const historicalMessage = checkForNewHistoricalUnlocks(firebaseStudentData);
+      if (historicalMessage) {
+        setShowComingSoon(historicalMessage);
+        setTimeout(() => setShowComingSoon(''), 5000); // Show for 5 seconds
+      }
       
       // Set theme
       const selectedTheme = firebaseStudentData.selectedTheme || 'classic_lux';
@@ -1024,6 +1031,21 @@ const getMotivationalMessage = () => {
     return '📚 Happy reading!'; // Safe fallback
   }
 };
+
+// SEAMLESS: Check for new historical unlocks within 24 hours
+  const checkForNewHistoricalUnlocks = (studentData) => {
+    const completions = studentData?.historicalCompletions || [];
+    const recentCompletion = completions.find(comp => {
+      const addedAt = comp.addedAt?.toDate ? comp.addedAt.toDate() : new Date(comp.addedAt);
+      const hoursSince = (new Date() - addedAt) / (1000 * 60 * 60);
+      return hoursSince < 24; // Within last 24 hours
+    });
+    
+    if (recentCompletion) {
+      return `🎉 New achievements unlocked! Check your Saints collection!`;
+    }
+    return null;
+  };
 
   // NEW: Handle grade update
   const handleGradeUpdate = async () => {

@@ -818,12 +818,6 @@ export default function StudentStatsMain() {
       return; // Already on current page
     }
     
-    // UPDATED: Handle Lux DNA Lab with phase awareness
-    if (option.name === 'Lux DNA Lab' && option.phaseNote) {
-      alert(`🧬 ${option.phaseNote}`);
-      return;
-    }
-    
     router.push(option.path);
   };
 
@@ -1061,7 +1055,7 @@ export default function StudentStatsMain() {
                         SOON
                       </span>
                     )}
-                    {option.phaseNote && (
+                    {option.phaseNote && option.name !== 'Lux DNA Lab' && (
                       <span style={{
                         fontSize: '9px',
                         backgroundColor: '#FF9800',

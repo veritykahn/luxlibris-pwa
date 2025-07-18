@@ -1,7 +1,8 @@
-// pages/student-stats/lux-dna-lab.js - Complete Lux DNA Lab with Saint Quizzes
+// pages/student-stats/lux-dna-lab.js - Complete Lux DNA Lab with Saint Quizzes and Phase Awareness
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePhaseAccess } from '../../hooks/usePhaseAccess'; // ADDED PHASE ACCESS
 import { getStudentDataEntities, updateStudentDataEntities } from '../../lib/firebase';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
@@ -10,6 +11,7 @@ import Head from 'next/head';
 export default function LuxDnaLab() {
   const router = useRouter();
   const { user, isAuthenticated, loading } = useAuth();
+  const { phaseData, hasAccess, getPhaseMessage, getPhaseInfo } = usePhaseAccess(); // ADDED PHASE ACCESS
   const [studentData, setStudentData] = useState(null);
   const [currentTheme, setCurrentTheme] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -109,16 +111,31 @@ export default function LuxDnaLab() {
     }
   }), []);
 
-  // Navigation menu items
+  // UPDATED: Navigation menu items with phase-aware locking
   const navMenuItems = useMemo(() => [
     { name: 'Dashboard', path: '/student-dashboard', icon: '⌂' },
-    { name: 'Nominees', path: '/student-nominees', icon: '□' },
-    { name: 'Bookshelf', path: '/student-bookshelf', icon: '⚏' },
+    { 
+      name: 'Nominees', 
+      path: '/student-nominees', 
+      icon: '□', 
+      locked: !hasAccess('nomineesBrowsing'), 
+      lockReason: phaseData.currentPhase === 'VOTING' ? 'Nominees locked during voting' : 
+                 phaseData.currentPhase === 'RESULTS' ? 'Nominees locked during results' :
+                 phaseData.currentPhase === 'TEACHER_SELECTION' ? 'New amazing nominees coming this week!' : 'Nominees not available'
+    },
+    { 
+      name: 'Bookshelf', 
+      path: '/student-bookshelf', 
+      icon: '⚏', 
+      locked: !hasAccess('bookshelfViewing'), 
+      lockReason: phaseData.currentPhase === 'RESULTS' ? 'Bookshelf locked during results' :
+                 phaseData.currentPhase === 'TEACHER_SELECTION' ? 'Stats refreshing - new bookshelf coming!' : 'Bookshelf not available'
+    },
     { name: 'Healthy Habits', path: '/student-healthy-habits', icon: '○' },
     { name: 'Saints', path: '/student-saints', icon: '♔' },
     { name: 'Stats', path: '/student-stats', icon: '△' },
     { name: 'Settings', path: '/student-settings', icon: '⚙' }
-  ], []);
+  ], [hasAccess, phaseData.currentPhase]);
 
   // Stats navigation options
   const statsNavOptions = useMemo(() => [
@@ -403,6 +420,25 @@ export default function LuxDnaLab() {
     return studentData?.quizResults?.[quizId];
   };
 
+  // NEW: Get phase-specific messaging for the DNA Lab
+  const getPhaseSpecificMessage = () => {
+    switch (phaseData.currentPhase) {
+      case 'VOTING':
+        return "🗳️ This year's amazing reading program is complete! Keep discovering your unique Lux DNA and personality through fun quizzes while you vote for your favorite books!";
+      case 'RESULTS':
+        return "🏆 Congratulations on an incredible reading year! Book character DNA is now closed for this year, but you can still explore your amazing saint personality matches and keep building those reading habits!";
+      case 'TEACHER_SELECTION':
+        return "🚀 Get ready! The new reading program starts in just ONE WEEK! Brand new Lux Book DNA quizzes are coming soon! In the meantime, keep discovering your saint personality and building those super reading habits to earn XP and unlock more saints! 📚✨";
+      default:
+        return null;
+    }
+  };
+
+  // NEW: Check if nominees DNA should be locked (during RESULTS phase)
+  const isNomineesDnaLocked = () => {
+    return phaseData.currentPhase === 'RESULTS';
+  };
+
   if (loading || isLoading || !studentData || !currentTheme) {
     return (
       <div style={{
@@ -615,7 +651,7 @@ export default function LuxDnaLab() {
             )}
           </div>
 
-          {/* Hamburger Menu */}
+          {/* UPDATED: Hamburger Menu with Phase-Aware Locking */}
           <div className="nav-menu-container" style={{ position: 'relative' }}>
             <button
               onClick={() => setShowNavMenu(!showNavMenu)}
@@ -659,6 +695,10 @@ export default function LuxDnaLab() {
                     key={item.path}
                     onClick={() => {
                       setShowNavMenu(false);
+                      if (item.locked) {
+                        alert(`🔒 ${item.lockReason}`);
+                        return;
+                      }
                       if (!item.current) {
                         router.push(item.path);
                       }
@@ -666,25 +706,47 @@ export default function LuxDnaLab() {
                     style={{
                       width: '100%',
                       padding: '12px 16px',
-                      backgroundColor: item.current ? `${currentTheme.primary}30` : 'transparent',
+                      backgroundColor: item.current ? `${currentTheme.primary}30` : 
+                                      item.locked ? `${currentTheme.textSecondary}10` : 'transparent',
                       border: 'none',
                       borderBottom: index < navMenuItems.length - 1 ? `1px solid ${currentTheme.primary}40` : 'none',
-                      cursor: item.current ? 'default' : 'pointer',
+                      cursor: item.locked ? 'not-allowed' : (item.current ? 'default' : 'pointer'),
                       display: 'flex',
                       alignItems: 'center',
                       gap: '12px',
                       fontSize: '14px',
-                      color: currentTheme.textPrimary,
+                      color: item.locked ? currentTheme.textSecondary : currentTheme.textPrimary,
                       fontWeight: item.current ? '600' : '500',
                       textAlign: 'left',
                       touchAction: 'manipulation',
-                      WebkitTapHighlightColor: 'transparent'
+                      WebkitTapHighlightColor: 'transparent',
+                      transition: 'background-color 0.2s ease',
+                      opacity: item.locked ? 0.5 : 1
                     }}
+                    onMouseEnter={(e) => {
+                      if (!item.current && !item.locked) {
+                        e.target.style.backgroundColor = `${currentTheme.primary}20`;
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!item.current && !item.locked) {
+                        e.target.style.backgroundColor = 'transparent';
+                      }
+                    }}
+                    title={item.locked ? item.lockReason : undefined}
                   >
-                    <span style={{ fontSize: '16px' }}>{item.icon}</span>
+                    <span style={{ 
+                      fontSize: '16px',
+                      filter: item.locked ? 'grayscale(1)' : 'none'
+                    }}>
+                      {item.icon}
+                    </span>
                     <span>{item.name}</span>
                     {item.current && (
                       <span style={{ marginLeft: 'auto', fontSize: '12px', color: currentTheme.primary }}>●</span>
+                    )}
+                    {item.locked && (
+                      <span style={{ marginLeft: 'auto', fontSize: '12px', color: currentTheme.textSecondary }}>🔒</span>
                     )}
                   </button>
                 ))}
@@ -692,6 +754,46 @@ export default function LuxDnaLab() {
             )}
           </div>
         </div>
+
+        {/* NEW: Phase-Specific Alert Banner */}
+        {getPhaseSpecificMessage() && (
+          <div style={{
+            background: phaseData.currentPhase === 'VOTING' ? 'linear-gradient(135deg, #8b5cf6, #a855f7)' : 
+                       phaseData.currentPhase === 'RESULTS' ? 'linear-gradient(135deg, #f59e0b, #f97316)' : 
+                       'linear-gradient(135deg, #3b82f6, #2563eb)',
+            color: 'white',
+            padding: '16px 20px',
+            margin: '0 16px 16px 16px',
+            borderRadius: '16px',
+            textAlign: 'center',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+            animation: 'slideInDown 0.6s ease-out'
+          }}>
+            <div style={{ fontSize: '40px', marginBottom: '12px' }}>
+              {phaseData.currentPhase === 'VOTING' ? '🗳️' : 
+               phaseData.currentPhase === 'RESULTS' ? '🏆' : '🚀'}
+            </div>
+            <div style={{
+              fontSize: '16px',
+              fontWeight: '600',
+              marginBottom: '8px',
+              lineHeight: '1.3',
+              fontFamily: 'Didot, "Times New Roman", serif'
+            }}>
+              {phaseData.currentPhase === 'VOTING' ? 'DNA Lab Still Open!' :
+               phaseData.currentPhase === 'RESULTS' ? 'DNA Lab Update!' :
+               'Get Ready for New DNA!'}
+            </div>
+            <div style={{
+              fontSize: '13px',
+              fontWeight: '400',
+              lineHeight: '1.4',
+              opacity: 0.95
+            }}>
+              {getPhaseSpecificMessage()}
+            </div>
+          </div>
+        )}
 
         {/* MAIN CONTENT */}
         <div style={{ padding: 'clamp(16px, 5vw, 20px)', maxWidth: '400px', margin: '0 auto' }}>
@@ -728,7 +830,11 @@ export default function LuxDnaLab() {
               marginBottom: '16px',
               lineHeight: '1.5'
             }}>
-              Discover your personality through fun quizzes and learn which saints match your spirit!
+              {phaseData.currentPhase === 'RESULTS' ? 
+                'Discover your saint personality through fun quizzes! Book character DNA is closed for this year.' :
+                phaseData.currentPhase === 'TEACHER_SELECTION' ?
+                'Discover your saint personality and get ready for brand new book character quizzes coming next week!' :
+                'Discover your personality through fun quizzes and learn which saints match your spirit!'}
             </div>
 
             <div style={{
@@ -807,14 +913,14 @@ export default function LuxDnaLab() {
 
           {/* QUIZ CATEGORIES */}
           
-          {/* Lux Libris Nominees DNA - Coming Soon */}
+          {/* UPDATED: Lux Libris Nominees DNA with Phase Awareness */}
           <div style={{
             backgroundColor: currentTheme.surface,
             borderRadius: '16px',
             padding: '20px',
             marginBottom: '20px',
             boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            opacity: 0.7
+            opacity: isNomineesDnaLocked() ? 0.7 : (phaseData.currentPhase === 'TEACHER_SELECTION' ? 1 : 0.7)
           }}>
             <div style={{
               display: 'flex',
@@ -842,25 +948,30 @@ export default function LuxDnaLab() {
             </div>
             
             <div style={{
-              backgroundColor: `${currentTheme.primary}20`,
+              backgroundColor: isNomineesDnaLocked() ? `${currentTheme.textSecondary}20` : 
+                              phaseData.currentPhase === 'TEACHER_SELECTION' ? `${currentTheme.primary}20` : `${currentTheme.primary}20`,
               borderRadius: '12px',
               padding: '12px',
               textAlign: 'center',
-              border: `2px dashed ${currentTheme.primary}60`
+              border: isNomineesDnaLocked() ? `2px dashed ${currentTheme.textSecondary}60` : 
+                      phaseData.currentPhase === 'TEACHER_SELECTION' ? `2px solid ${currentTheme.primary}60` : `2px dashed ${currentTheme.primary}60`
             }}>
               <div style={{
                 fontSize: '14px',
                 fontWeight: '600',
-                color: currentTheme.textPrimary,
+                color: isNomineesDnaLocked() ? currentTheme.textSecondary : currentTheme.textPrimary,
                 marginBottom: '4px'
               }}>
-                🚧 Coming Soon! 🚧
+                {isNomineesDnaLocked() ? '🔒 Closed for This Year!' : 
+                 phaseData.currentPhase === 'TEACHER_SELECTION' ? '🚀 NEW DNA Coming Next Week!' : '🚧 Coming Soon!'}
               </div>
               <div style={{
                 fontSize: '12px',
                 color: currentTheme.textSecondary
               }}>
-                Book character personality quizzes are in development
+                {isNomineesDnaLocked() ? 'Book character quizzes are closed for this academic year' :
+                 phaseData.currentPhase === 'TEACHER_SELECTION' ? 'Brand new book character personality quizzes launch with the new program!' :
+                 'Book character personality quizzes are in development'}
               </div>
             </div>
           </div>
@@ -904,7 +1015,11 @@ export default function LuxDnaLab() {
                   fontSize: '12px',
                   color: currentTheme.textSecondary
                 }}>
-                  Discover which saints match your personality! • {getCompletedQuizzesCount()}/{quizzes.length} completed
+                  {phaseData.currentPhase === 'RESULTS' ? 
+                    'Discover which saints match your personality! Always available! ✨' :
+                    phaseData.currentPhase === 'TEACHER_SELECTION' ?
+                    'Keep discovering your saint matches while we prep new book quizzes! 🌟' :
+                    'Discover which saints match your personality!'} • {getCompletedQuizzesCount()}/{quizzes.length} completed
                 </div>
               </div>
               <div style={{
@@ -1564,6 +1679,17 @@ export default function LuxDnaLab() {
           @keyframes fadeIn {
             from { opacity: 0; transform: translateY(-10px); }
             to { opacity: 1; transform: translateY(0); }
+          }
+          
+          @keyframes slideInDown {
+            from { 
+              opacity: 0; 
+              transform: translateY(-30px); 
+            }
+            to { 
+              opacity: 1; 
+              transform: translateY(0); 
+            }
           }
           
           button {

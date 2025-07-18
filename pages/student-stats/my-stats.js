@@ -1,8 +1,9 @@
-// pages/student-stats/my-stats.js - Updated with EnhancedBraggingRightsModal
+// pages/student-stats/my-stats.js - Updated with Phase Awareness and Enhanced Bragging Rights
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePhaseAccess } from '../../hooks/usePhaseAccess'; // ADDED PHASE ACCESS
 import { getStudentDataEntities, updateStudentDataEntities } from '../../lib/firebase';
 import { collection, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
@@ -15,6 +16,7 @@ import EnhancedBraggingRightsModal from '../../components/EnhancedBraggingRights
 export default function MyStats() {
   const router = useRouter();
   const { user, isAuthenticated, loading } = useAuth();
+  const { phaseData, hasAccess, getPhaseMessage, getPhaseInfo } = usePhaseAccess(); // ADDED PHASE ACCESS
   const [studentData, setStudentData] = useState(null);
   const [currentTheme, setCurrentTheme] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -142,18 +144,33 @@ export default function MyStats() {
     }
   }), []);
 
-  // Navigation menu items
+  // UPDATED: Navigation menu items with phase-aware locking
   const navMenuItems = useMemo(() => [
     { name: 'Dashboard', path: '/student-dashboard', icon: '⌂' },
-    { name: 'Nominees', path: '/student-nominees', icon: '□' },
-    { name: 'Bookshelf', path: '/student-bookshelf', icon: '⚏' },
+    { 
+      name: 'Nominees', 
+      path: '/student-nominees', 
+      icon: '□', 
+      locked: !hasAccess('nomineesBrowsing'), 
+      lockReason: phaseData.currentPhase === 'VOTING' ? 'Nominees locked during voting' : 
+                 phaseData.currentPhase === 'RESULTS' ? 'Nominees locked during results' :
+                 phaseData.currentPhase === 'TEACHER_SELECTION' ? 'New amazing nominees coming this week!' : 'Nominees not available'
+    },
+    { 
+      name: 'Bookshelf', 
+      path: '/student-bookshelf', 
+      icon: '⚏', 
+      locked: !hasAccess('bookshelfViewing'), 
+      lockReason: phaseData.currentPhase === 'RESULTS' ? 'Bookshelf locked during results' :
+                 phaseData.currentPhase === 'TEACHER_SELECTION' ? 'Stats refreshing - new bookshelf coming!' : 'Bookshelf not available'
+    },
     { name: 'Healthy Habits', path: '/student-healthy-habits', icon: '○' },
     { name: 'Saints', path: '/student-saints', icon: '♔' },
     { name: 'Stats', path: '/student-stats', icon: '△', current: true },
     { name: 'Settings', path: '/student-settings', icon: '⚙' }
-  ], []);
+  ], [hasAccess, phaseData.currentPhase]);
 
-  // Stats navigation options
+  // UPDATED: Stats navigation options with phase-aware Lux DNA messaging
   const statsNavOptions = useMemo(() => [
     { name: 'Stats Dashboard', path: '/student-stats', icon: '📊', description: 'Fun overview' },
     { name: 'My Stats', path: '/student-stats/my-stats', icon: '📈', description: 'Personal deep dive', current: true },
@@ -161,9 +178,15 @@ export default function MyStats() {
     { name: 'School Stats', path: '/student-stats/school-stats', icon: '🏫', description: 'School-wide progress' },
     { name: 'Diocese Stats', path: '/student-stats/diocese-stats', icon: '⛪', description: 'Coming soon!', disabled: true },
     { name: 'Global Stats', path: '/student-stats/global-stats', icon: '🌎', description: 'Coming soon!', disabled: true },
-    { name: 'Lux DNA Lab', path: '/student-stats/lux-dna-lab', icon: '🧬', description: 'Discover your reading personality' },
+    { 
+      name: 'Lux DNA Lab', 
+      path: '/student-stats/lux-dna-lab', 
+      icon: '🧬', 
+      description: phaseData.currentPhase === 'RESULTS' ? 'Nominees DNA locked for year' : 'Discover your reading personality',
+      phaseNote: phaseData.currentPhase === 'RESULTS' ? 'Nominees DNA analysis is closed for this academic year' : null
+    },
     { name: 'Family Battle', path: '/student-stats/family-battle', icon: '👨‍👩‍👧‍👦', description: 'Coming soon!', disabled: true }
-  ], []);
+  ], [phaseData.currentPhase]);
 
   // Handle badge click function
   const handleBadgeClick = (badge) => {
@@ -569,6 +592,20 @@ export default function MyStats() {
     }
   }, [leaderboardUnlocked, loadLeaderboardData]);
 
+  // UPDATED: Get phase-specific messaging for the dashboard
+  const getPhaseSpecificMessage = () => {
+    switch (phaseData.currentPhase) {
+      case 'VOTING':
+        return "🗳️ This year's reading program is complete! Check out your achievement certificate in Bragging Rights, keep building XP and earning badges, and discover your Lux DNA! Time to vote for your favorites!";
+      case 'RESULTS':
+        return "🏆 Congratulations on an amazing reading year! Check out your achievement certificate in Bragging Rights, keep building XP and earning badges! Nominees DNA in Lux Lab is now closed for the year.";
+      case 'TEACHER_SELECTION':
+        return "📊 Your stats will be refreshed for the new program, but don't worry - you'll keep your reading streaks, XP, and Luxlings™! Keep your reading habits strong this week while we prepare amazing new books for you! 📚✨";
+      default:
+        return null;
+    }
+  };
+
   // Load all stats data
   const loadStatsData = useCallback(async () => {
     try {
@@ -809,10 +846,10 @@ export default function MyStats() {
                       </div>
                       <div style={{
                         fontSize: '11px',
-                        color: currentTheme.textSecondary,
+                        color: option.phaseNote ? '#FF9800' : currentTheme.textSecondary,
                         opacity: 0.8
                       }}>
-                        {option.description}
+                        {option.phaseNote || option.description}
                       </div>
                     </div>
                     {option.current && (
@@ -830,13 +867,25 @@ export default function MyStats() {
                         SOON
                       </span>
                     )}
+                    {option.phaseNote && option.name !== 'Lux DNA Lab' && (
+                      <span style={{
+                        fontSize: '9px',
+                        backgroundColor: '#FF9800',
+                        color: 'white',
+                        padding: '2px 6px',
+                        borderRadius: '8px',
+                        fontWeight: '600'
+                      }}>
+                        CLOSED
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
             )}
           </div>
 
-          {/* Hamburger Menu */}
+          {/* UPDATED: Hamburger Menu with Phase-Aware Locking */}
           <div className="nav-menu-container" style={{ position: 'relative' }}>
             <button
               onClick={() => setShowNavMenu(!showNavMenu)}
@@ -880,6 +929,10 @@ export default function MyStats() {
                     key={item.path}
                     onClick={() => {
                       setShowNavMenu(false);
+                      if (item.locked) {
+                        alert(`🔒 ${item.lockReason}`);
+                        return;
+                      }
                       if (!item.current) {
                         router.push(item.path);
                       }
@@ -887,25 +940,47 @@ export default function MyStats() {
                     style={{
                       width: '100%',
                       padding: '12px 16px',
-                      backgroundColor: item.current ? `${currentTheme.primary}30` : 'transparent',
+                      backgroundColor: item.current ? `${currentTheme.primary}30` : 
+                                      item.locked ? `${currentTheme.textSecondary}10` : 'transparent',
                       border: 'none',
                       borderBottom: index < navMenuItems.length - 1 ? `1px solid ${currentTheme.primary}40` : 'none',
-                      cursor: item.current ? 'default' : 'pointer',
+                      cursor: item.locked ? 'not-allowed' : (item.current ? 'default' : 'pointer'),
                       display: 'flex',
                       alignItems: 'center',
                       gap: '12px',
                       fontSize: '14px',
-                      color: currentTheme.textPrimary,
+                      color: item.locked ? currentTheme.textSecondary : currentTheme.textPrimary,
                       fontWeight: item.current ? '600' : '500',
                       textAlign: 'left',
                       touchAction: 'manipulation',
-                      WebkitTapHighlightColor: 'transparent'
+                      WebkitTapHighlightColor: 'transparent',
+                      transition: 'background-color 0.2s ease',
+                      opacity: item.locked ? 0.5 : 1
                     }}
+                    onMouseEnter={(e) => {
+                      if (!item.current && !item.locked) {
+                        e.target.style.backgroundColor = `${currentTheme.primary}20`;
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!item.current && !item.locked) {
+                        e.target.style.backgroundColor = 'transparent';
+                      }
+                    }}
+                    title={item.locked ? item.lockReason : undefined}
                   >
-                    <span style={{ fontSize: '16px' }}>{item.icon}</span>
+                    <span style={{ 
+                      fontSize: '16px',
+                      filter: item.locked ? 'grayscale(1)' : 'none'
+                    }}>
+                      {item.icon}
+                    </span>
                     <span>{item.name}</span>
                     {item.current && (
                       <span style={{ marginLeft: 'auto', fontSize: '12px', color: currentTheme.primary }}>●</span>
+                    )}
+                    {item.locked && (
+                      <span style={{ marginLeft: 'auto', fontSize: '12px', color: currentTheme.textSecondary }}>🔒</span>
                     )}
                   </button>
                 ))}
@@ -914,647 +989,837 @@ export default function MyStats() {
           </div>
         </div>
 
-        {/* MAIN CONTENT */}
-        <div style={{ padding: 'clamp(16px, 5vw, 20px)', maxWidth: '400px', margin: '0 auto' }}>
-          
-          {/* LARGE BADGE PROGRAM SECTION WITH XP & LEVEL */}
-          {levelProgress && badgeProgress && (
+        {/* TEACHER_SELECTION: Show only messaging box */}
+        {phaseData.currentPhase === 'TEACHER_SELECTION' ? (
+          <div style={{ padding: 'clamp(40px, 10vw, 60px) clamp(20px, 5vw, 40px)', textAlign: 'center' }}>
             <div style={{
-              backgroundColor: currentTheme.surface,
+              background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+              color: 'white',
+              padding: '40px 24px',
               borderRadius: '20px',
-              padding: '24px',
-              marginBottom: '20px',
-              boxShadow: '0 6px 20px rgba(0,0,0,0.15)',
-              textAlign: 'center'
+              boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+              maxWidth: '400px',
+              margin: '0 auto'
             }}>
+              <div style={{ fontSize: '64px', marginBottom: '20px' }}>🚧</div>
+              <div style={{
+                fontSize: '24px',
+                fontWeight: '600',
+                marginBottom: '12px',
+                fontFamily: 'Didot, "Times New Roman", serif'
+              }}>
+                New Program Starting Soon!
+              </div>
               <div style={{
                 fontSize: '16px',
-                fontWeight: '600',
-                color: currentTheme.textPrimary,
-                marginBottom: '20px'
+                fontWeight: '400',
+                lineHeight: '1.5',
+                opacity: 0.95
               }}>
-                🏆 Badge Program & Level Progress
+                📊 Your stats will be refreshed for the new program, but don&apos;t worry - you&apos;ll keep your reading streaks, XP, and saints! Keep your reading habits strong this week while we prepare amazing new books for you! 📚✨
               </div>
-              
-              {/* PROMINENT XP & LEVEL DISPLAY */}
               <div style={{
-                backgroundColor: `${currentTheme.primary}20`,
-                borderRadius: '16px',
-                padding: '20px',
-                marginBottom: '20px',
-                border: `2px solid ${currentTheme.primary}60`
-              }}>
-                <div style={{
-                  fontSize: 'clamp(32px, 10vw, 40px)',
-                  fontWeight: 'bold',
-                  color: currentTheme.textPrimary,
-                  marginBottom: '8px'
-                }}>
-                  ⚡ {(studentData.totalXP || 0).toLocaleString()} XP
-                </div>
-                
-                <div style={{
-                  fontSize: 'clamp(18px, 5vw, 20px)',
-                  fontWeight: '600',
-                  color: currentTheme.textPrimary,
-                  marginBottom: '16px',
-                  fontFamily: 'Didot, "Times New Roman", serif'
-                }}>
-                  Level {levelProgress.level}
-                </div>
-                
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: '12px'
-                }}>
-                  <div style={{
-                    fontSize: 'clamp(12px, 3vw, 13px)',
-                    color: currentTheme.textSecondary
-                  }}>
-                    Level {levelProgress.level}
-                  </div>
-                  <div style={{
-                    fontSize: 'clamp(12px, 3vw, 13px)',
-                    color: currentTheme.textSecondary
-                  }}>
-                    Level {levelProgress.level + 1}
-                  </div>
-                </div>
-                
-                <div style={{
-                  height: '12px',
-                  backgroundColor: '#E0E0E0',
-                  borderRadius: '6px',
-                  overflow: 'hidden',
-                  marginBottom: '8px'
-                }}>
-                  <div style={{
-                    height: '100%',
-                    width: `${levelProgress.percentage}%`,
-                    background: `linear-gradient(90deg, ${currentTheme.primary}, ${currentTheme.secondary})`,
-                    borderRadius: '6px',
-                    transition: 'width 0.5s ease'
-                  }} />
-                </div>
-                
-                <div style={{
-                  fontSize: 'clamp(11px, 3vw, 12px)',
-                  color: currentTheme.textSecondary
-                }}>
-                  {levelProgress.toNext} XP to next level
-                </div>
-              </div>
-
-              {/* BADGE COLLECTION OVERVIEW */}
-              <div style={{
-                backgroundColor: `${currentTheme.secondary}20`,
-                borderRadius: '16px',
-                padding: '16px',
-                marginBottom: '20px'
-              }}>
-                <div style={{
-                  fontSize: 'clamp(24px, 8vw, 32px)',
-                  fontWeight: 'bold',
-                  color: currentTheme.textPrimary,
-                  marginBottom: '8px'
-                }}>
-                  {badgeProgress.earned}/{badgeProgress.total}
-                </div>
-                <div style={{
-                  fontSize: 'clamp(14px, 4vw, 16px)',
-                  color: currentTheme.textPrimary,
-                  fontWeight: '600',
-                  marginBottom: '8px'
-                }}>
-                  Badges Collected
-                </div>
-                
-                <div style={{
-                  height: '8px',
-                  backgroundColor: '#E0E0E0',
-                  borderRadius: '4px',
-                  overflow: 'hidden',
-                  marginBottom: '8px'
-                }}>
-                  <div style={{
-                    height: '100%',
-                    width: `${badgeProgress.percentage}%`,
-                    backgroundColor: currentTheme.secondary,
-                    transition: 'width 0.3s ease'
-                  }} />
-                </div>
-                
-                <div style={{
-                  fontSize: 'clamp(11px, 3vw, 12px)',
-                  color: currentTheme.textSecondary
-                }}>
-                  {badgeProgress.percentage}% complete
-                </div>
-              </div>
-
-              {/* ACTION BUTTONS */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr 1fr',
-                gap: '12px'
+                marginTop: '24px',
+                display: 'flex',
+                gap: '12px',
+                justifyContent: 'center',
+                flexWrap: 'wrap'
               }}>
                 <button
-                  onClick={() => setShowBadgeModal(true)}
+                  onClick={() => router.push('/student-healthy-habits')}
                   style={{
-                    backgroundColor: currentTheme.primary,
-                    color: currentTheme.textPrimary,
-                    border: 'none',
-                    borderRadius: '14px',
-                    padding: 'clamp(10px, 3vw, 12px)',
-                    fontSize: 'clamp(11px, 3vw, 12px)',
+                    backgroundColor: 'rgba(255,255,255,0.2)',
+                    color: 'white',
+                    border: '2px solid rgba(255,255,255,0.3)',
+                    padding: '12px 20px',
+                    borderRadius: '12px',
+                    fontSize: '14px',
                     fontWeight: '600',
                     cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '4px',
-                    minHeight: '44px',
-                    touchAction: 'manipulation',
-                    WebkitTapHighlightColor: 'transparent'
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundColor = 'rgba(255,255,255,0.3)';
+                    e.target.style.borderColor = 'rgba(255,255,255,0.5)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = 'rgba(255,255,255,0.2)';
+                    e.target.style.borderColor = 'rgba(255,255,255,0.3)';
                   }}
                 >
-                  🏅 View Badges
+                  ○ Healthy Habits
                 </button>
-                
                 <button
-                  onClick={() => setShowBraggingRights(true)}
+                  onClick={() => router.push('/student-saints')}
                   style={{
-                    backgroundColor: currentTheme.secondary,
-                    color: currentTheme.textPrimary,
-                    border: 'none',
-                    borderRadius: '14px',
-                    padding: 'clamp(10px, 3vw, 12px)',
-                    fontSize: 'clamp(11px, 3vw, 12px)',
+                    backgroundColor: 'rgba(255,255,255,0.2)',
+                    color: 'white',
+                    border: '2px solid rgba(255,255,255,0.3)',
+                    padding: '12px 20px',
+                    borderRadius: '12px',
+                    fontSize: '14px',
                     fontWeight: '600',
                     cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '4px',
-                    minHeight: '44px',
-                    touchAction: 'manipulation',
-                    WebkitTapHighlightColor: 'transparent'
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundColor = 'rgba(255,255,255,0.3)';
+                    e.target.style.borderColor = 'rgba(255,255,255,0.5)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = 'rgba(255,255,255,0.2)';
+                    e.target.style.borderColor = 'rgba(255,255,255,0.3)';
                   }}
                 >
-                  🏆 Bragging Rights
-                </button>
-                
-                <button
-                  onClick={() => setShowLeaderboard(true)}
-                  style={{
-                    backgroundColor: currentTheme.textPrimary,
-                    color: currentTheme.surface,
-                    border: 'none',
-                    borderRadius: '14px',
-                    padding: 'clamp(10px, 3vw, 12px)',
-                    fontSize: 'clamp(11px, 3vw, 12px)',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '4px',
-                    minHeight: '44px',
-                    touchAction: 'manipulation',
-                    WebkitTapHighlightColor: 'transparent'
-                  }}
-                >
-                  📊 Rankings
+                  ♔ Saints
                 </button>
               </div>
             </div>
-          )}
-
-          {/* EXPANDABLE REAL WORLD ACHIEVEMENTS */}
-          {realWorldAchievements.length > 0 && (
-            <div style={{
-              backgroundColor: currentTheme.surface,
-              borderRadius: '16px',
-              padding: '20px',
-              marginBottom: '20px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-            }}>
-              <div 
-                onClick={() => setExpandedAchievements(!expandedAchievements)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: '16px',
-                  cursor: 'pointer',
-                  padding: '4px',
-                  borderRadius: '8px',
-                  transition: 'background-color 0.2s ease',
-                  touchAction: 'manipulation',
-                  WebkitTapHighlightColor: 'transparent'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.backgroundColor = `${currentTheme.primary}10`;
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.backgroundColor = 'transparent';
-                }}
-              >
-                <h3 style={{
-                  fontSize: 'clamp(14px, 4vw, 16px)',
-                  fontWeight: '600',
-                  color: currentTheme.textPrimary,
-                  margin: 0,
-                  pointerEvents: 'none'
-                }}>
-                  🎯 Real World Achievements
-                </h3>
+          </div>
+        ) : (
+          /* ALL OTHER PHASES: Show normal stats dashboard */
+          <>
+            {/* NEW: Compact but Beautiful Phase-Specific Alert Banner */}
+            {getPhaseSpecificMessage() && (
+              <div style={{
+                background: phaseData.currentPhase === 'VOTING' ? 'linear-gradient(135deg, #8b5cf6, #a855f7)' : 
+                           phaseData.currentPhase === 'RESULTS' ? 'linear-gradient(135deg, #f59e0b, #f97316)' : 
+                           'linear-gradient(135deg, #3b82f6, #2563eb)',
+                color: 'white',
+                padding: '12px 16px',
+                margin: '0 16px 16px 16px',
+                borderRadius: '12px',
+                textAlign: 'center',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                animation: 'slideInDown 0.6s ease-out'
+              }}>
+                <div style={{ fontSize: '32px', marginBottom: '8px' }}>
+                  {phaseData.currentPhase === 'VOTING' ? '🗳️' : 
+                   phaseData.currentPhase === 'RESULTS' ? '🏆' : '🚧'}
+                </div>
                 <div style={{
-                  color: currentTheme.primary,
-                  fontSize: 'clamp(12px, 3vw, 14px)',
+                  fontSize: '14px',
                   fontWeight: '600',
-                  pointerEvents: 'none'
+                  marginBottom: '6px',
+                  lineHeight: '1.3'
                 }}>
-                  {expandedAchievements ? '▼ Show Less' : '▶ Show All'}
+                  {phaseData.currentPhase === 'VOTING' ? 'Voting Time!' :
+                   phaseData.currentPhase === 'RESULTS' ? 'Amazing Reading Year!' :
+                   'New Program Starting Soon!'}
+                </div>
+                <div style={{
+                  fontSize: '11px',
+                  fontWeight: '400',
+                  lineHeight: '1.4',
+                  opacity: 0.95
+                }}>
+                  {getPhaseSpecificMessage()}
                 </div>
               </div>
+            )}
+
+            {/* MAIN CONTENT */}
+            <div style={{ padding: 'clamp(16px, 5vw, 20px)', maxWidth: '400px', margin: '0 auto' }}>
               
-              {(() => {
-                const earnedAchievements = realWorldAchievements.filter(a => a.earned);
-                const unearnedAchievements = realWorldAchievements.filter(a => !a.earned);
-                
-                // Find the next achievement (lowest book requirement among unearned)
-                const nextAchievement = unearnedAchievements.length > 0 
-                  ? unearnedAchievements.reduce((next, current) => 
-                      current.books < next.books ? current : next
-                    )
-                  : null;
-                
-                const displayedAchievements = expandedAchievements 
-                  ? realWorldAchievements 
-                  : earnedAchievements.slice(0, 3);
-                
-                return (
-                  <>
-                    {displayedAchievements.map((achievement, index) => (
-                      <div key={index} style={{
-                        backgroundColor: achievement.earned ? 
-                          `${currentTheme.primary}30` : `${currentTheme.primary}10`,
-                        borderRadius: '12px',
-                        padding: '12px',
-                        marginBottom: index < displayedAchievements.length - 1 ? '8px' : '0',
-                        border: achievement.earned ? `2px solid ${currentTheme.primary}` : `1px dashed ${currentTheme.primary}60`,
+              {/* LARGE BADGE PROGRAM SECTION WITH XP & LEVEL */}
+              {levelProgress && badgeProgress && (
+                <div style={{
+                  backgroundColor: currentTheme.surface,
+                  borderRadius: '20px',
+                  padding: '24px',
+                  marginBottom: '20px',
+                  boxShadow: '0 6px 20px rgba(0,0,0,0.15)',
+                  textAlign: 'center'
+                }}>
+                  <div style={{
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: currentTheme.textPrimary,
+                    marginBottom: '20px'
+                  }}>
+                    🏆 Badge Program & Level Progress
+                  </div>
+                  
+                  {/* PROMINENT XP & LEVEL DISPLAY */}
+                  <div style={{
+                    backgroundColor: `${currentTheme.primary}20`,
+                    borderRadius: '16px',
+                    padding: '20px',
+                    marginBottom: '20px',
+                    border: `2px solid ${currentTheme.primary}60`
+                  }}>
+                    <div style={{
+                      fontSize: 'clamp(32px, 10vw, 40px)',
+                      fontWeight: 'bold',
+                      color: currentTheme.textPrimary,
+                      marginBottom: '8px'
+                    }}>
+                      ⚡ {(studentData.totalXP || 0).toLocaleString()} XP
+                    </div>
+                    
+                    <div style={{
+                      fontSize: 'clamp(18px, 5vw, 20px)',
+                      fontWeight: '600',
+                      color: currentTheme.textPrimary,
+                      marginBottom: '16px',
+                      fontFamily: 'Didot, "Times New Roman", serif'
+                    }}>
+                      Level {levelProgress.level}
+                    </div>
+                    
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      marginBottom: '12px'
+                    }}>
+                      <div style={{
+                        fontSize: 'clamp(12px, 3vw, 13px)',
+                        color: currentTheme.textSecondary
+                      }}>
+                        Level {levelProgress.level}
+                      </div>
+                      <div style={{
+                        fontSize: 'clamp(12px, 3vw, 13px)',
+                        color: currentTheme.textSecondary
+                      }}>
+                        Level {levelProgress.level + 1}
+                      </div>
+                    </div>
+                    
+                    <div style={{
+                      height: '12px',
+                      backgroundColor: '#E0E0E0',
+                      borderRadius: '6px',
+                      overflow: 'hidden',
+                      marginBottom: '8px'
+                    }}>
+                      <div style={{
+                        height: '100%',
+                        width: `${levelProgress.percentage}%`,
+                        background: `linear-gradient(90deg, ${currentTheme.primary}, ${currentTheme.secondary})`,
+                        borderRadius: '6px',
+                        transition: 'width 0.5s ease'
+                      }} />
+                    </div>
+                    
+                    <div style={{
+                      fontSize: 'clamp(11px, 3vw, 12px)',
+                      color: currentTheme.textSecondary
+                    }}>
+                      {levelProgress.toNext} XP to next level
+                    </div>
+                  </div>
+
+                  {/* BADGE COLLECTION OVERVIEW */}
+                  <div style={{
+                    backgroundColor: `${currentTheme.secondary}20`,
+                    borderRadius: '16px',
+                    padding: '16px',
+                    marginBottom: '20px'
+                  }}>
+                    <div style={{
+                      fontSize: 'clamp(24px, 8vw, 32px)',
+                      fontWeight: 'bold',
+                      color: currentTheme.textPrimary,
+                      marginBottom: '8px'
+                    }}>
+                      {badgeProgress.earned}/{badgeProgress.total}
+                    </div>
+                    <div style={{
+                      fontSize: 'clamp(14px, 4vw, 16px)',
+                      color: currentTheme.textPrimary,
+                      fontWeight: '600',
+                      marginBottom: '8px'
+                    }}>
+                      Badges Collected
+                    </div>
+                    
+                    <div style={{
+                      height: '8px',
+                      backgroundColor: '#E0E0E0',
+                      borderRadius: '4px',
+                      overflow: 'hidden',
+                      marginBottom: '8px'
+                    }}>
+                      <div style={{
+                        height: '100%',
+                        width: `${badgeProgress.percentage}%`,
+                        backgroundColor: currentTheme.secondary,
+                        transition: 'width 0.3s ease'
+                      }} />
+                    </div>
+                    
+                    <div style={{
+                      fontSize: 'clamp(11px, 3vw, 12px)',
+                      color: currentTheme.textSecondary
+                    }}>
+                      {badgeProgress.percentage}% complete
+                    </div>
+                  </div>
+
+                  {/* ACTION BUTTONS */}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr 1fr',
+                    gap: '12px'
+                  }}>
+                    <button
+                      onClick={() => setShowBadgeModal(true)}
+                      style={{
+                        backgroundColor: currentTheme.primary,
+                        color: currentTheme.textPrimary,
+                        border: 'none',
+                        borderRadius: '14px',
+                        padding: 'clamp(10px, 3vw, 12px)',
+                        fontSize: 'clamp(11px, 3vw, 12px)',
+                        fontWeight: '600',
+                        cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'space-between'
-                      }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{
-                            fontSize: 'clamp(12px, 3.5vw, 14px)',
-                            fontWeight: '600',
-                            color: currentTheme.textPrimary,
-                            marginBottom: '2px'
-                          }}>
-                            {achievement.reward}
-                          </div>
-                          <div style={{
-                            fontSize: 'clamp(10px, 3vw, 12px)',
-                            color: currentTheme.textSecondary,
-                            marginBottom: '4px'
-                          }}>
-                            {achievement.books} books • Tier {achievement.tier}
-                          </div>
-                          {!achievement.earned && (
-                            <div style={{
-                              fontSize: 'clamp(11px, 3vw, 12px)',
-                              fontWeight: '600',
-                              color: '#FF6B35'
-                            }}>
-                              📚 Need {achievement.booksNeeded} more book{achievement.booksNeeded !== 1 ? 's' : ''}
-                            </div>
-                          )}
-                          {achievement.earned && (
-                            <div style={{
-                              fontSize: 'clamp(11px, 3vw, 12px)',
-                              fontWeight: '600',
-                              color: '#4CAF50'
-                            }}>
-                              ✅ Earned! 🎉
-                            </div>
-                          )}
-                        </div>
-                        <div style={{
-                          fontSize: 'clamp(20px, 6vw, 24px)',
-                          flexShrink: 0,
-                          marginLeft: '8px'
-                        }}>
-                          {achievement.earned ? '🏆' : '🎯'}
-                        </div>
-                      </div>
-                    ))}
+                        justifyContent: 'center',
+                        gap: '4px',
+                        minHeight: '44px',
+                        touchAction: 'manipulation',
+                        WebkitTapHighlightColor: 'transparent'
+                      }}
+                    >
+                      🏅 View Badges
+                    </button>
                     
-                    {/* SMART STATUS MESSAGE */}
-                    {!expandedAchievements && (
-                      <div style={{
+                    {/* UPDATED: ENHANCED BRAGGING RIGHTS BUTTON WITH PHASE AWARENESS AND ANIMATIONS */}
+                    <button
+                      onClick={() => setShowBraggingRights(true)}
+                      disabled={!hasAccess('votingInterface') && !hasAccess('votingResults') && phaseData.currentPhase === 'ACTIVE'}
+                      style={{
+                        backgroundColor: (!hasAccess('votingInterface') && !hasAccess('votingResults') && phaseData.currentPhase === 'ACTIVE') ? 
+                          `${currentTheme.textSecondary}30` : currentTheme.secondary,
+                        color: (!hasAccess('votingInterface') && !hasAccess('votingResults') && phaseData.currentPhase === 'ACTIVE') ? 
+                          currentTheme.textSecondary : currentTheme.textPrimary,
+                        border: 'none',
+                        borderRadius: '14px',
+                        padding: 'clamp(10px, 3vw, 12px)',
                         fontSize: 'clamp(11px, 3vw, 12px)',
-                        color: currentTheme.textSecondary,
-                        textAlign: 'center',
-                        marginTop: '12px',
-                        padding: '8px',
-                        backgroundColor: `${currentTheme.primary}10`,
-                        borderRadius: '8px'
+                        fontWeight: '600',
+                        cursor: (!hasAccess('votingInterface') && !hasAccess('votingResults') && phaseData.currentPhase === 'ACTIVE') ? 
+                          'not-allowed' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px',
+                        minHeight: '44px',
+                        touchAction: 'manipulation',
+                        WebkitTapHighlightColor: 'transparent',
+                        animation: (hasAccess('votingInterface') || hasAccess('votingResults')) ? 
+                          'braggingRightsUnlock 0.8s ease-out 0.6s both, bounce 2s ease-in-out infinite 1.4s' : 
+                          'none',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        transform: 'translateY(0)',
+                        transition: 'all 0.3s ease',
+                        opacity: (!hasAccess('votingInterface') && !hasAccess('votingResults') && phaseData.currentPhase === 'ACTIVE') ? 0.5 : 1
+                      }}
+                      onMouseEnter={(e) => {
+                        if (hasAccess('votingInterface') || hasAccess('votingResults') || phaseData.currentPhase !== 'ACTIVE') {
+                          e.target.style.transform = 'translateY(-2px)';
+                          e.target.style.boxShadow = '0 6px 20px rgba(0,0,0,0.2)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.transform = 'translateY(0)';
+                        e.target.style.boxShadow = 'none';
+                      }}
+                    >
+                      {/* SPARKLES FOR UNLOCKED STATE! ✨⭐ */}
+                      {(hasAccess('votingInterface') || hasAccess('votingResults')) && (
+                        <>
+                          <div style={{
+                            position: 'absolute',
+                            top: '4px',
+                            right: '4px',
+                            fontSize: '8px',
+                            animation: 'sparkle 1.5s ease-in-out infinite',
+                            pointerEvents: 'none'
+                          }}>
+                            ✨
+                          </div>
+                          <div style={{
+                            position: 'absolute',
+                            bottom: '4px',
+                            left: '4px',
+                            fontSize: '6px',
+                            animation: 'sparkle 1.5s ease-in-out infinite 0.5s',
+                            pointerEvents: 'none'
+                          }}>
+                            ⭐
+                          </div>
+                        </>
+                      )}
+                      
+                      <span style={{
+                        animation: (hasAccess('votingInterface') || hasAccess('votingResults')) ? 
+                          'bounce 2s ease-in-out infinite' : 'none'
                       }}>
-                        {nextAchievement ? (
-                          <>
-                            📖 <strong>{nextAchievement.booksNeeded} more book{nextAchievement.booksNeeded !== 1 ? 's' : ''}</strong> needed for next achievement: <strong>{nextAchievement.reward}</strong>
-                          </>
-                        ) : (
-                          <>
-                            🎉 <strong>All achievements unlocked!</strong> You&apos;re a reading champion! 🏆
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </>
-                );
-              })()}
-            </div>
-          )}
-
-          {/* READING PERSONALITY SECTION */}
-          {readingPersonality && (
-            <div style={{
-              backgroundColor: currentTheme.surface,
-              borderRadius: '20px',
-              padding: '20px',
-              marginBottom: '20px',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-              textAlign: 'center'
-            }}>
-              <div style={{
-                fontSize: '14px',
-                fontWeight: '600',
-                color: currentTheme.textPrimary,
-                marginBottom: '16px'
-              }}>
-                📖 Your Reading Personality
-              </div>
-              
-              <div style={{
-                backgroundColor: readingPersonality.color + '20',
-                borderRadius: '16px',
-                padding: '16px',
-                border: `2px solid ${readingPersonality.color}60`
-              }}>
-                <div style={{ fontSize: 'clamp(36px, 12vw, 44px)', marginBottom: '12px' }}>
-                  {readingPersonality.emoji}
-                </div>
-                <div style={{
-                  fontSize: 'clamp(16px, 5vw, 18px)',
-                  fontWeight: 'bold',
-                  color: currentTheme.textPrimary,
-                  marginBottom: '8px',
-                  fontFamily: 'Didot, "Times New Roman", serif'
-                }}>
-                  You&apos;re {['A', 'E', 'I', 'O', 'U'].includes(readingPersonality.name[0]) ? 'an' : 'a'} {readingPersonality.name}!
-                </div>
-                <div style={{
-                  fontSize: 'clamp(12px, 3.5vw, 14px)',
-                  color: currentTheme.textSecondary,
-                  marginBottom: '8px'
-                }}>
-                  {readingPersonality.description}
-                </div>
-                <div style={{
-                  fontSize: 'clamp(11px, 3vw, 12px)',
-                  color: currentTheme.textSecondary,
-                  opacity: 0.8
-                }}>
-                  {readingPersonality.percentage}% of your reading happens {readingPersonality.timeRange}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* READING HABITS */}
-          {personalStats && (
-            <div style={{
-              backgroundColor: currentTheme.surface,
-              borderRadius: '16px',
-              padding: '20px',
-              marginBottom: '20px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-            }}>
-              <h3 style={{
-                fontSize: 'clamp(14px, 4vw, 16px)',
-                fontWeight: '600',
-                color: currentTheme.textPrimary,
-                margin: '0 0 16px 0'
-              }}>
-                📈 Reading Habits
-              </h3>
-              
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '12px',
-                marginBottom: '16px'
-              }}>
-                <div style={{
-                  backgroundColor: `${currentTheme.primary}20`,
-                  borderRadius: '12px',
-                  padding: '12px',
-                  textAlign: 'center'
-                }}>
-                  <div style={{
-                    fontSize: 'clamp(16px, 5vw, 18px)',
-                    fontWeight: 'bold',
-                    color: currentTheme.textPrimary
-                  }}>
-                    {personalStats.readingDays}
-                  </div>
-                  <div style={{
-                    fontSize: 'clamp(10px, 3vw, 11px)',
-                    color: currentTheme.textSecondary
-                  }}>
-                    Days Reading
-                  </div>
-                </div>
-                <div style={{
-                  backgroundColor: `${currentTheme.primary}20`,
-                  borderRadius: '12px',
-                  padding: '12px',
-                  textAlign: 'center'
-                }}>
-                  <div style={{
-                    fontSize: 'clamp(16px, 5vw, 18px)',
-                    fontWeight: 'bold',
-                    color: currentTheme.textPrimary
-                  }}>
-                    {personalStats.averageSessionLength}
-                  </div>
-                  <div style={{
-                    fontSize: 'clamp(10px, 3vw, 11px)',
-                    color: currentTheme.textSecondary
-                  }}>
-                    Avg Minutes
-                  </div>
-                </div>
-              </div>
-
-              {/* Streak Display */}
-              <div style={{
-                backgroundColor: `${currentTheme.secondary}20`,
-                borderRadius: '12px',
-                padding: '12px',
-                textAlign: 'center'
-              }}>
-                <div style={{
-                  fontSize: 'clamp(13px, 4vw, 14px)',
-                  fontWeight: '600',
-                  color: currentTheme.textPrimary
-                }}>
-                  {personalStats.streakTier}
-                </div>
-                <div style={{
-                  fontSize: 'clamp(10px, 3vw, 11px)',
-                  color: currentTheme.textSecondary
-                }}>
-                  Current Reading Level
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* READING QUALITY */}
-          {readingQuality && readingQuality.totalRated > 0 && (
-            <div style={{
-              backgroundColor: currentTheme.surface,
-              borderRadius: '16px',
-              padding: '20px',
-              marginBottom: '20px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-            }}>
-              <h3 style={{
-                fontSize: 'clamp(14px, 4vw, 16px)',
-                fontWeight: '600',
-                color: currentTheme.textPrimary,
-                margin: '0 0 16px 0'
-              }}>
-                ⭐ Reading Quality
-              </h3>
-              
-              <div style={{
-                textAlign: 'center',
-                marginBottom: '16px'
-              }}>
-                <div style={{
-                  fontSize: 'clamp(20px, 6vw, 24px)',
-                  marginBottom: '8px'
-                }}>
-                  {'⭐'.repeat(Math.round(readingQuality.averageRating))}
-                </div>
-                <div style={{
-                  fontSize: 'clamp(16px, 5vw, 18px)',
-                  fontWeight: 'bold',
-                  color: currentTheme.textPrimary,
-                  marginBottom: '4px'
-                }}>
-                  {readingQuality.averageRating}/5.0 Average
-                </div>
-                <div style={{
-                  fontSize: 'clamp(12px, 3.5vw, 14px)',
-                  color: currentTheme.textPrimary,
-                  fontWeight: '500'
-                }}>
-                  {readingQuality.readingMoods}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* SAINTS COLLECTION */}
-          {saintsStats && (
-            <div style={{
-              backgroundColor: currentTheme.surface,
-              borderRadius: '16px',
-              padding: '20px',
-              marginBottom: '20px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-            }}>
-              <h3 style={{
-                fontSize: 'clamp(14px, 4vw, 16px)',
-                fontWeight: '600',
-                color: currentTheme.textPrimary,
-                margin: '0 0 16px 0'
-              }}>
-                ♔ Saints Collection
-              </h3>
-              
-              <div style={{
-                textAlign: 'center',
-                marginBottom: '16px'
-              }}>
-                <div style={{
-                  fontSize: 'clamp(20px, 6vw, 24px)',
-                  fontWeight: 'bold',
-                  color: currentTheme.textPrimary,
-                  marginBottom: '4px'
-                }}>
-                  {saintsStats.totalUnlocked}/234
-                </div>
-                <div style={{
-                  fontSize: 'clamp(11px, 3vw, 12px)',
-                  color: currentTheme.textSecondary,
-                  marginBottom: '12px'
-                }}>
-                  Saints Unlocked ({saintsStats.percentage}%)
-                </div>
-                
-                <div style={{
-                  height: '8px',
-                  backgroundColor: '#E0E0E0',
-                  borderRadius: '4px',
-                  overflow: 'hidden',
-                  marginBottom: '16px'
-                }}>
-                  <div style={{
-                    height: '100%',
-                    width: `${saintsStats.percentage}%`,
-                    backgroundColor: currentTheme.primary,
-                    transition: 'width 0.3s ease'
-                  }} />
-                </div>
-              </div>
-              
-              {saintsStats.rarestSaint && (
-                <div style={{
-                  backgroundColor: `${currentTheme.primary}20`,
-                  borderRadius: '12px',
-                  padding: '12px',
-                  textAlign: 'center'
-                }}>
-                  <div style={{
-                    fontSize: 'clamp(11px, 3vw, 12px)',
-                    color: currentTheme.textSecondary,
-                    marginBottom: '4px'
-                  }}>
-                    Rarest Saint Unlocked
-                  </div>
-                  <div style={{
-                    fontSize: 'clamp(12px, 3.5vw, 14px)',
-                    fontWeight: '600',
-                    color: currentTheme.textPrimary
-                  }}>
-                    {saintsStats.rarestSaint.name}
+                        {(!hasAccess('votingInterface') && !hasAccess('votingResults') && phaseData.currentPhase === 'ACTIVE') ? '🔒' : '🏆'}
+                      </span>
+                      {(!hasAccess('votingInterface') && !hasAccess('votingResults') && phaseData.currentPhase === 'ACTIVE') ? 
+                        'Locked' :
+                       (hasAccess('votingInterface') || hasAccess('votingResults')) ? 
+                        'UNLOCKED!' :
+                       'Certificate'}
+                    </button>
+                    
+                    <button
+                      onClick={() => setShowLeaderboard(true)}
+                      style={{
+                        backgroundColor: currentTheme.textPrimary,
+                        color: currentTheme.surface,
+                        border: 'none',
+                        borderRadius: '14px',
+                        padding: 'clamp(10px, 3vw, 12px)',
+                        fontSize: 'clamp(11px, 3vw, 12px)',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px',
+                        minHeight: '44px',
+                        touchAction: 'manipulation',
+                        WebkitTapHighlightColor: 'transparent'
+                      }}
+                    >
+                      📊 Rankings
+                    </button>
                   </div>
                 </div>
               )}
+
+              {/* EXPANDABLE REAL WORLD ACHIEVEMENTS */}
+              {realWorldAchievements.length > 0 && (
+                <div style={{
+                  backgroundColor: currentTheme.surface,
+                  borderRadius: '16px',
+                  padding: '20px',
+                  marginBottom: '20px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                }}>
+                  <div 
+                    onClick={() => setExpandedAchievements(!expandedAchievements)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      marginBottom: '16px',
+                      cursor: 'pointer',
+                      padding: '4px',
+                      borderRadius: '8px',
+                      transition: 'background-color 0.2s ease',
+                      touchAction: 'manipulation',
+                      WebkitTapHighlightColor: 'transparent'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.backgroundColor = `${currentTheme.primary}10`;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    <h3 style={{
+                      fontSize: 'clamp(14px, 4vw, 16px)',
+                      fontWeight: '600',
+                      color: currentTheme.textPrimary,
+                      margin: 0,
+                      pointerEvents: 'none'
+                    }}>
+                      🎯 Real World Achievements
+                    </h3>
+                    <div style={{
+                      color: currentTheme.primary,
+                      fontSize: 'clamp(12px, 3vw, 14px)',
+                      fontWeight: '600',
+                      pointerEvents: 'none'
+                    }}>
+                      {expandedAchievements ? '▼ Show Less' : '▶ Show All'}
+                    </div>
+                  </div>
+                  
+                  {(() => {
+                    const earnedAchievements = realWorldAchievements.filter(a => a.earned);
+                    const unearnedAchievements = realWorldAchievements.filter(a => !a.earned);
+                    
+                    // Find the next achievement (lowest book requirement among unearned)
+                    const nextAchievement = unearnedAchievements.length > 0 
+                      ? unearnedAchievements.reduce((next, current) => 
+                          current.books < next.books ? current : next
+                        )
+                      : null;
+                    
+                    const displayedAchievements = expandedAchievements 
+                      ? realWorldAchievements 
+                      : earnedAchievements.slice(0, 3);
+                    
+                    return (
+                      <>
+                        {displayedAchievements.map((achievement, index) => (
+                          <div key={index} style={{
+                            backgroundColor: achievement.earned ? 
+                              `${currentTheme.primary}30` : `${currentTheme.primary}10`,
+                            borderRadius: '12px',
+                            padding: '12px',
+                            marginBottom: index < displayedAchievements.length - 1 ? '8px' : '0',
+                            border: achievement.earned ? `2px solid ${currentTheme.primary}` : `1px dashed ${currentTheme.primary}60`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between'
+                          }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{
+                                fontSize: 'clamp(12px, 3.5vw, 14px)',
+                                fontWeight: '600',
+                                color: currentTheme.textPrimary,
+                                marginBottom: '2px'
+                              }}>
+                                {achievement.reward}
+                              </div>
+                              <div style={{
+                                fontSize: 'clamp(10px, 3vw, 12px)',
+                                color: currentTheme.textSecondary,
+                                marginBottom: '4px'
+                              }}>
+                                {achievement.books} books • Tier {achievement.tier}
+                              </div>
+                              {!achievement.earned && (
+                                <div style={{
+                                  fontSize: 'clamp(11px, 3vw, 12px)',
+                                  fontWeight: '600',
+                                  color: '#FF6B35'
+                                }}>
+                                  📚 Need {achievement.booksNeeded} more book{achievement.booksNeeded !== 1 ? 's' : ''}
+                                </div>
+                              )}
+                              {achievement.earned && (
+                                <div style={{
+                                  fontSize: 'clamp(11px, 3vw, 12px)',
+                                  fontWeight: '600',
+                                  color: '#4CAF50'
+                                }}>
+                                  ✅ Earned! 🎉
+                                </div>
+                              )}
+                            </div>
+                            <div style={{
+                              fontSize: 'clamp(20px, 6vw, 24px)',
+                              flexShrink: 0,
+                              marginLeft: '8px'
+                            }}>
+                              {achievement.earned ? '🏆' : '🎯'}
+                            </div>
+                          </div>
+                        ))}
+                        
+                        {/* SMART STATUS MESSAGE */}
+                        {!expandedAchievements && (
+                          <div style={{
+                            fontSize: 'clamp(11px, 3vw, 12px)',
+                            color: currentTheme.textSecondary,
+                            textAlign: 'center',
+                            marginTop: '12px',
+                            padding: '8px',
+                            backgroundColor: `${currentTheme.primary}10`,
+                            borderRadius: '8px'
+                          }}>
+                            {nextAchievement ? (
+                              <>
+                                📖 <strong>{nextAchievement.booksNeeded} more book{nextAchievement.booksNeeded !== 1 ? 's' : ''}</strong> needed for next achievement: <strong>{nextAchievement.reward}</strong>
+                              </>
+                            ) : (
+                              <>
+                                🎉 <strong>All achievements unlocked!</strong> You&apos;re a reading champion! 🏆
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* READING PERSONALITY SECTION */}
+              {readingPersonality && (
+                <div style={{
+                  backgroundColor: currentTheme.surface,
+                  borderRadius: '20px',
+                  padding: '20px',
+                  marginBottom: '20px',
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+                  textAlign: 'center'
+                }}>
+                  <div style={{
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: currentTheme.textPrimary,
+                    marginBottom: '16px'
+                  }}>
+                    📖 Your Reading Personality
+                  </div>
+                  
+                  <div style={{
+                    backgroundColor: readingPersonality.color + '20',
+                    borderRadius: '16px',
+                    padding: '16px',
+                    border: `2px solid ${readingPersonality.color}60`
+                  }}>
+                    <div style={{ fontSize: 'clamp(36px, 12vw, 44px)', marginBottom: '12px' }}>
+                      {readingPersonality.emoji}
+                    </div>
+                    <div style={{
+                      fontSize: 'clamp(16px, 5vw, 18px)',
+                      fontWeight: 'bold',
+                      color: currentTheme.textPrimary,
+                      marginBottom: '8px',
+                      fontFamily: 'Didot, "Times New Roman", serif'
+                    }}>
+                      You&apos;re {['A', 'E', 'I', 'O', 'U'].includes(readingPersonality.name[0]) ? 'an' : 'a'} {readingPersonality.name}!
+                    </div>
+                    <div style={{
+                      fontSize: 'clamp(12px, 3.5vw, 14px)',
+                      color: currentTheme.textSecondary,
+                      marginBottom: '8px'
+                    }}>
+                      {readingPersonality.description}
+                    </div>
+                    <div style={{
+                      fontSize: 'clamp(11px, 3vw, 12px)',
+                      color: currentTheme.textSecondary,
+                      opacity: 0.8
+                    }}>
+                      {readingPersonality.percentage}% of your reading happens {readingPersonality.timeRange}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* READING HABITS */}
+              {personalStats && (
+                <div style={{
+                  backgroundColor: currentTheme.surface,
+                  borderRadius: '16px',
+                  padding: '20px',
+                  marginBottom: '20px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                }}>
+                  <h3 style={{
+                    fontSize: 'clamp(14px, 4vw, 16px)',
+                    fontWeight: '600',
+                    color: currentTheme.textPrimary,
+                    margin: '0 0 16px 0'
+                  }}>
+                    📈 Reading Habits
+                  </h3>
+                  
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '12px',
+                    marginBottom: '16px'
+                  }}>
+                    <div style={{
+                      backgroundColor: `${currentTheme.primary}20`,
+                      borderRadius: '12px',
+                      padding: '12px',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{
+                        fontSize: 'clamp(16px, 5vw, 18px)',
+                        fontWeight: 'bold',
+                        color: currentTheme.textPrimary
+                      }}>
+                        {personalStats.readingDays}
+                      </div>
+                      <div style={{
+                        fontSize: 'clamp(10px, 3vw, 11px)',
+                        color: currentTheme.textSecondary
+                      }}>
+                        Days Reading
+                      </div>
+                    </div>
+                    <div style={{
+                      backgroundColor: `${currentTheme.primary}20`,
+                      borderRadius: '12px',
+                      padding: '12px',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{
+                        fontSize: 'clamp(16px, 5vw, 18px)',
+                        fontWeight: 'bold',
+                        color: currentTheme.textPrimary
+                      }}>
+                        {personalStats.averageSessionLength}
+                      </div>
+                      <div style={{
+                        fontSize: 'clamp(10px, 3vw, 11px)',
+                        color: currentTheme.textSecondary
+                      }}>
+                        Avg Minutes
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Streak Display */}
+                  <div style={{
+                    backgroundColor: `${currentTheme.secondary}20`,
+                    borderRadius: '12px',
+                    padding: '12px',
+                    textAlign: 'center'
+                  }}>
+                    <div style={{
+                      fontSize: 'clamp(13px, 4vw, 14px)',
+                      fontWeight: '600',
+                      color: currentTheme.textPrimary
+                    }}>
+                      {personalStats.streakTier}
+                    </div>
+                    <div style={{
+                      fontSize: 'clamp(10px, 3vw, 11px)',
+                      color: currentTheme.textSecondary
+                    }}>
+                      Current Reading Level
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* READING QUALITY */}
+              {readingQuality && readingQuality.totalRated > 0 && (
+                <div style={{
+                  backgroundColor: currentTheme.surface,
+                  borderRadius: '16px',
+                  padding: '20px',
+                  marginBottom: '20px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                }}>
+                  <h3 style={{
+                    fontSize: 'clamp(14px, 4vw, 16px)',
+                    fontWeight: '600',
+                    color: currentTheme.textPrimary,
+                    margin: '0 0 16px 0'
+                  }}>
+                    ⭐ Reading Quality
+                  </h3>
+                  
+                  <div style={{
+                    textAlign: 'center',
+                    marginBottom: '16px'
+                  }}>
+                    <div style={{
+                      fontSize: 'clamp(20px, 6vw, 24px)',
+                      marginBottom: '8px'
+                    }}>
+                      {'⭐'.repeat(Math.round(readingQuality.averageRating))}
+                    </div>
+                    <div style={{
+                      fontSize: 'clamp(16px, 5vw, 18px)',
+                      fontWeight: 'bold',
+                      color: currentTheme.textPrimary,
+                      marginBottom: '4px'
+                    }}>
+                      {readingQuality.averageRating}/5.0 Average
+                    </div>
+                    <div style={{
+                      fontSize: 'clamp(12px, 3.5vw, 14px)',
+                      color: currentTheme.textPrimary,
+                      fontWeight: '500'
+                    }}>
+                      {readingQuality.readingMoods}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* SAINTS COLLECTION */}
+              {saintsStats && (
+                <div style={{
+                  backgroundColor: currentTheme.surface,
+                  borderRadius: '16px',
+                  padding: '20px',
+                  marginBottom: '20px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                }}>
+                  <h3 style={{
+                    fontSize: 'clamp(14px, 4vw, 16px)',
+                    fontWeight: '600',
+                    color: currentTheme.textPrimary,
+                    margin: '0 0 16px 0'
+                  }}>
+                    ♔ Saints Collection
+                  </h3>
+                  
+                  <div style={{
+                    textAlign: 'center',
+                    marginBottom: '16px'
+                  }}>
+                    <div style={{
+                      fontSize: 'clamp(20px, 6vw, 24px)',
+                      fontWeight: 'bold',
+                      color: currentTheme.textPrimary,
+                      marginBottom: '4px'
+                    }}>
+                      {saintsStats.totalUnlocked}/234
+                    </div>
+                    <div style={{
+                      fontSize: 'clamp(11px, 3vw, 12px)',
+                      color: currentTheme.textSecondary,
+                      marginBottom: '12px'
+                    }}>
+                      Saints Unlocked ({saintsStats.percentage}%)
+                    </div>
+                    
+                    <div style={{
+                      height: '8px',
+                      backgroundColor: '#E0E0E0',
+                      borderRadius: '4px',
+                      overflow: 'hidden',
+                      marginBottom: '16px'
+                    }}>
+                      <div style={{
+                        height: '100%',
+                        width: `${saintsStats.percentage}%`,
+                        backgroundColor: currentTheme.primary,
+                        transition: 'width 0.3s ease'
+                      }} />
+                    </div>
+                  </div>
+                  
+                  {saintsStats.rarestSaint && (
+                    <div style={{
+                      backgroundColor: `${currentTheme.primary}20`,
+                      borderRadius: '12px',
+                      padding: '12px',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{
+                        fontSize: 'clamp(11px, 3vw, 12px)',
+                        color: currentTheme.textSecondary,
+                        marginBottom: '4px'
+                      }}>
+                        Rarest Saint Unlocked
+                      </div>
+                      <div style={{
+                        fontSize: 'clamp(12px, 3.5vw, 14px)',
+                        fontWeight: '600',
+                        color: currentTheme.textPrimary
+                      }}>
+                        {saintsStats.rarestSaint.name}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </>
+        )}
 
         {/* BADGE MODAL WITH CLICKABLE BADGES */}
         {showBadgeModal && (
@@ -2259,6 +2524,65 @@ export default function MyStats() {
             to { transform: rotate(360deg); }
           }
           
+          @keyframes slideInDown {
+            from { 
+              opacity: 0; 
+              transform: translateY(-30px); 
+            }
+            to { 
+              opacity: 1; 
+              transform: translateY(0); 
+            }
+          }
+          
+          @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {
+              transform: translateY(0);
+            }
+            40% {
+              transform: translateY(-8px);
+            }
+            60% {
+              transform: translateY(-4px);
+            }
+          }
+          
+          @keyframes sparkle {
+            0%, 100% {
+              opacity: 1;
+              transform: scale(1) rotate(0deg);
+            }
+            25% {
+              opacity: 0.7;
+              transform: scale(1.2) rotate(90deg);
+            }
+            50% {
+              opacity: 0.4;
+              transform: scale(0.8) rotate(180deg);
+            }
+            75% {
+              opacity: 0.7;
+              transform: scale(1.1) rotate(270deg);
+            }
+          }
+          
+          @keyframes braggingRightsUnlock {
+            0% {
+              opacity: 0;
+              transform: scale(0.8) translateY(20px);
+              background-color: ${currentTheme.textSecondary}30;
+            }
+            50% {
+              opacity: 0.8;
+              transform: scale(1.1) translateY(-5px);
+            }
+            100% {
+              opacity: 1;
+              transform: scale(1) translateY(0);
+              background-color: ${currentTheme.secondary};
+            }
+          }
+          
           button {
             -webkit-tap-highlight-color: transparent;
             -webkit-user-select: none;
@@ -2270,6 +2594,18 @@ export default function MyStats() {
           * {
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
+          }
+          
+          @media screen and (max-width: 480px) {
+            input, textarea, select, button {
+              font-size: 16px !important;
+            }
+          }
+          
+          /* Smooth scrolling for PWA */
+          * {
+            -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
           }
         `}</style>
       </div>

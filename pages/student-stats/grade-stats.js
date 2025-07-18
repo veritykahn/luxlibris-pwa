@@ -1,7 +1,9 @@
-// pages/student-stats/grade-stats.js - Enhanced with Expandable Real Achievement Tiers
+// pages/student-stats/grade-stats.js - Enhanced with Phase Awareness and Dynamic Celebrations
+
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePhaseAccess } from '../../hooks/usePhaseAccess'; // ADDED PHASE ACCESS
 import { getStudentDataEntities } from '../../lib/firebase';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
@@ -10,6 +12,7 @@ import Head from 'next/head';
 export default function GradeStats() {
   const router = useRouter();
   const { user, isAuthenticated, loading } = useAuth();
+  const { phaseData, hasAccess, getPhaseMessage, getPhaseInfo } = usePhaseAccess(); // ADDED PHASE ACCESS
   const [studentData, setStudentData] = useState(null);
   const [currentTheme, setCurrentTheme] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -109,28 +112,49 @@ export default function GradeStats() {
     }
   }), []);
 
-  // Navigation menu items
+  // UPDATED: Navigation menu items with phase-aware locking
   const navMenuItems = useMemo(() => [
     { name: 'Dashboard', path: '/student-dashboard', icon: '⌂' },
-    { name: 'Nominees', path: '/student-nominees', icon: '□' },
-    { name: 'Bookshelf', path: '/student-bookshelf', icon: '⚏' },
+    { 
+      name: 'Nominees', 
+      path: '/student-nominees', 
+      icon: '□', 
+      locked: !hasAccess('nomineesBrowsing'), 
+      lockReason: phaseData.currentPhase === 'VOTING' ? 'Nominees locked during voting' : 
+                 phaseData.currentPhase === 'RESULTS' ? 'Nominees locked during results' :
+                 phaseData.currentPhase === 'TEACHER_SELECTION' ? 'New amazing nominees coming this week!' : 'Nominees not available'
+    },
+    { 
+      name: 'Bookshelf', 
+      path: '/student-bookshelf', 
+      icon: '⚏', 
+      locked: !hasAccess('bookshelfViewing'), 
+      lockReason: phaseData.currentPhase === 'RESULTS' ? 'Bookshelf locked during results' :
+                 phaseData.currentPhase === 'TEACHER_SELECTION' ? 'Stats refreshing - new bookshelf coming!' : 'Bookshelf not available'
+    },
     { name: 'Healthy Habits', path: '/student-healthy-habits', icon: '○' },
     { name: 'Saints', path: '/student-saints', icon: '♔' },
     { name: 'Stats', path: '/student-stats', icon: '△', current: true },
     { name: 'Settings', path: '/student-settings', icon: '⚙' }
-  ], []);
+  ], [hasAccess, phaseData.currentPhase]);
 
-  // Stats navigation options
+  // UPDATED: Stats navigation options with phase-aware Lux DNA messaging
   const statsNavOptions = useMemo(() => [
-  { name: 'Stats Dashboard', path: '/student-stats', icon: '📊', description: 'Fun overview' },
-  { name: 'My Stats', path: '/student-stats/my-stats', icon: '📈', description: 'Personal deep dive' },
-  { name: 'Grade Stats', path: '/student-stats/grade-stats', icon: '🎓', description: 'Compare with classmates', current: true  },
-  { name: 'School Stats', path: '/student-stats/school-stats', icon: '🏫', description: 'School-wide progress' },
-  { name: 'Diocese Stats', path: '/student-stats/diocese-stats', icon: '⛪', description: 'Coming soon!', disabled: true },
-  { name: 'Global Stats', path: '/student-stats/global-stats', icon: '🌎', description: 'Coming soon!', disabled: true },
-  { name: 'Lux DNA Lab', path: '/student-stats/lux-dna-lab', icon: '🧬', description: 'Discover your reading personality' },
-  { name: 'Family Battle', path: '/student-stats/family-battle', icon: '👨‍👩‍👧‍👦', description: 'Coming soon!', disabled: true }
-], []);
+    { name: 'Stats Dashboard', path: '/student-stats', icon: '📊', description: 'Fun overview' },
+    { name: 'My Stats', path: '/student-stats/my-stats', icon: '📈', description: 'Personal deep dive' },
+    { name: 'Grade Stats', path: '/student-stats/grade-stats', icon: '🎓', description: 'Compare with classmates', current: true  },
+    { name: 'School Stats', path: '/student-stats/school-stats', icon: '🏫', description: 'School-wide progress' },
+    { name: 'Diocese Stats', path: '/student-stats/diocese-stats', icon: '⛪', description: 'Coming soon!', disabled: true },
+    { name: 'Global Stats', path: '/student-stats/global-stats', icon: '🌎', description: 'Coming soon!', disabled: true },
+    { 
+      name: 'Lux DNA Lab', 
+      path: '/student-stats/lux-dna-lab', 
+      icon: '🧬', 
+      description: phaseData.currentPhase === 'RESULTS' ? 'Nominees DNA locked for year' : 'Discover your reading personality',
+      phaseNote: phaseData.currentPhase === 'RESULTS' ? 'Nominees DNA analysis is closed for this academic year' : null
+    },
+    { name: 'Family Battle', path: '/student-stats/family-battle', icon: '👨‍👩‍👧‍👦', description: 'Coming soon!', disabled: true }
+  ], [phaseData.currentPhase]);
 
   // Close nav menus when clicking outside
   useEffect(() => {
@@ -162,7 +186,7 @@ export default function GradeStats() {
     };
   }, [showNavMenu, showStatsDropdown]);
 
-  // Handle stats navigation
+  // Handle stats navigation with phase awareness
   const handleStatsNavigation = (option) => {
     setShowStatsDropdown(false);
     
@@ -175,6 +199,7 @@ export default function GradeStats() {
       return; // Already on current page
     }
     
+    // Allow navigation to all pages - phaseNote is just informational
     router.push(option.path);
   };
 
@@ -586,6 +611,20 @@ export default function GradeStats() {
     }
   }, [loading, isAuthenticated, user, loadData]);
 
+  // UPDATED: Get phase-specific messaging for the dashboard
+  const getPhaseSpecificMessage = () => {
+    switch (phaseData.currentPhase) {
+      case 'VOTING':
+        return "🗳️ This year's reading program is complete! Check out your final grade stats below, keep building XP and earning badges, and discover your Lux DNA! Time to vote for your favorites!";
+      case 'RESULTS':
+        return "🏆 Congratulations on an amazing reading year! Check out your final grade stats below, keep building XP and earning badges! Nominees DNA in Lux Lab is now closed for the year.";
+      case 'TEACHER_SELECTION':
+        return "📊 Your stats will be refreshed for the new program, but don't worry - you'll keep your reading streaks, XP, and Luxlings™! Keep your reading habits strong this week while we prepare amazing new books for you! 📚✨";
+      default:
+        return null;
+    }
+  };
+
   if (loading || isLoading || !studentData || !currentTheme) {
     return (
       <div style={{
@@ -769,10 +808,10 @@ export default function GradeStats() {
                       </div>
                       <div style={{
                         fontSize: '11px',
-                        color: currentTheme.textSecondary,
+                        color: option.phaseNote ? '#FF9800' : currentTheme.textSecondary,
                         opacity: 0.8
                       }}>
-                        {option.description}
+                        {option.phaseNote || option.description}
                       </div>
                     </div>
                     {option.current && (
@@ -796,7 +835,7 @@ export default function GradeStats() {
             )}
           </div>
 
-          {/* Hamburger Menu */}
+          {/* UPDATED: Hamburger Menu with Phase-Aware Locking */}
           <div className="nav-menu-container" style={{ position: 'relative' }}>
             <button
               onClick={() => setShowNavMenu(!showNavMenu)}
@@ -840,6 +879,10 @@ export default function GradeStats() {
                     key={item.path}
                     onClick={() => {
                       setShowNavMenu(false);
+                      if (item.locked) {
+                        alert(`🔒 ${item.lockReason}`);
+                        return;
+                      }
                       if (!item.current) {
                         router.push(item.path);
                       }
@@ -847,25 +890,47 @@ export default function GradeStats() {
                     style={{
                       width: '100%',
                       padding: '12px 16px',
-                      backgroundColor: item.current ? `${currentTheme.primary}30` : 'transparent',
+                      backgroundColor: item.current ? `${currentTheme.primary}30` : 
+                                      item.locked ? `${currentTheme.textSecondary}10` : 'transparent',
                       border: 'none',
                       borderBottom: index < navMenuItems.length - 1 ? `1px solid ${currentTheme.primary}40` : 'none',
-                      cursor: item.current ? 'default' : 'pointer',
+                      cursor: item.locked ? 'not-allowed' : (item.current ? 'default' : 'pointer'),
                       display: 'flex',
                       alignItems: 'center',
                       gap: '12px',
                       fontSize: '14px',
-                      color: currentTheme.textPrimary,
+                      color: item.locked ? currentTheme.textSecondary : currentTheme.textPrimary,
                       fontWeight: item.current ? '600' : '500',
                       textAlign: 'left',
                       touchAction: 'manipulation',
-                      WebkitTapHighlightColor: 'transparent'
+                      WebkitTapHighlightColor: 'transparent',
+                      transition: 'background-color 0.2s ease',
+                      opacity: item.locked ? 0.5 : 1
                     }}
+                    onMouseEnter={(e) => {
+                      if (!item.current && !item.locked) {
+                        e.target.style.backgroundColor = `${currentTheme.primary}20`;
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!item.current && !item.locked) {
+                        e.target.style.backgroundColor = 'transparent';
+                      }
+                    }}
+                    title={item.locked ? item.lockReason : undefined}
                   >
-                    <span style={{ fontSize: '16px' }}>{item.icon}</span>
+                    <span style={{ 
+                      fontSize: '16px',
+                      filter: item.locked ? 'grayscale(1)' : 'none'
+                    }}>
+                      {item.icon}
+                    </span>
                     <span>{item.name}</span>
                     {item.current && (
                       <span style={{ marginLeft: 'auto', fontSize: '12px', color: currentTheme.primary }}>●</span>
+                    )}
+                    {item.locked && (
+                      <span style={{ marginLeft: 'auto', fontSize: '12px', color: currentTheme.textSecondary }}>🔒</span>
                     )}
                   </button>
                 ))}
@@ -874,540 +939,682 @@ export default function GradeStats() {
           </div>
         </div>
 
-        {/* MAIN CONTENT */}
-        <div style={{ padding: 'clamp(16px, 5vw, 20px)', maxWidth: '400px', margin: '0 auto' }}>
-          
-          {/* GRADE CELEBRATION */}
-          {gradeStats && (
+        {/* TEACHER_SELECTION: Show only messaging box */}
+        {phaseData.currentPhase === 'TEACHER_SELECTION' ? (
+          <div style={{ padding: 'clamp(40px, 10vw, 60px) clamp(20px, 5vw, 40px)', textAlign: 'center' }}>
             <div style={{
-              backgroundColor: currentTheme.surface,
+              background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+              color: 'white',
+              padding: '40px 24px',
               borderRadius: '20px',
-              padding: '20px',
-              marginBottom: '20px',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-              textAlign: 'center'
+              boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+              maxWidth: '400px',
+              margin: '0 auto'
             }}>
+              <div style={{ fontSize: '64px', marginBottom: '20px' }}>🚧</div>
               <div style={{
-                fontSize: '14px',
+                fontSize: '24px',
                 fontWeight: '600',
-                color: currentTheme.textPrimary,
-                marginBottom: '16px'
+                marginBottom: '12px',
+                fontFamily: 'Didot, "Times New Roman", serif'
               }}>
-                🎉 Grade {gradeStats.grade} is Amazing!
+                New Program Starting Soon!
               </div>
-              
               <div style={{
-                backgroundColor: `${currentTheme.primary}20`,
-                borderRadius: '16px',
-                padding: '20px',
-                marginBottom: '16px'
+                fontSize: '16px',
+                fontWeight: '400',
+                lineHeight: '1.5',
+                opacity: 0.95
               }}>
-                <div style={{
-                  fontSize: 'clamp(32px, 10vw, 40px)',
-                  marginBottom: '12px'
-                }}>
-                  🌟
-                </div>
-                <div style={{
-                  fontSize: 'clamp(16px, 5vw, 18px)',
-                  fontWeight: '600',
-                  color: currentTheme.textPrimary,
-                  marginBottom: '8px'
-                }}>
-                  Together you&apos;ve read {gradeStats.totalBooksCompleted} books this year!
-                </div>
-                <div style={{
-                  fontSize: 'clamp(12px, 3.5vw, 14px)',
-                  color: currentTheme.textSecondary
-                }}>
-                  What an incredible reading community you&apos;ve built! 📚✨
-                </div>
+                📊 Your stats will be refreshed for the new program, but don&apos;t worry - you&apos;ll keep your reading streaks, XP, and saints! Keep your reading habits strong this week while we prepare amazing new books for you! 📚✨
               </div>
-
               <div style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr 1fr',
-                gap: '12px'
-              }}>
-                <div style={{
-                  backgroundColor: `${currentTheme.secondary}20`,
-                  borderRadius: '12px',
-                  padding: '12px',
-                  textAlign: 'center'
-                }}>
-                  <div style={{
-                    fontSize: 'clamp(18px, 5vw, 20px)',
-                    fontWeight: 'bold',
-                    color: currentTheme.textPrimary
-                  }}>
-                    {gradeStats.totalStudents}
-                  </div>
-                  <div style={{
-                    fontSize: 'clamp(10px, 3vw, 11px)',
-                    color: currentTheme.textSecondary
-                  }}>
-                    Reading Friends
-                  </div>
-                </div>
-                <div style={{
-                  backgroundColor: `${currentTheme.secondary}20`,
-                  borderRadius: '12px',
-                  padding: '12px',
-                  textAlign: 'center'
-                }}>
-                  <div style={{
-                    fontSize: 'clamp(18px, 5vw, 20px)',
-                    fontWeight: 'bold',
-                    color: currentTheme.textPrimary
-                  }}>
-                    {gradeStats.averageBooks}
-                  </div>
-                  <div style={{
-                    fontSize: 'clamp(10px, 3vw, 11px)',
-                    color: currentTheme.textSecondary
-                  }}>
-                    Books Each!
-                  </div>
-                </div>
-                <div style={{
-                  backgroundColor: `${currentTheme.secondary}20`,
-                  borderRadius: '12px',
-                  padding: '12px',
-                  textAlign: 'center'
-                }}>
-                  <div style={{
-                    fontSize: 'clamp(18px, 5vw, 20px)',
-                    fontWeight: 'bold',
-                    color: currentTheme.textPrimary
-                  }}>
-                    {personalComparison?.studentBooks || 0}
-                  </div>
-                  <div style={{
-                    fontSize: 'clamp(10px, 3vw, 11px)',
-                    color: currentTheme.textSecondary
-                  }}>
-                    You&apos;ve Read!
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* EXPANDABLE REAL REWARDS TRACKER FOR GRADE */}
-          {realRewardsTracker && realRewardsTracker.gradeTiers.length > 0 && (
-            <div style={{
-              backgroundColor: currentTheme.surface,
-              borderRadius: '16px',
-              padding: '20px',
-              marginBottom: '20px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-            }}>
-              <div 
-                onClick={() => setExpandedRealRewards(!expandedRealRewards)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: '16px',
-                  cursor: 'pointer',
-                  padding: '4px',
-                  borderRadius: '8px',
-                  transition: 'background-color 0.2s ease',
-                  touchAction: 'manipulation',
-                  WebkitTapHighlightColor: 'transparent'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.backgroundColor = `${currentTheme.primary}10`;
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.backgroundColor = 'transparent';
-                }}
-              >
-                <h3 style={{
-                  fontSize: 'clamp(14px, 4vw, 16px)',
-                  fontWeight: '600',
-                  color: currentTheme.textPrimary,
-                  margin: 0,
-                  pointerEvents: 'none'
-                }}>
-                  🎯 Grade {gradeStats?.grade} Real Rewards
-                </h3>
-                <div style={{
-                  color: currentTheme.primary,
-                  fontSize: 'clamp(12px, 3vw, 14px)',
-                  fontWeight: '600',
-                  pointerEvents: 'none'
-                }}>
-                  {expandedRealRewards ? '▼ Show Less' : '▶ Show All'}
-                </div>
-              </div>
-              
-              <div style={{
-                textAlign: 'center',
-                marginBottom: '16px'
-              }}>
-                <div style={{
-                  fontSize: 'clamp(12px, 3.5vw, 14px)',
-                  color: currentTheme.textPrimary,
-                  fontWeight: '500',
-                  marginBottom: '12px'
-                }}>
-                  {realRewardsTracker.encouragingMessage}
-                </div>
-              </div>
-
-              {(() => {
-                const earnedTiers = realRewardsTracker.gradeTiers.filter(tier => tier.hasClassmatesEarned);
-                const unearnedTiers = realRewardsTracker.gradeTiers.filter(tier => !tier.hasClassmatesEarned);
-                
-                // Find the next tier (lowest book requirement among unearned)
-                const nextTier = unearnedTiers.length > 0 
-                  ? unearnedTiers.reduce((next, current) => 
-                      current.books < next.books ? current : next
-                    )
-                  : null;
-                
-                const displayedTiers = expandedRealRewards 
-                  ? realRewardsTracker.gradeTiers 
-                  : earnedTiers.slice(0, 3);
-                
-                return (
-                  <>
-                    {displayedTiers.map((tier, index) => (
-                      <div
-                        key={index}
-                        style={{
-                          backgroundColor: tier.isStudentEarned ? 
-                            `${currentTheme.primary}30` : 
-                            tier.hasClassmatesEarned ? `${currentTheme.primary}20` : `${currentTheme.primary}10`,
-                          borderRadius: '12px',
-                          padding: '12px',
-                          marginBottom: index < displayedTiers.length - 1 ? '8px' : '0',
-                          border: tier.isStudentEarned ? 
-                            `2px solid ${currentTheme.primary}` : 
-                            tier.hasClassmatesEarned ? 'none' : `1px dashed ${currentTheme.primary}60`,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between'
-                        }}
-                      >
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{
-                            fontSize: 'clamp(12px, 3.5vw, 14px)',
-                            fontWeight: '600',
-                            color: currentTheme.textPrimary,
-                            marginBottom: '2px'
-                          }}>
-                            {tier.reward}
-                          </div>
-                          <div style={{
-                            fontSize: 'clamp(10px, 3vw, 12px)',
-                            color: currentTheme.textSecondary,
-                            marginBottom: '4px'
-                          }}>
-                            {tier.books} books to unlock
-                            {tier.isStudentEarned && (
-                              <span style={{
-                                color: currentTheme.primary,
-                                fontWeight: '600',
-                                marginLeft: '8px'
-                              }}>
-                                - YOU EARNED THIS! 🎉
-                              </span>
-                            )}
-                          </div>
-                          <div style={{
-                            fontSize: 'clamp(11px, 3vw, 12px)',
-                            fontWeight: '600',
-                            color: tier.count > 0 ? '#4CAF50' : currentTheme.textSecondary
-                          }}>
-                            {tier.count > 0 ? '🎯' : '⭕'} {tier.count} of {realRewardsTracker.totalGradeStudents} classmates earned this ({tier.percentage}%)
-                          </div>
-                        </div>
-                        
-                        <div style={{
-                          minWidth: '40px',
-                          textAlign: 'center'
-                        }}>
-                          <div style={{
-                            fontSize: 'clamp(20px, 6vw, 24px)'
-                          }}>
-                            {tier.isStudentEarned ? '🏆' : tier.count > 0 ? '🎯' : '⭕'}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                    
-                    {/* SMART STATUS MESSAGE */}
-                    {!expandedRealRewards && (
-                      <div style={{
-                        fontSize: 'clamp(11px, 3vw, 12px)',
-                        color: currentTheme.textSecondary,
-                        textAlign: 'center',
-                        marginTop: '12px',
-                        padding: '8px',
-                        backgroundColor: `${currentTheme.primary}10`,
-                        borderRadius: '8px'
-                      }}>
-                        {nextTier ? (
-                          <>
-                            📚 Next grade milestone: <strong>{nextTier.books} books for {nextTier.reward}</strong>
-                          </>
-                        ) : earnedTiers.length > 0 ? (
-                          <>
-                            🎉 <strong>Your grade has earned all available rewards!</strong> What an amazing reading community! 🏆
-                          </>
-                        ) : (
-                          <>
-                            🌟 <strong>Your grade is just getting started!</strong> Work together to earn your first rewards! 📖
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </>
-                );
-              })()}
-            </div>
-          )}
-
-          {/* GRADE SUPERPOWERS - DYNAMIC! */}
-          {gradeEngagement && gradeEngagement.superpowers && gradeEngagement.superpowers.length > 0 && (
-            <div style={{
-              backgroundColor: currentTheme.surface,
-              borderRadius: '16px',
-              padding: '20px',
-              marginBottom: '20px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-            }}>
-              <h3 style={{
-                fontSize: 'clamp(14px, 4vw, 16px)',
-                fontWeight: '600',
-                color: currentTheme.textPrimary,
-                margin: '0 0 16px 0'
-              }}>
-                ⭐ Grade {gradeStats?.grade} Superpowers
-              </h3>
-              
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: gradeEngagement.superpowers.length === 1 ? '1fr' : '1fr 1fr',
+                marginTop: '24px',
+                display: 'flex',
                 gap: '12px',
-                marginBottom: '16px'
+                justifyContent: 'center',
+                flexWrap: 'wrap'
               }}>
-                {gradeEngagement.superpowers.map((superpower, index) => (
-                  <div
-                    key={index}
-                    style={{
-                      backgroundColor: `${currentTheme.primary}20`,
+                <button
+                  onClick={() => router.push('/student-healthy-habits')}
+                  style={{
+                    backgroundColor: 'rgba(255,255,255,0.2)',
+                    color: 'white',
+                    border: '2px solid rgba(255,255,255,0.3)',
+                    padding: '12px 20px',
+                    borderRadius: '12px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundColor = 'rgba(255,255,255,0.3)';
+                    e.target.style.borderColor = 'rgba(255,255,255,0.5)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = 'rgba(255,255,255,0.2)';
+                    e.target.style.borderColor = 'rgba(255,255,255,0.3)';
+                  }}
+                >
+                  ○ Healthy Habits
+                </button>
+                <button
+                  onClick={() => router.push('/student-saints')}
+                  style={{
+                    backgroundColor: 'rgba(255,255,255,0.2)',
+                    color: 'white',
+                    border: '2px solid rgba(255,255,255,0.3)',
+                    padding: '12px 20px',
+                    borderRadius: '12px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundColor = 'rgba(255,255,255,0.3)';
+                    e.target.style.borderColor = 'rgba(255,255,255,0.5)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = 'rgba(255,255,255,0.2)';
+                    e.target.style.borderColor = 'rgba(255,255,255,0.3)';
+                  }}
+                >
+                  ♔ Saints
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* ALL OTHER PHASES: Show normal grade stats */
+          <>
+            {/* NEW: Compact Phase-Specific Alert Banner */}
+            {getPhaseSpecificMessage() && (
+              <div style={{
+                background: phaseData.currentPhase === 'VOTING' ? 'linear-gradient(135deg, #8b5cf6, #a855f7)' : 
+                           phaseData.currentPhase === 'RESULTS' ? 'linear-gradient(135deg, #f59e0b, #f97316)' : 
+                           'linear-gradient(135deg, #3b82f6, #2563eb)',
+                color: 'white',
+                padding: '12px 16px',
+                margin: '0 16px 16px 16px',
+                borderRadius: '12px',
+                textAlign: 'center',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                animation: 'slideInDown 0.6s ease-out'
+              }}>
+                <div style={{ fontSize: '32px', marginBottom: '8px' }}>
+                  {phaseData.currentPhase === 'VOTING' ? '🗳️' : 
+                   phaseData.currentPhase === 'RESULTS' ? '🏆' : '🚧'}
+                </div>
+                <div style={{
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  marginBottom: '6px',
+                  lineHeight: '1.3'
+                }}>
+                  {phaseData.currentPhase === 'VOTING' ? 'Voting Time!' :
+                   phaseData.currentPhase === 'RESULTS' ? 'Amazing Reading Year!' :
+                   'New Program Starting Soon!'}
+                </div>
+                <div style={{
+                  fontSize: '11px',
+                  fontWeight: '400',
+                  lineHeight: '1.4',
+                  opacity: 0.95
+                }}>
+                  {getPhaseSpecificMessage()}
+                </div>
+              </div>
+            )}
+
+            {/* MAIN CONTENT */}
+            <div style={{ padding: 'clamp(16px, 5vw, 20px)', maxWidth: '400px', margin: '0 auto' }}>
+              
+              {/* GRADE CELEBRATION */}
+              {gradeStats && (
+                <div style={{
+                  backgroundColor: currentTheme.surface,
+                  borderRadius: '20px',
+                  padding: '20px',
+                  marginBottom: '20px',
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+                  textAlign: 'center'
+                }}>
+                  <div style={{
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: currentTheme.textPrimary,
+                    marginBottom: '16px'
+                  }}>
+                    🎉 Grade {gradeStats.grade} is Amazing!
+                  </div>
+                  
+                  <div style={{
+                    backgroundColor: `${currentTheme.primary}20`,
+                    borderRadius: '16px',
+                    padding: '20px',
+                    marginBottom: '16px'
+                  }}>
+                    <div style={{
+                      fontSize: 'clamp(32px, 10vw, 40px)',
+                      marginBottom: '12px'
+                    }}>
+                      🌟
+                    </div>
+                    <div style={{
+                      fontSize: 'clamp(16px, 5vw, 18px)',
+                      fontWeight: '600',
+                      color: currentTheme.textPrimary,
+                      marginBottom: '8px'
+                    }}>
+                      Together you&apos;ve read {gradeStats.totalBooksCompleted} books this year!
+                    </div>
+                    <div style={{
+                      fontSize: 'clamp(12px, 3.5vw, 14px)',
+                      color: currentTheme.textSecondary
+                    }}>
+                      What an incredible reading community you&apos;ve built! 📚✨
+                    </div>
+                  </div>
+
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr 1fr',
+                    gap: '12px'
+                  }}>
+                    <div style={{
+                      backgroundColor: `${currentTheme.secondary}20`,
                       borderRadius: '12px',
                       padding: '12px',
                       textAlign: 'center'
+                    }}>
+                      <div style={{
+                        fontSize: 'clamp(18px, 5vw, 20px)',
+                        fontWeight: 'bold',
+                        color: currentTheme.textPrimary
+                      }}>
+                        {gradeStats.totalStudents}
+                      </div>
+                      <div style={{
+                        fontSize: 'clamp(10px, 3vw, 11px)',
+                        color: currentTheme.textSecondary
+                      }}>
+                        Reading Friends
+                      </div>
+                    </div>
+                    <div style={{
+                      backgroundColor: `${currentTheme.secondary}20`,
+                      borderRadius: '12px',
+                      padding: '12px',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{
+                        fontSize: 'clamp(18px, 5vw, 20px)',
+                        fontWeight: 'bold',
+                        color: currentTheme.textPrimary
+                      }}>
+                        {gradeStats.averageBooks}
+                      </div>
+                      <div style={{
+                        fontSize: 'clamp(10px, 3vw, 11px)',
+                        color: currentTheme.textSecondary
+                      }}>
+                        Books Each!
+                      </div>
+                    </div>
+                    <div style={{
+                      backgroundColor: `${currentTheme.secondary}20`,
+                      borderRadius: '12px',
+                      padding: '12px',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{
+                        fontSize: 'clamp(18px, 5vw, 20px)',
+                        fontWeight: 'bold',
+                        color: currentTheme.textPrimary
+                      }}>
+                        {personalComparison?.studentBooks || 0}
+                      </div>
+                      <div style={{
+                        fontSize: 'clamp(10px, 3vw, 11px)',
+                        color: currentTheme.textSecondary
+                      }}>
+                        You&apos;ve Read!
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* EXPANDABLE REAL REWARDS TRACKER FOR GRADE */}
+              {realRewardsTracker && realRewardsTracker.gradeTiers.length > 0 && (
+                <div style={{
+                  backgroundColor: currentTheme.surface,
+                  borderRadius: '16px',
+                  padding: '20px',
+                  marginBottom: '20px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                }}>
+                  <div 
+                    onClick={() => setExpandedRealRewards(!expandedRealRewards)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      marginBottom: '16px',
+                      cursor: 'pointer',
+                      padding: '4px',
+                      borderRadius: '8px',
+                      transition: 'background-color 0.2s ease',
+                      touchAction: 'manipulation',
+                      WebkitTapHighlightColor: 'transparent'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.backgroundColor = `${currentTheme.primary}10`;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.backgroundColor = 'transparent';
                     }}
                   >
-                    <div style={{
-                      fontSize: 'clamp(20px, 6vw, 24px)',
-                      marginBottom: '4px'
-                    }}>
-                      {superpower.name.split(' ')[0]} {/* Extract emoji */}
-                    </div>
-                    <div style={{
-                      fontSize: 'clamp(11px, 3vw, 12px)',
-                      color: currentTheme.textPrimary,
+                    <h3 style={{
+                      fontSize: 'clamp(14px, 4vw, 16px)',
                       fontWeight: '600',
-                      marginBottom: '2px'
+                      color: currentTheme.textPrimary,
+                      margin: 0,
+                      pointerEvents: 'none'
                     }}>
-                      {superpower.name.substring(2)} {/* Remove emoji and space */}
-                    </div>
+                      🎯 Grade {gradeStats?.grade} Real Rewards
+                    </h3>
                     <div style={{
-                      fontSize: 'clamp(9px, 2.5vw, 10px)',
-                      color: currentTheme.textSecondary,
-                      marginBottom: superpower.hasIt ? '4px' : '0'
+                      color: currentTheme.primary,
+                      fontSize: 'clamp(12px, 3vw, 14px)',
+                      fontWeight: '600',
+                      pointerEvents: 'none'
                     }}>
-                      {superpower.description}
+                      {expandedRealRewards ? '▼ Show Less' : '▶ Show All'}
                     </div>
-                    {superpower.hasIt && (
-                      <div style={{
-                        fontSize: 'clamp(8px, 2.5vw, 9px)',
-                        color: currentTheme.primary,
-                        fontWeight: '600'
-                      }}>
-                        YOU TOO! {superpower.name.split(' ')[0]}
-                      </div>
-                    )}
                   </div>
-                ))}
-              </div>
-              
-              <div style={{
-                backgroundColor: `${currentTheme.primary}10`,
-                borderRadius: '8px',
-                padding: '12px',
-                textAlign: 'center'
-              }}>
-                <div style={{
-                  fontSize: 'clamp(11px, 3vw, 12px)',
-                  color: currentTheme.textSecondary,
-                  fontStyle: 'italic'
-                }}>
-                  Your grade has incredible reading superpowers! Keep up the amazing work! 🌟
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* GRADE'S FAVORITE BOOK */}
-          {gradeEngagement && gradeEngagement.gradeFavoriteBook && (
-            <div style={{
-              backgroundColor: currentTheme.surface,
-              borderRadius: '16px',
-              padding: '20px',
-              marginBottom: '20px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-            }}>
-              <h3 style={{
-                fontSize: 'clamp(14px, 4vw, 16px)',
-                fontWeight: '600',
-                color: currentTheme.textPrimary,
-                margin: '0 0 16px 0'
-              }}>
-                📚 Grade {gradeStats?.grade}&apos;s Favorite Book
-              </h3>
-              
-              <div style={{
-                display: 'flex',
-                gap: '16px',
-                alignItems: 'center'
-              }}>
-                <div style={{
-                  width: '60px',
-                  height: '80px',
-                  borderRadius: '4px',
-                  overflow: 'hidden',
-                  backgroundColor: '#F5F5F5',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
-                }}>
-                  {gradeEngagement.gradeFavoriteBook.coverImageUrl ? (
-                    <img 
-                      src={gradeEngagement.gradeFavoriteBook.coverImageUrl} 
-                      alt={gradeEngagement.gradeFavoriteBook.title}
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover'
-                      }}
-                    />
-                  ) : (
-                    <span style={{ fontSize: '24px' }}>📚</span>
-                  )}
-                </div>
-                
-                <div style={{ flex: 1, minWidth: 0 }}>
+                  
                   <div style={{
+                    textAlign: 'center',
+                    marginBottom: '16px'
+                  }}>
+                    <div style={{
+                      fontSize: 'clamp(12px, 3.5vw, 14px)',
+                      color: currentTheme.textPrimary,
+                      fontWeight: '500',
+                      marginBottom: '12px'
+                    }}>
+                      {realRewardsTracker.encouragingMessage}
+                    </div>
+                  </div>
+
+                  {(() => {
+                    const earnedTiers = realRewardsTracker.gradeTiers.filter(tier => tier.hasClassmatesEarned);
+                    const unearnedTiers = realRewardsTracker.gradeTiers.filter(tier => !tier.hasClassmatesEarned);
+                    
+                    // Find the next tier (lowest book requirement among unearned)
+                    const nextTier = unearnedTiers.length > 0 
+                      ? unearnedTiers.reduce((next, current) => 
+                          current.books < next.books ? current : next
+                        )
+                      : null;
+                    
+                    const displayedTiers = expandedRealRewards 
+                      ? realRewardsTracker.gradeTiers 
+                      : earnedTiers.slice(0, 3);
+                    
+                    return (
+                      <>
+                        {displayedTiers.map((tier, index) => (
+                          <div
+                            key={index}
+                            style={{
+                              backgroundColor: tier.isStudentEarned ? 
+                                `${currentTheme.primary}30` : 
+                                tier.hasClassmatesEarned ? `${currentTheme.primary}20` : `${currentTheme.primary}10`,
+                              borderRadius: '12px',
+                              padding: '12px',
+                              marginBottom: index < displayedTiers.length - 1 ? '8px' : '0',
+                              border: tier.isStudentEarned ? 
+                                `2px solid ${currentTheme.primary}` : 
+                                tier.hasClassmatesEarned ? 'none' : `1px dashed ${currentTheme.primary}60`,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between'
+                            }}
+                          >
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{
+                                fontSize: 'clamp(12px, 3.5vw, 14px)',
+                                fontWeight: '600',
+                                color: currentTheme.textPrimary,
+                                marginBottom: '2px'
+                              }}>
+                                {tier.reward}
+                              </div>
+                              <div style={{
+                                fontSize: 'clamp(10px, 3vw, 12px)',
+                                color: currentTheme.textSecondary,
+                                marginBottom: '4px'
+                              }}>
+                                {tier.books} books to unlock
+                                {tier.isStudentEarned && (
+                                  <span style={{
+                                    color: currentTheme.primary,
+                                    fontWeight: '600',
+                                    marginLeft: '8px'
+                                  }}>
+                                    - YOU EARNED THIS! 🎉
+                                  </span>
+                                )}
+                              </div>
+                              <div style={{
+                                fontSize: 'clamp(11px, 3vw, 12px)',
+                                fontWeight: '600',
+                                color: tier.count > 0 ? '#4CAF50' : currentTheme.textSecondary
+                              }}>
+                                {tier.count > 0 ? '🎯' : '⭕'} {tier.count} of {realRewardsTracker.totalGradeStudents} classmates earned this ({tier.percentage}%)
+                              </div>
+                            </div>
+                            
+                            <div style={{
+                              minWidth: '40px',
+                              textAlign: 'center'
+                            }}>
+                              <div style={{
+                                fontSize: 'clamp(20px, 6vw, 24px)'
+                              }}>
+                                {tier.isStudentEarned ? '🏆' : tier.count > 0 ? '🎯' : '⭕'}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        
+                        {/* SMART STATUS MESSAGE */}
+                        {!expandedRealRewards && (
+                          <div style={{
+                            fontSize: 'clamp(11px, 3vw, 12px)',
+                            color: currentTheme.textSecondary,
+                            textAlign: 'center',
+                            marginTop: '12px',
+                            padding: '8px',
+                            backgroundColor: `${currentTheme.primary}10`,
+                            borderRadius: '8px'
+                          }}>
+                            {nextTier ? (
+                              <>
+                                📚 Next grade milestone: <strong>{nextTier.books} books for {nextTier.reward}</strong>
+                              </>
+                            ) : earnedTiers.length > 0 ? (
+                              <>
+                                🎉 <strong>Your grade has earned all available rewards!</strong> What an amazing reading community! 🏆
+                              </>
+                            ) : (
+                              <>
+                                🌟 <strong>Your grade is just getting started!</strong> Work together to earn your first rewards! 📖
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* GRADE SUPERPOWERS - DYNAMIC! */}
+              {gradeEngagement && gradeEngagement.superpowers && gradeEngagement.superpowers.length > 0 && (
+                <div style={{
+                  backgroundColor: currentTheme.surface,
+                  borderRadius: '16px',
+                  padding: '20px',
+                  marginBottom: '20px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                }}>
+                  <h3 style={{
                     fontSize: 'clamp(14px, 4vw, 16px)',
                     fontWeight: '600',
                     color: currentTheme.textPrimary,
-                    marginBottom: '4px',
-                    lineHeight: '1.2'
+                    margin: '0 0 16px 0'
                   }}>
-                    {gradeEngagement.gradeFavoriteBook.title}
-                  </div>
+                    ⭐ Grade {gradeStats?.grade} Superpowers
+                  </h3>
+                  
                   <div style={{
-                    fontSize: 'clamp(12px, 3.5vw, 14px)',
-                    color: currentTheme.textSecondary,
-                    marginBottom: '8px',
-                    fontStyle: 'italic'
+                    display: 'grid',
+                    gridTemplateColumns: gradeEngagement.superpowers.length === 1 ? '1fr' : '1fr 1fr',
+                    gap: '12px',
+                    marginBottom: '16px'
                   }}>
-                    by {gradeEngagement.gradeFavoriteBook.authors}
+                    {gradeEngagement.superpowers.map((superpower, index) => (
+                      <div
+                        key={index}
+                        style={{
+                          backgroundColor: `${currentTheme.primary}20`,
+                          borderRadius: '12px',
+                          padding: '12px',
+                          textAlign: 'center'
+                        }}
+                      >
+                        <div style={{
+                          fontSize: 'clamp(20px, 6vw, 24px)',
+                          marginBottom: '4px'
+                        }}>
+                          {superpower.name.split(' ')[0]} {/* Extract emoji */}
+                        </div>
+                        <div style={{
+                          fontSize: 'clamp(11px, 3vw, 12px)',
+                          color: currentTheme.textPrimary,
+                          fontWeight: '600',
+                          marginBottom: '2px'
+                        }}>
+                          {superpower.name.substring(2)} {/* Remove emoji and space */}
+                        </div>
+                        <div style={{
+                          fontSize: 'clamp(9px, 2.5vw, 10px)',
+                          color: currentTheme.textSecondary,
+                          marginBottom: superpower.hasIt ? '4px' : '0'
+                        }}>
+                          {superpower.description}
+                        </div>
+                        {superpower.hasIt && (
+                          <div style={{
+                            fontSize: 'clamp(8px, 2.5vw, 9px)',
+                            color: currentTheme.primary,
+                            fontWeight: '600'
+                          }}>
+                            YOU TOO! {superpower.name.split(' ')[0]}
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
+                  
                   <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    marginBottom: '4px'
+                    backgroundColor: `${currentTheme.primary}10`,
+                    borderRadius: '8px',
+                    padding: '12px',
+                    textAlign: 'center'
                   }}>
-                    <span style={{ fontSize: 'clamp(16px, 4vw, 18px)' }}>⭐</span>
-                    <span style={{
-                      fontSize: 'clamp(14px, 4vw, 16px)',
-                      fontWeight: '600',
-                      color: currentTheme.textPrimary
+                    <div style={{
+                      fontSize: 'clamp(11px, 3vw, 12px)',
+                      color: currentTheme.textSecondary,
+                      fontStyle: 'italic'
                     }}>
-                      {gradeEngagement.gradeFavoriteBook.averageRating}/5.0
-                    </span>
-                  </div>
-                  <div style={{
-                    fontSize: 'clamp(11px, 3vw, 12px)',
-                    color: currentTheme.textSecondary
-                  }}>
-                    from {gradeEngagement.gradeFavoriteBook.ratingCount} classmates
+                      Your grade has incredible reading superpowers! Keep up the amazing work! 🌟
+                    </div>
                   </div>
                 </div>
+              )}
+
+              {/* GRADE'S FAVORITE BOOK */}
+              {gradeEngagement && gradeEngagement.gradeFavoriteBook && (
+                <div style={{
+                  backgroundColor: currentTheme.surface,
+                  borderRadius: '16px',
+                  padding: '20px',
+                  marginBottom: '20px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                }}>
+                  <h3 style={{
+                    fontSize: 'clamp(14px, 4vw, 16px)',
+                    fontWeight: '600',
+                    color: currentTheme.textPrimary,
+                    margin: '0 0 16px 0'
+                  }}>
+                    📚 Grade {gradeStats?.grade}&apos;s Favorite Book
+                  </h3>
+                  
+                  <div style={{
+                    display: 'flex',
+                    gap: '16px',
+                    alignItems: 'center'
+                  }}>
+                    <div style={{
+                      width: '60px',
+                      height: '80px',
+                      borderRadius: '4px',
+                      overflow: 'hidden',
+                      backgroundColor: '#F5F5F5',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                    }}>
+                      {gradeEngagement.gradeFavoriteBook.coverImageUrl ? (
+                        <img 
+                          src={gradeEngagement.gradeFavoriteBook.coverImageUrl} 
+                          alt={gradeEngagement.gradeFavoriteBook.title}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover'
+                          }}
+                        />
+                      ) : (
+                        <span style={{ fontSize: '24px' }}>📚</span>
+                      )}
+                    </div>
+                    
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontSize: 'clamp(14px, 4vw, 16px)',
+                        fontWeight: '600',
+                        color: currentTheme.textPrimary,
+                        marginBottom: '4px',
+                        lineHeight: '1.2'
+                      }}>
+                        {gradeEngagement.gradeFavoriteBook.title}
+                      </div>
+                      <div style={{
+                        fontSize: 'clamp(12px, 3.5vw, 14px)',
+                        color: currentTheme.textSecondary,
+                        marginBottom: '8px',
+                        fontStyle: 'italic'
+                      }}>
+                        by {gradeEngagement.gradeFavoriteBook.authors}
+                      </div>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        marginBottom: '4px'
+                      }}>
+                        <span style={{ fontSize: 'clamp(16px, 4vw, 18px)' }}>⭐</span>
+                        <span style={{
+                          fontSize: 'clamp(14px, 4vw, 16px)',
+                          fontWeight: '600',
+                          color: currentTheme.textPrimary
+                        }}>
+                          {gradeEngagement.gradeFavoriteBook.averageRating}/5.0
+                        </span>
+                      </div>
+                      <div style={{
+                        fontSize: 'clamp(11px, 3vw, 12px)',
+                        color: currentTheme.textSecondary
+                      }}>
+                        from {gradeEngagement.gradeFavoriteBook.ratingCount} classmates
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* QUICK LINKS */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '12px',
+                marginTop: '20px'
+              }}>
+                <button
+                  onClick={() => router.push('/student-stats/my-stats')}
+                  style={{
+                    backgroundColor: currentTheme.primary,
+                    color: currentTheme.textPrimary,
+                    border: 'none',
+                    borderRadius: '16px',
+                    padding: '14px 16px',
+                    fontSize: 'clamp(12px, 3.5vw, 14px)',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    minHeight: '44px',
+                    touchAction: 'manipulation',
+                    WebkitTapHighlightColor: 'transparent'
+                  }}
+                >
+                  📈 My Personal Stats
+                </button>
+                
+                <button
+                  onClick={() => router.push('/student-stats/school-stats')}
+                  style={{
+                    backgroundColor: currentTheme.secondary,
+                    color: currentTheme.textPrimary,
+                    border: 'none',
+                    borderRadius: '16px',
+                    padding: '14px 16px',
+                    fontSize: 'clamp(12px, 3.5vw, 14px)',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    minHeight: '44px',
+                    touchAction: 'manipulation',
+                    WebkitTapHighlightColor: 'transparent'
+                  }}
+                >
+                  🏫 School Stats
+                </button>
               </div>
             </div>
-          )}
-
-          {/* QUICK LINKS */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '12px',
-            marginTop: '20px'
-          }}>
-            <button
-              onClick={() => router.push('/student-stats/my-stats')}
-              style={{
-                backgroundColor: currentTheme.primary,
-                color: currentTheme.textPrimary,
-                border: 'none',
-                borderRadius: '16px',
-                padding: '14px 16px',
-                fontSize: 'clamp(12px, 3.5vw, 14px)',
-                fontWeight: '600',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                minHeight: '44px',
-                touchAction: 'manipulation',
-                WebkitTapHighlightColor: 'transparent'
-              }}
-            >
-              📈 My Personal Stats
-            </button>
-            
-            <button
-              onClick={() => router.push('/student-stats/school-stats')}
-              style={{
-                backgroundColor: currentTheme.secondary,
-                color: currentTheme.textPrimary,
-                border: 'none',
-                borderRadius: '16px',
-                padding: '14px 16px',
-                fontSize: 'clamp(12px, 3.5vw, 14px)',
-                fontWeight: '600',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                minHeight: '44px',
-                touchAction: 'manipulation',
-                WebkitTapHighlightColor: 'transparent'
-              }}
-            >
-              🏫 School Stats
-            </button>
-          </div>
-        </div>
+          </>
+        )}
 
         <style jsx>{`
           @keyframes spin {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
+          }
+          
+          @keyframes slideInDown {
+            from { 
+              opacity: 0; 
+              transform: translateY(-30px); 
+            }
+            to { 
+              opacity: 1; 
+              transform: translateY(0); 
+            }
           }
           
           button {
