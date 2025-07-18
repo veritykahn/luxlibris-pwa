@@ -104,8 +104,23 @@ export default function SignIn() {
       
       console.log('✅ Firebase sign-in successful:', userCredential.user.uid);
       
-      // Redirect to parent dashboard
-      router.push('/parent/dashboard');
+      // Check if parent profile exists and has proper onboarding status
+      const { getUserProfile } = await import('../lib/firebase');
+      const parentProfile = await getUserProfile(userCredential.user.uid);
+      
+      if (parentProfile && parentProfile.accountType === 'parent') {
+        // If parent profile exists and onboarding is complete, go to dashboard
+        if (parentProfile.onboardingCompleted === true) {
+          console.log('✅ Parent onboarding complete - redirecting to dashboard');
+          router.push('/parent/dashboard');
+        } else {
+          console.log('⚠️ Parent needs onboarding - redirecting to parent onboarding');
+          router.push('/parent/onboarding');
+        }
+      } else {
+        console.log('⚠️ Parent profile not found or invalid - redirecting to parent onboarding');
+        router.push('/parent/onboarding');
+      }
 
     } catch (error) {
       console.error('❌ Parent sign-in error:', error);
