@@ -834,7 +834,7 @@ export default function ParentDashboard() {
                       color: '#A16207',
                       wordBreak: 'break-word'
                     }}>
-                      "{approval.bookTitle}"
+                      &quot;{approval.bookTitle}&quot;
                     </div>
                   </div>
                   <button

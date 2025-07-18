@@ -277,7 +277,7 @@ export default function ParentSignIn() {
                 margin: 0,
                 lineHeight: '1.4'
               }}>
-                ⌂ <strong>Family Dashboard:</strong> Track your children's reading progress, approve quiz codes, and participate in family reading battles!
+                ⌂ <strong>Family Dashboard:</strong> Track your children&apos;s reading progress, approve quiz codes, and participate in family reading battles!
               </p>
             </div>
           </div>
@@ -408,7 +408,7 @@ export default function ParentSignIn() {
                 touchAction: 'manipulation'
               }}
             >
-              Don't have an account? Create one here
+              Don&apos;t have an account? Create one here
             </button>
           </div>
         </div>

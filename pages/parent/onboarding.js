@@ -493,7 +493,7 @@ export default function ParentOnboarding() {
                     margin: 0,
                     lineHeight: '1.4'
                   }}>
-                    🏆 <strong>Family Reading Battles:</strong> You'll compete in friendly reading challenges with your children to motivate everyone!
+                    🏆 <strong>Family Reading Battles:</strong> You&apos;ll compete in friendly reading challenges with your children to motivate everyone!
                   </p>
                 </div>
               </div>
@@ -767,7 +767,7 @@ export default function ParentOnboarding() {
                       color: luxTheme.textSecondary,
                       marginBottom: '0.5rem'
                     }}>
-                      How do you like to support your child's reading?
+                      How do you like to support your child&apos;s reading?
                     </label>
                     <select
                       value={familyData.parentProfile.supportStyle}

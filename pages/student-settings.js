@@ -1,13 +1,14 @@
-// pages/student-settings.js - Updated with Phase Awareness
+// pages/student-settings.js - Updated with Account Deletion
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
-import { usePhaseAccess } from '../hooks/usePhaseAccess'; // NEW: Import phase awareness
+import { usePhaseAccess } from '../hooks/usePhaseAccess';
 import { getStudentDataEntities, updateStudentDataEntities, getSchoolNomineesEntities, dbHelpers } from '../lib/firebase';
 import { createParentInviteCode } from '../lib/parentLinking';
+import DataExportComponent from '../components/DataExportComponent';
 import Head from 'next/head'
 
-// Theme definitions - MOVED OUTSIDE COMPONENT TO FIX USECALLBACK DEPENDENCY
+// Theme definitions
 const themes = {
   classic_lux: {
     name: 'Lux Libris Classic',
@@ -23,11 +24,11 @@ const themes = {
   darkwood_sports: {
     name: 'Athletic Champion',
     assetPrefix: 'darkwood_sports',
-    primary: '#2F5F5F',        // Deep teal (your preferred)
-    secondary: '#8B2635',      // Burnt subdued red (your preferred)
-    accent: '#F5DEB3',         // Warm wheat/cream (your preferred)
+    primary: '#2F5F5F',
+    secondary: '#8B2635',
+    accent: '#F5DEB3',
     background: '#F5F5DC',
-    surface: '#FFF8DC',        // Cream surface (your preferred)
+    surface: '#FFF8DC',
     textPrimary: '#2F1B14',
     textSecondary: '#5D4037'
   },
@@ -45,11 +46,11 @@ const themes = {
   mint_music: {
     name: 'Musical Harmony',
     assetPrefix: 'mint_music',
-    primary: '#B8E6B8',        // Soft pastel green (new)
-    secondary: '#FFB3BA',      // Soft coral (new)
-    accent: '#FFCCCB',         // Pastel coral (new)
-    background: '#FEFEFE',     // Pure white
-    surface: '#F8FDF8',        // Very subtle green tint
+    primary: '#B8E6B8',
+    secondary: '#FFB3BA',
+    accent: '#FFCCCB',
+    background: '#FEFEFE',
+    surface: '#F8FDF8',
     textPrimary: '#2E4739',
     textSecondary: '#4A6B57'
   },
@@ -78,10 +79,10 @@ const themes = {
   white_nature: {
     name: 'Pure Serenity',
     assetPrefix: 'white_nature',
-    primary: '#6B8E6B',        // Forest green (your preferred)
-    secondary: '#D2B48C',      // Warm tan/khaki (your preferred)
-    accent: '#F5F5DC',         // Beige accent (your preferred)
-    background: '#FFFEF8',     // Warm white (your preferred)
+    primary: '#6B8E6B',
+    secondary: '#D2B48C',
+    accent: '#F5F5DC',
+    background: '#FFFEF8',
     surface: '#FFFFFF',
     textPrimary: '#2F4F2F',
     textSecondary: '#556B2F'
@@ -89,20 +90,20 @@ const themes = {
   little_luminaries: {
     name: 'Luxlings™',
     assetPrefix: 'little_luminaries',
-    primary: '#666666', // Medium grey (for buttons/elements)
-    secondary: '#000000', // Black (for striking accents)
-    accent: '#E8E8E8', // Light grey accent
-    background: '#FFFFFF', // Pure white background
-    surface: '#FAFAFA', // Very light grey surface
-    textPrimary: '#B8860B', // Deep rich gold (readable on light backgrounds)
-    textSecondary: '#AAAAAA' // grey text (for dark backgrounds)
+    primary: '#666666',
+    secondary: '#000000',
+    accent: '#E8E8E8',
+    background: '#FFFFFF',
+    surface: '#FAFAFA',
+    textPrimary: '#B8860B',
+    textSecondary: '#AAAAAA'
   }
 };
 
 export default function StudentSettings() {
   const router = useRouter();
   const { user, signOut } = useAuth();
-  const { phaseData, hasAccess, getPhaseMessage, getPhaseInfo } = usePhaseAccess(); // NEW: Phase awareness
+  const { phaseData, hasAccess, getPhaseMessage, getPhaseInfo } = usePhaseAccess();
   const [studentData, setStudentData] = useState(null);
   const [currentTheme, setCurrentTheme] = useState(null);
   const [selectedThemePreview, setSelectedThemePreview] = useState('');
@@ -114,7 +115,7 @@ export default function StudentSettings() {
   const [showInviteCode, setShowInviteCode] = useState(false);
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
   const [timerDuration, setTimerDuration] = useState(20);
-  const [maxNominees, setMaxNominees] = useState(100); // Max 100 books per year
+  const [maxNominees, setMaxNominees] = useState(100);
 
   // Personal Password Management State
   const [showPasswordSection, setShowPasswordSection] = useState(false);
@@ -124,12 +125,17 @@ export default function StudentSettings() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [passwordError, setPasswordError] = useState('');
 
-  // 🍔 HAMBURGER MENU STATE VARIABLES
+  // Account Deletion State
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Navigation Menu State
   const [showNavMenu, setShowNavMenu] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [notificationProcessing, setNotificationProcessing] = useState(false);
 
-  // 🍔 NAVIGATION MENU ITEMS with PHASE AWARENESS (Settings page is current)
+  // Navigation menu items with phase awareness
   const navMenuItems = useMemo(() => [
     { name: 'Dashboard', path: '/student-dashboard', icon: '⌂' },
     { name: 'Nominees', path: '/student-nominees', icon: '□', access: 'nomineesBrowsing' },
@@ -145,7 +151,7 @@ export default function StudentSettings() {
     return password && password.length >= 5 && /^[a-z]+$/.test(password);
   }, []);
 
-  // 🔔 NOTIFICATION FUNCTIONS
+  // Notification functions
   const requestNotificationPermission = useCallback(async () => {
     console.log('Starting notification permission request...');
     
@@ -178,7 +184,6 @@ export default function StudentSettings() {
       setNotificationsEnabled(enabled);
       
       if (enabled) {
-        // Test notification
         new Notification('🎉 Notifications Enabled!', {
           body: 'You\'ll now get notified when you unlock new saints!',
           icon: '/images/lux_libris_logo.png'
@@ -200,15 +205,13 @@ export default function StudentSettings() {
     ...value
   }));
 
-  // 🍔 useEFFECTS for hamburger menu
-  // Check notification permission on load
+  // useEffects
   useEffect(() => {
     if ('Notification' in window && Notification.permission === 'granted') {
       setNotificationsEnabled(true);
     }
   }, []);
 
-  // Close nav menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (showNavMenu && !event.target.closest('.nav-menu-container')) {
@@ -243,7 +246,6 @@ export default function StudentSettings() {
 
       console.log('🔍 Loading student data for UID:', user.uid);
       
-      // Get real data from Firebase entity structure
       const realStudentData = await getStudentDataEntities(user.uid);
       if (!realStudentData) {
         console.error('❌ Student data not found');
@@ -260,19 +262,18 @@ export default function StudentSettings() {
       setParentInviteCode(realStudentData.parentInviteCode || '');
       setTimerDuration(realStudentData.readingSettings?.defaultTimerDuration || 20);
       
-      // Load nominees to get the reading goal cap (max 100 per year)
       if (realStudentData.entityId && realStudentData.schoolId) {
         try {
           const schoolNominees = await getSchoolNomineesEntities(
             realStudentData.entityId, 
             realStudentData.schoolId
           );
-          const availableBooks = Math.min(schoolNominees.length || 100, 100); // Cap at 100 max
+          const availableBooks = Math.min(schoolNominees.length || 100, 100);
           setMaxNominees(availableBooks);
           console.log(`📚 School has ${schoolNominees.length} nominees, reading goal capped at ${availableBooks}`);
         } catch (error) {
           console.warn('⚠️ Could not load nominees for reading goal cap:', error);
-          setMaxNominees(100); // Fallback to 100 if nominees can't be loaded
+          setMaxNominees(100);
         }
       }
       
@@ -287,17 +288,16 @@ export default function StudentSettings() {
     loadStudentData();
   }, [loadStudentData]);
 
+  // Save functions
   const saveThemeChange = async () => {
     if (selectedThemePreview === studentData.selectedTheme) return;
     
     setIsSaving(true);
     try {
-      // Update Firebase
       await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
         selectedTheme: selectedThemePreview
       });
       
-      // Update local state
       const updatedData = { ...studentData, selectedTheme: selectedThemePreview };
       setStudentData(updatedData);
       setCurrentTheme(themes[selectedThemePreview]);
@@ -318,12 +318,10 @@ export default function StudentSettings() {
     
     setIsSaving(true);
     try {
-      // Update Firebase
       await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
         personalGoal: newGoal
       });
       
-      // Update local state
       const updatedData = { ...studentData, personalGoal: newGoal };
       setStudentData(updatedData);
       
@@ -375,28 +373,24 @@ export default function StudentSettings() {
     setIsSaving(true);
     
     try {
-      // Validate current password
       if (currentPassword !== studentData.personalPassword) {
         setPasswordError('Current password is incorrect');
         setIsSaving(false);
         return;
       }
       
-      // Validate new password
       if (!isPasswordValid(newPassword)) {
         setPasswordError('New password must be at least 5 lowercase letters');
         setIsSaving(false);
         return;
       }
       
-      // Same password check
       if (currentPassword === newPassword) {
         setPasswordError('New password must be different from current password');
         setIsSaving(false);
         return;
       }
       
-      // Update password
       await dbHelpers.updateStudentPersonalPassword(
         studentData.id, 
         studentData.entityId, 
@@ -404,11 +398,9 @@ export default function StudentSettings() {
         newPassword
       );
       
-      // Update local state
       const updatedData = { ...studentData, personalPassword: newPassword };
       setStudentData(updatedData);
       
-      // Reset form
       setCurrentPassword('');
       setNewPassword('');
       setShowPasswordSection(false);
@@ -438,7 +430,6 @@ export default function StudentSettings() {
       setParentInviteCode(inviteCode);
       setShowInviteCode(true);
       
-      // Update local state
       const updatedData = { ...studentData, parentInviteCode: inviteCode };
       setStudentData(updatedData);
       
@@ -459,11 +450,9 @@ export default function StudentSettings() {
     setTimeout(() => setShowSuccess(''), 2000);
   };
 
-  // FIXED: Use AuthContext's built-in redirect functionality
   const handleSignOut = async () => {
     try {
       setIsSaving(true);
-      // Use AuthContext's redirect option to go to homepage
       await signOut({ redirectTo: '/' });
     } catch (error) {
       console.error('Error signing out:', error);
@@ -473,7 +462,48 @@ export default function StudentSettings() {
     }
   };
 
-  // NEW: Phase-aware reading goal message
+  // Account deletion functionality with audit logging
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText !== 'DELETE MY ACCOUNT') {
+      setShowSuccess('❌ Please type "DELETE MY ACCOUNT" exactly to confirm.');
+      setTimeout(() => setShowSuccess(''), 3000);
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      console.log('🗑️ Starting account deletion with audit logging...');
+      
+      // Use enhanced deletion with export and audit logging
+      await dbHelpers.deleteStudentAccountWithExport(
+        user.uid,
+        studentData.id,
+        studentData.entityId,
+        studentData.schoolId,
+        false // Don't auto-export since user can export manually
+      );
+      
+      console.log('✅ Account deleted successfully with audit trail');
+      
+      // Clear any local storage
+      if (typeof window !== 'undefined') {
+        localStorage.clear();
+      }
+      
+      // Redirect to homepage
+      window.location.href = '/';
+      
+    } catch (error) {
+      console.error('❌ Error deleting account:', error);
+      setShowSuccess('❌ Failed to delete account. Please try again or contact support.');
+      setTimeout(() => setShowSuccess(''), 5000);
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+      setDeleteConfirmText('');
+    }
+  };
+
+  // Phase-aware reading goal message
   const getReadingGoalMessage = () => {
     const currentPhase = phaseData.currentPhase;
     const booksRead = studentData?.booksSubmittedThisYear || 0;
@@ -503,7 +533,6 @@ export default function StudentSettings() {
       };
     }
     
-    // Default for ACTIVE phases
     return {
       title: `🎯 Reading Goal`,
       message: `How many books do you want to read this year? (Max: ${maxNominees} books)`,
@@ -554,7 +583,7 @@ export default function StudentSettings() {
         fontFamily: 'system-ui, -apple-system, sans-serif',
         transition: 'background-color 0.3s ease'
       }}>
-        {/* 🍔 HEADER WITH HAMBURGER MENU */}
+        {/* Header with Hamburger Menu */}
         <div style={{
           background: `linear-gradient(135deg, ${previewTheme.primary}F0, ${previewTheme.secondary}F0)`,
           backdropFilter: 'blur(20px)',
@@ -569,10 +598,7 @@ export default function StudentSettings() {
           transition: 'all 0.3s ease'
         }}>
           <button
-            onClick={() => {
-              console.log('Back button clicked, going back');
-              router.back();
-            }}
+            onClick={() => router.back()}
             style={{
               backgroundColor: 'rgba(255,255,255,0.3)',
               border: 'none',
@@ -607,13 +633,10 @@ export default function StudentSettings() {
             Settings
           </h1>
 
-          {/* 🍔 Hamburger Menu with PHASE AWARENESS */}
+          {/* Hamburger Menu */}
           <div className="nav-menu-container" style={{ position: 'relative' }}>
             <button
-              onClick={() => {
-                console.log('Hamburger clicked, current state:', showNavMenu);
-                setShowNavMenu(!showNavMenu);
-              }}
+              onClick={() => setShowNavMenu(!showNavMenu)}
               style={{
                 backgroundColor: 'rgba(255,255,255,0.3)',
                 border: 'none',
@@ -635,7 +658,7 @@ export default function StudentSettings() {
               ☰
             </button>
 
-            {/* Dropdown Menu with PHASE AWARENESS */}
+            {/* Dropdown Menu */}
             {showNavMenu && (
               <div style={{
                 position: 'absolute',
@@ -659,12 +682,9 @@ export default function StudentSettings() {
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        console.log('Clicking:', item.path, 'Current:', item.current, 'Item:', item);
                         setShowNavMenu(false);
                         
-                        if (item.current) {
-                          return;
-                        }
+                        if (item.current) return;
                         
                         if (!isAccessible) {
                           setShowSuccess(`${item.name} isn't available right now`);
@@ -672,10 +692,7 @@ export default function StudentSettings() {
                           return;
                         }
                         
-                        setTimeout(() => {
-                          console.log('Navigating to:', item.path);
-                          router.push(item.path);
-                        }, 100);
+                        setTimeout(() => router.push(item.path), 100);
                       }}
                       style={{
                         width: '100%',
@@ -719,7 +736,7 @@ export default function StudentSettings() {
                   );
                 })}
                 
-                {/* 🔔 Notification Toggle */}
+                {/* Notification Toggle */}
                 <div style={{
                   padding: '12px 16px',
                   borderTop: `1px solid ${previewTheme.primary}40`,
@@ -733,18 +750,13 @@ export default function StudentSettings() {
                       if (notificationProcessing) return;
                       
                       setNotificationProcessing(true);
-                      console.log('Requesting notifications...');
-                      
                       try {
                         const enabled = await requestNotificationPermission();
-                        console.log('Notifications enabled:', enabled);
                       } catch (error) {
                         console.error('Notification error:', error);
                       } finally {
                         setNotificationProcessing(false);
-                        setTimeout(() => {
-                          setShowNavMenu(false);
-                        }, 1000);
+                        setTimeout(() => setShowNavMenu(false), 1000);
                       }
                     }}
                     style={{
@@ -780,6 +792,7 @@ export default function StudentSettings() {
         </div>
 
         <div style={{ padding: '24px', maxWidth: '800px', margin: '0 auto' }}>
+          
           {/* Student Info Section */}
           <div style={{
             backgroundColor: previewTheme.surface,
@@ -992,7 +1005,6 @@ export default function StudentSettings() {
                     </button>
                   </div>
                   
-                  {/* Password requirements */}
                   <div style={{
                     backgroundColor: `${previewTheme.primary}10`,
                     border: `1px solid ${previewTheme.primary}30`,
@@ -1062,7 +1074,7 @@ export default function StudentSettings() {
             )}
           </div>
 
-          {/* NEW: PHASE-AWARE Reading Goal Section */}
+          {/* Reading Goal Section */}
           <div style={{
             backgroundColor: previewTheme.surface,
             borderRadius: '16px',
@@ -1171,7 +1183,6 @@ export default function StudentSettings() {
                 )}
               </>
             ) : (
-              // Show celebration or coming soon message
               <div style={{
                 backgroundColor: `${previewTheme.primary}20`,
                 borderRadius: '12px',
@@ -1289,7 +1300,6 @@ export default function StudentSettings() {
               </div>
             </div>
             
-            {/* Visual indicator of timer length */}
             <div style={{
               backgroundColor: `${previewTheme.primary}20`,
               borderRadius: '8px',
@@ -1464,7 +1474,6 @@ export default function StudentSettings() {
               Select your bookshelf &amp; trophy case design. Changes apply instantly!
             </p>
 
-            {/* Theme Grid */}
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
@@ -1489,7 +1498,6 @@ export default function StudentSettings() {
                       position: 'relative'
                     }}
                   >
-                    {/* Bookshelf Preview */}
                     <div style={{
                       width: '100%',
                       height: '60px',
@@ -1502,7 +1510,6 @@ export default function StudentSettings() {
                       backgroundColor: `${theme.primary}20`
                     }} />
                     
-                    {/* Trophy Case Preview */}
                     <div style={{
                       width: '100%',
                       height: '45px',
@@ -1515,7 +1522,6 @@ export default function StudentSettings() {
                       backgroundColor: `${theme.accent}20`
                     }} />
                     
-                    {/* Theme Name */}
                     <div style={{
                       fontSize: '12px',
                       fontWeight: '600',
@@ -1526,7 +1532,6 @@ export default function StudentSettings() {
                       {theme.name}
                     </div>
                     
-                    {/* Selected Indicator */}
                     {isSelected && (
                       <div style={{
                         position: 'absolute',
@@ -1552,7 +1557,6 @@ export default function StudentSettings() {
               })}
             </div>
 
-            {/* Save Button */}
             {selectedThemePreview !== studentData.selectedTheme && (
               <div>
                 <button
@@ -1576,6 +1580,17 @@ export default function StudentSettings() {
               </div>
             )}
           </div>
+
+          {/* Data Export Section */}
+          <DataExportComponent 
+            accountType="student"
+            studentData={studentData}
+            theme={previewTheme}
+            onExportComplete={(result) => {
+              setShowSuccess('📦 Data exported successfully!');
+              setTimeout(() => setShowSuccess(''), 3000);
+            }}
+          />
 
           {/* Account & Other Settings */}
           <div style={{
@@ -1615,6 +1630,23 @@ export default function StudentSettings() {
                 onClick={() => setShowSignOutConfirm(true)}
                 style={{
                   backgroundColor: 'transparent',
+                  border: '1px solid #f59e0b',
+                  color: '#f59e0b',
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  textAlign: 'left',
+                  fontWeight: '600'
+                }}
+              >
+                🚪 Sign Out
+              </button>
+
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                style={{
+                  backgroundColor: 'transparent',
                   border: '1px solid #dc2626',
                   color: '#dc2626',
                   padding: '12px 16px',
@@ -1625,7 +1657,7 @@ export default function StudentSettings() {
                   fontWeight: '600'
                 }}
               >
-                🚪 Sign Out
+                🗑️ Delete Account & Data
               </button>
             </div>
           </div>
@@ -1716,7 +1748,7 @@ export default function StudentSettings() {
                     onClick={handleSignOut}
                     disabled={isSaving}
                     style={{
-                      backgroundColor: '#dc2626',
+                      backgroundColor: '#f59e0b',
                       color: 'white',
                       border: 'none',
                       padding: '10px 20px',
@@ -1728,6 +1760,148 @@ export default function StudentSettings() {
                     }}
                   >
                     {isSaving ? 'Signing out...' : 'Sign Out'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Delete Account Confirmation Modal */}
+          {showDeleteConfirm && (
+            <div style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 2000,
+              padding: '20px'
+            }}>
+              <div style={{
+                backgroundColor: previewTheme.surface,
+                borderRadius: '16px',
+                padding: '24px',
+                maxWidth: '450px',
+                width: '100%',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
+              }}>
+                <h3 style={{
+                  fontSize: '18px',
+                  fontWeight: 'bold',
+                  color: '#dc2626',
+                  marginBottom: '12px',
+                  textAlign: 'center'
+                }}>
+                  🗑️ Delete Account & Data
+                </h3>
+                <div style={{
+                  backgroundColor: '#fef2f2',
+                  border: '1px solid #fca5a5',
+                  borderRadius: '8px',
+                  padding: '16px',
+                  marginBottom: '16px'
+                }}>
+                  <p style={{
+                    fontSize: '14px',
+                    color: '#dc2626',
+                    margin: '0 0 12px 0',
+                    lineHeight: '1.4',
+                    fontWeight: '600'
+                  }}>
+                    ⚠️ This action cannot be undone!
+                  </p>
+                  <p style={{
+                    fontSize: '14px',
+                    color: '#dc2626',
+                    margin: 0,
+                    lineHeight: '1.4'
+                  }}>
+                    Deleting your account will permanently remove:
+                  </p>
+                  <ul style={{
+                    fontSize: '13px',
+                    color: '#dc2626',
+                    margin: '8px 0 0 16px',
+                    lineHeight: '1.4'
+                  }}>
+                    <li>Your reading progress and bookshelf</li>
+                    <li>All achievements and saints unlocked</li>
+                    <li>Your account settings and preferences</li>
+                    <li>Connection to your parents (if any)</li>
+                  </ul>
+                </div>
+                
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{
+                    display: 'block',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: previewTheme.textPrimary,
+                    marginBottom: '6px'
+                  }}>
+                    Type "DELETE MY ACCOUNT" to confirm:
+                  </label>
+                  <input
+                    type="text"
+                    value={deleteConfirmText}
+                    onChange={(e) => setDeleteConfirmText(e.target.value)}
+                    placeholder="DELETE MY ACCOUNT"
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      border: `2px solid ${deleteConfirmText === 'DELETE MY ACCOUNT' ? '#dc2626' : '#e5e7eb'}`,
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontFamily: 'monospace',
+                      backgroundColor: previewTheme.background
+                    }}
+                  />
+                </div>
+                
+                <div style={{
+                  display: 'flex',
+                  gap: '12px',
+                  justifyContent: 'center'
+                }}>
+                  <button
+                    onClick={() => {
+                      setShowDeleteConfirm(false);
+                      setDeleteConfirmText('');
+                    }}
+                    disabled={isDeleting}
+                    style={{
+                      backgroundColor: 'transparent',
+                      border: `1px solid ${previewTheme.primary}50`,
+                      color: previewTheme.textPrimary,
+                      padding: '10px 20px',
+                      borderRadius: '8px',
+                      cursor: isDeleting ? 'not-allowed' : 'pointer',
+                      fontSize: '14px',
+                      opacity: isDeleting ? 0.5 : 1
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDeleteAccount}
+                    disabled={isDeleting || deleteConfirmText !== 'DELETE MY ACCOUNT'}
+                    style={{
+                      backgroundColor: '#dc2626',
+                      color: 'white',
+                      border: 'none',
+                      padding: '10px 20px',
+                      borderRadius: '8px',
+                      cursor: (isDeleting || deleteConfirmText !== 'DELETE MY ACCOUNT') ? 'not-allowed' : 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      opacity: (isDeleting || deleteConfirmText !== 'DELETE MY ACCOUNT') ? 0.5 : 1
+                    }}
+                  >
+                    {isDeleting ? 'Deleting...' : 'Delete Account'}
                   </button>
                 </div>
               </div>

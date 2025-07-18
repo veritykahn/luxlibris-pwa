@@ -1,18 +1,16 @@
-// pages/legal.js - FIXED to be static for returning users
+// pages/legal.js - SCHOOL VERSION: Students join via teacher/librarian join codes
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
 import Head from 'next/head'
 
-export default function Legal() {
+export default function StudentLegal() {
   const router = useRouter();
   const { userProfile, hasCompletedOnboarding } = useAuth();
-  const [hasAccepted, setHasAccepted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isReturningUser, setIsReturningUser] = useState(false);
 
   useEffect(() => {
-    // Check if this is a returning user who has already completed onboarding
     if (userProfile && hasCompletedOnboarding()) {
       setIsReturningUser(true);
     }
@@ -20,15 +18,10 @@ export default function Legal() {
 
   const acceptAndProceed = async () => {
     setIsLoading(true);
-    
-    // Store acceptance in localStorage for PWA
     localStorage.setItem('hasAcceptedLegal', 'true');
-    localStorage.setItem('acceptedTermsVersion', '2025.06.27');
+    localStorage.setItem('acceptedTermsVersion', '2025.07.18');
     
-    // Navigate based on user type (could be passed as query param)
     const flow = router.query.flow || 'student-onboarding';
-
-    // Route based on flow parameter
     switch (flow) {
       case 'student-onboarding':
         router.push('/student-onboarding');
@@ -42,15 +35,14 @@ export default function Legal() {
       default:
         router.push('/student-onboarding');
     }
-    
     setIsLoading(false);
   };
 
   return (
   <>
     <Head>
-      <title>Terms & Privacy - Lux Libris</title>
-      <meta name="description" content="Lux Libris Terms of Service and Privacy Policy for students, parents, and schools" />
+      <title>Terms & Privacy - Lux Libris School Reading Program</title>
+      <meta name="description" content="Lux Libris Terms of Service and Privacy Policy for Students" />
       <link rel="icon" href="/images/lux_libris_logo.png" />
     </Head>
     
@@ -99,7 +91,7 @@ export default function Legal() {
         maxWidth: '800px',
         margin: '0 auto'
       }}>
-        {/* Welcome Section - Different for returning users */}
+        {/* Welcome Section */}
         <div style={{ marginBottom: '24px' }}>
           <h2 style={{
             fontSize: '24px',
@@ -108,7 +100,7 @@ export default function Legal() {
             color: '#223848',
             marginBottom: '16px'
           }}>
-            {isReturningUser ? 'Terms Already Accepted' : 'Welcome to Lux Libris!'}
+            {isReturningUser ? 'Terms Already Accepted' : 'Welcome to Your School Reading Program!'}
           </h2>
           <p style={{
             fontSize: '16px',
@@ -117,9 +109,9 @@ export default function Legal() {
             marginBottom: '24px'
           }}>
             {isReturningUser ? (
-              <>You have already accepted our Terms of Service and Privacy Policy. This page is for reference only.</>
+              <>You have already accepted our Terms and Privacy Policy. This page is for reference only.</>
             ) : (
-              <>Welcome to your reading journey! As you read amazing books, you&apos;ll unlock beautiful <strong>Luxlings™</strong> saint achievements created exclusively for Lux Libris. By continuing, you agree to our Terms of Service and Privacy Policy.</>
+              <>Your teacher or librarian gave your parent a special join code so you can join Lux Libris! As you read amazing books, you'll unlock beautiful <strong>Luxlings™</strong> saint achievements. Your reading journey starts here!</>
             )}
           </p>
         </div>
@@ -132,79 +124,105 @@ export default function Legal() {
           color: '#223848',
           marginBottom: '20px'
         }}>
-          Lux Libris Terms of Service & Privacy Policy
+          Lux Libris Terms & Privacy Policy for Students
         </h2>
 
-        {/* Sections */}
+        {/* Kid-Friendly Sections */}
         <div style={{ marginBottom: '32px' }}>
           <Section
-            title="📊 Data Collection & Use"
-            content="Lux Libris collects basic information including:
-• Student first name and last initial
-• Grade level (4th-8th grade)
-• Reading progress and book selections
-• Quiz results and achievement milestones
-• Reading goals and preferences
+            title="🏫 How Your School Reading Program Works"
+            content="Your school uses Lux Libris to make reading more fun! Here's how it works:
+• Your teacher or librarian gave your parent a special join code
+• Your educational staff can see your name, grade, and which books you've read
+• They can see how many books you've finished to help support your reading
+• Your school sees how many students are participating (but not your personal info)
+• Your diocese/district only sees how many students total are reading
 
-This data is used exclusively for tracking reading progress, generating achievement rewards, and improving the educational experience."
+Your educational staff wants to help you become an amazing reader!"
           />
 
           <Section
-            title="🔒 Privacy & Protection"
-            content="Your privacy is our top priority:
-• No personally identifiable information (PII) is publicly shared
-• Student data is only accessible to authorized school administrators
-• Parent verification codes protect quiz access
-• Data is never sold or shared with third parties
-• Students are identified by first name and last initial only"
+            title="📊 What Information We Keep Track Of"
+            content="To help you on your reading journey, we keep track of:
+• Your first name and grade (4th-8th grade only)
+• Which books you've read and finished
+• Your quiz results and reading progress
+• The beautiful Luxlings™ saints you've earned
+• Your reading goals and favorite types of books
+
+We only collect what helps you read better and earn achievements!"
           />
 
           <Section
-            title="🛡️ Data Security"
-            content="We implement industry-standard security measures:
-• Secure cloud storage with Firebase
-• Data encryption in transit and at rest
-• Access restricted to authorized personnel only
-• Regular security audits and updates
-• COPPA and FERPA compliant practices"
+            title="👨‍👩‍👧‍👦 Your Parent's Permission"
+            content="Your parent said YES to let you use Lux Libris:
+• They used the join code from your teacher/librarian to sign you up
+• They know your educational staff can see your reading progress
+• They can help you with your account if you need it
+• They can delete your account if your family wants to stop
+• You need their permission because you're under 18
+
+Your parent is your partner in this reading adventure!"
           />
 
           <Section
-            title="👨‍👩‍👧‍👦 Parental Consent"
-            content="For users under 13:
-• Schools obtain necessary parental consent before registration
-• Parents may request data deletion at any time
-• Parents can review their child's data through school administrators
-• Educational use falls under school's existing consent policies"
+            title="🔄 Fresh Start Each School Year"
+            content="Every school year, we give you a fresh start:
+• We keep your name and update your grade level
+• We keep your lifetime reading goals to track your amazing progress
+• Everything else gets cleared out for a new year of reading
+• This helps keep your information current and safe
+• Your earned achievements and progress stay with you!
+
+Each year is a new reading adventure!"
           />
 
           <Section
-            title="🎨 Luxlings™ & Intellectual Property"
-            content="Lux Libris features original Luxlings™ saint artwork:
-- 137 original chibi-style saint characters created exclusively for Lux Libris
-- Proprietary saint achievement system and reward structure
-- Luxlings™ is a trademark of Lux Libris
-- Original artwork by Dr. Verity Kahn, all rights reserved
-- Students enjoy these achievements as part of the educational program
-- Unauthorized reproduction, distribution, or commercial use is prohibited
-- Educational fair use permitted with proper attribution
+            title="🎨 Your Amazing Luxlings™ Achievements"
+            content="The saint pictures you earn are very special:
+• 137 beautiful chibi-style saints created just for Lux Libris
+• Each one tells the story of an inspiring person from history
+• You earn them by reading books and reaching your goals
+• They're yours to enjoy and share with your family
+• The artwork belongs to Lux Libris, but your achievements are yours!
 
-All other content including app design, user interface, educational concepts, and achievement systems are also protected by copyright and trademark law."
+Every Luxling you earn shows how hard you've worked!"
           />
 
           <Section
-            title="📋 School Administrator Rights"
-            content="Authorized school personnel may:
-• View reading progress for their registered students
-• Export educational reports and analytics
-• Manage student accounts and goals
-• Configure school-specific reading lists
-• Access usage statistics for program evaluation"
+            title="🔒 Keeping You Safe Online"
+            content="We protect your information carefully:
+• Your data is stored safely with special computer security
+• Only you, your parent, your educational staff, and Lux Libris can see your reading info
+• We never sell your information to advertisers
+• We only use your information to help you read better and learn
+• If legally required, we might have to share information, but we protect you
+
+We want you to feel safe while you read and learn!"
           />
 
           <Section
-            title="🔄 Terms Updates"
-            content="These terms may be updated as Lux Libris evolves. Users will be notified of significant changes and may need to re-accept updated terms."
+            title="⚙️ Managing Your Reading Account"
+            content="You have control over your reading journey:
+• You can see your progress and achievements anytime
+• Your parent can help you change your settings
+• When you're older, you can manage your own account
+• Your parent can delete your account if your family chooses to
+• You can always ask questions about your information
+
+Contact support@luxlibris.org if you need help with anything!"
+          />
+
+          <Section
+            title="📚 Having Fun & Learning Together"
+            content="Lux Libris is designed to support your education:
+• Read books you enjoy and discover new favorites
+• Celebrate every achievement you earn with your class
+• Share your progress with your family and educational staff
+• Learn about inspiring saints and historical figures
+• Build healthy reading habits that will help you forever
+
+Reading is an adventure - enjoy every page!"
           />
         </div>
 
@@ -222,7 +240,7 @@ All other content including app design, user interface, educational concepts, an
             color: '#223848',
             marginBottom: '8px'
           }}>
-            📧 Contact Information
+            📧 Need Help?
           </h3>
           <p style={{
             fontSize: '14px',
@@ -230,9 +248,9 @@ All other content including app design, user interface, educational concepts, an
             marginBottom: '8px',
             lineHeight: '1.5'
           }}>
-            Questions or concerns? Contact us at:<br/>
-            Website: luxlibris.org<br/>
-            Support: support@luxlibris.org
+            If you have questions, ask your parent to contact us:<br/>
+            Privacy Questions: support@luxlibris.org<br/>
+            Website: luxlibris.org
           </p>
           <p style={{
             fontSize: '12px',
@@ -240,7 +258,7 @@ All other content including app design, user interface, educational concepts, an
             fontStyle: 'italic',
             margin: 0
           }}>
-            Version: 2025.06.27
+            Student Terms Version: 2025.07.18
           </p>
         </div>
 
@@ -260,14 +278,14 @@ All other content including app design, user interface, educational concepts, an
             margin: 0
           }}>
             {isReturningUser ? (
-              'Terms were accepted during account creation. For the most current version, please visit luxlibris.org'
+              'Terms were accepted when your account was created. Happy reading!'
             ) : (
-              'By tapping "I Accept & Continue", you acknowledge that you have read, understood, and agree to be bound by these Terms of Service and Privacy Policy.'
+              'By clicking "I Accept & Start Reading", you agree to these Terms and Privacy Policy with your parent\'s permission.'
             )}
           </p>
         </div>
 
-        {/* Acceptance Button - Only show for new users */}
+        {/* Buttons */}
         {!isReturningUser && (
           <div style={{ textAlign: 'center' }}>
             <button
@@ -281,7 +299,6 @@ All other content including app design, user interface, educational concepts, an
                 borderRadius: '12px',
                 fontSize: '18px',
                 fontWeight: '600',
-                letterSpacing: '1.2px',
                 cursor: 'pointer',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                 width: '100%',
@@ -289,12 +306,11 @@ All other content including app design, user interface, educational concepts, an
                 opacity: isLoading ? 0.7 : 1
               }}
             >
-              {isLoading ? 'Processing...' : 'I Accept & Continue'}
+              {isLoading ? 'Starting...' : '📚 I Accept & Start Reading!'}
             </button>
           </div>
         )}
 
-        {/* Go Back Button for returning users */}
         {isReturningUser && (
           <div style={{ textAlign: 'center' }}>
             <button
@@ -307,43 +323,22 @@ All other content including app design, user interface, educational concepts, an
                 borderRadius: '12px',
                 fontSize: '18px',
                 fontWeight: '600',
-                letterSpacing: '1.2px',
                 cursor: 'pointer',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                 width: '100%',
                 maxWidth: '300px'
               }}
             >
-              ← Go Back
+              ← Back to Reading
             </button>
           </div>
         )}
-
-        {/* Reference Note */}
-        <div style={{
-          backgroundColor: '#F0F8FF',
-          border: '1px solid #ADD4EA',
-          borderRadius: '8px',
-          padding: '16px',
-          marginTop: '24px'
-        }}>
-          <p style={{
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#223848',
-            textAlign: 'center',
-            margin: 0
-          }}>
-            For the most current version of our terms and additional information, please visit luxlibris.org
-          </p>
-        </div>
       </div>
     </div>
     </>
   );
 }
 
-// Section Component
 function Section({ title, content }) {
   return (
     <div style={{ marginBottom: '20px' }}>
