@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
+import { usePhaseAccess } from '../hooks/usePhaseAccess';
 import { getStudentDataEntities, updateStudentDataEntities } from '../lib/firebase';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -8,7 +9,9 @@ import Head from 'next/head';
 
 export default function StudentSaints() {
   const router = useRouter();
-  const { user, isAuthenticated, loading } = useAuth();
+  const { user, userProfile, isAuthenticated, loading } = useAuth();
+  const { phaseData, hasAccess, getPhaseMessage, getPhaseInfo } = usePhaseAccess(userProfile);
+  
   const [studentData, setStudentData] = useState(null);
   const [currentTheme, setCurrentTheme] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -118,16 +121,16 @@ export default function StudentSaints() {
     }
   }), []);
 
-  // Navigation menu items
+  // 🍔 NAVIGATION MENU ITEMS WITH PHASE AWARENESS
   const navMenuItems = useMemo(() => [
-{ name: 'Dashboard', path: '/student-dashboard', icon: '⌂' },
-  { name: 'Nominees', path: '/student-nominees', icon: '□' },
-  { name: 'Bookshelf', path: '/student-bookshelf', icon: '⚏' },
-  { name: 'Healthy Habits', path: '/student-healthy-habits', icon: '○' },
-  { name: 'Saints', path: '/student-saints', icon: '♔', current: true },
-  { name: 'Stats', path: '/student-stats', icon: '△' },
-  { name: 'Settings', path: '/student-settings', icon: '⚙' }
-], []);
+    { name: 'Dashboard', path: '/student-dashboard', icon: '⌂' },
+    { name: 'Nominees', path: '/student-nominees', icon: '□', access: 'nomineesBrowsing' },
+    { name: 'Bookshelf', path: '/student-bookshelf', icon: '⚏', access: 'bookshelfViewing' },
+    { name: 'Healthy Habits', path: '/student-healthy-habits', icon: '○' },
+    { name: 'Saints', path: '/student-saints', icon: '♔', current: true },
+    { name: 'Stats', path: '/student-stats', icon: '△' },
+    { name: 'Settings', path: '/student-settings', icon: '⚙' }
+  ], []);
 
   // 🔔 Notification functions
   const requestNotificationPermission = useCallback(async () => {
@@ -994,6 +997,52 @@ const loadSaintsData = useCallback(async () => {
     setSelectedSaint(null);
   };
 
+  // GET PHASE-AWARE MESSAGING
+  const getPhaseAwareMessage = () => {
+    const currentPhase = phaseData.currentPhase;
+    
+    switch (currentPhase) {
+      case 'TEACHER_SELECTION':
+        return {
+          icon: '🚀',
+          title: 'New Adventure Almost Here!',
+          message: 'The new reading program launches in just 1 week! Keep building those amazing reading streaks and unlocking incredible saints while you wait. Your collection will give you a huge head start on next year\'s journey!',
+          color: '#3B82F6',
+          bgGradient: 'linear-gradient(135deg, #DBEAFE, #BFDBFE)'
+        };
+      
+      case 'VOTING':
+        return {
+          icon: '🎯',
+          title: 'Keep Collecting Your Luxlings™!',
+          message: 'This year\'s program is wrapping up, but your saint-collecting adventure never stops! Keep building those reading streaks, earning XP, and discovering amazing stories about these magnificent saints who changed the world!',
+          color: '#8B5CF6',
+          bgGradient: 'linear-gradient(135deg, #F3E8FF, #E9D5FF)'
+        };
+      
+      case 'RESULTS':
+        return {
+          icon: '⭐',
+          title: 'Your Luxlings™ Journey Continues!',
+          message: 'What an incredible reading year! While we celebrate the winners, keep growing your saint collection and learning about these amazing holy heroes. Every day of reading brings new saints and new inspiration!',
+          color: '#F59E0B',
+          bgGradient: 'linear-gradient(135deg, #FEF3C7, #FDE68A)'
+        };
+      
+      case 'CLOSED':
+        return {
+          icon: '❄️',
+          title: 'Saints Never Take a Break!',
+          message: 'School year might be over, but your Luxlings™ collection keeps growing! These amazing saints are here all year round, ready to inspire your reading adventures and help you discover incredible stories of faith and courage!',
+          color: '#6B7280',
+          bgGradient: 'linear-gradient(135deg, #F9FAFB, #F3F4F6)'
+        };
+      
+      default:
+        return null;
+    }
+  };
+
   // Show loading
   if (loading || isLoading || !studentData || !currentTheme) {
     return (
@@ -1022,6 +1071,7 @@ const loadSaintsData = useCallback(async () => {
 
   const decorativeOverlay = `/trophy_cases/${studentData.selectedTheme || 'classic_lux'}.jpg`;
   const shelves = organizeSaintsIntoShelves(saints, unlockedSaints, studentData, currentStreak);
+  const phaseMessage = getPhaseAwareMessage();
 
   return (
     <>
@@ -1071,9 +1121,9 @@ const loadSaintsData = useCallback(async () => {
         }}>
           <button
             onClick={() => {
-  console.log('Back button clicked, going back');
-  router.back();
-}}
+              console.log('Back button clicked, going back');
+              router.back();
+            }}
             style={{
               backgroundColor: 'rgba(255,255,255,0.3)',
               border: 'none',
@@ -1108,7 +1158,7 @@ const loadSaintsData = useCallback(async () => {
             Saints
           </h1>
 
-          {/* 🍔 Hamburger Menu */}
+          {/* 🍔 Hamburger Menu with Phase Awareness */}
           <div className="nav-menu-container" style={{ position: 'relative' }}>
             <button
               onClick={() => {
@@ -1136,7 +1186,7 @@ const loadSaintsData = useCallback(async () => {
               ☰
             </button>
 
-            {/* Dropdown Menu */}
+            {/* Dropdown Menu with Phase Awareness */}
             {showNavMenu && (
               <div style={{
                 position: 'absolute',
@@ -1151,59 +1201,84 @@ const loadSaintsData = useCallback(async () => {
                 overflow: 'hidden',
                 zIndex: 9999
               }}>
-                {navMenuItems.map((item, index) => (
-                  <button
-                    key={item.path}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      console.log('Clicking:', item.path, 'Current:', item.current, 'Item:', item);
-                      setShowNavMenu(false);
-                      if (!item.current) {
+                {navMenuItems.map((item, index) => {
+                  const isAccessible = !item.access || hasAccess(item.access);
+                  
+                  return (
+                    <button
+                      key={item.path}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setShowNavMenu(false);
+                        
+                        if (item.current) {
+                          return;
+                        }
+                        
+                        if (!isAccessible) {
+                          // Show appropriate locked message based on phase
+                          const currentPhase = phaseData.currentPhase;
+                          let message = `${item.name} isn't available right now`;
+                          
+                          if (currentPhase === 'TEACHER_SELECTION') {
+                            message = `${item.name} will be available when the new program starts!`;
+                          } else if (currentPhase === 'VOTING') {
+                            message = `${item.name} is locked - focus on voting and collecting saints!`;
+                          } else if (currentPhase === 'RESULTS') {
+                            message = `${item.name} is locked - keep building those saint collections!`;
+                          }
+                          
+                          setShowSuccess(message);
+                          setTimeout(() => setShowSuccess(''), 3000);
+                          return;
+                        }
+                        
                         setTimeout(() => {
-                          console.log('Navigating to:', item.path);
                           router.push(item.path);
                         }, 100);
-                      } else {
-                        console.log('Already on current page, not navigating');
-                      }
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      backgroundColor: item.current ? `${currentTheme.primary}30` : 'transparent',
-                      border: 'none',
-                      borderBottom: index < navMenuItems.length - 1 ? `1px solid ${currentTheme.primary}40` : 'none',
-                      cursor: item.current ? 'default' : 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      fontSize: '14px',
-                      color: currentTheme.textPrimary,
-                      fontWeight: item.current ? '600' : '500',
-                      textAlign: 'left',
-                      touchAction: 'manipulation',
-                      WebkitTapHighlightColor: 'transparent',
-                      transition: 'background-color 0.2s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!item.current) {
-                        e.target.style.backgroundColor = `${currentTheme.primary}20`;
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!item.current) {
-                        e.target.style.backgroundColor = 'transparent';
-                      }
-                    }}
-                  >
-                    <span style={{ fontSize: '16px' }}>{item.icon}</span>
-                    <span>{item.name}</span>
-                    {item.current && (
-                      <span style={{ marginLeft: 'auto', fontSize: '12px', color: currentTheme.primary }}>●</span>
-                    )}
-                  </button>
-                ))}
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        backgroundColor: item.current ? `${currentTheme.primary}30` : 'transparent',
+                        border: 'none',
+                        borderBottom: index < navMenuItems.length - 1 ? `1px solid ${currentTheme.primary}40` : 'none',
+                        cursor: item.current ? 'default' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        fontSize: '14px',
+                        color: !isAccessible ? currentTheme.textSecondary : currentTheme.textPrimary,
+                        fontWeight: item.current ? '600' : '500',
+                        textAlign: 'left',
+                        touchAction: 'manipulation',
+                        WebkitTapHighlightColor: 'transparent',
+                        transition: 'background-color 0.2s ease',
+                        opacity: !isAccessible ? 0.6 : 1
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!item.current && isAccessible) {
+                          e.target.style.backgroundColor = `${currentTheme.primary}20`;
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!item.current) {
+                          e.target.style.backgroundColor = 'transparent';
+                        }
+                      }}
+                    >
+                      <span style={{ fontSize: '16px' }}>{item.icon}</span>
+                      <span>{item.name}</span>
+                      {!isAccessible && (
+                        <span style={{ marginLeft: 'auto', fontSize: '12px' }}>🔒</span>
+                      )}
+                      {item.current && (
+                        <span style={{ marginLeft: 'auto', fontSize: '12px', color: currentTheme.primary }}>●</span>
+                      )}
+                    </button>
+                  );
+                })}
                 
                 {/* 🔔 Notification Toggle */}
                 <div style={{
@@ -1332,6 +1407,38 @@ const loadSaintsData = useCallback(async () => {
               </div>
             </div>
           </div>
+
+          {/* SMALLER PHASE-AWARE MESSAGE - Show when not in ACTIVE phase */}
+          {phaseMessage && (
+            <div style={{
+              background: phaseMessage.bgGradient,
+              borderRadius: '12px',
+              padding: '12px',
+              marginBottom: '16px',
+              border: `1px solid ${phaseMessage.color}60`,
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '32px', marginBottom: '8px' }}>
+                {phaseMessage.icon}
+              </div>
+              <h3 style={{
+                fontSize: '14px',
+                fontWeight: '600',
+                color: phaseMessage.color,
+                marginBottom: '6px'
+              }}>
+                {phaseMessage.title}
+              </h3>
+              <p style={{
+                fontSize: '11px',
+                color: phaseMessage.color,
+                margin: 0,
+                lineHeight: '1.4'
+              }}>
+                {phaseMessage.message}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* 📚 MOBILE-OPTIMIZED SAINTS SHELVES */}
@@ -1566,7 +1673,6 @@ const loadSaintsData = useCallback(async () => {
               </div>
             </div>
           ))}
-
         </div>
 
         {/* 📋 Simple Info Card - Properly Centered */}

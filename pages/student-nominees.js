@@ -27,16 +27,29 @@ export default function StudentNominees() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [notificationProcessing, setNotificationProcessing] = useState(false);
 
-  // 🍔 NAVIGATION MENU ITEMS (Nominees page is current)
+  // 🍔 NAVIGATION MENU ITEMS with phase-aware locking (Nominees page is current)
   const navMenuItems = useMemo(() => [
-{ name: 'Dashboard', path: '/student-dashboard', icon: '⌂' },
- { name: 'Nominees', path: '/student-nominees', icon: '□', current: true }, // ✅ Correct
- { name: 'Bookshelf', path: '/student-bookshelf', icon: '⚏' },
- { name: 'Healthy Habits', path: '/student-healthy-habits', icon: '○' },
- { name: 'Saints', path: '/student-saints', icon: '♔' },
- { name: 'Stats', path: '/student-stats', icon: '△' },
- { name: 'Settings', path: '/student-settings', icon: '⚙' }
-], []);
+    { name: 'Dashboard', path: '/student-dashboard', icon: '⌂' },
+    { 
+      name: 'Nominees', 
+      path: '/student-nominees', 
+      icon: '□', 
+      current: true, 
+      locked: !hasAccess('nomineesBrowsing'), 
+      lockReason: 'Nominees are locked during voting and results periods' 
+    },
+    { 
+      name: 'Bookshelf', 
+      path: '/student-bookshelf', 
+      icon: '⚏', 
+      locked: !hasAccess('bookshelfViewing'), 
+      lockReason: 'Bookshelf is locked during results and teacher selection periods' 
+    },
+    { name: 'Healthy Habits', path: '/student-healthy-habits', icon: '○' },
+    { name: 'Saints', path: '/student-saints', icon: '♔' },
+    { name: 'Stats', path: '/student-stats', icon: '△' },
+    { name: 'Settings', path: '/student-settings', icon: '⚙' }
+  ], [hasAccess]);
 
   // 🍔 NOTIFICATION FUNCTIONS
   const requestNotificationPermission = useCallback(async () => {
@@ -661,7 +674,7 @@ useEffect(() => {
                 ☰
               </button>
 
-              {/* Dropdown Menu */}
+              {/* UPDATED Dropdown Menu with Phase-Aware Locking */}
               {showNavMenu && (
                 <div style={{
                   position: 'absolute',
@@ -682,44 +695,64 @@ useEffect(() => {
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
+                        
+                        // Handle locked items
+                        if (item.locked) {
+                          console.log('Item is locked:', item.name);
+                          return;
+                        }
+                        
                         setShowNavMenu(false);
                         if (!item.current) {
-                          setTimeout(() => router.push(item.path), 100);
+                          setTimeout(() => {
+                            router.push(item.path);
+                          }, 100);
                         }
                       }}
                       style={{
                         width: '100%',
                         padding: '12px 16px',
-                        backgroundColor: item.current ? `${currentTheme.primary}30` : 'transparent',
+                        backgroundColor: item.current ? `${currentTheme.primary}30` : 
+                                        item.locked ? `${currentTheme.textSecondary}10` : 'transparent',
                         border: 'none',
                         borderBottom: index < navMenuItems.length - 1 ? `1px solid ${currentTheme.primary}40` : 'none',
-                        cursor: item.current ? 'default' : 'pointer',
+                        cursor: item.locked ? 'not-allowed' : (item.current ? 'default' : 'pointer'),
                         display: 'flex',
                         alignItems: 'center',
                         gap: '12px',
                         fontSize: '14px',
-                        color: currentTheme.textPrimary,
+                        color: item.locked ? currentTheme.textSecondary : currentTheme.textPrimary,
                         fontWeight: item.current ? '600' : '500',
                         textAlign: 'left',
                         touchAction: 'manipulation',
                         WebkitTapHighlightColor: 'transparent',
-                        transition: 'background-color 0.2s ease'
+                        transition: 'background-color 0.2s ease',
+                        opacity: item.locked ? 0.5 : 1
                       }}
                       onMouseEnter={(e) => {
-                        if (!item.current) {
+                        if (!item.current && !item.locked) {
                           e.target.style.backgroundColor = `${currentTheme.primary}20`;
                         }
                       }}
                       onMouseLeave={(e) => {
-                        if (!item.current) {
+                        if (!item.current && !item.locked) {
                           e.target.style.backgroundColor = 'transparent';
                         }
                       }}
+                      title={item.locked ? item.lockReason : undefined}
                     >
-                      <span style={{ fontSize: '16px' }}>{item.icon}</span>
+                      <span style={{ 
+                        fontSize: '16px',
+                        filter: item.locked ? 'grayscale(1)' : 'none'
+                      }}>
+                        {item.icon}
+                      </span>
                       <span>{item.name}</span>
                       {item.current && (
                         <span style={{ marginLeft: 'auto', fontSize: '12px', color: currentTheme.primary }}>●</span>
+                      )}
+                      {item.locked && (
+                        <span style={{ marginLeft: 'auto', fontSize: '12px', color: currentTheme.textSecondary }}>🔒</span>
                       )}
                     </button>
                   ))}
@@ -1060,7 +1093,7 @@ useEffect(() => {
                 ☰
               </button>
 
-              {/* Dropdown Menu */}
+              {/* UPDATED Dropdown Menu with Phase-Aware Locking */}
               {showNavMenu && (
                 <div style={{
                   position: 'absolute',
@@ -1081,50 +1114,64 @@ useEffect(() => {
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        console.log('Clicking:', item.path, 'Current:', item.current, 'Item:', item);
+                        
+                        // Handle locked items
+                        if (item.locked) {
+                          console.log('Item is locked:', item.name);
+                          return;
+                        }
+                        
                         setShowNavMenu(false);
                         if (!item.current) {
                           setTimeout(() => {
-                            console.log('Navigating to:', item.path);
                             router.push(item.path);
                           }, 100);
-                        } else {
-                          console.log('Already on current page, not navigating');
                         }
                       }}
                       style={{
                         width: '100%',
                         padding: '12px 16px',
-                        backgroundColor: item.current ? `${currentTheme.primary}30` : 'transparent',
+                        backgroundColor: item.current ? `${currentTheme.primary}30` : 
+                                        item.locked ? `${currentTheme.textSecondary}10` : 'transparent',
                         border: 'none',
                         borderBottom: index < navMenuItems.length - 1 ? `1px solid ${currentTheme.primary}40` : 'none',
-                        cursor: item.current ? 'default' : 'pointer',
+                        cursor: item.locked ? 'not-allowed' : (item.current ? 'default' : 'pointer'),
                         display: 'flex',
                         alignItems: 'center',
                         gap: '12px',
                         fontSize: '14px',
-                        color: currentTheme.textPrimary,
+                        color: item.locked ? currentTheme.textSecondary : currentTheme.textPrimary,
                         fontWeight: item.current ? '600' : '500',
                         textAlign: 'left',
                         touchAction: 'manipulation',
                         WebkitTapHighlightColor: 'transparent',
-                        transition: 'background-color 0.2s ease'
+                        transition: 'background-color 0.2s ease',
+                        opacity: item.locked ? 0.5 : 1
                       }}
                       onMouseEnter={(e) => {
-                        if (!item.current) {
+                        if (!item.current && !item.locked) {
                           e.target.style.backgroundColor = `${currentTheme.primary}20`;
                         }
                       }}
                       onMouseLeave={(e) => {
-                        if (!item.current) {
+                        if (!item.current && !item.locked) {
                           e.target.style.backgroundColor = 'transparent';
                         }
                       }}
+                      title={item.locked ? item.lockReason : undefined}
                     >
-                      <span style={{ fontSize: '16px' }}>{item.icon}</span>
+                      <span style={{ 
+                        fontSize: '16px',
+                        filter: item.locked ? 'grayscale(1)' : 'none'
+                      }}>
+                        {item.icon}
+                      </span>
                       <span>{item.name}</span>
                       {item.current && (
                         <span style={{ marginLeft: 'auto', fontSize: '12px', color: currentTheme.primary }}>●</span>
+                      )}
+                      {item.locked && (
+                        <span style={{ marginLeft: 'auto', fontSize: '12px', color: currentTheme.textSecondary }}>🔒</span>
                       )}
                     </button>
                   ))}
@@ -1326,7 +1373,7 @@ useEffect(() => {
               ☰
             </button>
 
-            {/* Dropdown Menu */}
+            {/* UPDATED Dropdown Menu with Phase-Aware Locking */}
             {showNavMenu && (
               <div style={{
                 position: 'absolute',
@@ -1347,50 +1394,64 @@ useEffect(() => {
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      console.log('Clicking:', item.path, 'Current:', item.current, 'Item:', item);
+                      
+                      // Handle locked items
+                      if (item.locked) {
+                        console.log('Item is locked:', item.name);
+                        return;
+                      }
+                      
                       setShowNavMenu(false);
                       if (!item.current) {
                         setTimeout(() => {
-                          console.log('Navigating to:', item.path);
                           router.push(item.path);
                         }, 100);
-                      } else {
-                        console.log('Already on current page, not navigating');
                       }
                     }}
                     style={{
                       width: '100%',
                       padding: '12px 16px',
-                      backgroundColor: item.current ? `${currentTheme.primary}30` : 'transparent',
+                      backgroundColor: item.current ? `${currentTheme.primary}30` : 
+                                      item.locked ? `${currentTheme.textSecondary}10` : 'transparent',
                       border: 'none',
                       borderBottom: index < navMenuItems.length - 1 ? `1px solid ${currentTheme.primary}40` : 'none',
-                      cursor: item.current ? 'default' : 'pointer',
+                      cursor: item.locked ? 'not-allowed' : (item.current ? 'default' : 'pointer'),
                       display: 'flex',
                       alignItems: 'center',
                       gap: '12px',
                       fontSize: '14px',
-                      color: currentTheme.textPrimary,
+                      color: item.locked ? currentTheme.textSecondary : currentTheme.textPrimary,
                       fontWeight: item.current ? '600' : '500',
                       textAlign: 'left',
                       touchAction: 'manipulation',
                       WebkitTapHighlightColor: 'transparent',
-                      transition: 'background-color 0.2s ease'
+                      transition: 'background-color 0.2s ease',
+                      opacity: item.locked ? 0.5 : 1
                     }}
                     onMouseEnter={(e) => {
-                      if (!item.current) {
+                      if (!item.current && !item.locked) {
                         e.target.style.backgroundColor = `${currentTheme.primary}20`;
                       }
                     }}
                     onMouseLeave={(e) => {
-                      if (!item.current) {
+                      if (!item.current && !item.locked) {
                         e.target.style.backgroundColor = 'transparent';
                       }
                     }}
+                    title={item.locked ? item.lockReason : undefined}
                   >
-                    <span style={{ fontSize: '16px' }}>{item.icon}</span>
+                    <span style={{ 
+                      fontSize: '16px',
+                      filter: item.locked ? 'grayscale(1)' : 'none'
+                    }}>
+                      {item.icon}
+                    </span>
                     <span>{item.name}</span>
                     {item.current && (
                       <span style={{ marginLeft: 'auto', fontSize: '12px', color: currentTheme.primary }}>●</span>
+                    )}
+                    {item.locked && (
+                      <span style={{ marginLeft: 'auto', fontSize: '12px', color: currentTheme.textSecondary }}>🔒</span>
                     )}
                   </button>
                 ))}

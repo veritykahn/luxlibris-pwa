@@ -46,16 +46,29 @@ export default function StudentBookshelf() {
   const [timeRemaining, setTimeRemaining] = useState(30 * 60); // 30 minutes in seconds
   const [timerActive, setTimerActive] = useState(false);
 
-  // 🍔 NAVIGATION MENU ITEMS (Bookshelf page is current)
+  // 🍔 NAVIGATION MENU ITEMS (Bookshelf page is current) - UPDATED with phase locking
   const navMenuItems = useMemo(() => [
     { name: 'Dashboard', path: '/student-dashboard', icon: '⌂' },
-    { name: 'Nominees', path: '/student-nominees', icon: '□' },
-    { name: 'Bookshelf', path: '/student-bookshelf', icon: '⚏', current: true },
+    { 
+      name: 'Nominees', 
+      path: '/student-nominees', 
+      icon: '□',
+      locked: !hasAccess('nomineesBrowsing'),
+      lockReason: 'Nominees are locked during voting and results periods'
+    },
+    { 
+      name: 'Bookshelf', 
+      path: '/student-bookshelf', 
+      icon: '⚏', 
+      current: true,
+      locked: !hasAccess('bookshelfViewing'),
+      lockReason: 'Bookshelf is locked during results and teacher selection periods'
+    },
     { name: 'Healthy Habits', path: '/student-healthy-habits', icon: '○' },
     { name: 'Saints', path: '/student-saints', icon: '♔' },
     { name: 'Stats', path: '/student-stats', icon: '△' },
     { name: 'Settings', path: '/student-settings', icon: '⚙' }
-  ], []);
+  ], [hasAccess]); // Add hasAccess as dependency
 
   // 🍔 NOTIFICATION FUNCTIONS
   const requestNotificationPermission = useCallback(async () => {
@@ -492,7 +505,22 @@ export default function StudentBookshelf() {
     }
   }, [studentData, nominees, router]);
 
-  // 🔔 CHECK FOR STATUS CHANGES AND SEND NOTIFICATIONS
+  // Enhanced getBookDetails function - Add this improved version
+  const getBookDetails = useCallback((bookId) => {
+    if (!nominees || nominees.length === 0) {
+      console.warn(`📚 No nominees loaded yet for book ID: ${bookId}`);
+      return null;
+    }
+    
+    const bookDetails = nominees.find(book => book.id === bookId);
+    if (!bookDetails) {
+      console.warn(`📚 Book details not found for ID: ${bookId} in ${nominees.length} nominees`);
+    }
+    
+    return bookDetails;
+  }, [nominees]);
+
+  // 🔔 CHECK FOR STATUS CHANGES AND SEND NOTIFICATIONS - FIXED
   useEffect(() => {
     const checkForStatusChanges = () => {
       if (!studentData || !studentData.bookshelf || !notificationsEnabled) return;
@@ -510,22 +538,40 @@ export default function StudentBookshelf() {
             const previousBook = previousBookshelf.find(book => book.bookId === currentBook.bookId);
             
             if (previousBook) {
+              // 🔧 FIX: Get book title with better fallback logic
+              let bookTitle = 'Your Book'; // Default fallback
+              
+              // Try to get book details from nominees
               const bookDetails = getBookDetails(currentBook.bookId);
-              const bookTitle = bookDetails?.title || 'Unknown Book';
+              if (bookDetails?.title) {
+                bookTitle = bookDetails.title;
+              } else {
+                // Fallback: try to get title from the book object itself or stored data
+                bookTitle = currentBook.title || 
+                           currentBook.bookTitle || 
+                           previousBook.title || 
+                           previousBook.bookTitle || 
+                           'Your Book';
+              }
+              
+              console.log(`📚 Checking notifications for: ${bookTitle} (ID: ${currentBook.bookId})`);
               
               // Check for teacher approval (pending_approval -> completed)
               if (previousBook.status === 'pending_approval' && currentBook.status === 'completed') {
+                console.log(`🎉 Sending approval notification for: ${bookTitle}`);
                 sendTeacherApprovalNotification(bookTitle);
               }
               
               // Check for parent quiz unlock (pending_parent_quiz_unlock -> anything else)
               if (previousBook.status === 'pending_parent_quiz_unlock' && 
                   currentBook.status !== 'pending_parent_quiz_unlock') {
+                console.log(`🔓 Sending quiz unlock notification for: ${bookTitle}`);
                 sendQuizUnlockNotification(bookTitle);
               }
               
-              // NEW: Check for revision requests (pending_approval -> revision_requested)
+              // Check for revision requests (pending_approval -> revision_requested)
               if (previousBook.status === 'pending_approval' && currentBook.status === 'revision_requested') {
+                console.log(`📝 Sending revision request notification for: ${bookTitle}`);
                 sendRevisionRequestNotification(bookTitle);
               }
             }
@@ -539,8 +585,11 @@ export default function StudentBookshelf() {
       localStorage.setItem(previousBookshelfKey, JSON.stringify(studentData.bookshelf));
     };
 
-    checkForStatusChanges();
-  }, [studentData, notificationsEnabled, sendTeacherApprovalNotification, sendQuizUnlockNotification, sendRevisionRequestNotification]);
+    // Only check for changes if we have nominees loaded (to ensure getBookDetails works)
+    if (nominees.length > 0) {
+      checkForStatusChanges();
+    }
+  }, [studentData, nominees, notificationsEnabled, sendTeacherApprovalNotification, sendQuizUnlockNotification, sendRevisionRequestNotification]);
 
   const loadBookshelfData = async () => {
     try {
@@ -583,12 +632,7 @@ export default function StudentBookshelf() {
     
     setIsLoading(false);
   };
-
-  const getBookDetails = (bookId) => {
-    return nominees.find(book => book.id === bookId);
-  };
-
-  const getBookTotal = (bookshelfBook) => {
+const getBookTotal = (bookshelfBook) => {
     const bookDetails = getBookDetails(bookshelfBook.bookId);
     if (!bookDetails) return 0;
     
@@ -1305,7 +1349,7 @@ export default function StudentBookshelf() {
                 ☰
               </button>
 
-              {/* Dropdown Menu */}
+              {/* Dropdown Menu - UPDATED with phase locking */}
               {showNavMenu && (
                 <div style={{
                   position: 'absolute',
@@ -1326,49 +1370,73 @@ export default function StudentBookshelf() {
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
+                        
+                        // Handle locked items
+                        if (item.locked) {
+                          console.log('Item is locked:', item.name);
+                          return;
+                        }
+                        
+                        console.log('Clicking:', item.path, 'Current:', item.current, 'Item:', item);
                         setShowNavMenu(false);
                         if (!item.current) {
-                          setTimeout(() => router.push(item.path), 100);
+                          setTimeout(() => {
+                            console.log('Navigating to:', item.path);
+                            router.push(item.path);
+                          }, 100);
+                        } else {
+                          console.log('Already on current page, not navigating');
                         }
                       }}
                       style={{
                         width: '100%',
                         padding: '12px 16px',
-                        backgroundColor: item.current ? `${currentTheme.primary}30` : 'transparent',
+                        backgroundColor: item.current ? `${currentTheme.primary}30` : 
+                                        item.locked ? `${currentTheme.textSecondary}10` : 'transparent',
                         border: 'none',
                         borderBottom: index < navMenuItems.length - 1 ? `1px solid ${currentTheme.primary}40` : 'none',
-                        cursor: item.current ? 'default' : 'pointer',
+                        cursor: item.locked ? 'not-allowed' : (item.current ? 'default' : 'pointer'),
                         display: 'flex',
                         alignItems: 'center',
                         gap: '12px',
                         fontSize: '14px',
-                        color: currentTheme.textPrimary,
+                        color: item.locked ? currentTheme.textSecondary : currentTheme.textPrimary,
                         fontWeight: item.current ? '600' : '500',
                         textAlign: 'left',
                         touchAction: 'manipulation',
                         WebkitTapHighlightColor: 'transparent',
-                        transition: 'background-color 0.2s ease'
+                        transition: 'background-color 0.2s ease',
+                        opacity: item.locked ? 0.5 : 1
                       }}
                       onMouseEnter={(e) => {
-                        if (!item.current) {
+                        if (!item.current && !item.locked) {
                           e.target.style.backgroundColor = `${currentTheme.primary}20`;
                         }
                       }}
                       onMouseLeave={(e) => {
-                        if (!item.current) {
+                        if (!item.current && !item.locked) {
                           e.target.style.backgroundColor = 'transparent';
                         }
                       }}
+                      title={item.locked ? item.lockReason : undefined}
                     >
-                      <span style={{ fontSize: '16px' }}>{item.icon}</span>
+                      <span style={{ 
+                        fontSize: '16px',
+                        filter: item.locked ? 'grayscale(1)' : 'none'
+                      }}>
+                        {item.icon}
+                      </span>
                       <span>{item.name}</span>
                       {item.current && (
                         <span style={{ marginLeft: 'auto', fontSize: '12px', color: currentTheme.primary }}>●</span>
                       )}
+                      {item.locked && (
+                        <span style={{ marginLeft: 'auto', fontSize: '12px', color: currentTheme.textSecondary }}>🔒</span>
+                      )}
                     </button>
                   ))}
                   
-                  {/* 🔔 Notification Toggle */}
+                  {/* 🔔 Notification Toggle - keep same */}
                   <div style={{
                     padding: '12px 16px',
                     borderTop: `1px solid ${currentTheme.primary}40`,
@@ -1378,15 +1446,22 @@ export default function StudentBookshelf() {
                       onClick={async (e) => {
                         e.preventDefault();
                         e.stopPropagation();
+                        
                         if (notificationProcessing) return;
+                        
                         setNotificationProcessing(true);
+                        console.log('Requesting notifications...');
+                        
                         try {
                           const enabled = await requestNotificationPermission();
+                          console.log('Notifications enabled:', enabled);
                         } catch (error) {
                           console.error('Notification error:', error);
                         } finally {
                           setNotificationProcessing(false);
-                          setTimeout(() => setShowNavMenu(false), 1000);
+                          setTimeout(() => {
+                            setShowNavMenu(false);
+                          }, 1000);
                         }
                       }}
                       style={{
@@ -1421,7 +1496,7 @@ export default function StudentBookshelf() {
             </div>
           </div>
 
-          {/* LOCKED BOOKSHELF MESSAGE */}
+          {/* LOCKED BOOKSHELF MESSAGE - UPDATED with phase-specific messaging */}
           <div style={{
             padding: '40px 20px',
             textAlign: 'center',
@@ -1450,7 +1525,10 @@ export default function StudentBookshelf() {
                 marginBottom: '16px',
                 fontFamily: 'Didot, "Times New Roman", serif'
               }}>
-                Happy Reading!
+                {phaseInfo.name === 'Voting Period' ? 'Voting Time!' : 
+                 phaseInfo.name === 'Results' ? 'Happy Reading!' : 
+                 phaseInfo.name === 'Teacher Selection' ? 'Getting Ready!' :
+                 'Bookshelf Closed'}
               </h2>
               
               <p style={{
@@ -1459,114 +1537,161 @@ export default function StudentBookshelf() {
                 lineHeight: '1.6',
                 marginBottom: '24px'
               }}>
-                Keep the reading adventure going! Explore your bookshelf, hit up the library, and collect XP and saints while we cook up next year&aos;s awesome nominees! 📖⭐
+                {phaseInfo.name === 'Voting Period' ? 
+                  "Bookshelf editing is paused during voting. Focus on choosing your favorite from the books you've already read!" :
+                 phaseInfo.name === 'Results' ?
+                  "Keep the reading adventure going! Explore your bookshelf, hit up the library, and collect XP and Luxlings™ while we cook up next year's awesome nominees! 📖⭐" :
+                 phaseInfo.name === 'Teacher Selection' ?
+                  "📝 Teachers are selecting amazing books for you! Your bookshelf will be available once the nominees are ready. Keep up those healthy reading habits!" :
+                  getPhaseMessage()}
               </p>
               
-              {/* Motivational stats if available */}
-              {studentData.booksSubmittedThisYear > 0 && (
-                <div style={{
-                  backgroundColor: `${currentTheme.primary}15`,
-                  borderRadius: '12px',
-                  padding: '16px',
-                  marginBottom: '24px',
-                  border: `1px solid ${currentTheme.primary}40`
-                }}>
-                  <div style={{
-                    fontSize: '32px',
-                    fontWeight: 'bold',
-                    color: currentTheme.primary,
-                    marginBottom: '4px'
-                  }}>
-                    {studentData.booksSubmittedThisYear}
-                  </div>
-                  <div style={{
-                    fontSize: '14px',
-                    color: currentTheme.textPrimary,
-                    fontWeight: '600',
-                    marginBottom: '4px'
-                  }}>
-                    Books Completed This Year
-                  </div>
-                  <div style={{
-                    fontSize: '12px',
-                    color: currentTheme.textSecondary
-                  }}>
-                    Amazing reading journey! 🎉
-                  </div>
-                </div>
-              )}
-              
-              {/* Action buttons */}
+              {/* Action buttons based on phase */}
               <div style={{
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '12px',
                 alignItems: 'center'
               }}>
-                <button
-                  onClick={() => router.push('/student-dashboard')}
-                  style={{
-                    backgroundColor: phaseInfo.color || currentTheme.primary,
-                    color: 'white',
-                    border: 'none',
-                    padding: '14px 28px',
-                    borderRadius: '12px',
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    marginBottom: '8px'
-                  }}
-                >
-                  🏆 See Results
-                </button>
+                {phaseInfo.name === 'Voting Period' && (
+                  <button
+                    onClick={() => router.push('/student-dashboard')}
+                    style={{
+                      backgroundColor: phaseInfo.color || currentTheme.primary,
+                      color: 'white',
+                      border: 'none',
+                      padding: '14px 28px',
+                      borderRadius: '12px',
+                      fontSize: '16px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    🗳️ Go Vote Now
+                  </button>
+                )}
                 
-                <div style={{
-                  display: 'flex',
-                  gap: '12px',
-                  flexWrap: 'wrap',
-                  justifyContent: 'center'
-                }}>
-                  <button
-                    onClick={() => router.push('/student-healthy-habits')}
-                    style={{
-                      backgroundColor: 'transparent',
-                      color: currentTheme.textPrimary,
-                      border: `2px solid ${currentTheme.primary}`,
-                      padding: '12px 20px',
-                      borderRadius: '12px',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
+                {phaseInfo.name === 'Results' && (
+                  <>
+                    <button
+                      onClick={() => router.push('/student-dashboard')}
+                      style={{
+                        backgroundColor: phaseInfo.color || currentTheme.primary,
+                        color: 'white',
+                        border: 'none',
+                        padding: '14px 28px',
+                        borderRadius: '12px',
+                        fontSize: '16px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        marginBottom: '8px'
+                      }}
+                    >
+                      🏆 See Results
+                    </button>
+                    
+                    <div style={{
                       display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px'
-                    }}
-                  >
-                    ○ Healthy Habits
-                  </button>
-                  
-                  <button
-                    onClick={() => router.push('/student-saints')}
-                    style={{
-                      backgroundColor: 'transparent',
-                      color: currentTheme.textPrimary,
-                      border: `2px solid ${currentTheme.primary}`,
-                      padding: '12px 20px',
-                      borderRadius: '12px',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
+                      gap: '12px',
+                      flexWrap: 'wrap',
+                      justifyContent: 'center'
+                    }}>
+                      <button
+                        onClick={() => router.push('/student-healthy-habits')}
+                        style={{
+                          backgroundColor: 'transparent',
+                          color: currentTheme.textPrimary,
+                          border: `2px solid ${currentTheme.primary}`,
+                          padding: '12px 20px',
+                          borderRadius: '12px',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}
+                      >
+                        ○ Healthy Habits
+                      </button>
+                      
+                      <button
+                        onClick={() => router.push('/student-saints')}
+                        style={{
+                          backgroundColor: 'transparent',
+                          color: currentTheme.textPrimary,
+                          border: `2px solid ${currentTheme.primary}`,
+                          padding: '12px 20px',
+                          borderRadius: '12px',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}
+                      >
+                        ♔ Saints
+                      </button>
+                    </div>
+                  </>
+                )}
+                
+                {phaseInfo.name === 'Teacher Selection' && (
+                  <>
+                    <div style={{
                       display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px'
-                    }}
-                  >
-                    ♔ Saints
-                  </button>
-                </div>
+                      gap: '12px',
+                      flexWrap: 'wrap',
+                      justifyContent: 'center',
+                      marginBottom: '16px'
+                    }}>
+                      <button
+                        onClick={() => router.push('/student-healthy-habits')}
+                        style={{
+                          backgroundColor: currentTheme.primary,
+                          color: 'white',
+                          border: 'none',
+                          padding: '14px 24px',
+                          borderRadius: '12px',
+                          fontSize: '15px',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}
+                      >
+                        ○ Keep Reading Habits
+                      </button>
+                      
+                      <button
+                        onClick={() => router.push('/student-saints')}
+                        style={{
+                          backgroundColor: 'transparent',
+                          color: currentTheme.textPrimary,
+                          border: `2px solid ${currentTheme.primary}`,
+                          padding: '12px 20px',
+                          borderRadius: '12px',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}
+                      >
+                        ♔ Explore Saints
+                      </button>
+                    </div>
+                  </>
+                )}
                 
                 <button
                   onClick={() => router.push('/student-dashboard')}
@@ -1577,8 +1702,7 @@ export default function StudentBookshelf() {
                     padding: '8px 16px',
                     fontSize: '14px',
                     cursor: 'pointer',
-                    textDecoration: 'underline',
-                    marginTop: '8px'
+                    textDecoration: 'underline'
                   }}
                 >
                   ← Back to Dashboard
@@ -1727,7 +1851,7 @@ export default function StudentBookshelf() {
               ☰
             </button>
 
-            {/* Dropdown Menu */}
+            {/* Dropdown Menu - UPDATED with phase locking */}
             {showNavMenu && (
               <div style={{
                 position: 'absolute',
@@ -1748,6 +1872,13 @@ export default function StudentBookshelf() {
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
+                      
+                      // Handle locked items
+                      if (item.locked) {
+                        console.log('Item is locked:', item.name);
+                        return;
+                      }
+                      
                       console.log('Clicking:', item.path, 'Current:', item.current, 'Item:', item);
                       setShowNavMenu(false);
                       if (!item.current) {
@@ -1762,36 +1893,47 @@ export default function StudentBookshelf() {
                     style={{
                       width: '100%',
                       padding: '12px 16px',
-                      backgroundColor: item.current ? `${currentTheme.primary}30` : 'transparent',
+                      backgroundColor: item.current ? `${currentTheme.primary}30` : 
+                                      item.locked ? `${currentTheme.textSecondary}10` : 'transparent',
                       border: 'none',
                       borderBottom: index < navMenuItems.length - 1 ? `1px solid ${currentTheme.primary}40` : 'none',
-                      cursor: item.current ? 'default' : 'pointer',
+                      cursor: item.locked ? 'not-allowed' : (item.current ? 'default' : 'pointer'),
                       display: 'flex',
                       alignItems: 'center',
                       gap: '12px',
                       fontSize: '14px',
-                      color: currentTheme.textPrimary,
+                      color: item.locked ? currentTheme.textSecondary : currentTheme.textPrimary,
                       fontWeight: item.current ? '600' : '500',
                       textAlign: 'left',
                       touchAction: 'manipulation',
                       WebkitTapHighlightColor: 'transparent',
-                      transition: 'background-color 0.2s ease'
+                      transition: 'background-color 0.2s ease',
+                      opacity: item.locked ? 0.5 : 1
                     }}
                     onMouseEnter={(e) => {
-                      if (!item.current) {
+                      if (!item.current && !item.locked) {
                         e.target.style.backgroundColor = `${currentTheme.primary}20`;
                       }
                     }}
                     onMouseLeave={(e) => {
-                      if (!item.current) {
+                      if (!item.current && !item.locked) {
                         e.target.style.backgroundColor = 'transparent';
                       }
                     }}
+                    title={item.locked ? item.lockReason : undefined}
                   >
-                    <span style={{ fontSize: '16px' }}>{item.icon}</span>
+                    <span style={{ 
+                      fontSize: '16px',
+                      filter: item.locked ? 'grayscale(1)' : 'none'
+                    }}>
+                      {item.icon}
+                    </span>
                     <span>{item.name}</span>
                     {item.current && (
                       <span style={{ marginLeft: 'auto', fontSize: '12px', color: currentTheme.primary }}>●</span>
+                    )}
+                    {item.locked && (
+                      <span style={{ marginLeft: 'auto', fontSize: '12px', color: currentTheme.textSecondary }}>🔒</span>
                     )}
                   </button>
                 ))}
@@ -2129,7 +2271,7 @@ export default function StudentBookshelf() {
           )}
         </div>
 
-        {/* BOOK MODAL - UPDATED WITH READ-ONLY FUNCTIONALITY */}
+       {/* BOOK MODAL - UPDATED WITH READ-ONLY FUNCTIONALITY */}
         {showBookModal && selectedBook && (() => {
           const colorPalette = getCategoryColorPalette(selectedBook.details);
           const total = getBookTotal(selectedBook);
@@ -3393,7 +3535,7 @@ export default function StudentBookshelf() {
             </div>
           );
         })()}
-
+        
         {/* SUCCESS MESSAGE */}
         {showSuccess && (
           <div style={{

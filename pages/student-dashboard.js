@@ -1626,7 +1626,7 @@ const getMotivationalMessage = () => {
             </div>
           )}
 
-          {/* UPDATED: Currently Reading section - Show message during locks */}
+          {/* UPDATED: Currently Reading section - Show message ONLY during TEACHER_SELECTION */}
           {hasAccess('bookshelfEditing') ? (
             // Normal currently reading logic
             (() => {
@@ -1885,42 +1885,44 @@ const getMotivationalMessage = () => {
               );
             })()
           ) : (
-            // New program setup message when reading features are limited
-            <div style={{
-              backgroundColor: currentTheme.surface,
-              borderRadius: '16px',
-              padding: '20px',
-              marginBottom: '20px',
-              border: `2px solid ${currentTheme.primary}30`,
-              animation: 'slideInUp 0.8s ease-out 1.2s both',
-              textAlign: 'center'
-            }}>
+            // FIXED: Only show "New Reading Program in Progress" during TEACHER_SELECTION phase
+            phaseData.currentPhase === 'TEACHER_SELECTION' && (
               <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                marginBottom: '16px',
-                justifyContent: 'center'
+                backgroundColor: currentTheme.surface,
+                borderRadius: '16px',
+                padding: '20px',
+                marginBottom: '20px',
+                border: `2px solid ${currentTheme.primary}30`,
+                animation: 'slideInUp 0.8s ease-out 1.2s both',
+                textAlign: 'center'
               }}>
-                <span style={{ fontSize: '48px' }}>🚧</span>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  marginBottom: '16px',
+                  justifyContent: 'center'
+                }}>
+                  <span style={{ fontSize: '48px' }}>🚧</span>
+                </div>
+                <h3 style={{
+                  fontSize: '20px',
+                  fontWeight: 'bold',
+                  color: currentTheme.textPrimary,
+                  margin: '0 0 12px 0'
+                }}>
+                  New Reading Program in Progress
+                </h3>
+                <p style={{
+                  fontSize: '14px',
+                  color: currentTheme.textSecondary,
+                  margin: 0,
+                  lineHeight: '1.5'
+                }}>
+                  This year&apos;s Lux Libris Award program is being set up! Only 1 week left until you meet your new favourite reads!
+                </p>
               </div>
-              <h3 style={{
-                fontSize: '20px',
-                fontWeight: 'bold',
-                color: currentTheme.textPrimary,
-                margin: '0 0 12px 0'
-              }}>
-                New Reading Program in Progress
-              </h3>
-              <p style={{
-                fontSize: '14px',
-                color: currentTheme.textSecondary,
-                margin: 0,
-                lineHeight: '1.5'
-              }}>
-                This year&apos;s Lux Libris Award program is being set up! Only 1 week left until you meet your new favourite reads!
-              </p>
-            </div>
+            )
           )}
 
           {/* UPDATED: Smart Book Recommendations with ANIMATIONS - only show during active phase */}

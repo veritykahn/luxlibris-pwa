@@ -359,6 +359,35 @@ export default function LuxDnaLab() {
     }
   };
 
+  // NEW: Show result modal from DNA results
+  const showDnaResult = (quizId, result) => {
+    // Find the quiz that matches this result
+    const quiz = quizzes.find(q => q.quiz_id === quizId);
+    if (!quiz) {
+      return;
+    }
+
+    // Find the full saint result data from the quiz
+    let saintResult = quiz.results[result.result];
+    
+    // If not found by key, try to find by saint name as backup
+    if (!saintResult) {
+      saintResult = Object.values(quiz.results).find(s => s.name === result.saintName);
+    }
+    
+    if (!saintResult) {
+      return;
+    }
+    
+    // Set the current quiz for retake functionality
+    setCurrentQuiz(quiz);
+    
+    // Set the quiz result and show modal
+    setQuizResult(saintResult);
+    setShowMyDnaModal(false);
+    setShowQuizResult(true);
+  };
+
   // Get completed quizzes count
   const getCompletedQuizzesCount = () => {
     return Object.keys(studentData?.quizResults || {}).length;
@@ -947,7 +976,7 @@ export default function LuxDnaLab() {
                             fontWeight: '600',
                             marginTop: '4px'
                           }}>
-                            Your result: {result.saintName} • Completed {result.timesCompleted} time{result.timesCompleted > 1 ? 's' : ''}
+                            Your result: {result.saintName} • Completed {result.timesCompleted} time{result.timesCompleted > 1 ? 's' : ''} • Retake?
                           </div>
                         )}
                       </div>
@@ -1351,7 +1380,7 @@ export default function LuxDnaLab() {
           );
         })()}
 
-        {/* MY DNA RESULTS MODAL */}
+        {/* MY DNA RESULTS MODAL - UPDATED WITH CLICKABLE RESULTS */}
         {showMyDnaModal && (
           <div style={{
             position: 'fixed',
@@ -1467,16 +1496,22 @@ export default function LuxDnaLab() {
                         if (!quiz) return null;
                         
                         return (
-                          <div
+                          <button
                             key={quizId}
+                            onClick={() => showDnaResult(quizId, result)}
                             style={{
                               backgroundColor: `${currentTheme.primary}15`,
                               border: `1px solid ${currentTheme.primary}30`,
                               borderRadius: '12px',
                               padding: '12px',
+                              cursor: 'pointer',
                               display: 'flex',
                               alignItems: 'center',
-                              gap: '12px'
+                              gap: '12px',
+                              textAlign: 'left',
+                              touchAction: 'manipulation',
+                              WebkitTapHighlightColor: 'transparent',
+                              width: '100%'
                             }}
                           >
                             <div style={{
@@ -1506,32 +1541,10 @@ export default function LuxDnaLab() {
                                 fontSize: '10px',
                                 color: currentTheme.textSecondary
                               }}>
-                                Completed {result.timesCompleted} time{result.timesCompleted > 1 ? 's' : ''} • Last: {new Date(result.completedAt.seconds * 1000).toLocaleDateString()}
+                                Completed {result.timesCompleted} time{result.timesCompleted > 1 ? 's' : ''}
                               </div>
                             </div>
-                            
-                            <button
-                              onClick={() => {
-                                setShowMyDnaModal(false);
-                                const quiz = quizzes.find(q => q.quiz_id === quizId);
-                                if (quiz) startQuiz(quiz);
-                              }}
-                              style={{
-                                backgroundColor: currentTheme.primary,
-                                color: currentTheme.textPrimary,
-                                border: 'none',
-                                borderRadius: '8px',
-                                padding: '6px 10px',
-                                fontSize: '10px',
-                                fontWeight: '600',
-                                cursor: 'pointer',
-                                touchAction: 'manipulation',
-                                WebkitTapHighlightColor: 'transparent'
-                              }}
-                            >
-                              Retake
-                            </button>
-                          </div>
+                          </button>
                         );
                       })}
                     </div>

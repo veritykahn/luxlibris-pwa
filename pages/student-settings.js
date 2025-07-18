@@ -1,7 +1,8 @@
-// pages/student-settings.js - Updated with Personal Password Management
+// pages/student-settings.js - Updated with Phase Awareness
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
+import { usePhaseAccess } from '../hooks/usePhaseAccess'; // NEW: Import phase awareness
 import { getStudentDataEntities, updateStudentDataEntities, getSchoolNomineesEntities, dbHelpers } from '../lib/firebase';
 import { createParentInviteCode } from '../lib/parentLinking';
 import Head from 'next/head'
@@ -101,6 +102,7 @@ const themes = {
 export default function StudentSettings() {
   const router = useRouter();
   const { user, signOut } = useAuth();
+  const { phaseData, hasAccess, getPhaseMessage, getPhaseInfo } = usePhaseAccess(); // NEW: Phase awareness
   const [studentData, setStudentData] = useState(null);
   const [currentTheme, setCurrentTheme] = useState(null);
   const [selectedThemePreview, setSelectedThemePreview] = useState('');
@@ -114,7 +116,7 @@ export default function StudentSettings() {
   const [timerDuration, setTimerDuration] = useState(20);
   const [maxNominees, setMaxNominees] = useState(100); // Max 100 books per year
 
-  // NEW: Personal Password Management State
+  // Personal Password Management State
   const [showPasswordSection, setShowPasswordSection] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -127,23 +129,23 @@ export default function StudentSettings() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [notificationProcessing, setNotificationProcessing] = useState(false);
 
-  // 🍔 NAVIGATION MENU ITEMS (Settings page is current)
+  // 🍔 NAVIGATION MENU ITEMS with PHASE AWARENESS (Settings page is current)
   const navMenuItems = useMemo(() => [
     { name: 'Dashboard', path: '/student-dashboard', icon: '⌂' },
-  { name: 'Nominees', path: '/student-nominees', icon: '□' },
-  { name: 'Bookshelf', path: '/student-bookshelf', icon: '⚏' },
-  { name: 'Healthy Habits', path: '/student-healthy-habits', icon: '○' },
-  { name: 'Saints', path: '/student-saints', icon: '♔' },
-  { name: 'Stats', path: '/student-stats', icon: '△' },
-  { name: 'Settings', path: '/student-settings', icon: '⚙', current: true }
-], []);
+    { name: 'Nominees', path: '/student-nominees', icon: '□', access: 'nomineesBrowsing' },
+    { name: 'Bookshelf', path: '/student-bookshelf', icon: '⚏', access: 'bookshelfViewing' },
+    { name: 'Healthy Habits', path: '/student-healthy-habits', icon: '○' },
+    { name: 'Saints', path: '/student-saints', icon: '♔' },
+    { name: 'Stats', path: '/student-stats', icon: '△' },
+    { name: 'Settings', path: '/student-settings', icon: '⚙', current: true }
+  ], []);
 
-  // NEW: Password validation function
+  // Password validation function
   const isPasswordValid = useCallback((password) => {
     return password && password.length >= 5 && /^[a-z]+$/.test(password);
   }, []);
 
-  // 🍔 NOTIFICATION FUNCTIONS
+  // 🔔 NOTIFICATION FUNCTIONS
   const requestNotificationPermission = useCallback(async () => {
     console.log('Starting notification permission request...');
     
@@ -192,23 +194,6 @@ export default function StudentSettings() {
       return false;
     }
   }, []);
-
-  const sendSaintUnlockNotification = useCallback((saintName) => {
-    if (!notificationsEnabled || Notification.permission !== 'granted') return;
-
-    try {
-      new Notification('🎉 New Saint Unlocked!', {
-        body: `You've unlocked ${saintName}! Check your collection.`,
-        icon: '/images/lux_libris_logo.png',
-        badge: '/images/lux_libris_logo.png',
-        tag: 'saint-unlock',
-        requireInteraction: false,
-        silent: false
-      });
-    } catch (error) {
-      console.log('Notification failed:', error);
-    }
-  }, [notificationsEnabled]);
 
   const themesArray = Object.entries(themes).map(([key, value]) => ({
     assetPrefix: key,
@@ -296,7 +281,7 @@ export default function StudentSettings() {
       router.push('/student-account-creation');
     }
     setIsLoading(false);
-  }, [user, router]); // REMOVED 'themes' from dependencies since it's now stable
+  }, [user, router]);
 
   useEffect(() => {
     loadStudentData();
@@ -384,7 +369,7 @@ export default function StudentSettings() {
     setIsSaving(false);
   };
 
-  // NEW: Password change functionality
+  // Password change functionality
   const handlePasswordChange = async () => {
     setPasswordError('');
     setIsSaving(true);
@@ -488,6 +473,44 @@ export default function StudentSettings() {
     }
   };
 
+  // NEW: Phase-aware reading goal message
+  const getReadingGoalMessage = () => {
+    const currentPhase = phaseData.currentPhase;
+    const booksRead = studentData?.booksSubmittedThisYear || 0;
+    const goal = studentData?.personalGoal || 20;
+    
+    if (currentPhase === 'VOTING' || currentPhase === 'RESULTS') {
+      if (booksRead >= goal) {
+        return {
+          title: `🎉 Amazing Year - Goal Achieved!`,
+          message: `You crushed your goal this year! You read ${booksRead} books and aimed for ${goal}. Incredible work!`,
+          showControls: false
+        };
+      } else {
+        return {
+          title: `📚 Great Reading Year!`,
+          message: `You read ${booksRead} books this year towards your goal of ${goal}. Every book counts - well done!`,
+          showControls: false
+        };
+      }
+    }
+    
+    if (currentPhase === 'TEACHER_SELECTION') {
+      return {
+        title: `🎯 New Year, New Goals!`,
+        message: `Your reading goal will be available soon when your teacher selects this year's amazing book nominees!`,
+        showControls: false
+      };
+    }
+    
+    // Default for ACTIVE phases
+    return {
+      title: `🎯 Reading Goal`,
+      message: `How many books do you want to read this year? (Max: ${maxNominees} books)`,
+      showControls: true
+    };
+  };
+
   const previewTheme = themes[selectedThemePreview] || themes.classic_lux;
 
   if (isLoading || !studentData || !currentTheme) {
@@ -514,6 +537,8 @@ export default function StudentSettings() {
       </div>
     );
   }
+
+  const readingGoalInfo = getReadingGoalMessage();
 
   return (
     <>
@@ -582,7 +607,7 @@ export default function StudentSettings() {
             Settings
           </h1>
 
-          {/* 🍔 Hamburger Menu */}
+          {/* 🍔 Hamburger Menu with PHASE AWARENESS */}
           <div className="nav-menu-container" style={{ position: 'relative' }}>
             <button
               onClick={() => {
@@ -610,7 +635,7 @@ export default function StudentSettings() {
               ☰
             </button>
 
-            {/* Dropdown Menu */}
+            {/* Dropdown Menu with PHASE AWARENESS */}
             {showNavMenu && (
               <div style={{
                 position: 'absolute',
@@ -625,59 +650,74 @@ export default function StudentSettings() {
                 overflow: 'hidden',
                 zIndex: 9999
               }}>
-                {navMenuItems.map((item, index) => (
-                  <button
-                    key={item.path}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      console.log('Clicking:', item.path, 'Current:', item.current, 'Item:', item);
-                      setShowNavMenu(false);
-                      if (!item.current) {
+                {navMenuItems.map((item, index) => {
+                  const isAccessible = !item.access || hasAccess(item.access);
+                  
+                  return (
+                    <button
+                      key={item.path}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log('Clicking:', item.path, 'Current:', item.current, 'Item:', item);
+                        setShowNavMenu(false);
+                        
+                        if (item.current) {
+                          return;
+                        }
+                        
+                        if (!isAccessible) {
+                          setShowSuccess(`${item.name} isn't available right now`);
+                          setTimeout(() => setShowSuccess(''), 3000);
+                          return;
+                        }
+                        
                         setTimeout(() => {
                           console.log('Navigating to:', item.path);
                           router.push(item.path);
                         }, 100);
-                      } else {
-                        console.log('Already on current page, not navigating');
-                      }
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      backgroundColor: item.current ? `${previewTheme.primary}30` : 'transparent',
-                      border: 'none',
-                      borderBottom: index < navMenuItems.length - 1 ? `1px solid ${previewTheme.primary}40` : 'none',
-                      cursor: item.current ? 'default' : 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      fontSize: '14px',
-                      color: previewTheme.textPrimary,
-                      fontWeight: item.current ? '600' : '500',
-                      textAlign: 'left',
-                      touchAction: 'manipulation',
-                      WebkitTapHighlightColor: 'transparent',
-                      transition: 'background-color 0.2s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!item.current) {
-                        e.target.style.backgroundColor = `${previewTheme.primary}20`;
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!item.current) {
-                        e.target.style.backgroundColor = 'transparent';
-                      }
-                    }}
-                  >
-                    <span style={{ fontSize: '16px' }}>{item.icon}</span>
-                    <span>{item.name}</span>
-                    {item.current && (
-                      <span style={{ marginLeft: 'auto', fontSize: '12px', color: previewTheme.primary }}>●</span>
-                    )}
-                  </button>
-                ))}
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        backgroundColor: item.current ? `${previewTheme.primary}30` : 'transparent',
+                        border: 'none',
+                        borderBottom: index < navMenuItems.length - 1 ? `1px solid ${previewTheme.primary}40` : 'none',
+                        cursor: item.current ? 'default' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        fontSize: '14px',
+                        color: !isAccessible ? previewTheme.textSecondary : previewTheme.textPrimary,
+                        fontWeight: item.current ? '600' : '500',
+                        textAlign: 'left',
+                        touchAction: 'manipulation',
+                        WebkitTapHighlightColor: 'transparent',
+                        transition: 'background-color 0.2s ease',
+                        opacity: !isAccessible ? 0.6 : 1
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!item.current && isAccessible) {
+                          e.target.style.backgroundColor = `${previewTheme.primary}20`;
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!item.current) {
+                          e.target.style.backgroundColor = 'transparent';
+                        }
+                      }}
+                    >
+                      <span style={{ fontSize: '16px' }}>{item.icon}</span>
+                      <span>{item.name}</span>
+                      {!isAccessible && (
+                        <span style={{ marginLeft: 'auto', fontSize: '12px' }}>🔒</span>
+                      )}
+                      {item.current && (
+                        <span style={{ marginLeft: 'auto', fontSize: '12px', color: previewTheme.primary }}>●</span>
+                      )}
+                    </button>
+                  );
+                })}
                 
                 {/* 🔔 Notification Toggle */}
                 <div style={{
@@ -790,7 +830,7 @@ export default function StudentSettings() {
             </div>
           </div>
 
-          {/* NEW: Personal Password Section */}
+          {/* Personal Password Section */}
           <div style={{
             backgroundColor: previewTheme.surface,
             borderRadius: '16px',
@@ -1022,7 +1062,7 @@ export default function StudentSettings() {
             )}
           </div>
 
-          {/* Reading Goal Section */}
+          {/* NEW: PHASE-AWARE Reading Goal Section */}
           <div style={{
             backgroundColor: previewTheme.surface,
             borderRadius: '16px',
@@ -1037,95 +1077,134 @@ export default function StudentSettings() {
               color: previewTheme.textPrimary,
               marginBottom: '8px'
             }}>
-              🎯 Reading Goal
+              {readingGoalInfo.title}
             </h2>
             <p style={{
               fontSize: '14px',
               color: previewTheme.textSecondary,
               marginBottom: '16px'
             }}>
-              How many books do you want to read this year? (Max: {maxNominees} books)
+              {readingGoalInfo.message}
             </p>
             
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px', justifyContent: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <button
-                  onClick={() => setNewGoal(Math.max(1, newGoal - 1))}
-                  style={{
-                    backgroundColor: previewTheme.primary,
-                    color: previewTheme.textPrimary,
-                    border: 'none',
-                    borderRadius: '8px',
-                    width: '40px',
-                    height: '40px',
-                    fontSize: '20px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                >
-                  −
-                </button>
-                <div style={{
-                  padding: '12px 16px',
-                  border: `2px solid ${previewTheme.primary}50`,
-                  borderRadius: '8px',
-                  fontSize: '18px',
-                  fontWeight: 'bold',
-                  minWidth: '60px',
-                  textAlign: 'center',
-                  backgroundColor: previewTheme.background,
-                  color: previewTheme.textPrimary
-                }}>
-                  {newGoal}
+            {readingGoalInfo.showControls ? (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px', justifyContent: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <button
+                      onClick={() => setNewGoal(Math.max(1, newGoal - 1))}
+                      style={{
+                        backgroundColor: previewTheme.primary,
+                        color: previewTheme.textPrimary,
+                        border: 'none',
+                        borderRadius: '8px',
+                        width: '40px',
+                        height: '40px',
+                        fontSize: '20px',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      −
+                    </button>
+                    <div style={{
+                      padding: '12px 16px',
+                      border: `2px solid ${previewTheme.primary}50`,
+                      borderRadius: '8px',
+                      fontSize: '18px',
+                      fontWeight: 'bold',
+                      minWidth: '60px',
+                      textAlign: 'center',
+                      backgroundColor: previewTheme.background,
+                      color: previewTheme.textPrimary
+                    }}>
+                      {newGoal}
+                    </div>
+                    <button
+                      onClick={() => setNewGoal(Math.min(maxNominees, newGoal + 1))}
+                      disabled={newGoal >= maxNominees}
+                      style={{
+                        backgroundColor: previewTheme.primary,
+                        color: previewTheme.textPrimary,
+                        border: 'none',
+                        borderRadius: '8px',
+                        width: '40px',
+                        height: '40px',
+                        fontSize: '20px',
+                        fontWeight: 'bold',
+                        cursor: newGoal >= maxNominees ? 'not-allowed' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        opacity: newGoal >= maxNominees ? 0.5 : 1
+                      }}
+                    >
+                      +
+                    </button>
+                  </div>
+                  <span style={{ fontSize: '16px', color: previewTheme.textPrimary }}>
+                    books this year {newGoal === maxNominees ? '(max reached)' : ''}
+                  </span>
                 </div>
-                <button
-                  onClick={() => setNewGoal(Math.min(maxNominees, newGoal + 1))}
-                  disabled={newGoal >= maxNominees}
-                  style={{
-                    backgroundColor: previewTheme.primary,
-                    color: previewTheme.textPrimary,
-                    border: 'none',
-                    borderRadius: '8px',
-                    width: '40px',
-                    height: '40px',
-                    fontSize: '20px',
-                    fontWeight: 'bold',
-                    cursor: newGoal >= maxNominees ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    opacity: newGoal >= maxNominees ? 0.5 : 1
-                  }}
-                >
-                  +
-                </button>
-              </div>
-              <span style={{ fontSize: '16px', color: previewTheme.textPrimary }}>
-                books this year {newGoal === maxNominees ? '(max reached)' : ''}
-              </span>
-            </div>
 
-            {newGoal !== studentData.personalGoal && (
-              <button
-                onClick={saveGoalChange}
-                disabled={isSaving}
-                style={{
-                  backgroundColor: previewTheme.primary,
-                  color: previewTheme.textPrimary,
-                  border: 'none',
-                  padding: '12px 24px',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  opacity: isSaving ? 0.7 : 1
-                }}
-              >
-                {isSaving ? 'Saving...' : `Save Goal (${newGoal} books)`}
-              </button>
+                {newGoal !== studentData.personalGoal && (
+                  <button
+                    onClick={saveGoalChange}
+                    disabled={isSaving}
+                    style={{
+                      backgroundColor: previewTheme.primary,
+                      color: previewTheme.textPrimary,
+                      border: 'none',
+                      padding: '12px 24px',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      opacity: isSaving ? 0.7 : 1
+                    }}
+                  >
+                    {isSaving ? 'Saving...' : `Save Goal (${newGoal} books)`}
+                  </button>
+                )}
+              </>
+            ) : (
+              // Show celebration or coming soon message
+              <div style={{
+                backgroundColor: `${previewTheme.primary}20`,
+                borderRadius: '12px',
+                padding: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '12px'
+              }}>
+                <span style={{ fontSize: '32px' }}>
+                  {phaseData.currentPhase === 'VOTING' || phaseData.currentPhase === 'RESULTS' ? '🎉' : '🔜'}
+                </span>
+                <div style={{ textAlign: 'left' }}>
+                  <div style={{
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: previewTheme.textPrimary,
+                    marginBottom: '4px'
+                  }}>
+                    {phaseData.currentPhase === 'VOTING' || phaseData.currentPhase === 'RESULTS' 
+                      ? 'This year is complete!'
+                      : 'Coming soon!'}
+                  </div>
+                  <div style={{
+                    fontSize: '12px',
+                    color: previewTheme.textSecondary
+                  }}>
+                    {phaseData.currentPhase === 'VOTING' || phaseData.currentPhase === 'RESULTS' 
+                      ? 'Keep reading and earning XP!'
+                      : 'New goals will be available soon'}
+                  </div>
+                </div>
+              </div>
             )}
           </div>
 

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
+import { usePhaseAccess } from '../hooks/usePhaseAccess';
 import { useTimer } from '../contexts/TimerContext';
 import { getStudentDataEntities, updateStudentDataEntities } from '../lib/firebase';
 import { collection, addDoc, query, where, getDocs, orderBy, limit, updateDoc, doc } from 'firebase/firestore';
@@ -16,7 +17,8 @@ import {
 
 export default function StudentHealthyHabits() {
   const router = useRouter();
-  const { user, isAuthenticated, loading } = useAuth();
+  const { user, userProfile, isAuthenticated, loading } = useAuth();
+  const { phaseData, hasAccess, getPhaseMessage, getPhaseInfo } = usePhaseAccess(userProfile);
   
   // USE TIMER CONTEXT INSTEAD OF LOCAL STATE
   const {
@@ -67,11 +69,11 @@ export default function StudentHealthyHabits() {
   const [showXPReward, setShowXPReward] = useState(false);
   const [xpReward, setXPReward] = useState({ amount: 0, reason: '', total: 0 });
 
-  // 🍔 NAVIGATION MENU ITEMS (Healthy Habits page is current)
+  // 🍔 NAVIGATION MENU ITEMS WITH PHASE AWARENESS
   const navMenuItems = useMemo(() => [
     { name: 'Dashboard', path: '/student-dashboard', icon: '⌂' },
-    { name: 'Nominees', path: '/student-nominees', icon: '□' },
-    { name: 'Bookshelf', path: '/student-bookshelf', icon: '⚏' },
+    { name: 'Nominees', path: '/student-nominees', icon: '□', access: 'nomineesBrowsing' },
+    { name: 'Bookshelf', path: '/student-bookshelf', icon: '⚏', access: 'bookshelfViewing' },
     { name: 'Healthy Habits', path: '/student-healthy-habits', icon: '○', current: true },
     { name: 'Saints', path: '/student-saints', icon: '♔' },
     { name: 'Stats', path: '/student-stats', icon: '△' },
@@ -481,13 +483,13 @@ export default function StudentHealthyHabits() {
 
       let newLevel = currentLevel;
       const today = getLocalDateString(new Date());
-const lastCalculationDate = studentData.lastReadingLevelCalculation;
+      const lastCalculationDate = studentData.lastReadingLevelCalculation;
 
-// Only increment days if it's actually a new day
-let newDaysAtLevel = daysAtCurrentLevel;
-if (lastCalculationDate !== today) {
-  newDaysAtLevel = daysAtCurrentLevel + 1;
-}
+      // Only increment days if it's actually a new day
+      let newDaysAtLevel = daysAtCurrentLevel;
+      if (lastCalculationDate !== today) {
+        newDaysAtLevel = daysAtCurrentLevel + 1;
+      }
       let newDaysBelowCount = daysBelowThresholdCount;
 
       const currentLevelData = levels[currentLevel];
@@ -518,11 +520,11 @@ if (lastCalculationDate !== today) {
       }
 
       await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
-  currentReadingLevel: newLevel,
-  daysAtCurrentLevel: newDaysAtLevel,
-  daysBelowThresholdCount: newDaysBelowCount,
-  lastReadingLevelCalculation: today  // Add this line
-});
+        currentReadingLevel: newLevel,
+        daysAtCurrentLevel: newDaysAtLevel,
+        daysBelowThresholdCount: newDaysBelowCount,
+        lastReadingLevelCalculation: today  // Add this line
+      });
 
       setReadingLevel(levels[newLevel]);
     } catch (error) {
@@ -793,6 +795,52 @@ if (lastCalculationDate !== today) {
 
   const svgSize = getSvgSize();
 
+  // GET PHASE-AWARE MESSAGING - Keep all the beautiful content, just smaller!
+  const getPhaseAwareMessage = () => {
+    const currentPhase = phaseData.currentPhase;
+    
+    switch (currentPhase) {
+      case 'TEACHER_SELECTION':
+        return {
+          icon: '🚀',
+          title: 'New Adventure Almost Here!',
+          message: 'The new reading program launches in just 1 week! Keep building your amazing reading habits - they\'ll help you conquer all those exciting new books coming your way!',
+          color: '#3B82F6',
+          bgGradient: 'linear-gradient(135deg, #DBEAFE, #BFDBFE)'
+        };
+      
+      case 'VOTING':
+        return {
+          icon: '🎯',
+          title: 'Keep Your Reading Power Growing!',
+          message: 'This year\'s program is wrapping up, but your reading journey never stops! Keep collecting XP, unlocking amazing saints, and building those super-strong reading muscles for next year!',
+          color: '#8B5CF6',
+          bgGradient: 'linear-gradient(135deg, #F3E8FF, #E9D5FF)'
+        };
+      
+      case 'RESULTS':
+        return {
+          icon: '⭐',
+          title: 'Reading Champion in Training!',
+          message: 'What an incredible year of reading! While we celebrate the winners, keep your reading superpowers strong by earning XP, discovering new saints, and staying consistent with your habits!',
+          color: '#F59E0B',
+          bgGradient: 'linear-gradient(135deg, #FEF3C7, #FDE68A)'
+        };
+      
+      case 'CLOSED':
+        return {
+          icon: '❄️',
+          title: 'Reading Habits Never Take a Break!',
+          message: 'School year might be over, but reading champions keep their skills sharp! Use this time to explore new books, maintain your streaks, and get ready for next year\'s amazing adventures!',
+          color: '#6B7280',
+          bgGradient: 'linear-gradient(135deg, #F9FAFB, #F3F4F6)'
+        };
+      
+      default:
+        return null;
+    }
+  };
+
   // SIMPLE XP REWARD POPUP COMPONENT
   const XPRewardPopup = ({ show, xpData, onClose }) => {
     if (!show) return null;
@@ -879,6 +927,8 @@ if (lastCalculationDate !== today) {
     );
   }
 
+  const phaseMessage = getPhaseAwareMessage();
+
   return (
     <>
       <Head>
@@ -946,7 +996,7 @@ if (lastCalculationDate !== today) {
             Healthy Habits
           </h1>
 
-          {/* 🍔 Hamburger Menu */}
+          {/* 🍔 Hamburger Menu with Phase Awareness */}
           <div className="nav-menu-container" style={{ position: 'relative' }}>
             <button
               onClick={() => {
@@ -974,7 +1024,7 @@ if (lastCalculationDate !== today) {
               ☰
             </button>
 
-            {/* Dropdown Menu */}
+            {/* Dropdown Menu with Phase Awareness */}
             {showNavMenu && (
               <div style={{
                 position: 'absolute',
@@ -989,59 +1039,84 @@ if (lastCalculationDate !== today) {
                 overflow: 'hidden',
                 zIndex: 9999
               }}>
-                {navMenuItems.map((item, index) => (
-                  <button
-                    key={item.path}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      console.log('Clicking:', item.path, 'Current:', item.current, 'Item:', item);
-                      setShowNavMenu(false);
-                      if (!item.current) {
+                {navMenuItems.map((item, index) => {
+                  const isAccessible = !item.access || hasAccess(item.access);
+                  
+                  return (
+                    <button
+                      key={item.path}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setShowNavMenu(false);
+                        
+                        if (item.current) {
+                          return;
+                        }
+                        
+                        if (!isAccessible) {
+                          // Show appropriate locked message based on phase
+                          const currentPhase = phaseData.currentPhase;
+                          let message = `${item.name} isn't available right now`;
+                          
+                          if (currentPhase === 'TEACHER_SELECTION') {
+                            message = `${item.name} will be available when the new program starts!`;
+                          } else if (currentPhase === 'VOTING') {
+                            message = `${item.name} is locked - focus on voting and healthy habits!`;
+                          } else if (currentPhase === 'RESULTS') {
+                            message = `${item.name} is locked - keep building those reading habits!`;
+                          }
+                          
+                          setShowSuccess(message);
+                          setTimeout(() => setShowSuccess(''), 3000);
+                          return;
+                        }
+                        
                         setTimeout(() => {
-                          console.log('Navigating to:', item.path);
                           router.push(item.path);
                         }, 100);
-                      } else {
-                        console.log('Already on current page, not navigating');
-                      }
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      backgroundColor: item.current ? `${currentTheme.primary}30` : 'transparent',
-                      border: 'none',
-                      borderBottom: index < navMenuItems.length - 1 ? `1px solid ${currentTheme.primary}40` : 'none',
-                      cursor: item.current ? 'default' : 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      fontSize: '14px',
-                      color: currentTheme.textPrimary,
-                      fontWeight: item.current ? '600' : '500',
-                      textAlign: 'left',
-                      touchAction: 'manipulation',
-                      WebkitTapHighlightColor: 'transparent',
-                      transition: 'background-color 0.2s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!item.current) {
-                        e.target.style.backgroundColor = `${currentTheme.primary}20`;
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!item.current) {
-                        e.target.style.backgroundColor = 'transparent';
-                      }
-                    }}
-                  >
-                    <span style={{ fontSize: '16px' }}>{item.icon}</span>
-                    <span>{item.name}</span>
-                    {item.current && (
-                      <span style={{ marginLeft: 'auto', fontSize: '12px', color: currentTheme.primary }}>●</span>
-                    )}
-                  </button>
-                ))}
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        backgroundColor: item.current ? `${currentTheme.primary}30` : 'transparent',
+                        border: 'none',
+                        borderBottom: index < navMenuItems.length - 1 ? `1px solid ${currentTheme.primary}40` : 'none',
+                        cursor: item.current ? 'default' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        fontSize: '14px',
+                        color: !isAccessible ? currentTheme.textSecondary : currentTheme.textPrimary,
+                        fontWeight: item.current ? '600' : '500',
+                        textAlign: 'left',
+                        touchAction: 'manipulation',
+                        WebkitTapHighlightColor: 'transparent',
+                        transition: 'background-color 0.2s ease',
+                        opacity: !isAccessible ? 0.6 : 1
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!item.current && isAccessible) {
+                          e.target.style.backgroundColor = `${currentTheme.primary}20`;
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!item.current) {
+                          e.target.style.backgroundColor = 'transparent';
+                        }
+                      }}
+                    >
+                      <span style={{ fontSize: '16px' }}>{item.icon}</span>
+                      <span>{item.name}</span>
+                      {!isAccessible && (
+                        <span style={{ marginLeft: 'auto', fontSize: '12px' }}>🔒</span>
+                      )}
+                      {item.current && (
+                        <span style={{ marginLeft: 'auto', fontSize: '12px', color: currentTheme.primary }}>●</span>
+                      )}
+                    </button>
+                  );
+                })}
                 
                 {/* 🔔 Notification Toggle */}
                 <div style={{
@@ -1105,6 +1180,38 @@ if (lastCalculationDate !== today) {
 
         {/* MAIN CONTENT */}
         <div style={{ padding: 'clamp(16px, 5vw, 20px)', maxWidth: '400px', margin: '0 auto' }}>
+
+          {/* PHASE-AWARE MESSAGE - Beautiful but more compact! */}
+          {phaseMessage && (
+            <div style={{
+              background: phaseMessage.bgGradient,
+              borderRadius: '12px',
+              padding: '12px',
+              marginBottom: '16px',
+              border: `2px solid ${phaseMessage.color}60`,
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '32px', marginBottom: '8px' }}>
+                {phaseMessage.icon}
+              </div>
+              <h3 style={{
+                fontSize: '14px',
+                fontWeight: '600',
+                color: phaseMessage.color,
+                marginBottom: '6px'
+              }}>
+                {phaseMessage.title}
+              </h3>
+              <p style={{
+                fontSize: '11px',
+                color: phaseMessage.color,
+                margin: 0,
+                lineHeight: '1.4'
+              }}>
+                {phaseMessage.message}
+              </p>
+            </div>
+          )}
 
           {/* TIMER SECTION */}
           <div style={{

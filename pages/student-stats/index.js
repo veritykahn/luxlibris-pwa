@@ -1,8 +1,9 @@
-// pages/student-stats/index.js - Enhanced Stats Dashboard with Dynamic Celebrations
+// pages/student-stats/index.js - Enhanced Stats Dashboard with Dynamic Celebrations and Phase Awareness
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePhaseAccess } from '../../hooks/usePhaseAccess'; // ADDED PHASE ACCESS
 import { getStudentDataEntities } from '../../lib/firebase';
 import { getCurrentWeekBadge, getBadgeProgress, getEarnedBadges, getLevelProgress } from '../../lib/badge-system';
 import { calculateReadingPersonality, shouldShowFirstBookCelebration, unlockCertificate } from '../../lib/reading-personality';
@@ -14,6 +15,7 @@ import EnhancedBraggingRightsModal from '../../components/EnhancedBraggingRights
 export default function StudentStatsMain() {
   const router = useRouter();
   const { user, isAuthenticated, loading } = useAuth();
+  const { phaseData, hasAccess, getPhaseMessage, getPhaseInfo } = usePhaseAccess(); // ADDED PHASE ACCESS
   const [studentData, setStudentData] = useState(null);
   const [currentTheme, setCurrentTheme] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -34,7 +36,7 @@ export default function StudentStatsMain() {
   const [funTidbits, setFunTidbits] = useState([]);
   const [weeklyXP, setWeeklyXP] = useState(0);
 
-  // Theme definitions
+  // Theme definitions (same as before)
   const themes = useMemo(() => ({
     classic_lux: {
       name: 'Lux Libris Classic',
@@ -126,18 +128,33 @@ export default function StudentStatsMain() {
     }
   }), []);
 
-  // Navigation menu items
+  // UPDATED: Navigation menu items with phase-aware locking
   const navMenuItems = useMemo(() => [
     { name: 'Dashboard', path: '/student-dashboard', icon: '⌂' },
-    { name: 'Nominees', path: '/student-nominees', icon: '□' },
-    { name: 'Bookshelf', path: '/student-bookshelf', icon: '⚏' },
+    { 
+      name: 'Nominees', 
+      path: '/student-nominees', 
+      icon: '□', 
+      locked: !hasAccess('nomineesBrowsing'), 
+      lockReason: phaseData.currentPhase === 'VOTING' ? 'Nominees locked during voting' : 
+                 phaseData.currentPhase === 'RESULTS' ? 'Nominees locked during results' :
+                 phaseData.currentPhase === 'TEACHER_SELECTION' ? 'New amazing nominees coming this week!' : 'Nominees not available'
+    },
+    { 
+      name: 'Bookshelf', 
+      path: '/student-bookshelf', 
+      icon: '⚏', 
+      locked: !hasAccess('bookshelfViewing'), 
+      lockReason: phaseData.currentPhase === 'RESULTS' ? 'Bookshelf locked during results' :
+                 phaseData.currentPhase === 'TEACHER_SELECTION' ? 'Stats refreshing - new bookshelf coming!' : 'Bookshelf not available'
+    },
     { name: 'Healthy Habits', path: '/student-healthy-habits', icon: '○' },
     { name: 'Saints', path: '/student-saints', icon: '♔' },
     { name: 'Stats', path: '/student-stats', icon: '△', current: true },
     { name: 'Settings', path: '/student-settings', icon: '⚙' }
-  ], []);
+  ], [hasAccess, phaseData.currentPhase]);
 
-  // REORDERED Stats navigation options
+  // UPDATED: Stats navigation options with phase-aware Lux DNA messaging
   const statsNavOptions = useMemo(() => [
     { name: 'Stats Dashboard', path: '/student-stats', icon: '📊', description: 'Fun overview', current: true },
     { name: 'My Stats', path: '/student-stats/my-stats', icon: '📈', description: 'Personal deep dive' },
@@ -145,12 +162,17 @@ export default function StudentStatsMain() {
     { name: 'School Stats', path: '/student-stats/school-stats', icon: '🏫', description: 'School-wide progress' },
     { name: 'Diocese Stats', path: '/student-stats/diocese-stats', icon: '⛪', description: 'Coming soon!', disabled: true },
     { name: 'Global Stats', path: '/student-stats/global-stats', icon: '🌎', description: 'Coming soon!', disabled: true },
-    { name: 'Lux DNA Lab', path: '/student-stats/lux-dna-lab', icon: '🧬', description: 'Discover your reading personality' },
+    { 
+      name: 'Lux DNA Lab', 
+      path: '/student-stats/lux-dna-lab', 
+      icon: '🧬', 
+      description: phaseData.currentPhase === 'RESULTS' ? 'Nominees DNA locked for year' : 'Discover your reading personality',
+      phaseNote: phaseData.currentPhase === 'RESULTS' ? 'Nominees DNA analysis is closed for this academic year' : null
+    },
     { name: 'Family Battle', path: '/student-stats/family-battle', icon: '👨‍👩‍👧‍👦', description: 'Coming soon!', disabled: true }
-  ], []);
+  ], [phaseData.currentPhase]);
 
-  // NEW BADGE CHALLENGE FUNCTIONS
-  // Calculate progress toward current week's challenge
+  // BADGE CHALLENGE FUNCTIONS (same as before)
   const calculateChallengeProgress = useCallback(async (studentData, weekBadge) => {
     if (!weekBadge || !studentData) return null;
     
@@ -425,11 +447,11 @@ export default function StudentStatsMain() {
         setShowStatsDropdown(false);
         setShowFirstBookCelebration(false);
         setShowBraggingRights(false);
-        setShowBadgeChallenge(false); // ADDED
+        setShowBadgeChallenge(false);
       }
     };
 
-    if (showNavMenu || showStatsDropdown || showFirstBookCelebration || showBraggingRights || showBadgeChallenge) { // ADDED showBadgeChallenge
+    if (showNavMenu || showStatsDropdown || showFirstBookCelebration || showBraggingRights || showBadgeChallenge) {
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('keydown', handleEscape);
     }
@@ -438,9 +460,9 @@ export default function StudentStatsMain() {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscape);
     };
-  }, [showNavMenu, showStatsDropdown, showFirstBookCelebration, showBraggingRights, showBadgeChallenge]); // ADDED showBadgeChallenge
+  }, [showNavMenu, showStatsDropdown, showFirstBookCelebration, showBraggingRights, showBadgeChallenge]);
 
-  // Generate dynamic celebration messages based on performance
+  // UPDATED: Generate dynamic celebration messages with phase awareness
   const generateCelebrationMessages = useCallback((stats) => {
     const messages = {
       books: '',
@@ -450,17 +472,16 @@ export default function StudentStatsMain() {
     };
 
     // Books celebration
-    // Books celebration
-const books = stats.booksThisYear;
-if (books >= 10) {
-  messages.books = 'Books CONQUERED!';
-} else if (books >= 5) {
-  messages.books = 'Books MASTERED!';
-} else if (books >= 1) {
-  messages.books = `${books === 1 ? 'Book' : 'Books'} DISCOVERED!`;
-} else {
-  messages.books = 'Ready to Read!';
-}
+    const books = stats.booksThisYear;
+    if (books >= 10) {
+      messages.books = 'Books CONQUERED!';
+    } else if (books >= 5) {
+      messages.books = 'Books MASTERED!';
+    } else if (books >= 1) {
+      messages.books = `${books === 1 ? 'Book' : 'Books'} DISCOVERED!`;
+    } else {
+      messages.books = 'Ready to Read!';
+    }
 
     // Streak celebration  
     const streak = stats.currentStreak;
@@ -518,7 +539,7 @@ if (books >= 10) {
     return Object.entries(scores).reduce((a, b) => scores[a[0]] > scores[b[0]] ? a : b)[0];
   }, []);
 
-  // Generate enhanced fun tidbits with brain science and achievements
+  // UPDATED: Generate enhanced fun tidbits with phase awareness
   const generateFunTidbits = useCallback(async (studentData) => {
     try {
       const tidbits = [];
@@ -616,6 +637,15 @@ if (books >= 10) {
         tidbits.push(`🛡️ Building your saint squad: ${saintsCount} holy heroes unlocked!`);
       }
       
+      // NEW: Phase-aware motivational messages
+      if (phaseData.currentPhase === 'VOTING') {
+        tidbits.push(`🗳️ Amazing job this year! Time to vote for your favorites!`);
+      } else if (phaseData.currentPhase === 'RESULTS') {
+        tidbits.push(`🏆 Congratulations on a fantastic reading year!`);
+      } else if (phaseData.currentPhase === 'TEACHER_SELECTION') {
+        tidbits.push(`📚 Keep reading strong - your streaks, XP & saints are safe!`);
+      }
+      
       // Motivational fallbacks with energy
       if (tidbits.length === 0) {
         tidbits.push(`🚀 You're building INCREDIBLE reading habits!`);
@@ -631,9 +661,9 @@ if (books >= 10) {
       console.error('Error generating fun tidbits:', error);
       setFunTidbits(['🚀 Keep building those reading superpowers!', '💪 Every book makes you stronger!']);
     }
-  }, [earnedBadges, levelProgress, quickStats]);
+  }, [earnedBadges, levelProgress, quickStats, phaseData.currentPhase]);
 
-  // Calculate light overview stats
+  // Calculate light overview stats (same as before)
   const calculateQuickStats = useCallback(async (studentData) => {
     try {
       // Get reading sessions for basic stats
@@ -788,6 +818,12 @@ if (books >= 10) {
       return; // Already on current page
     }
     
+    // UPDATED: Handle Lux DNA Lab with phase awareness
+    if (option.name === 'Lux DNA Lab' && option.phaseNote) {
+      alert(`🧬 ${option.phaseNote}`);
+      return;
+    }
+    
     router.push(option.path);
   };
 
@@ -803,6 +839,20 @@ if (books >= 10) {
       await loadStatsData();
     } catch (error) {
       console.error('Error handling first book celebration:', error);
+    }
+  };
+
+  // UPDATED: Get phase-specific messaging for the dashboard
+  const getPhaseSpecificMessage = () => {
+    switch (phaseData.currentPhase) {
+      case 'VOTING':
+        return "🗳️ This year's reading program is complete! Check out your achievement certificate in Bragging Rights, keep building XP and earning badges, and discover your Lux DNA! Time to vote for your favorites!";
+      case 'RESULTS':
+        return "🏆 Congratulations on an amazing reading year! Check out your achievement certificate in Bragging Rights, keep building XP and earning badges! Nominees DNA in Lux Lab is now closed for the year.";
+      case 'TEACHER_SELECTION':
+        return "📊 Your stats will be refreshed for the new program, but don't worry - you'll keep your reading streaks, XP, and Luxlings™! Keep your reading habits strong this week while we prepare amazing new books for you! 📚✨";
+      default:
+        return null;
     }
   };
 
@@ -990,10 +1040,10 @@ if (books >= 10) {
                       </div>
                       <div style={{
                         fontSize: '11px',
-                        color: currentTheme.textSecondary,
+                        color: option.phaseNote ? '#FF9800' : currentTheme.textSecondary,
                         opacity: 0.8
                       }}>
-                        {option.description}
+                        {option.phaseNote || option.description}
                       </div>
                     </div>
                     {option.current && (
@@ -1011,13 +1061,25 @@ if (books >= 10) {
                         SOON
                       </span>
                     )}
+                    {option.phaseNote && (
+                      <span style={{
+                        fontSize: '9px',
+                        backgroundColor: '#FF9800',
+                        color: 'white',
+                        padding: '2px 6px',
+                        borderRadius: '8px',
+                        fontWeight: '600'
+                      }}>
+                        CLOSED
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
             )}
           </div>
 
-          {/* Hamburger Menu */}
+          {/* UPDATED: Hamburger Menu with Phase-Aware Locking */}
           <div className="nav-menu-container" style={{ position: 'relative' }}>
             <button
               onClick={() => setShowNavMenu(!showNavMenu)}
@@ -1061,6 +1123,10 @@ if (books >= 10) {
                     key={item.path}
                     onClick={() => {
                       setShowNavMenu(false);
+                      if (item.locked) {
+                        alert(`🔒 ${item.lockReason}`);
+                        return;
+                      }
                       if (!item.current) {
                         router.push(item.path);
                       }
@@ -1068,25 +1134,47 @@ if (books >= 10) {
                     style={{
                       width: '100%',
                       padding: '12px 16px',
-                      backgroundColor: item.current ? `${currentTheme.primary}30` : 'transparent',
+                      backgroundColor: item.current ? `${currentTheme.primary}30` : 
+                                      item.locked ? `${currentTheme.textSecondary}10` : 'transparent',
                       border: 'none',
                       borderBottom: index < navMenuItems.length - 1 ? `1px solid ${currentTheme.primary}40` : 'none',
-                      cursor: item.current ? 'default' : 'pointer',
+                      cursor: item.locked ? 'not-allowed' : (item.current ? 'default' : 'pointer'),
                       display: 'flex',
                       alignItems: 'center',
                       gap: '12px',
                       fontSize: '14px',
-                      color: currentTheme.textPrimary,
+                      color: item.locked ? currentTheme.textSecondary : currentTheme.textPrimary,
                       fontWeight: item.current ? '600' : '500',
                       textAlign: 'left',
                       touchAction: 'manipulation',
-                      WebkitTapHighlightColor: 'transparent'
+                      WebkitTapHighlightColor: 'transparent',
+                      transition: 'background-color 0.2s ease',
+                      opacity: item.locked ? 0.5 : 1
                     }}
+                    onMouseEnter={(e) => {
+                      if (!item.current && !item.locked) {
+                        e.target.style.backgroundColor = `${currentTheme.primary}20`;
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!item.current && !item.locked) {
+                        e.target.style.backgroundColor = 'transparent';
+                      }
+                    }}
+                    title={item.locked ? item.lockReason : undefined}
                   >
-                    <span style={{ fontSize: '16px' }}>{item.icon}</span>
+                    <span style={{ 
+                      fontSize: '16px',
+                      filter: item.locked ? 'grayscale(1)' : 'none'
+                    }}>
+                      {item.icon}
+                    </span>
                     <span>{item.name}</span>
                     {item.current && (
                       <span style={{ marginLeft: 'auto', fontSize: '12px', color: currentTheme.primary }}>●</span>
+                    )}
+                    {item.locked && (
+                      <span style={{ marginLeft: 'auto', fontSize: '12px', color: currentTheme.textSecondary }}>🔒</span>
                     )}
                   </button>
                 ))}
@@ -1095,11 +1183,140 @@ if (books >= 10) {
           </div>
         </div>
 
-        {/* MAIN CONTENT - ENHANCED WITH CELEBRATIONS */}
-        <div style={{ padding: 'clamp(16px, 5vw, 20px)', maxWidth: '400px', margin: '0 auto' }}>
+        {/* TEACHER_SELECTION: Show only messaging box */}
+        {phaseData.currentPhase === 'TEACHER_SELECTION' ? (
+          <div style={{ padding: 'clamp(40px, 10vw, 60px) clamp(20px, 5vw, 40px)', textAlign: 'center' }}>
+            <div style={{
+              background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+              color: 'white',
+              padding: '40px 24px',
+              borderRadius: '20px',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+              maxWidth: '400px',
+              margin: '0 auto'
+            }}>
+              <div style={{ fontSize: '64px', marginBottom: '20px' }}>🚧</div>
+              <div style={{
+                fontSize: '24px',
+                fontWeight: '600',
+                marginBottom: '12px',
+                fontFamily: 'Didot, "Times New Roman", serif'
+              }}>
+                New Program Starting Soon!
+              </div>
+              <div style={{
+                fontSize: '16px',
+                fontWeight: '400',
+                lineHeight: '1.5',
+                opacity: 0.95
+              }}>
+                📊 Your stats will be refreshed for the new program, but don't worry - you'll keep your reading streaks, XP, and saints! Keep your reading habits strong this week while we prepare amazing new books for you! 📚✨
+              </div>
+              <div style={{
+                marginTop: '24px',
+                display: 'flex',
+                gap: '12px',
+                justifyContent: 'center',
+                flexWrap: 'wrap'
+              }}>
+                <button
+                  onClick={() => router.push('/student-healthy-habits')}
+                  style={{
+                    backgroundColor: 'rgba(255,255,255,0.2)',
+                    color: 'white',
+                    border: '2px solid rgba(255,255,255,0.3)',
+                    padding: '12px 20px',
+                    borderRadius: '12px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundColor = 'rgba(255,255,255,0.3)';
+                    e.target.style.borderColor = 'rgba(255,255,255,0.5)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = 'rgba(255,255,255,0.2)';
+                    e.target.style.borderColor = 'rgba(255,255,255,0.3)';
+                  }}
+                >
+                  ○ Healthy Habits
+                </button>
+                <button
+                  onClick={() => router.push('/student-saints')}
+                  style={{
+                    backgroundColor: 'rgba(255,255,255,0.2)',
+                    color: 'white',
+                    border: '2px solid rgba(255,255,255,0.3)',
+                    padding: '12px 20px',
+                    borderRadius: '12px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundColor = 'rgba(255,255,255,0.3)';
+                    e.target.style.borderColor = 'rgba(255,255,255,0.5)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = 'rgba(255,255,255,0.2)';
+                    e.target.style.borderColor = 'rgba(255,255,255,0.3)';
+                  }}
+                >
+                  ♔ Saints
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* ALL OTHER PHASES: Show normal stats dashboard */
+          <>
+            {/* NEW: Compact but Beautiful Phase-Specific Alert Banner */}
+            {getPhaseSpecificMessage() && (
+              <div style={{
+                background: phaseData.currentPhase === 'VOTING' ? 'linear-gradient(135deg, #8b5cf6, #a855f7)' : 
+                           phaseData.currentPhase === 'RESULTS' ? 'linear-gradient(135deg, #f59e0b, #f97316)' : 
+                           'linear-gradient(135deg, #3b82f6, #2563eb)',
+                color: 'white',
+                padding: '12px 16px',
+                margin: '0 16px 16px 16px',
+                borderRadius: '12px',
+                textAlign: 'center',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                animation: 'slideInDown 0.6s ease-out'
+              }}>
+                <div style={{ fontSize: '32px', marginBottom: '8px' }}>
+                  {phaseData.currentPhase === 'VOTING' ? '🗳️' : 
+                   phaseData.currentPhase === 'RESULTS' ? '🏆' : '🚧'}
+                </div>
+                <div style={{
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  marginBottom: '6px',
+                  lineHeight: '1.3'
+                }}>
+                  {phaseData.currentPhase === 'VOTING' ? 'Voting Time!' :
+                   phaseData.currentPhase === 'RESULTS' ? 'Amazing Reading Year!' :
+                   'New Program Starting Soon!'}
+                </div>
+                <div style={{
+                  fontSize: '11px',
+                  fontWeight: '400',
+                  lineHeight: '1.4',
+                  opacity: 0.95
+                }}>
+                  {getPhaseSpecificMessage()}
+                </div>
+              </div>
+            )}
+
+            {/* MAIN CONTENT - ENHANCED WITH CELEBRATIONS */}
+            <div style={{ padding: 'clamp(16px, 5vw, 20px)', maxWidth: '400px', margin: '0 auto' }}>
           
-          {/* CLICKABLE BADGE CHALLENGE PILL - UPDATED */}
-          {currentWeekBadge && (
+          {/* BADGE CHALLENGE PILL - Only show during ACTIVE phase */}
+          {hasAccess('achievements') && currentWeekBadge && (
             <button
               onClick={handleBadgeChallengeClick}
               style={{
@@ -1359,18 +1576,22 @@ if (books >= 10) {
                   )}
                 </div>
 
-                {/* ENHANCED BRAGGING RIGHTS BUTTON */}
+                {/* UPDATED: ENHANCED BRAGGING RIGHTS BUTTON WITH PHASE AWARENESS AND ANIMATIONS */}
                 <button
                   onClick={() => setShowBraggingRights(true)}
+                  disabled={!hasAccess('votingInterface') && !hasAccess('votingResults') && phaseData.currentPhase === 'ACTIVE'}
                   style={{
-                    backgroundColor: currentTheme.primary,
-                    color: currentTheme.textPrimary,
+                    backgroundColor: (!hasAccess('votingInterface') && !hasAccess('votingResults') && phaseData.currentPhase === 'ACTIVE') ? 
+                      `${currentTheme.textSecondary}30` : currentTheme.primary,
+                    color: (!hasAccess('votingInterface') && !hasAccess('votingResults') && phaseData.currentPhase === 'ACTIVE') ? 
+                      currentTheme.textSecondary : currentTheme.textPrimary,
                     border: 'none',
                     borderRadius: '16px',
                     padding: 'clamp(10px, 3vw, 12px) clamp(16px, 5vw, 20px)',
                     fontSize: 'clamp(12px, 3.5vw, 14px)',
                     fontWeight: '600',
-                    cursor: 'pointer',
+                    cursor: (!hasAccess('votingInterface') && !hasAccess('votingResults') && phaseData.currentPhase === 'ACTIVE') ? 
+                      'not-allowed' : 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -1379,26 +1600,85 @@ if (books >= 10) {
                     minHeight: '44px',
                     touchAction: 'manipulation',
                     WebkitTapHighlightColor: 'transparent',
-                    animation: 'statsSlideIn 0.6s ease-out 0.6s both',
+                    animation: (hasAccess('votingInterface') || hasAccess('votingResults')) ? 
+                      'braggingRightsUnlock 0.8s ease-out 0.6s both, bounce 2s ease-in-out infinite 1.4s' : 
+                      'statsSlideIn 0.6s ease-out 0.6s both',
                     position: 'relative',
                     overflow: 'hidden',
                     transform: 'translateY(0)',
-                    transition: 'all 0.3s ease'
+                    transition: 'all 0.3s ease',
+                    opacity: (!hasAccess('votingInterface') && !hasAccess('votingResults') && phaseData.currentPhase === 'ACTIVE') ? 0.5 : 1
                   }}
                   onMouseEnter={(e) => {
-                    e.target.style.transform = 'translateY(-2px)';
-                    e.target.style.boxShadow = '0 6px 20px rgba(0,0,0,0.2)';
+                    if (hasAccess('votingInterface') || hasAccess('votingResults') || phaseData.currentPhase !== 'ACTIVE') {
+                      e.target.style.transform = 'translateY(-2px)';
+                      e.target.style.boxShadow = '0 6px 20px rgba(0,0,0,0.2)';
+                    }
                   }}
                   onMouseLeave={(e) => {
                     e.target.style.transform = 'translateY(0)';
                     e.target.style.boxShadow = 'none';
                   }}
                 >
+                  {/* SPARKLES FOR UNLOCKED STATE! ✨⭐ */}
+                  {(hasAccess('votingInterface') || hasAccess('votingResults')) && (
+                    <>
+                      <div style={{
+                        position: 'absolute',
+                        top: '8px',
+                        right: '8px',
+                        fontSize: '12px',
+                        animation: 'sparkle 1.5s ease-in-out infinite',
+                        pointerEvents: 'none'
+                      }}>
+                        ✨
+                      </div>
+                      <div style={{
+                        position: 'absolute',
+                        bottom: '8px',
+                        left: '8px',
+                        fontSize: '10px',
+                        animation: 'sparkle 1.5s ease-in-out infinite 0.5s',
+                        pointerEvents: 'none'
+                      }}>
+                        ⭐
+                      </div>
+                      <div style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '8px',
+                        fontSize: '8px',
+                        animation: 'sparkle 1.5s ease-in-out infinite 1s',
+                        pointerEvents: 'none'
+                      }}>
+                        ✨
+                      </div>
+                      <div style={{
+                        position: 'absolute',
+                        top: '20%',
+                        right: '20%',
+                        fontSize: '6px',
+                        animation: 'sparkle 1.5s ease-in-out infinite 1.2s',
+                        pointerEvents: 'none'
+                      }}>
+                        ⭐
+                      </div>
+                    </>
+                  )}
+                  
                   <span style={{
                     fontSize: 'clamp(16px, 4vw, 18px)',
-                    animation: earnedBadges.length >= 5 ? 'bounce 2s ease-in-out infinite' : 'none'
-                  }}>🏆</span>
-                  {earnedBadges.length >= 10 ? 'CHAMPION Bragging Rights!' :
+                    animation: (hasAccess('votingInterface') || hasAccess('votingResults')) ? 
+                      'bounce 2s ease-in-out infinite' : 
+                      (earnedBadges.length >= 5 ? 'bounce 2s ease-in-out infinite' : 'none')
+                  }}>
+                    {(!hasAccess('votingInterface') && !hasAccess('votingResults') && phaseData.currentPhase === 'ACTIVE') ? '🔒' : '🏆'}
+                  </span>
+                  {(!hasAccess('votingInterface') && !hasAccess('votingResults') && phaseData.currentPhase === 'ACTIVE') ? 
+                    'Bragging Rights Locked' :
+                   (hasAccess('votingInterface') || hasAccess('votingResults')) ? 
+                    'UNLOCKED! Bragging Rights!' :
+                   earnedBadges.length >= 10 ? 'CHAMPION Bragging Rights!' :
                    earnedBadges.length >= 5 ? 'SUPERSTAR Bragging Rights!' :
                    'Bragging Rights'}
                 </button>
@@ -1590,6 +1870,8 @@ if (books >= 10) {
             </div>
           </div>
         )}
+        </>
+        )}
 
         {/* ENHANCED BRAGGING RIGHTS MODAL */}
         <EnhancedBraggingRightsModal
@@ -1602,7 +1884,7 @@ if (books >= 10) {
           currentTheme={currentTheme}
         />
 
-        {/* BADGE CHALLENGE MODAL - NEW */}
+        {/* BADGE CHALLENGE MODAL */}
         {showBadgeChallenge && currentWeekBadge && (
           <div style={{
             position: 'fixed',
@@ -1924,6 +2206,17 @@ if (books >= 10) {
             }
           }
           
+          @keyframes slideInDown {
+            from { 
+              opacity: 0; 
+              transform: translateY(-30px); 
+            }
+            to { 
+              opacity: 1; 
+              transform: translateY(0); 
+            }
+          }
+          
           @keyframes bounce {
             0%, 20%, 50%, 80%, 100% {
               transform: translateY(0);
@@ -1939,11 +2232,19 @@ if (books >= 10) {
           @keyframes sparkle {
             0%, 100% {
               opacity: 1;
-              transform: scale(1);
+              transform: scale(1) rotate(0deg);
+            }
+            25% {
+              opacity: 0.7;
+              transform: scale(1.2) rotate(90deg);
             }
             50% {
-              opacity: 0.6;
-              transform: scale(1.2);
+              opacity: 0.4;
+              transform: scale(0.8) rotate(180deg);
+            }
+            75% {
+              opacity: 0.7;
+              transform: scale(1.1) rotate(270deg);
             }
           }
           
@@ -1953,6 +2254,23 @@ if (books >= 10) {
             }
             50% {
               opacity: 0.7;
+            }
+          }
+          
+          @keyframes braggingRightsUnlock {
+            0% {
+              opacity: 0;
+              transform: scale(0.8) translateY(20px);
+              background-color: ${currentTheme.textSecondary}30;
+            }
+            50% {
+              opacity: 0.8;
+              transform: scale(1.1) translateY(-5px);
+            }
+            100% {
+              opacity: 1;
+              transform: scale(1) translateY(0);
+              background-color: ${currentTheme.primary};
             }
           }
           

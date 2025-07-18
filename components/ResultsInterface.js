@@ -1,4 +1,4 @@
-// components/ResultsInterface.js - Display voting results to students
+// components/ResultsInterface.js - FIXED ORDER: Header → Winners → Your Vote → Bragging Rights
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { db, dbHelpers } from '../lib/firebase';
@@ -143,7 +143,7 @@ export default function ResultsInterface({ studentData, currentTheme }) {
       border: `2px solid ${currentTheme.primary}`,
       animation: 'slideInUp 0.8s ease-out 0.6s both'
     }}>
-      {/* Header */}
+      {/* 1. HEADER - Lux Libris Award Results Banner */}
       <div style={{
         textAlign: 'center',
         marginBottom: '24px'
@@ -173,150 +173,12 @@ export default function ResultsInterface({ studentData, currentTheme }) {
         </p>
       </div>
 
-      {/* NEW: Bragging Rights Unlock */}
-      <div style={{
-        background: `linear-gradient(135deg, ${currentTheme.accent}40, ${currentTheme.accent}20)`,
-        borderRadius: '16px',
-        padding: '20px',
-        marginBottom: '24px',
-        border: `2px solid ${currentTheme.accent}60`,
-        textAlign: 'center'
-      }}>
-        <div style={{
-          fontSize: '48px',
-          marginBottom: '12px',
-          animation: 'bounce 2s ease-in-out infinite'
-        }}>
-          🏆
-        </div>
-        <h3 style={{
-          fontSize: '20px',
-          fontWeight: '600',
-          color: currentTheme.textPrimary,
-          margin: '0 0 8px 0'
-        }}>
-          Bragging Rights Officially Unlocked!
-        </h3>
-        <p style={{
-          fontSize: '14px',
-          color: currentTheme.textSecondary,
-          margin: '0 0 16px 0',
-          lineHeight: '1.4'
-        }}>
-          What an incredible reading year! Time to show off all your amazing achievements and stats.
-        </p>
-        <button
-          onClick={() => router.push('/student-stats')}
-          style={{
-            backgroundColor: currentTheme.primary,
-            color: currentTheme.textPrimary,
-            border: 'none',
-            borderRadius: '12px',
-            padding: '12px 24px',
-            fontSize: '14px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            transition: 'all 0.3s ease',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-            margin: '0 auto',
-            minHeight: '44px',
-            touchAction: 'manipulation',
-            WebkitTapHighlightColor: 'transparent'
-          }}
-          onMouseEnter={(e) => {
-            e.target.style.transform = 'scale(1.05)';
-            e.target.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.transform = 'scale(1)';
-            e.target.style.boxShadow = 'none';
-          }}
-        >
-          🎉 Show My Bragging Rights
-        </button>
-      </div>
-
-      {/* Student's Result (if they voted) */}
-      {studentVote && studentResult && (
-        <div style={{
-          background: studentResult.isWinner 
-            ? `linear-gradient(135deg, ${studentResult.award.color}20, ${studentResult.award.color}10)` 
-            : `linear-gradient(135deg, ${currentTheme.primary}20, ${currentTheme.primary}10)`,
-          borderRadius: '16px',
-          padding: '20px',
-          marginBottom: '24px',
-          border: studentResult.isWinner 
-            ? `2px solid ${studentResult.award.color}60` 
-            : `2px solid ${currentTheme.primary}60`,
-          textAlign: 'center'
-        }}>
-          {studentResult.isWinner ? (
-            <>
-              <div style={{ fontSize: '48px', marginBottom: '12px' }}>🎉</div>
-              <h3 style={{
-                fontSize: '20px',
-                fontWeight: '600',
-                color: studentResult.award.color,
-                margin: '0 0 8px 0'
-              }}>
-                🎉 Your vote was a winner! 🎉
-              </h3>
-              <p style={{
-                fontSize: '16px',
-                color: currentTheme.textPrimary,
-                margin: '0 0 8px 0',
-                fontWeight: '600'
-              }}>
-                You voted for &quot;{studentResult.book.bookTitle}&quot;
-              </p>
-              <p style={{
-                fontSize: '14px',
-                color: studentResult.award.color,
-                margin: 0,
-                fontWeight: '600'
-              }}>
-                {studentResult.award.icon} {studentResult.award.title} - {studentResult.award.description}!
-              </p>
-            </>
-          ) : (
-            <>
-              <div style={{ fontSize: '32px', marginBottom: '12px' }}>🗳️</div>
-              <h3 style={{
-                fontSize: '18px',
-                fontWeight: '600',
-                color: currentTheme.textPrimary,
-                margin: '0 0 8px 0'
-              }}>
-                Your Vote
-              </h3>
-              <p style={{
-                fontSize: '14px',
-                color: currentTheme.textSecondary,
-                margin: '0 0 4px 0'
-              }}>
-                You voted for &quot;{studentResult.book.bookTitle}&quot;
-              </p>
-              <p style={{
-                fontSize: '12px',
-                color: currentTheme.textSecondary,
-                margin: 0
-              }}>
-                Finished #{studentResult.position} • Great choice!
-              </p>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Winners Podium */}
+      {/* 2. WINNERS PODIUM */}
       <div style={{
         background: `linear-gradient(135deg, ${currentTheme.primary}10, ${currentTheme.accent}10)`,
         borderRadius: '16px',
         padding: '20px',
-        marginBottom: '20px',
+        marginBottom: '24px',
         border: `1px solid ${currentTheme.primary}30`
       }}>
         <h3 style={{
@@ -421,7 +283,7 @@ export default function ResultsInterface({ studentData, currentTheme }) {
                   marginBottom: '2px',
                   lineHeight: '1.2'
                 }}>
-                  &quot;{book.bookTitle}&quot;
+                  "{book.bookTitle}"
                 </div>
                 <div style={{
                   fontSize: '10px',
@@ -445,7 +307,145 @@ export default function ResultsInterface({ studentData, currentTheme }) {
         </div>
       </div>
 
-      {/* Final Message */}
+      {/* 3. STUDENT'S VOTE RESULT (if they voted) */}
+      {studentVote && studentResult && (
+        <div style={{
+          background: studentResult.isWinner 
+            ? `linear-gradient(135deg, ${studentResult.award.color}20, ${studentResult.award.color}10)` 
+            : `linear-gradient(135deg, ${currentTheme.primary}20, ${currentTheme.primary}10)`,
+          borderRadius: '16px',
+          padding: '20px',
+          marginBottom: '24px',
+          border: studentResult.isWinner 
+            ? `2px solid ${studentResult.award.color}60` 
+            : `2px solid ${currentTheme.primary}60`,
+          textAlign: 'center'
+        }}>
+          {studentResult.isWinner ? (
+            <>
+              <div style={{ fontSize: '48px', marginBottom: '12px' }}>🎉</div>
+              <h3 style={{
+                fontSize: '20px',
+                fontWeight: '600',
+                color: studentResult.award.color,
+                margin: '0 0 8px 0'
+              }}>
+                🎉 Your vote was a winner! 🎉
+              </h3>
+              <p style={{
+                fontSize: '16px',
+                color: currentTheme.textPrimary,
+                margin: '0 0 8px 0',
+                fontWeight: '600'
+              }}>
+                You voted for "{studentResult.book.bookTitle}"
+              </p>
+              <p style={{
+                fontSize: '14px',
+                color: studentResult.award.color,
+                margin: 0,
+                fontWeight: '600'
+              }}>
+                {studentResult.award.icon} {studentResult.award.title} - {studentResult.award.description}!
+              </p>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: '32px', marginBottom: '12px' }}>🗳️</div>
+              <h3 style={{
+                fontSize: '18px',
+                fontWeight: '600',
+                color: currentTheme.textPrimary,
+                margin: '0 0 8px 0'
+              }}>
+                Your Vote
+              </h3>
+              <p style={{
+                fontSize: '14px',
+                color: currentTheme.textSecondary,
+                margin: '0 0 4px 0'
+              }}>
+                You voted for "{studentResult.book.bookTitle}"
+              </p>
+              <p style={{
+                fontSize: '12px',
+                color: currentTheme.textSecondary,
+                margin: 0
+              }}>
+                Finished #{studentResult.position} • Great choice!
+              </p>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* 4. BRAGGING RIGHTS CERTIFICATE */}
+      <div style={{
+        background: `linear-gradient(135deg, ${currentTheme.accent}40, ${currentTheme.accent}20)`,
+        borderRadius: '16px',
+        padding: '20px',
+        marginBottom: '20px',
+        border: `2px solid ${currentTheme.accent}60`,
+        textAlign: 'center'
+      }}>
+        <div style={{
+          fontSize: '48px',
+          marginBottom: '12px',
+          animation: 'bounce 2s ease-in-out infinite'
+        }}>
+          🏆
+        </div>
+        <h3 style={{
+          fontSize: '20px',
+          fontWeight: '600',
+          color: currentTheme.textPrimary,
+          margin: '0 0 8px 0'
+        }}>
+          Bragging Rights Officially Unlocked!
+        </h3>
+        <p style={{
+          fontSize: '14px',
+          color: currentTheme.textSecondary,
+          margin: '0 0 16px 0',
+          lineHeight: '1.4'
+        }}>
+          What an incredible reading year! Time to show off all your amazing achievements and stats.
+        </p>
+        <button
+          onClick={() => router.push('/student-stats')}
+          style={{
+            backgroundColor: currentTheme.primary,
+            color: currentTheme.textPrimary,
+            border: 'none',
+            borderRadius: '12px',
+            padding: '12px 24px',
+            fontSize: '14px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            transition: 'all 0.3s ease',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            margin: '0 auto',
+            minHeight: '44px',
+            touchAction: 'manipulation',
+            WebkitTapHighlightColor: 'transparent'
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.transform = 'scale(1.05)';
+            e.target.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.transform = 'scale(1)';
+            e.target.style.boxShadow = 'none';
+          }}
+        >
+          🎉 Show My Bragging Rights
+        </button>
+      </div>
+
+      {/* 5. FINAL MESSAGE */}
       <div style={{
         backgroundColor: `${currentTheme.primary}10`,
         borderRadius: '12px',
@@ -467,7 +467,7 @@ export default function ResultsInterface({ studentData, currentTheme }) {
           color: currentTheme.textSecondary,
           margin: 0
         }}>
-          Thank you for making this year&apos;s Lux Libris Award amazing. 
+          Thank you for making this year's Lux Libris Award amazing. 
           Keep reading and see you next year!
         </p>
       </div>
