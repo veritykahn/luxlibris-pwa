@@ -2740,7 +2740,7 @@ This action cannot be undone.`);
                   <li>Each grade unlocks 3 saints (Grade + Seasonal + Marian)</li>
                   <li>Books add to lifetime total and appear in student dashboard</li>
                   <li>Maximum 20 books per grade, grades 4-7 only</li>
-                  <li>Saints will sparkle for 24 hours in student's collection</li>
+                  <li>Saints will sparkle for 24 hours in student&apos;s collection</li>
                 </ul>
               </div>
 
