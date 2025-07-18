@@ -1378,6 +1378,7 @@ This action cannot be undone.`);
         ...newManualStudent,
         booksSubmitted: [],
         totalBooksThisYear: 0,
+        lifetimeBooksSubmitted: 0,
         status: 'active',
         createdAt: new Date(),
         lastModified: new Date()

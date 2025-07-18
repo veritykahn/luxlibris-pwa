@@ -274,7 +274,6 @@ export default function StudentOnboarding() {
         
         // Progress tracking
         thisYearBooks: 0,
-        lifetimeBooks: 0,
         booksSubmittedThisYear: 0,
         lifetimeBooksSubmitted: 0,
         saintUnlocks: [],
