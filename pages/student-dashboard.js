@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { usePhaseAccess } from '../hooks/usePhaseAccess';
 import VotingInterface from '../components/VotingInterface';
 import ResultsInterface from '../components/ResultsInterface';
-import { getStudentDataEntities, getSchoolNomineesEntities } from '../lib/firebase';
+import { getStudentDataEntities, getSchoolNomineesEntities, updateStudentDataEntities } from '../lib/firebase';
 import { 
   collection, 
   getDocs, 
