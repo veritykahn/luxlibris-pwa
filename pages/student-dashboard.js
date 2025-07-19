@@ -868,12 +868,12 @@ export default function StudentDashboard() {
       
       setStudentData(firebaseStudentData);
 
-      // SEAMLESS: Check for recent historical unlocks and show notification
-      const historicalMessage = checkForNewHistoricalUnlocks(firebaseStudentData);
-      if (historicalMessage) {
-        setShowComingSoon(historicalMessage);
-        setTimeout(() => setShowComingSoon(''), 5000); // Show for 5 seconds
-      }
+      // FIXED: Check for new historical unlocks that haven't been seen yet
+const historicalMessage = await checkForNewHistoricalUnlocks(firebaseStudentData);
+if (historicalMessage) {
+  setShowComingSoon(historicalMessage);
+  setTimeout(() => setShowComingSoon(''), 5000); // Show for 5 seconds
+}
       
       // Set theme
       const selectedTheme = firebaseStudentData.selectedTheme || 'classic_lux';
@@ -1032,20 +1032,53 @@ const getMotivationalMessage = () => {
   }
 };
 
-// SEAMLESS: Check for new historical unlocks within 24 hours
-  const checkForNewHistoricalUnlocks = (studentData) => {
-    const completions = studentData?.historicalCompletions || [];
-    const recentCompletion = completions.find(comp => {
-      const addedAt = comp.addedAt?.toDate ? comp.addedAt.toDate() : new Date(comp.addedAt);
-      const hoursSince = (new Date() - addedAt) / (1000 * 60 * 60);
-      return hoursSince < 24; // Within last 24 hours
+// FIXED: Check for new historical unlocks that haven't been seen yet
+const checkForNewHistoricalUnlocks = async (studentData) => {
+  const completions = studentData?.historicalCompletions || [];
+  const lastSeen = studentData?.lastSeenHistoricalNotification;
+  
+  console.log('🔍 Checking historical unlocks:', {
+    completions: completions.length,
+    lastSeen: lastSeen?.toDate?.() || lastSeen || 'never'
+  });
+  
+  const newCompletion = completions.find(comp => {
+    const addedAt = comp.addedAt?.toDate ? comp.addedAt.toDate() : new Date(comp.addedAt);
+    const hoursSince = (new Date() - addedAt) / (1000 * 60 * 60);
+    
+    // Only show if within 24 hours AND after last seen notification
+    const isRecent = hoursSince < 24;
+    const isUnseen = !lastSeen || addedAt > (lastSeen?.toDate ? lastSeen.toDate() : new Date(lastSeen));
+    
+    console.log(`📅 Completion check for grade ${comp.grade}:`, {
+      addedAt: addedAt.toISOString(),
+      hoursSince: Math.round(hoursSince * 10) / 10,
+      isRecent,
+      isUnseen
     });
     
-    if (recentCompletion) {
-      return `🎉 New achievements unlocked! Check your Saints collection!`;
+    return isRecent && isUnseen;
+  });
+  
+  if (newCompletion) {
+    console.log('🎉 Found new historical completion to show!');
+    
+    // Update the "last seen" timestamp in Firebase
+    try {
+      await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
+        lastSeenHistoricalNotification: new Date()
+      });
+      console.log('✅ Updated lastSeenHistoricalNotification timestamp');
+    } catch (error) {
+      console.error('❌ Error updating notification timestamp:', error);
     }
-    return null;
-  };
+    
+    return `🎉 New achievements unlocked! Check your Saints collection!`;
+  }
+  
+  console.log('✅ No new historical notifications to show');
+  return null;
+};
 
   // NEW: Handle grade update
   const handleGradeUpdate = async () => {
