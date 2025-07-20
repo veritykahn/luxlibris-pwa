@@ -469,8 +469,7 @@ export default function StudentBookshelf() {
     const state = getBookState(book);
     return !['completed'].includes(state);
   };
-
-  useEffect(() => {
+useEffect(() => {
     if (!loading && isAuthenticated && user) {
       loadBookshelfData();
     } else if (!loading && !isAuthenticated) {
@@ -632,6 +631,7 @@ export default function StudentBookshelf() {
     
     setIsLoading(false);
   };
+
 const getBookTotal = (bookshelfBook) => {
     const bookDetails = getBookDetails(bookshelfBook.bookId);
     if (!bookDetails) return 0;
@@ -1999,14 +1999,14 @@ const getBookTotal = (bookshelfBook) => {
         </div>
 
         {/* MAIN CONTENT */}
-        <div style={{
+        <div className="bookshelf-container" style={{
           padding: '15px',
           minHeight: 'calc(100vh - 120px)',
           position: 'relative',
           zIndex: 10
         }}>
           {bookshelf.length === 0 ? (
-            <div style={{
+            <div className="empty-bookshelf" style={{
               textAlign: 'center',
               padding: '60px 20px',
               color: currentTheme.textSecondary,
@@ -2055,16 +2055,16 @@ const getBookTotal = (bookshelfBook) => {
               </button>
             </div>
           ) : (
-            <div style={{
+            <div className="bookshelf-grid" style={{
               maxWidth: '350px',
               margin: '0 auto'
             }}>
               {shelves.map((shelf, shelfIndex) => (
-                <div key={shelfIndex} style={{ 
+                <div key={shelfIndex} className="shelf-row" style={{ 
                   position: 'relative',
                   marginBottom: '12px'
                 }}>
-                  <div style={{
+                  <div className="books-container" style={{
                     height: '98px',
                     padding: '0 15px',
                     marginBottom: '6px',
@@ -2086,6 +2086,7 @@ const getBookTotal = (bookshelfBook) => {
                         <button
                           key={book.bookId}
                           onClick={() => openBookModal(book)}
+                          className="book-button"
                           style={{
                             background: 'none',
                             border: 'none',
@@ -2094,7 +2095,7 @@ const getBookTotal = (bookshelfBook) => {
                             padding: 0
                           }}
                         >
-                          <div style={{
+                          <div className="book-cover" style={{
                             width: '100%',
                             maxWidth: '68px',
                             height: '88px',
@@ -2137,7 +2138,7 @@ const getBookTotal = (bookshelfBook) => {
                               <span style={{ fontSize: '20px' }}>📚</span>
                             )}
                             
-                            <div style={{
+                            <div className="progress-bar" style={{
                               position: 'absolute',
                               bottom: 0,
                               left: 0,
@@ -2155,7 +2156,7 @@ const getBookTotal = (bookshelfBook) => {
                             
                             {/* Audio Badge */}
                             {book.format === 'audiobook' && (
-                              <div style={{
+                              <div className="audio-badge" style={{
                                 position: 'absolute',
                                 top: '2px',
                                 right: '2px',
@@ -2175,7 +2176,7 @@ const getBookTotal = (bookshelfBook) => {
                             
                             {/* Revision Requested Icon */}
                             {(bookState === 'revision_cooldown' || bookState === 'revision_ready') && (
-                              <div style={{
+                              <div className="revision-badge" style={{
                                 position: 'absolute',
                                 top: '2px',
                                 right: book.format === 'audiobook' ? '18px' : '2px',
@@ -2199,7 +2200,7 @@ const getBookTotal = (bookshelfBook) => {
                               bookState === 'pending_parent_quiz_unlock' || 
                               bookState === 'quiz_cooldown' || 
                               bookState === 'admin_cooldown') && (
-                              <div style={{
+                              <div className="pending-badge" style={{
                                 position: 'absolute',
                                 top: '2px',
                                 right: book.format === 'audiobook' ? '18px' : '2px',
@@ -2220,7 +2221,7 @@ const getBookTotal = (bookshelfBook) => {
                             
                             {/* Completion Badge */}
                             {bookState === 'completed' && (
-                              <div style={{
+                              <div className="completion-badge" style={{
                                 position: 'absolute',
                                 top: '2px',
                                 left: '2px',
@@ -2246,6 +2247,7 @@ const getBookTotal = (bookshelfBook) => {
                     {Array(booksPerShelf - shelf.length).fill(null).map((_, emptyIndex) => (
                       <div
                         key={`empty-${shelfIndex}-${emptyIndex}`}
+                        className="empty-book-slot"
                         style={{
                           width: '100%',
                           maxWidth: '68px',
@@ -2256,7 +2258,7 @@ const getBookTotal = (bookshelfBook) => {
                     ))}
                   </div>
 
-                  <div style={{
+                  <div className="shelf-board" style={{
                     height: '6px',
                     margin: '0 10px',
                     backgroundColor: currentTheme.primary,
@@ -2270,8 +2272,7 @@ const getBookTotal = (bookshelfBook) => {
             </div>
           )}
         </div>
-
-       {/* BOOK MODAL - UPDATED WITH READ-ONLY FUNCTIONALITY */}
+{/* BOOK MODAL - UPDATED WITH READ-ONLY FUNCTIONALITY */}
         {showBookModal && selectedBook && (() => {
           const colorPalette = getCategoryColorPalette(selectedBook.details);
           const total = getBookTotal(selectedBook);
@@ -3598,6 +3599,104 @@ const getBookTotal = (bookshelfBook) => {
             user-select: none;
           }
           
+          /* Tablet scaling for iPad-sized devices */
+          @media screen and (min-width: 768px) and (max-width: 1024px) {
+            .bookshelf-container {
+              padding: 21px !important; /* 15px * 1.4 */
+            }
+            
+            .bookshelf-grid {
+              max-width: 490px !important; /* 350px * 1.4 */
+            }
+            
+            .shelf-row {
+              margin-bottom: 17px !important; /* 12px * 1.4 */
+            }
+            
+            .books-container {
+              height: 137px !important; /* 98px * 1.4 */
+              padding: 0 21px !important; /* 0 15px * 1.4 */
+              margin-bottom: 8px !important; /* 6px * 1.4 */
+              gap: 8px !important; /* 6px * 1.4 */
+            }
+            
+            .book-cover {
+              max-width: 95px !important; /* 68px * 1.4 */
+              height: 123px !important; /* 88px * 1.4 */
+              border-radius: 4px !important; /* 3px * 1.4 */
+            }
+            
+            .book-cover span {
+              font-size: 28px !important; /* 20px * 1.4 */
+            }
+            
+            .progress-bar {
+              height: 7px !important; /* 5px * 1.4 */
+            }
+            
+            .audio-badge, .revision-badge, .pending-badge, .completion-badge {
+              width: 20px !important; /* 14px * 1.4 */
+              height: 20px !important; /* 14px * 1.4 */
+              font-size: 10px !important; /* 7px * 1.4 */
+            }
+            
+            .audio-badge {
+              top: 3px !important; /* 2px * 1.4 */
+              right: 3px !important; /* 2px * 1.4 */
+            }
+            
+            .revision-badge, .pending-badge {
+              top: 3px !important; /* 2px * 1.4 */
+              right: 3px !important; /* Default 2px * 1.4 */
+            }
+            
+            .completion-badge {
+              top: 3px !important; /* 2px * 1.4 */
+              left: 3px !important; /* 2px * 1.4 */
+            }
+            
+            .empty-book-slot {
+              max-width: 95px !important; /* 68px * 1.4 */
+              height: 123px !important; /* 88px * 1.4 */
+            }
+            
+            .shelf-board {
+              height: 8px !important; /* 6px * 1.4 */
+              margin: 0 14px !important; /* 0 10px * 1.4 */
+              border-radius: 3px !important; /* 2px * 1.4 */
+            }
+            
+            .empty-bookshelf {
+              padding: 84px 28px !important; /* 60px 20px * 1.4 */
+              border-radius: 28px !important; /* 20px * 1.4 */
+              margin: 28px auto !important; /* 20px auto * 1.4 */
+              max-width: 420px !important; /* 300px * 1.4 */
+            }
+            
+            .empty-bookshelf div:first-child {
+              font-size: 67px !important; /* 48px * 1.4 */
+              margin-bottom: 22px !important; /* 16px * 1.4 */
+            }
+            
+            .empty-bookshelf h2 {
+              font-size: 22px !important; /* 16px * 1.4 */
+              margin-bottom: 11px !important; /* 8px * 1.4 */
+            }
+            
+            .empty-bookshelf p {
+              font-size: 18px !important; /* 13px * 1.4 */
+              margin-bottom: 28px !important; /* 20px * 1.4 */
+            }
+            
+            .empty-bookshelf button {
+              padding: 14px 28px !important; /* 10px 20px * 1.4 */
+              border-radius: 17px !important; /* 12px * 1.4 */
+              font-size: 18px !important; /* 13px * 1.4 */
+              min-height: 62px !important; /* 44px * 1.4 */
+            }
+          }
+          
+          /* Keep mobile optimizations for smaller screens */
           @media screen and (max-width: 480px) {
             input, textarea, select {
               font-size: 16px !important;
