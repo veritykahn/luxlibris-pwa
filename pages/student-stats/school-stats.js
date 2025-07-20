@@ -1130,7 +1130,7 @@ export default function SchoolStats() {
           <>
             {/* NEW: Compact but Beautiful Phase-Specific Alert Banner */}
             {getPhaseSpecificMessage() && (
-              <div style={{
+              <div className="phase-alert-banner" style={{
                 background: phaseData.currentPhase === 'VOTING' ? 'linear-gradient(135deg, #8b5cf6, #a855f7)' : 
                            phaseData.currentPhase === 'RESULTS' ? 'linear-gradient(135deg, #f59e0b, #f97316)' : 
                            'linear-gradient(135deg, #3b82f6, #2563eb)',
@@ -1168,11 +1168,11 @@ export default function SchoolStats() {
             )}
 
             {/* MAIN CONTENT */}
-            <div style={{ padding: 'clamp(16px, 5vw, 20px)', maxWidth: '400px', margin: '0 auto' }}>
+            <div className="stats-main-content" style={{ padding: 'clamp(16px, 5vw, 20px)', maxWidth: '400px', margin: '0 auto' }}>
               
               {/* SCHOOL CELEBRATION */}
               {schoolOverview && (
-                <div style={{
+                <div className="school-celebration school-stats-card" style={{
                   backgroundColor: currentTheme.surface,
                   borderRadius: '20px',
                   padding: '20px',
@@ -1276,7 +1276,7 @@ export default function SchoolStats() {
 
               {/* EXPANDABLE SCHOOL-WIDE REAL REWARDS TRACKER */}
               {schoolRealRewards && schoolRealRewards.schoolTiers.length > 0 && (
-                <div style={{
+                <div className="school-stats-card" style={{
                   backgroundColor: currentTheme.surface,
                   borderRadius: '16px',
                   padding: '20px',
@@ -1354,70 +1354,72 @@ export default function SchoolStats() {
                     
                     return (
                       <>
-                        {displayedTiers.map((tier, index) => (
-                          <div
-                            key={index}
-                            style={{
-                              backgroundColor: tier.isStudentEarned ? 
-                                `${currentTheme.primary}30` : 
-                                tier.hasStudentsEarned ? `${currentTheme.primary}20` : `${currentTheme.primary}10`,
-                              borderRadius: '12px',
-                              padding: '12px',
-                              marginBottom: index < displayedTiers.length - 1 ? '8px' : '0',
-                              border: tier.isStudentEarned ? 
-                                `2px solid ${currentTheme.primary}` : 
-                                tier.hasStudentsEarned ? 'none' : `1px dashed ${currentTheme.primary}60`,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between'
-                            }}
-                          >
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{
-                                fontSize: 'clamp(12px, 3.5vw, 14px)',
-                                fontWeight: '600',
-                                color: currentTheme.textPrimary,
-                                marginBottom: '2px'
-                              }}>
-                                {tier.reward}
+                        <div className={expandedSchoolRewards ? "school-rewards-grid" : ""}>
+                          {displayedTiers.map((tier, index) => (
+                            <div
+                              key={index}
+                              style={{
+                                backgroundColor: tier.isStudentEarned ? 
+                                  `${currentTheme.primary}30` : 
+                                  tier.hasStudentsEarned ? `${currentTheme.primary}20` : `${currentTheme.primary}10`,
+                                borderRadius: '12px',
+                                padding: '12px',
+                                marginBottom: expandedSchoolRewards ? '0' : (index < displayedTiers.length - 1 ? '8px' : '0'),
+                                border: tier.isStudentEarned ? 
+                                  `2px solid ${currentTheme.primary}` : 
+                                  tier.hasStudentsEarned ? 'none' : `1px dashed ${currentTheme.primary}60`,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between'
+                              }}
+                            >
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{
+                                  fontSize: 'clamp(12px, 3.5vw, 14px)',
+                                  fontWeight: '600',
+                                  color: currentTheme.textPrimary,
+                                  marginBottom: '2px'
+                                }}>
+                                  {tier.reward}
+                                </div>
+                                <div style={{
+                                  fontSize: 'clamp(10px, 3vw, 12px)',
+                                  color: currentTheme.textSecondary,
+                                  marginBottom: '4px'
+                                }}>
+                                  {tier.books} books to unlock
+                                  {tier.isStudentEarned && (
+                                    <span style={{
+                                      color: currentTheme.primary,
+                                      fontWeight: '600',
+                                      marginLeft: '8px'
+                                    }}>
+                                      - YOU EARNED THIS! 🎉
+                                    </span>
+                                  )}
+                                </div>
+                                <div style={{
+                                  fontSize: 'clamp(11px, 3vw, 12px)',
+                                  fontWeight: '600',
+                                  color: tier.count > 0 ? '#4CAF50' : currentTheme.textSecondary
+                                }}>
+                                  {tier.count > 0 ? '🎯' : '⭕'} {tier.count} of {schoolRealRewards.totalSchoolStudents} students earned this ({tier.percentage}%)
+                                </div>
                               </div>
+                              
                               <div style={{
-                                fontSize: 'clamp(10px, 3vw, 12px)',
-                                color: currentTheme.textSecondary,
-                                marginBottom: '4px'
+                                minWidth: '40px',
+                                textAlign: 'center'
                               }}>
-                                {tier.books} books to unlock
-                                {tier.isStudentEarned && (
-                                  <span style={{
-                                    color: currentTheme.primary,
-                                    fontWeight: '600',
-                                    marginLeft: '8px'
-                                  }}>
-                                    - YOU EARNED THIS! 🎉
-                                  </span>
-                                )}
-                              </div>
-                              <div style={{
-                                fontSize: 'clamp(11px, 3vw, 12px)',
-                                fontWeight: '600',
-                                color: tier.count > 0 ? '#4CAF50' : currentTheme.textSecondary
-                              }}>
-                                {tier.count > 0 ? '🎯' : '⭕'} {tier.count} of {schoolRealRewards.totalSchoolStudents} students earned this ({tier.percentage}%)
+                                <div style={{
+                                  fontSize: 'clamp(20px, 6vw, 24px)'
+                                }}>
+                                  {tier.isStudentEarned ? '🏆' : tier.count > 0 ? '🎯' : '⭕'}
+                                </div>
                               </div>
                             </div>
-                            
-                            <div style={{
-                              minWidth: '40px',
-                              textAlign: 'center'
-                            }}>
-                              <div style={{
-                                fontSize: 'clamp(20px, 6vw, 24px)'
-                              }}>
-                                {tier.isStudentEarned ? '🏆' : tier.count > 0 ? '🎯' : '⭕'}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                         
                         {/* SMART STATUS MESSAGE */}
                         {!expandedSchoolRewards && (
@@ -1453,7 +1455,7 @@ export default function SchoolStats() {
 
               {/* GRADE SUPERSTARS */}
               {gradeComparison && (
-                <div style={{
+                <div className="school-stats-card" style={{
                   backgroundColor: currentTheme.surface,
                   borderRadius: '16px',
                   padding: '20px',
@@ -1469,84 +1471,86 @@ export default function SchoolStats() {
                     🌟 Every Grade is Fantastic!
                   </h3>
                   
-                  {gradeComparison.gradeBreakdown.map((grade, index) => {
-                    // Find something positive to highlight about each grade
-                    let gradeHighlight = '';
-                    let gradeEmoji = '';
-                    
-                    if (grade.averageBooks >= Math.max(...gradeComparison.gradeBreakdown.map(g => g.averageBooks))) {
-                      gradeHighlight = 'Most books per student!';
-                      gradeEmoji = '📚';
-                    } else if (grade.activeReaders >= Math.max(...gradeComparison.gradeBreakdown.map(g => g.activeReaders))) {
-                      gradeHighlight = 'Amazing daily readers!';
-                      gradeEmoji = '🔥';
-                    } else if (grade.totalBooks >= Math.max(...gradeComparison.gradeBreakdown.map(g => g.totalBooks))) {
-                      gradeHighlight = 'Most total books read!';
-                      gradeEmoji = '🏆';
-                    } else if (grade.students >= Math.max(...gradeComparison.gradeBreakdown.map(g => g.students))) {
-                      gradeHighlight = 'Largest reading community!';
-                      gradeEmoji = '👥';
-                    } else {
-                      gradeHighlight = 'Incredible readers!';
-                      gradeEmoji = '⭐';
-                    }
-                    
-                    return (
-                      <div
-                        key={grade.grade}
-                        style={{
-                          backgroundColor: grade.grade === studentData.grade ? 
-                            `${currentTheme.primary}30` : `${currentTheme.primary}10`,
-                          borderRadius: '12px',
-                          padding: '12px',
-                          marginBottom: index < gradeComparison.gradeBreakdown.length - 1 ? '8px' : '0',
-                          border: grade.grade === studentData.grade ? 
-                            `2px solid ${currentTheme.primary}` : 'none'
-                        }}
-                      >
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          marginBottom: '8px'
-                        }}>
+                  <div className="grade-breakdown-grid">
+                    {gradeComparison.gradeBreakdown.map((grade, index) => {
+                      // Find something positive to highlight about each grade
+                      let gradeHighlight = '';
+                      let gradeEmoji = '';
+                      
+                      if (grade.averageBooks >= Math.max(...gradeComparison.gradeBreakdown.map(g => g.averageBooks))) {
+                        gradeHighlight = 'Most books per student!';
+                        gradeEmoji = '📚';
+                      } else if (grade.activeReaders >= Math.max(...gradeComparison.gradeBreakdown.map(g => g.activeReaders))) {
+                        gradeHighlight = 'Amazing daily readers!';
+                        gradeEmoji = '🔥';
+                      } else if (grade.totalBooks >= Math.max(...gradeComparison.gradeBreakdown.map(g => g.totalBooks))) {
+                        gradeHighlight = 'Most total books read!';
+                        gradeEmoji = '🏆';
+                      } else if (grade.students >= Math.max(...gradeComparison.gradeBreakdown.map(g => g.students))) {
+                        gradeHighlight = 'Largest reading community!';
+                        gradeEmoji = '👥';
+                      } else {
+                        gradeHighlight = 'Incredible readers!';
+                        gradeEmoji = '⭐';
+                      }
+                      
+                      return (
+                        <div
+                          key={grade.grade}
+                          style={{
+                            backgroundColor: grade.grade === studentData.grade ? 
+                              `${currentTheme.primary}30` : `${currentTheme.primary}10`,
+                            borderRadius: '12px',
+                            padding: '12px',
+                            marginBottom: '8px',
+                            border: grade.grade === studentData.grade ? 
+                              `2px solid ${currentTheme.primary}` : 'none'
+                          }}
+                        >
                           <div style={{
-                            fontSize: 'clamp(14px, 4vw, 16px)',
-                            fontWeight: '600',
-                            color: currentTheme.textPrimary
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            marginBottom: '8px'
                           }}>
-                            Grade {grade.grade} {gradeEmoji}
-                            {grade.grade === studentData.grade && (
-                              <span style={{
-                                fontSize: 'clamp(10px, 3vw, 11px)',
-                                color: currentTheme.primary,
-                                fontWeight: '600',
-                                marginLeft: '8px'
-                              }}>
-                                (YOUR GRADE!)
-                              </span>
-                            )}
+                            <div style={{
+                              fontSize: 'clamp(14px, 4vw, 16px)',
+                              fontWeight: '600',
+                              color: currentTheme.textPrimary
+                            }}>
+                              Grade {grade.grade} {gradeEmoji}
+                              {grade.grade === studentData.grade && (
+                                <span style={{
+                                  fontSize: 'clamp(10px, 3vw, 11px)',
+                                  color: currentTheme.primary,
+                                  fontWeight: '600',
+                                  marginLeft: '8px'
+                                }}>
+                                  (YOUR GRADE!)
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div style={{
+                            fontSize: 'clamp(11px, 3vw, 12px)',
+                            color: currentTheme.primary,
+                            fontWeight: '600',
+                            marginBottom: '4px'
+                          }}>
+                            {gradeHighlight}
+                          </div>
+                          
+                          <div style={{
+                            fontSize: 'clamp(10px, 3vw, 11px)',
+                            color: currentTheme.textSecondary
+                          }}>
+                            {grade.students} students • {grade.totalBooks} total books • {grade.averageBooks} average each
                           </div>
                         </div>
-                        
-                        <div style={{
-                          fontSize: 'clamp(11px, 3vw, 12px)',
-                          color: currentTheme.primary,
-                          fontWeight: '600',
-                          marginBottom: '4px'
-                        }}>
-                          {gradeHighlight}
-                        </div>
-                        
-                        <div style={{
-                          fontSize: 'clamp(10px, 3vw, 11px)',
-                          color: currentTheme.textSecondary
-                        }}>
-                          {grade.students} students • {grade.totalBooks} total books • {grade.averageBooks} average each
-                        </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                   
                   <div style={{
                     backgroundColor: `${currentTheme.secondary}20`,
@@ -1567,7 +1571,7 @@ export default function SchoolStats() {
 
               {/* SCHOOL READING SUPERPOWERS - DYNAMIC! */}
               {readingCulture && readingCulture.superpowers && readingCulture.superpowers.length > 0 && (
-                <div style={{
+                <div className="school-stats-card" style={{
                   backgroundColor: currentTheme.surface,
                   borderRadius: '16px',
                   padding: '20px',
@@ -1583,7 +1587,7 @@ export default function SchoolStats() {
                     ⭐ Our School&apos;s Reading Superpowers!
                   </h3>
                   
-                  <div style={{
+                  <div className="superpowers-grid" style={{
                     display: 'grid',
                     gridTemplateColumns: readingCulture.superpowers.length === 1 ? '1fr' : '1fr 1fr',
                     gap: '12px',
@@ -1652,7 +1656,7 @@ export default function SchoolStats() {
 
               {/* SCHOOL'S FAVORITE BOOK */}
               {readingCulture && readingCulture.schoolFavoriteBook && (
-                <div style={{
+                <div className="school-stats-card" style={{
                   backgroundColor: currentTheme.surface,
                   borderRadius: '16px',
                   padding: '20px',
@@ -1745,7 +1749,7 @@ export default function SchoolStats() {
               )}
 
               {/* QUICK LINKS */}
-              <div style={{
+              <div className="button-group" style={{
                 display: 'grid',
                 gridTemplateColumns: '1fr 1fr',
                 gap: '12px',
@@ -1829,6 +1833,56 @@ export default function SchoolStats() {
           * {
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
+          }
+          
+          /* ADDED: Adaptive CSS for tablet/iPad layouts */
+          @media screen and (min-width: 768px) and (max-width: 1024px) {
+            .stats-main-content {
+              max-width: 600px !important; /* Wider container */
+              padding: 24px !important; /* More breathing room */
+            }
+            
+            .phase-alert-banner {
+              margin: 0 24px 20px 24px !important;
+              padding: 16px 20px !important;
+            }
+            
+            /* School celebration gets more space */
+            .school-celebration {
+              padding: 28px !important;
+            }
+            
+            /* School rewards in 2 columns when expanded */
+            .school-rewards-grid {
+              display: grid !important;
+              grid-template-columns: 1fr 1fr !important;
+              gap: 12px !important;
+            }
+            
+            /* Grade breakdown in 2 columns */
+            .grade-breakdown-grid {
+              display: grid !important;
+              grid-template-columns: 1fr 1fr !important;
+              gap: 12px !important;
+            }
+            
+            /* Superpowers always in 2 columns on iPad */
+            .superpowers-grid {
+              grid-template-columns: 1fr 1fr !important;
+              gap: 16px !important;
+            }
+            
+            /* School stats cards get more padding */
+            .school-stats-card {
+              padding: 24px !important;
+            }
+            
+            /* Button groups get more space */
+            .button-group {
+              gap: 16px !important;
+              max-width: 400px !important;
+              margin: 0 auto !important;
+            }
           }
         `}</style>
       </div>

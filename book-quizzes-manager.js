@@ -2804,6 +2804,211 @@ const CURRENT_YEAR_BOOK_QUIZZES = [
     ]
   },
   {
+  "book_id": "007",
+  "questions": [
+    {
+      "question": "What problem do Weatherby and Skip encounter with their regatta equipment?",
+      "options": [
+        "Their sails are too large",
+        "Their boat has a leak",
+        "Their mast is broken",
+        "Their anchor is missing"
+      ],
+      "answer": "Their sails are too large"
+    },
+    {
+      "question": "Who is Weatherby paired with at the first sailing practice?",
+      "options": [
+        "Harper",
+        "Teddie Covington",
+        "Skip",
+        "Jack"
+      ],
+      "answer": "Teddie Covington"
+    },
+    {
+      "question": "Where are anagrams of passwords found?",
+      "options": [
+        "On tree trunks",
+        "In old books",
+        "Engraved on the bottom of rocks",
+        "Written on walls"
+      ],
+      "answer": "Engraved on the bottom of rocks"
+    },
+    {
+      "question": "How was the money for the trip stolen?",
+      "options": [
+        "From a school safe",
+        "By pickpocketing",
+        "From a cash register",
+        "By hacking into the bank's system"
+      ],
+      "answer": "By hacking into the bank's system"
+    },
+    {
+      "question": "What does the code 'T >T/T >T' mean?",
+      "options": [
+        "Truth before Trust, Tradition before Truth",
+        "Trust before Truth, Truth before Tradition",
+        "Time before Trust, Truth before Time",
+        "Trust before Time, Tradition before Trust"
+      ],
+      "answer": "Trust before Truth, Truth before Tradition"
+    },
+    {
+      "question": "What is distinctive about how Jack ties knots?",
+      "options": [
+        "He always ties a bowline with extra loops",
+        "He uses a clove hitch exclusively",
+        "He always ties a sheet bend with a double loop",
+        "He never uses proper sailing knots"
+      ],
+      "answer": "He always ties a sheet bend with a double loop"
+    },
+    {
+      "question": "Why can't Boston participate in the Interconference Regatta?",
+      "options": [
+        "Their team was disqualified",
+        "They don't have enough sailors",
+        "Their boats had been vandalized",
+        "Their coach quit"
+      ],
+      "answer": "Their boats had been vandalized"
+    },
+    {
+      "question": "What blocks the school's gates?",
+      "options": [
+        "Construction equipment",
+        "Protesters and police cars",
+        "Reporters and news vans",
+        "Fallen trees"
+      ],
+      "answer": "Reporters and news vans"
+    },
+    {
+      "question": "What do we learn about Harper's financial situation?",
+      "options": [
+        "She comes from a wealthy family",
+        "She is also on a scholarship",
+        "She works part-time to pay tuition",
+        "Her parents pay full tuition"
+      ],
+      "answer": "She is also on a scholarship"
+    },
+    {
+      "question": "How did Harper get her cool stuff?",
+      "options": [
+        "Her parents bought it for her",
+        "She saved up money to buy it",
+        "Teddie introduced her to thrifting",
+        "She borrowed it from friends"
+      ],
+      "answer": "Teddie introduced her to thrifting"
+    },
+    {
+      "question": "What is Jack's alibi?",
+      "options": [
+        "He was at home studying",
+        "He was at the library",
+        "He was at the club with Prescott",
+        "He was visiting family"
+      ],
+      "answer": "He was at the club with Prescott"
+    },
+    {
+      "question": "What does Iris discover on her mother's computer?",
+      "options": [
+        "A non-disclosure agreement",
+        "Secret emails",
+        "Bank statements",
+        "School records"
+      ],
+      "answer": "A non-disclosure agreement"
+    },
+    {
+      "question": "Who used to be friends with Yates Hunt?",
+      "options": [
+        "Weatherby",
+        "Jack",
+        "Harper",
+        "Skip"
+      ],
+      "answer": "Skip"
+    },
+    {
+      "question": "What are the five students accused of being?",
+      "options": [
+        "Cheaters, Liars, Thieves, Bullies, and Fakes",
+        "A Liar, a Thief, a Fake, a Sneak and a Cheat",
+        "Criminals, Vandals, Hackers, Forgers, and Spies",
+        "Troublemakers, Rule-breakers, Rebels, Outcasts, and Misfits"
+      ],
+      "answer": "A Liar, a Thief, a Fake, a Sneak and a Cheat"
+    },
+    {
+      "question": "What boat do they take to Hart Isle?",
+      "options": [
+        "The Huntress",
+        "The Explorer",
+        "The Navigator",
+        "The Seeker"
+      ],
+      "answer": "The Huntress"
+    },
+    {
+      "question": "What is the code for the zip line?",
+      "options": [
+        "Harper",
+        "Skip",
+        "Jack",
+        "Weatherby"
+      ],
+      "answer": "Weatherby"
+    },
+    {
+      "question": "Who actually sent them to the island?",
+      "options": [
+        "Last Heir",
+        "Harper",
+        "A mysterious stranger",
+        "The school administration"
+      ],
+      "answer": "Harper"
+    },
+    {
+      "question": "What is Jack's relationship to Weatherby?",
+      "options": [
+        "They are brothers",
+        "Jack is Weatherby's cousin",
+        "They are best friends",
+        "They are unrelated"
+      ],
+      "answer": "Jack is Weatherby's cousin"
+    },
+    {
+      "question": "Who was the letter really meant for?",
+      "options": [
+        "Weatherby",
+        "Harper",
+        "Jack",
+        "Skip"
+      ],
+      "answer": "Jack"
+    },
+    {
+      "question": "What do 'Last Heir' and 'Hart Isle' have in common?",
+      "options": [
+        "They are both boat names",
+        "They are both anagrams of 'The Liars'",
+        "They are both locations in the story",
+        "They are both character nicknames"
+      ],
+      "answer": "They are both anagrams of 'The Liars'"
+    }
+  ]
+},
+  {
     "book_id": "010",
     "title": "Invisible Isabel by Sally J. Pla Quiz",
     "questions": [

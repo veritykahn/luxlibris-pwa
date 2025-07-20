@@ -23,6 +23,7 @@ export default function MyStats() {
   const [showNavMenu, setShowNavMenu] = useState(false);
   const [showStatsDropdown, setShowStatsDropdown] = useState(false);
   const [showBraggingRights, setShowBraggingRights] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(''); // NEW: Success message state
   
   // Enhanced features for personal deep dive
   const [badgeProgress, setBadgeProgress] = useState(null);
@@ -143,8 +144,7 @@ export default function MyStats() {
       textSecondary: '#AAAAAA'
     }
   }), []);
-
-  // UPDATED: Navigation menu items with phase-aware locking
+// UPDATED: Navigation menu items with phase-aware locking
   const navMenuItems = useMemo(() => [
     { name: 'Dashboard', path: '/student-dashboard', icon: '⌂' },
     { 
@@ -213,10 +213,11 @@ export default function MyStats() {
         setShowBirdFactModal(false);
         setShowBraggingRights(false);
         setShowLeaderboard(false);
+        setShowSuccess(''); // NEW: Clear success message on escape
       }
     };
 
-    if (showNavMenu || showStatsDropdown || showBadgeModal || showBirdFactModal || showBraggingRights || showLeaderboard) {
+    if (showNavMenu || showStatsDropdown || showBadgeModal || showBirdFactModal || showBraggingRights || showLeaderboard || showSuccess) {
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('keydown', handleEscape);
     }
@@ -225,7 +226,7 @@ export default function MyStats() {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscape);
     };
-  }, [showNavMenu, showStatsDropdown, showBadgeModal, showBirdFactModal, showBraggingRights, showLeaderboard]);
+  }, [showNavMenu, showStatsDropdown, showBadgeModal, showBirdFactModal, showBraggingRights, showLeaderboard, showSuccess]);
 
   // Handle stats navigation
   const handleStatsNavigation = (option) => {
@@ -662,8 +663,7 @@ export default function MyStats() {
       router.push('/role-selector');
     }
   }, [loading, isAuthenticated, user, loadStatsData]);
-
-  if (loading || isLoading || !studentData || !currentTheme) {
+if (loading || isLoading || !studentData || !currentTheme) {
     return (
       <div style={{
         backgroundColor: '#FFFCF5',
@@ -703,6 +703,29 @@ export default function MyStats() {
         backgroundColor: currentTheme.background,
         paddingBottom: '100px'
       }}>
+        
+        {/* NEW: Success Message Display */}
+        {showSuccess && (
+          <div style={{
+            position: 'fixed',
+            top: '20px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: '#4CAF50',
+            color: 'white',
+            padding: '12px 20px',
+            borderRadius: '12px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+            zIndex: 10000,
+            fontSize: '14px',
+            fontWeight: '600',
+            textAlign: 'center',
+            maxWidth: '90vw',
+            animation: 'slideInDown 0.3s ease-out'
+          }}>
+            {showSuccess}
+          </div>
+        )}
         
         {/* HEADER WITH REORDERED DROPDOWN NAVIGATION */}
         <div style={{
@@ -1081,7 +1104,7 @@ export default function MyStats() {
           <>
             {/* NEW: Compact but Beautiful Phase-Specific Alert Banner */}
             {getPhaseSpecificMessage() && (
-              <div style={{
+              <div className="phase-alert-banner" style={{
                 background: phaseData.currentPhase === 'VOTING' ? 'linear-gradient(135deg, #8b5cf6, #a855f7)' : 
                            phaseData.currentPhase === 'RESULTS' ? 'linear-gradient(135deg, #f59e0b, #f97316)' : 
                            'linear-gradient(135deg, #3b82f6, #2563eb)',
@@ -1119,11 +1142,11 @@ export default function MyStats() {
             )}
 
             {/* MAIN CONTENT */}
-            <div style={{ padding: 'clamp(16px, 5vw, 20px)', maxWidth: '400px', margin: '0 auto' }}>
+            <div className="stats-main-content" style={{ padding: 'clamp(16px, 5vw, 20px)', maxWidth: '400px', margin: '0 auto' }}>
               
               {/* LARGE BADGE PROGRAM SECTION WITH XP & LEVEL */}
               {levelProgress && badgeProgress && (
-                <div style={{
+                <div className="badge-program-section stats-card" style={{
                   backgroundColor: currentTheme.surface,
                   borderRadius: '20px',
                   padding: '24px',
@@ -1259,7 +1282,7 @@ export default function MyStats() {
                   </div>
 
                   {/* ACTION BUTTONS */}
-                  <div style={{
+                  <div className="button-group" style={{
                     display: 'grid',
                     gridTemplateColumns: '1fr 1fr 1fr',
                     gap: '12px'
@@ -1289,8 +1312,15 @@ export default function MyStats() {
                     
                     {/* UPDATED: ENHANCED BRAGGING RIGHTS BUTTON WITH PHASE AWARENESS AND ANIMATIONS */}
                     <button
-                      onClick={() => setShowBraggingRights(true)}
-                      disabled={!hasAccess('votingInterface') && !hasAccess('votingResults') && phaseData.currentPhase === 'ACTIVE'}
+                      onClick={() => {
+                        if (!hasAccess('votingInterface') && !hasAccess('votingResults') && phaseData.currentPhase === 'ACTIVE') {
+                          // Show click message for locked state
+                          setShowSuccess('🗓️ Bragging Rights unlocks March 31st when voting begins! Keep reading nominees, making submissions, and earning XP until then! 🏆');
+                          setTimeout(() => setShowSuccess(''), 4000);
+                        } else {
+                          setShowBraggingRights(true);
+                        }
+                      }}
                       style={{
                         backgroundColor: (!hasAccess('votingInterface') && !hasAccess('votingResults') && phaseData.currentPhase === 'ACTIVE') ? 
                           `${currentTheme.textSecondary}30` : currentTheme.secondary,
@@ -1301,8 +1331,7 @@ export default function MyStats() {
                         padding: 'clamp(10px, 3vw, 12px)',
                         fontSize: 'clamp(11px, 3vw, 12px)',
                         fontWeight: '600',
-                        cursor: (!hasAccess('votingInterface') && !hasAccess('votingResults') && phaseData.currentPhase === 'ACTIVE') ? 
-                          'not-allowed' : 'pointer',
+                        cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -1397,7 +1426,7 @@ export default function MyStats() {
 
               {/* EXPANDABLE REAL WORLD ACHIEVEMENTS */}
               {realWorldAchievements.length > 0 && (
-                <div style={{
+                <div className="stats-card" style={{
                   backgroundColor: currentTheme.surface,
                   borderRadius: '16px',
                   padding: '20px',
@@ -1461,62 +1490,64 @@ export default function MyStats() {
                     
                     return (
                       <>
-                        {displayedAchievements.map((achievement, index) => (
-                          <div key={index} style={{
-                            backgroundColor: achievement.earned ? 
-                              `${currentTheme.primary}30` : `${currentTheme.primary}10`,
-                            borderRadius: '12px',
-                            padding: '12px',
-                            marginBottom: index < displayedAchievements.length - 1 ? '8px' : '0',
-                            border: achievement.earned ? `2px solid ${currentTheme.primary}` : `1px dashed ${currentTheme.primary}60`,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between'
-                          }}>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{
-                                fontSize: 'clamp(12px, 3.5vw, 14px)',
-                                fontWeight: '600',
-                                color: currentTheme.textPrimary,
-                                marginBottom: '2px'
-                              }}>
-                                {achievement.reward}
-                              </div>
-                              <div style={{
-                                fontSize: 'clamp(10px, 3vw, 12px)',
-                                color: currentTheme.textSecondary,
-                                marginBottom: '4px'
-                              }}>
-                                {achievement.books} books • Tier {achievement.tier}
-                              </div>
-                              {!achievement.earned && (
-                                <div style={{
-                                  fontSize: 'clamp(11px, 3vw, 12px)',
-                                  fontWeight: '600',
-                                  color: '#FF6B35'
-                                }}>
-                                  📚 Need {achievement.booksNeeded} more book{achievement.booksNeeded !== 1 ? 's' : ''}
-                                </div>
-                              )}
-                              {achievement.earned && (
-                                <div style={{
-                                  fontSize: 'clamp(11px, 3vw, 12px)',
-                                  fontWeight: '600',
-                                  color: '#4CAF50'
-                                }}>
-                                  ✅ Earned! 🎉
-                                </div>
-                              )}
-                            </div>
-                            <div style={{
-                              fontSize: 'clamp(20px, 6vw, 24px)',
-                              flexShrink: 0,
-                              marginLeft: '8px'
+                        <div className="achievements-grid">
+                          {displayedAchievements.map((achievement, index) => (
+                            <div key={index} style={{
+                              backgroundColor: achievement.earned ? 
+                                `${currentTheme.primary}30` : `${currentTheme.primary}10`,
+                              borderRadius: '12px',
+                              padding: '12px',
+                              marginBottom: index < displayedAchievements.length - 1 ? '8px' : '0',
+                              border: achievement.earned ? `2px solid ${currentTheme.primary}` : `1px dashed ${currentTheme.primary}60`,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between'
                             }}>
-                              {achievement.earned ? '🏆' : '🎯'}
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{
+                                  fontSize: 'clamp(12px, 3.5vw, 14px)',
+                                  fontWeight: '600',
+                                  color: currentTheme.textPrimary,
+                                  marginBottom: '2px'
+                                }}>
+                                  {achievement.reward}
+                                </div>
+                                <div style={{
+                                  fontSize: 'clamp(10px, 3vw, 12px)',
+                                  color: currentTheme.textSecondary,
+                                  marginBottom: '4px'
+                                }}>
+                                  {achievement.books} books • Tier {achievement.tier}
+                                </div>
+                                {!achievement.earned && (
+                                  <div style={{
+                                    fontSize: 'clamp(11px, 3vw, 12px)',
+                                    fontWeight: '600',
+                                    color: '#FF6B35'
+                                  }}>
+                                    📚 Need {achievement.booksNeeded} more book{achievement.booksNeeded !== 1 ? 's' : ''}
+                                  </div>
+                                )}
+                                {achievement.earned && (
+                                  <div style={{
+                                    fontSize: 'clamp(11px, 3vw, 12px)',
+                                    fontWeight: '600',
+                                    color: '#4CAF50'
+                                  }}>
+                                    ✅ Earned! 🎉
+                                  </div>
+                                )}
+                              </div>
+                              <div style={{
+                                fontSize: 'clamp(20px, 6vw, 24px)',
+                                flexShrink: 0,
+                                marginLeft: '8px'
+                              }}>
+                                {achievement.earned ? '🏆' : '🎯'}
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                         
                         {/* SMART STATUS MESSAGE */}
                         {!expandedAchievements && (
@@ -1548,7 +1579,7 @@ export default function MyStats() {
 
               {/* READING PERSONALITY SECTION */}
               {readingPersonality && (
-                <div style={{
+                <div className="stats-card" style={{
                   backgroundColor: currentTheme.surface,
                   borderRadius: '20px',
                   padding: '20px',
@@ -1603,7 +1634,7 @@ export default function MyStats() {
 
               {/* READING HABITS */}
               {personalStats && (
-                <div style={{
+                <div className="stats-card" style={{
                   backgroundColor: currentTheme.surface,
                   borderRadius: '16px',
                   padding: '20px',
@@ -1693,7 +1724,7 @@ export default function MyStats() {
 
               {/* READING QUALITY */}
               {readingQuality && readingQuality.totalRated > 0 && (
-                <div style={{
+                <div className="stats-card" style={{
                   backgroundColor: currentTheme.surface,
                   borderRadius: '16px',
                   padding: '20px',
@@ -1740,7 +1771,7 @@ export default function MyStats() {
 
               {/* SAINTS COLLECTION */}
               {saintsStats && (
-                <div style={{
+                <div className="stats-card" style={{
                   backgroundColor: currentTheme.surface,
                   borderRadius: '16px',
                   padding: '20px',
@@ -2606,6 +2637,39 @@ export default function MyStats() {
           * {
             -webkit-overflow-scrolling: touch;
             scroll-behavior: smooth;
+          }
+
+          /* ADDED: Adaptive CSS for tablet/iPad layouts */
+          @media screen and (min-width: 768px) and (max-width: 1024px) {
+            .stats-main-content {
+              max-width: 600px !important;
+              padding: 24px !important;
+            }
+            
+            .phase-alert-banner {
+              margin: 0 24px 20px 24px !important;
+              padding: 16px 20px !important;
+            }
+            
+            .badge-program-section {
+              padding: 28px !important;
+            }
+            
+            .achievements-grid {
+              display: grid !important;
+              grid-template-columns: 1fr 1fr !important;
+              gap: 12px !important;
+            }
+            
+            .stats-card {
+              padding: 24px !important;
+            }
+            
+            .button-group {
+              gap: 16px !important;
+              max-width: 400px !important;
+              margin: 0 auto !important;
+            }
           }
         `}</style>
       </div>

@@ -205,6 +205,9 @@ export default function LuxDnaLab() {
       if (event.key === 'Escape') {
         setShowNavMenu(false);
         setShowStatsDropdown(false);
+        setShowQuizModal(false);
+        setShowQuizResult(false);
+        setShowMyDnaModal(false);
       }
     };
 
@@ -757,7 +760,7 @@ export default function LuxDnaLab() {
 
         {/* NEW: Phase-Specific Alert Banner */}
         {getPhaseSpecificMessage() && (
-          <div style={{
+          <div className="phase-alert-banner" style={{
             background: phaseData.currentPhase === 'VOTING' ? 'linear-gradient(135deg, #8b5cf6, #a855f7)' : 
                        phaseData.currentPhase === 'RESULTS' ? 'linear-gradient(135deg, #f59e0b, #f97316)' : 
                        'linear-gradient(135deg, #3b82f6, #2563eb)',
@@ -796,10 +799,10 @@ export default function LuxDnaLab() {
         )}
 
         {/* MAIN CONTENT */}
-        <div style={{ padding: 'clamp(16px, 5vw, 20px)', maxWidth: '400px', margin: '0 auto' }}>
+        <div className="stats-main-content" style={{ padding: 'clamp(16px, 5vw, 20px)', maxWidth: '400px', margin: '0 auto' }}>
           
           {/* MY LUX DNA SUMMARY */}
-          <div style={{
+          <div className="dna-summary-card" style={{
             backgroundColor: currentTheme.surface,
             borderRadius: '20px',
             padding: '20px',
@@ -914,7 +917,7 @@ export default function LuxDnaLab() {
           {/* QUIZ CATEGORIES */}
           
           {/* UPDATED: Lux Libris Nominees DNA with Phase Awareness */}
-          <div style={{
+          <div className="quiz-category-card" style={{
             backgroundColor: currentTheme.surface,
             borderRadius: '16px',
             padding: '20px',
@@ -977,7 +980,7 @@ export default function LuxDnaLab() {
           </div>
 
           {/* Saint DNA Quizzes */}
-          <div style={{
+          <div className="quiz-category-card" style={{
             backgroundColor: currentTheme.surface,
             borderRadius: '16px',
             padding: '20px',
@@ -1034,7 +1037,7 @@ export default function LuxDnaLab() {
 
             {/* Collapsible Quiz List */}
             {isSaintQuizzesExpanded && (
-              <div style={{
+              <div className="quiz-grid" style={{
                 display: 'grid',
                 gap: '8px',
                 animation: 'fadeIn 0.3s ease'
@@ -1125,7 +1128,7 @@ export default function LuxDnaLab() {
             justifyContent: 'center',
             padding: '20px'
           }}>
-            <div style={{
+            <div className="quiz-modal-content" style={{
               backgroundColor: currentTheme.surface,
               borderRadius: '20px',
               maxWidth: '380px',
@@ -1289,7 +1292,7 @@ export default function LuxDnaLab() {
               justifyContent: 'center',
               padding: '20px'
             }}>
-              <div style={{
+              <div className="result-modal-content" style={{
                 maxWidth: '360px',
                 width: '100%',
                 maxHeight: '85vh',
@@ -1602,7 +1605,7 @@ export default function LuxDnaLab() {
                       Your Saint Personality Matches:
                     </div>
                     
-                    <div style={{
+                    <div className="dna-results-grid" style={{
                       display: 'grid',
                       gap: '8px'
                     }}>
@@ -1703,6 +1706,48 @@ export default function LuxDnaLab() {
           * {
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
+          }
+
+          /* ADDED: Adaptive CSS for tablet/iPad layouts */
+          @media screen and (min-width: 768px) and (max-width: 1024px) {
+            .stats-main-content {
+              max-width: 600px !important;
+              padding: 24px !important;
+            }
+            
+            .phase-alert-banner {
+              margin: 0 24px 20px 24px !important;
+              padding: 20px 24px !important;
+            }
+            
+            .dna-summary-card {
+              padding: 28px !important;
+              margin-bottom: 28px !important;
+            }
+            
+            .quiz-category-card {
+              padding: 24px !important;
+              margin-bottom: 24px !important;
+            }
+            
+            .quiz-grid {
+              grid-template-columns: 1fr 1fr !important;
+              gap: 12px !important;
+            }
+            
+            .quiz-modal-content {
+              max-width: 480px !important;
+              padding: 24px !important;
+            }
+            
+            .result-modal-content {
+              max-width: 420px !important;
+            }
+            
+            .dna-results-grid {
+              grid-template-columns: 1fr 1fr !important;
+              gap: 12px !important;
+            }
           }
         `}</style>
       </div>
