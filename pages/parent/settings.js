@@ -171,9 +171,6 @@ export default function ParentSettings() {
                     // Add student to existing teacher's list
                     existingCode.students.push(studentData.firstName)
                   }
-                  
-                  // Add teacher code to student data for login credentials
-                  studentData.teacherJoinCode = teacherData.parentQuizCode
                 }
               }
             }
@@ -1248,10 +1245,10 @@ export default function ParentSettings() {
                                 color: luxTheme.textPrimary,
                                 flex: 1
                               }}>
-                                {student.teacherJoinCode || 'Not available'}
+                                {student.signInCode || 'Not available'}
                               </div>
                               <button
-                                onClick={() => copyToClipboard(student.teacherJoinCode || '')}
+                                onClick={() => copyToClipboard(student.signInCode || '')}
                                 style={{
                                   backgroundColor: luxTheme.primary,
                                   color: luxTheme.textPrimary,
