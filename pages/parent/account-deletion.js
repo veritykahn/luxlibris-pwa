@@ -721,7 +721,7 @@ ${parentData.firstName} ${parentData.lastName}`);
                 onMouseEnter={(e) => e.target.style.backgroundColor = '#d97706'}
                 onMouseLeave={(e) => e.target.style.backgroundColor = '#f59e0b'}
               >
-                📧 Email Support for Children's Account Deletion
+                📧 Email Support for Children&apos;s Account Deletion
               </button>
             </div>
 
