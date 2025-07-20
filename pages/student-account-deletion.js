@@ -480,7 +480,7 @@ export default function StudentAccountDeletion() {
                 <li><strong>Data removal:</strong> All reading progress, books, and achievements are permanently deleted</li>
                 <li><strong>Parent disconnection:</strong> Any parent accounts linked to yours will be disconnected</li>
                 <li><strong>No recovery:</strong> We cannot restore your account or data after deletion</li>
-                <li><strong>Sign out:</strong> You'll be automatically signed out and redirected to the homepage</li>
+                <li><strong>Sign out:</strong> You&apos;ll be automatically signed out and redirected to the homepage</li>
               </ul>
             </div>
 
