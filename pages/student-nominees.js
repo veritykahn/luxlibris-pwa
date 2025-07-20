@@ -1849,8 +1849,6 @@ useEffect(() => {
             .quick-browse-strip {
               gap: 11px !important; /* 8px * 1.4 */
               padding: 11px 0 56px 0 !important; /* 8px 0 40px 0 * 1.4 */
-              justify-content: center; /* Center the books on iPad */
-              flex-wrap: wrap; /* Allow wrapping on very wide screens */
             }
             
             /* Scale quick browse items */
