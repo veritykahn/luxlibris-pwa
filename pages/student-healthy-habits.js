@@ -1179,11 +1179,11 @@ export default function StudentHealthyHabits() {
         </div>
 
         {/* MAIN CONTENT */}
-        <div style={{ padding: 'clamp(16px, 5vw, 20px)', maxWidth: '400px', margin: '0 auto' }}>
+        <div className="healthy-habits-main" style={{ padding: 'clamp(16px, 5vw, 20px)', maxWidth: '400px', margin: '0 auto' }}>
 
           {/* PHASE-AWARE MESSAGE - Beautiful but more compact! */}
           {phaseMessage && (
-            <div style={{
+            <div className="phase-message-card" style={{
               background: phaseMessage.bgGradient,
               borderRadius: '12px',
               padding: '12px',
@@ -1214,7 +1214,7 @@ export default function StudentHealthyHabits() {
           )}
 
           {/* TIMER SECTION */}
-          <div style={{
+          <div className="timer-section" style={{
             backgroundColor: currentTheme.surface,
             borderRadius: '20px',
             padding: '30px 20px',
@@ -1223,7 +1223,7 @@ export default function StudentHealthyHabits() {
             textAlign: 'center'
           }}>
             {/* Circular Timer */}
-            <div style={{ position: 'relative', display: 'inline-block', marginBottom: '20px' }}>
+            <div className="timer-container" style={{ position: 'relative', display: 'inline-block', marginBottom: '20px' }}>
               <svg
                 width={svgSize}
                 height={svgSize}
@@ -1288,7 +1288,7 @@ export default function StudentHealthyHabits() {
             </div>
 
             {/* Timer Controls */}
-            <div style={{
+            <div className="timer-controls" style={{
               display: 'flex',
               gap: '12px',
               justifyContent: 'center',
@@ -1298,6 +1298,7 @@ export default function StudentHealthyHabits() {
               {!isTimerActive ? (
                 <button
                   onClick={handleStartTimer}
+                  className="timer-button timer-start"
                   style={{
                     backgroundColor: currentTheme.primary,
                     color: currentTheme.textPrimary,
@@ -1321,6 +1322,7 @@ export default function StudentHealthyHabits() {
                 <>
                   <button
                     onClick={isTimerPaused ? handleResumeTimer : handlePauseTimer}
+                    className="timer-button timer-pause-resume"
                     style={{
                       backgroundColor: currentTheme.secondary,
                       color: currentTheme.textPrimary,
@@ -1342,6 +1344,7 @@ export default function StudentHealthyHabits() {
                   {isTimerPaused ? (
                     <button
                       onClick={handleBankSession}
+                      className="timer-button timer-bank"
                       style={{
                         backgroundColor: '#4CAF50',
                         color: 'white',
@@ -1396,9 +1399,8 @@ export default function StudentHealthyHabits() {
               Timer length can be adjusted in settings →
             </button>
           </div>
-
-          {/* TODAY'S PROGRESS */}
-          <div style={{
+{/* TODAY'S PROGRESS */}
+          <div className="progress-section" style={{
             backgroundColor: currentTheme.surface,
             borderRadius: '16px',
             padding: '20px',
@@ -1414,7 +1416,7 @@ export default function StudentHealthyHabits() {
               📈 Today&apos;s Progress
             </h3>
 
-            <div style={{
+            <div className="reading-level-card" style={{
               backgroundColor: readingLevel.color,
               borderRadius: '12px',
               padding: '16px',
@@ -1445,7 +1447,7 @@ export default function StudentHealthyHabits() {
             </div>
 
             {/* Today's minutes and current streak */}
-            <div style={{
+            <div className="stats-grid" style={{
               display: 'grid',
               gridTemplateColumns: '1fr 1fr',
               gap: '12px',
@@ -1495,7 +1497,7 @@ export default function StudentHealthyHabits() {
           </div>
 
           {/* STREAK CALENDAR - Timeline Style */}
-          <div style={{
+          <div className="streak-calendar-section" style={{
             backgroundColor: currentTheme.surface,
             borderRadius: '16px',
             padding: '20px',
@@ -1519,7 +1521,7 @@ export default function StudentHealthyHabits() {
             </div>
 
             {/* Stats */}
-            <div style={{
+            <div className="streak-stats" style={{
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
@@ -1545,7 +1547,7 @@ export default function StudentHealthyHabits() {
             </div>
 
             {/* Timeline Calendar */}
-            <div style={{
+            <div className="timeline-calendar" style={{
               display: 'flex',
               gap: '6px',
               overflowX: 'auto',
@@ -1810,6 +1812,109 @@ export default function StudentHealthyHabits() {
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
           }
+          
+          /* Tablet scaling for iPad-sized devices */
+          @media screen and (min-width: 768px) and (max-width: 1024px) {
+            .healthy-habits-main {
+              padding: clamp(22px, 7vw, 28px) !important; /* Scale padding */
+              max-width: 560px !important; /* 400px * 1.4 */
+            }
+            
+            .phase-message-card {
+              border-radius: 17px !important; /* 12px * 1.4 */
+              padding: 17px !important; /* 12px * 1.4 */
+              margin-bottom: 22px !important; /* 16px * 1.4 */
+            }
+            
+            .timer-section {
+              border-radius: 28px !important; /* 20px * 1.4 */
+              padding: 42px 28px !important; /* 30px 20px * 1.4 */
+              margin-bottom: 28px !important; /* 20px * 1.4 */
+            }
+            
+            .timer-container {
+              margin-bottom: 28px !important; /* 20px * 1.4 */
+            }
+            
+            /* Scale the timer SVG for iPad */
+            .timer-container svg {
+              width: 280px !important; /* 200px * 1.4 */
+              height: 280px !important; /* 200px * 1.4 */
+              max-width: 280px !important;
+              max-height: 280px !important;
+            }
+            
+            .timer-controls {
+              gap: 17px !important; /* 12px * 1.4 */
+              margin-bottom: 22px !important; /* 16px * 1.4 */
+            }
+            
+            .timer-button {
+              border-radius: 22px !important; /* 16px * 1.4 for most buttons */
+            }
+            
+            .timer-start {
+              border-radius: 28px !important; /* 20px * 1.4 for start button */
+              padding: 20px 39px !important; /* 14px 28px * 1.4 */
+              min-height: 67px !important; /* 48px * 1.4 */
+              min-width: 196px !important; /* 140px * 1.4 */
+              gap: 11px !important; /* 8px * 1.4 */
+            }
+            
+            .timer-pause-resume, .timer-bank {
+              padding: 17px 28px !important; /* 12px 20px * 1.4 */
+              min-height: 67px !important; /* 48px * 1.4 */
+              min-width: 140px !important; /* 100px * 1.4 */
+            }
+            
+            .progress-section {
+              border-radius: 22px !important; /* 16px * 1.4 */
+              padding: 28px !important; /* 20px * 1.4 */
+              margin-bottom: 28px !important; /* 20px * 1.4 */
+            }
+            
+            .reading-level-card {
+              border-radius: 17px !important; /* 12px * 1.4 */
+              padding: 22px !important; /* 16px * 1.4 */
+              margin-bottom: 22px !important; /* 16px * 1.4 */
+            }
+            
+            .stats-grid {
+              gap: 17px !important; /* 12px * 1.4 */
+              margin-bottom: 22px !important; /* 16px * 1.4 */
+            }
+            
+            .stats-grid > div {
+              border-radius: 17px !important; /* 12px * 1.4 */
+              padding: 17px !important; /* 12px * 1.4 */
+            }
+            
+            .streak-calendar-section {
+              border-radius: 22px !important; /* 16px * 1.4 */
+              padding: 28px !important; /* 20px * 1.4 */
+              margin-bottom: 28px !important; /* 20px * 1.4 */
+            }
+            
+            .streak-stats {
+              margin-bottom: 22px !important; /* 16px * 1.4 */
+              padding: 11px 17px !important; /* 8px 12px * 1.4 */
+              border-radius: 11px !important; /* 8px * 1.4 */
+            }
+            
+            .timeline-calendar {
+              gap: 8px !important; /* 6px * 1.4 */
+              padding: 11px 6px !important; /* 8px 4px * 1.4 */
+              margin-bottom: 17px !important; /* 12px * 1.4 */
+            }
+            
+            /* Scale individual calendar day items */
+            .timeline-calendar > div {
+              min-width: 45px !important; /* 32px * 1.4 */
+              height: 67px !important; /* 48px * 1.4 */
+              border-radius: 14px !important; /* 10px * 1.4 */
+            }
+          }
+          
           @media screen and (max-width: 480px) {
             input, textarea, select, button {
               font-size: 16px !important;
