@@ -1,4 +1,4 @@
-// pages/parent/dashboard.js - Updated with Lux Libris styling and mobile optimization
+// pages/parent/dashboard.js - Updated with Book Nominees and unlocked Settings
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
@@ -35,9 +35,10 @@ export default function ParentDashboard() {
     textSecondary: '#556B7A'
   }
 
-  // UPDATED: Navigation menu items with fancy symbols
+  // UPDATED: Navigation menu items with Book Nominees and unlocked Settings
   const navMenuItems = useMemo(() => [
     { name: 'Family Dashboard', path: '/parent/dashboard', icon: '⌂', current: true },
+    { name: 'Book Nominees', path: '/parent/nominees', icon: '□' },
     { name: 'Reading Habits', path: '/parent/healthy-habits', icon: '◉' },
     { name: 'Family DNA Lab', path: '/parent/dna-lab', icon: '🧬' },
     { name: 'Quiz Unlock Center', path: '/parent/quiz-unlock', icon: '▦' },
@@ -263,10 +264,17 @@ export default function ParentDashboard() {
     }
   }
 
+  // UPDATED: Handle tab navigation with unlocked Settings and Book Nominees
   const handleTabClick = (tabName) => {
     if (tabName === 'Family Dashboard') {
       setShowComingSoon('You\'re already here! ⌂')
       setTimeout(() => setShowComingSoon(''), 1500)
+    } else if (tabName === 'Settings') {
+      // Navigate to settings - it's unlocked!
+      router.push('/parent/settings')
+    } else if (tabName === 'Book Nominees') {
+      // Navigate to nominees - it's unlocked!
+      router.push('/parent/nominees')
     } else {
       setShowComingSoon(`${tabName} is coming soon! 🚧`)
       setTimeout(() => setShowComingSoon(''), 3000)
@@ -432,7 +440,7 @@ export default function ParentDashboard() {
               ☰
             </button>
 
-            {/* Dropdown Menu */}
+            {/* UPDATED Dropdown Menu with Book Nominees and unlocked Settings */}
             {showNavMenu && (
               <div style={{
                 position: 'absolute',
@@ -458,8 +466,9 @@ export default function ParentDashboard() {
                       if (item.current) return
                       
                       setTimeout(() => {
-                        if (item.path === '/parent/dashboard') {
-                          handleTabClick('Family Dashboard')
+                        // Navigate to actual pages for unlocked items
+                        if (item.path === '/parent/settings' || item.path === '/parent/nominees') {
+                          router.push(item.path)
                         } else {
                           handleTabClick(item.name)
                         }

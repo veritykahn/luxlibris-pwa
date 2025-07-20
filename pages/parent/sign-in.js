@@ -1,13 +1,17 @@
-// pages/parent/sign-in.js - Updated with Lux Libris styling and mobile optimization
+// pages/parent/sign-in.js - FIXED: No manual redirects, wait for AuthContext
+
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
 import { signInWithEmailAndPassword } from 'firebase/auth'
 import { auth } from '../../lib/firebase'
+import { useAuth } from '../../contexts/AuthContext'
 
 export default function ParentSignIn() {
   const router = useRouter()
+  const { userProfile, getDashboardUrl } = useAuth() // Add AuthContext
   const [loading, setLoading] = useState(false)
+  const [waitingForProfile, setWaitingForProfile] = useState(false) // NEW STATE
   const [error, setError] = useState('')
   const [formData, setFormData] = useState({
     email: '',
@@ -36,6 +40,27 @@ export default function ParentSignIn() {
     }
   }, [router.query])
 
+  // FIXED: Wait for userProfile to load, then redirect
+  useEffect(() => {
+    if (waitingForProfile && userProfile) {
+      console.log('✅ Parent profile loaded, redirecting...');
+      const dashboardUrl = getDashboardUrl();
+      router.push(dashboardUrl);
+    }
+  }, [waitingForProfile, userProfile, getDashboardUrl, router]);
+
+  // FIXED: Safety timeout if profile takes too long
+  useEffect(() => {
+    if (waitingForProfile) {
+      const timeout = setTimeout(() => {
+        console.warn('⚠️ Profile loading timeout, redirecting to fallback');
+        router.push('/parent/dashboard');
+      }, 8000); // 8 second timeout
+
+      return () => clearTimeout(timeout);
+    }
+  }, [waitingForProfile, router]);
+
   const handleSignIn = async () => {
     setError('')
     setLoading(true)
@@ -59,8 +84,11 @@ export default function ParentSignIn() {
       
       console.log('✅ Firebase sign-in successful:', userCredential.user.uid)
       
-      // Let AuthContext handle the rest - just redirect to dashboard
-      router.push('/parent/dashboard')
+      // REMOVED: router.push('/parent/dashboard')
+      
+      // FIXED: After successful authentication, wait for profile
+      setLoading(false);
+      setWaitingForProfile(true);
 
     } catch (error) {
       console.error('❌ Sign-in error:', error)
@@ -88,9 +116,10 @@ export default function ParentSignIn() {
         default:
           setError('Failed to sign in. Please try again or contact support.')
       }
-    }
 
-    setLoading(false)
+      setLoading(false)
+      setWaitingForProfile(false) // Reset waiting state on error
+    }
   }
 
   const handleBack = () => {
@@ -104,6 +133,90 @@ export default function ParentSignIn() {
   const handleForgotPassword = () => {
     // TODO: Implement password reset
     setError('Password reset feature coming soon! Please contact support at support@luxlibris.org')
+  }
+
+  // FIXED: Show loading state while waiting for profile
+  if (waitingForProfile) {
+    return (
+      <>
+        <Head>
+          <title>Loading Account - Lux Libris</title>
+          <meta name="description" content="Loading your parent dashboard" />
+          <link rel="icon" href="/images/lux_libris_logo.png" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+        </Head>
+
+        <div style={{
+          minHeight: '100vh',
+          background: `linear-gradient(135deg, ${luxTheme.background} 0%, ${luxTheme.primary} 30%, ${luxTheme.secondary} 100%)`,
+          fontFamily: 'system-ui, -apple-system, sans-serif',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '1rem'
+        }}>
+          <div style={{
+            maxWidth: '28rem',
+            width: '100%',
+            background: luxTheme.surface,
+            borderRadius: '1.5rem',
+            padding: 'clamp(1.5rem, 5vw, 2.5rem)',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+            textAlign: 'center'
+          }}>
+            <div style={{
+              width: '4rem',
+              height: '4rem',
+              background: `linear-gradient(135deg, ${luxTheme.primary}, ${luxTheme.secondary})`,
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 1.5rem',
+              fontSize: '1.75rem'
+            }}>
+              ⏳
+            </div>
+            
+            <h1 style={{
+              fontSize: 'clamp(1.25rem, 5vw, 1.5rem)',
+              fontWeight: 'bold',
+              color: luxTheme.textPrimary,
+              margin: '0 0 1rem 0',
+              fontFamily: 'Didot, "Times New Roman", serif'
+            }}>
+              Loading Your Family Dashboard...
+            </h1>
+            
+            <p style={{
+              color: luxTheme.textSecondary,
+              fontSize: 'clamp(0.875rem, 3vw, 1rem)',
+              margin: '0 0 2rem 0',
+              lineHeight: '1.4'
+            }}>
+              Setting up your personalized parent experience
+            </p>
+
+            <div style={{
+              width: '3rem',
+              height: '3rem',
+              border: `4px solid ${luxTheme.primary}40`,
+              borderTop: `4px solid ${luxTheme.primary}`,
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite',
+              margin: '0 auto'
+            }}></div>
+          </div>
+        </div>
+
+        <style jsx>{`
+          @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
+      </>
+    )
   }
 
   return (

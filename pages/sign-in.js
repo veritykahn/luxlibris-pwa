@@ -1,15 +1,18 @@
-// pages/sign-in.js - Updated with Parent Sign-In Support
+// pages/sign-in.js - FIXED: No manual redirects, wait for AuthContext
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { authHelpers, dbHelpers, auth } from '../lib/firebase';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function SignIn() {
   const router = useRouter();
+  const { userProfile, getDashboardUrl } = useAuth(); // Add AuthContext
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [waitingForProfile, setWaitingForProfile] = useState(false); // NEW STATE
   const [error, setError] = useState('');
   const [showSessionExpiredMessage, setShowSessionExpiredMessage] = useState(false);
 
@@ -29,6 +32,33 @@ export default function SignIn() {
       setShowSessionExpiredMessage(true);
     }
   }, [router.query]);
+
+  // FIXED: Wait for userProfile to load, then redirect
+  useEffect(() => {
+    if (waitingForProfile && userProfile) {
+      console.log('✅ User profile loaded, redirecting...');
+      const dashboardUrl = getDashboardUrl();
+      router.push(dashboardUrl);
+    }
+  }, [waitingForProfile, userProfile, getDashboardUrl, router]);
+
+  // FIXED: Safety timeout if profile takes too long
+  useEffect(() => {
+    if (waitingForProfile) {
+      const timeout = setTimeout(() => {
+        console.warn('⚠️ Profile loading timeout, redirecting to fallback');
+        if (formData.accountType === 'student') {
+          router.push('/student-dashboard');
+        } else if (formData.accountType === 'educator') {
+          router.push('/admin/school-dashboard');
+        } else if (formData.accountType === 'parent') {
+          router.push('/parent/dashboard');
+        }
+      }, 8000); // 8 second timeout
+
+      return () => clearTimeout(timeout);
+    }
+  }, [waitingForProfile, formData.accountType, router]);
 
   const accountTypes = [
     {
@@ -66,7 +96,7 @@ export default function SignIn() {
     return password && password.length >= 5 && /^[a-z]+$/.test(password);
   };
 
-  // Perform student sign-in with enhanced authentication
+  // FIXED: Perform student sign-in WITHOUT redirect
   const performStudentSignIn = async () => {
     try {
       console.log('🔐 Attempting student sign-in with enhanced authentication...');
@@ -80,8 +110,8 @@ export default function SignIn() {
         formData.personalPassword.toLowerCase()
       );
       
-      console.log('✅ Student sign-in successful - redirecting to dashboard');
-      router.push('/student-dashboard');
+      console.log('✅ Student sign-in successful - waiting for profile to load');
+      // REMOVED: router.push('/student-dashboard');
       
     } catch (error) {
       console.error('❌ Student sign-in error:', error);
@@ -89,7 +119,7 @@ export default function SignIn() {
     }
   };
 
-  // Perform parent sign-in
+  // FIXED: Perform parent sign-in WITHOUT redirect
   const performParentSignIn = async () => {
     try {
       console.log('🔐 Starting parent sign-in process...');
@@ -104,8 +134,7 @@ export default function SignIn() {
       
       console.log('✅ Firebase sign-in successful:', userCredential.user.uid);
       
-      // Simple redirect - let AuthContext handle onboarding checks
-      router.push('/parent/dashboard');
+      // REMOVED: router.push('/parent/dashboard');
 
     } catch (error) {
       console.error('❌ Parent sign-in error:', error);
@@ -172,8 +201,8 @@ export default function SignIn() {
 
         await authHelpers.signIn(formData.email, formData.password);
         
-        console.log('✅ Educator sign-in successful - redirecting to dashboard');
-        router.push('/admin/school-dashboard');
+        console.log('✅ Educator sign-in successful - waiting for profile to load');
+        // REMOVED: router.push('/admin/school-dashboard');
         
       } else if (formData.accountType === 'parent') {
         if (!formData.email.trim() || !formData.password.trim()) {
@@ -185,12 +214,17 @@ export default function SignIn() {
         // Handle parent sign-in
         await performParentSignIn();
       }
+
+      // FIXED: After successful authentication, wait for profile
+      setLoading(false);
+      setWaitingForProfile(true);
+
     } catch (error) {
       console.error('❌ Sign in error:', error);
       setError(error.message || 'Sign in failed. Please check your information and try again.');
+      setLoading(false);
+      setWaitingForProfile(false); // Reset waiting state on error
     }
-
-    setLoading(false);
   };
 
   const handleBack = () => {
@@ -206,6 +240,90 @@ export default function SignIn() {
   const handleForgotPassword = () => {
     setError('Password reset feature coming soon! Please contact support at support@luxlibris.org');
   };
+
+  // FIXED: Show loading state while waiting for profile
+  if (waitingForProfile) {
+    return (
+      <>
+        <Head>
+          <title>Loading Account - Lux Libris</title>
+          <meta name="description" content="Loading your Lux Libris account" />
+          <link rel="icon" href="/images/lux_libris_logo.png" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        </Head>
+
+        <div style={{
+          minHeight: '100vh',
+          background: 'linear-gradient(135deg, #FFFCF5 0%, #ADD4EA 50%, #C3E0DE 100%)',
+          fontFamily: 'system-ui, -apple-system, sans-serif',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '1rem'
+        }}>
+          <div style={{
+            maxWidth: '28rem',
+            width: '100%',
+            background: 'white',
+            borderRadius: '1.5rem',
+            padding: 'clamp(1.5rem, 5vw, 2.5rem)',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+            textAlign: 'center'
+          }}>
+            <div style={{
+              width: '4rem',
+              height: '4rem',
+              background: 'linear-gradient(135deg, #ADD4EA, #C3E0DE)',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 1.5rem',
+              fontSize: '1.75rem'
+            }}>
+              ⏳
+            </div>
+            
+            <h1 style={{
+              fontSize: 'clamp(1.25rem, 5vw, 1.5rem)',
+              fontWeight: 'bold',
+              color: '#223848',
+              margin: '0 0 1rem 0',
+              fontFamily: 'Georgia, serif'
+            }}>
+              Loading Your Account...
+            </h1>
+            
+            <p style={{
+              color: '#6b7280',
+              fontSize: 'clamp(0.875rem, 3vw, 1rem)',
+              margin: '0 0 2rem 0',
+              lineHeight: '1.4'
+            }}>
+              Setting up your personalized dashboard
+            </p>
+
+            <div style={{
+              width: '3rem',
+              height: '3rem',
+              border: '4px solid #e5e7eb',
+              borderTop: '4px solid #ADD4EA',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite',
+              margin: '0 auto'
+            }}></div>
+          </div>
+        </div>
+
+        <style jsx>{`
+          @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
+      </>
+    );
+  }
 
   return (
     <>
