@@ -1800,7 +1800,7 @@ const loadSaintsData = useCallback(async () => {
                       width: '100%',
                       height: '100%',
                       objectFit: 'contain',
-                      filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.4)) drop-shadow(0 0 20px rgba(255,255,255,0.3)) drop-shadow(0 0 40px rgba(255,255,255,0.2))'
+                      filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.3)) drop-shadow(0 0 15px rgba(255,255,255,0.4))'
                     }}
                     onError={(e) => {
                       e.target.style.display = 'none';
@@ -1816,7 +1816,7 @@ const loadSaintsData = useCallback(async () => {
                     justifyContent: 'center',
                     fontSize: '80px',
                     color: 'rgba(255,255,255,0.8)',
-                    filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.4)) drop-shadow(0 0 20px rgba(255,255,255,0.3)) drop-shadow(0 0 40px rgba(255,255,255,0.2))'
+                    filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.3)) drop-shadow(0 0 15px rgba(255,255,255,0.4))'
                   }}>
                     ♔
                   </div>

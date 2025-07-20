@@ -551,8 +551,7 @@ useEffect(() => {
       setCurrentCardIndex(0);
     }
   };
-
-  // Show loading
+// Show loading
   if (loading || isLoading || !studentData || !currentTheme) {
     return (
       <div style={{
@@ -1517,7 +1516,7 @@ useEffect(() => {
         </div>
 
         {/* MAIN CONTENT - NO TOUCH HANDLERS */}
-        <div style={{
+        <div className="nominees-main-content" style={{
           padding: '20px 20px 0 20px',
           display: 'flex',
           flexDirection: 'column',
@@ -1526,7 +1525,7 @@ useEffect(() => {
           paddingTop: '20px'
         }}>
           {/* Main Card with Navigation Arrows */}
-          <div style={{
+          <div className="card-container" style={{
             position: 'relative',
             width: '100%',
             maxWidth: '360px',
@@ -1535,6 +1534,7 @@ useEffect(() => {
             {/* UPDATED: ALWAYS SHOW LEFT ARROW */}
             <button
               onClick={goToPrevCard}
+              className="nav-arrow nav-arrow-left"
               style={{
                 position: 'absolute',
                 left: '-24px',
@@ -1565,6 +1565,7 @@ useEffect(() => {
             {/* UPDATED: ALWAYS SHOW RIGHT ARROW */}
             <button
               onClick={goToNextCard}
+              className="nav-arrow nav-arrow-right"
               style={{
                 position: 'absolute',
                 right: '-24px',
@@ -1604,7 +1605,7 @@ useEffect(() => {
           </div>
 
           {/* Navigation Hint */}
-          <div style={{
+          <div className="navigation-hint" style={{
             fontSize: '12px',
             color: currentTheme.textSecondary,
             textAlign: 'center',
@@ -1614,12 +1615,12 @@ useEffect(() => {
           </div>
 
           {/* Quick Browse */}
-          <div style={{
+          <div className="quick-browse-section" style={{
             width: '100%',
             maxWidth: '400px',
             marginBottom: '40px'
           }}>
-            <h3 style={{
+            <h3 className="quick-browse-title" style={{
               fontSize: '16px',
               fontWeight: 'bold',
               color: currentTheme.textPrimary,
@@ -1628,7 +1629,7 @@ useEffect(() => {
             }}>
               Quick Browse
             </h3>
-            <div style={{
+            <div className="quick-browse-strip" style={{
               display: 'flex',
               gap: '8px',
               overflowX: 'auto',
@@ -1801,6 +1802,66 @@ useEffect(() => {
           * {
             box-sizing: border-box;
           }
+          
+          /* Tablet optimizations for iPad-sized devices */
+          @media screen and (min-width: 768px) and (max-width: 1024px) {
+            .nominees-main-content {
+              padding: 28px 28px 0 28px !important; /* 20px * 1.4 */
+              padding-top: 28px !important; /* 20px * 1.4 */
+            }
+            
+            /* Keep card container the same size (playing card aesthetic) */
+            .card-container {
+              margin-bottom: 28px !important; /* 20px * 1.4 */
+            }
+            
+            /* Scale navigation arrows slightly */
+            .nav-arrow {
+              width: 67px !important; /* 48px * 1.4 */
+              height: 67px !important; /* 48px * 1.4 */
+              font-size: 25px !important; /* 18px * 1.4 */
+            }
+            
+            .nav-arrow-left {
+              left: -34px !important; /* -24px * 1.4 */
+            }
+            
+            .nav-arrow-right {
+              right: -34px !important; /* -24px * 1.4 */
+            }
+            
+            .navigation-hint {
+              font-size: 17px !important; /* 12px * 1.4 */
+              margin-bottom: 28px !important; /* 20px * 1.4 */
+            }
+            
+            /* Expand quick browse section to use full iPad width */
+            .quick-browse-section {
+              max-width: 800px !important; /* Much wider on iPad */
+              margin-bottom: 56px !important; /* 40px * 1.4 */
+            }
+            
+            .quick-browse-title {
+              font-size: 22px !important; /* 16px * 1.4 */
+              margin: 0 0 17px 0 !important; /* 12px * 1.4 */
+            }
+            
+            .quick-browse-strip {
+              gap: 11px !important; /* 8px * 1.4 */
+              padding: 11px 0 56px 0 !important; /* 8px 0 40px 0 * 1.4 */
+              justify-content: center; /* Center the books on iPad */
+              flex-wrap: wrap; /* Allow wrapping on very wide screens */
+            }
+            
+            /* Scale quick browse items */
+            .quick-browse-item {
+              width: 90px !important; /* 64px * 1.4 */
+              height: 134px !important; /* 96px * 1.4 */
+              border-radius: 11px !important; /* 8px * 1.4 */
+              font-size: 34px !important; /* 24px * 1.4 */
+            }
+          }
+          
           @media (max-width: 480px) {
             .cover-stats-container {
               flex-direction: column !important;
