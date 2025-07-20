@@ -1,11 +1,10 @@
-// pages/student-settings.js - Updated with Account Deletion
+// pages/student-settings.js - Updated and Cleaned Up (Export/Delete moved to separate page)
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
 import { usePhaseAccess } from '../hooks/usePhaseAccess';
 import { getStudentDataEntities, updateStudentDataEntities, getSchoolNomineesEntities, dbHelpers } from '../lib/firebase';
 import { createParentInviteCode } from '../lib/parentLinking';
-import DataExportComponent from '../components/DataExportComponent';
 import Head from 'next/head'
 
 // Theme definitions
@@ -124,11 +123,6 @@ export default function StudentSettings() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [passwordError, setPasswordError] = useState('');
-
-  // Account Deletion State
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [deleteConfirmText, setDeleteConfirmText] = useState('');
-  const [isDeleting, setIsDeleting] = useState(false);
 
   // Navigation Menu State
   const [showNavMenu, setShowNavMenu] = useState(false);
@@ -459,47 +453,6 @@ export default function StudentSettings() {
       setShowSuccess('❌ Error signing out. Please try again.');
       setTimeout(() => setShowSuccess(''), 3000);
       setIsSaving(false);
-    }
-  };
-
-  // Account deletion functionality with audit logging
-  const handleDeleteAccount = async () => {
-    if (deleteConfirmText !== 'DELETE MY ACCOUNT') {
-      setShowSuccess('❌ Please type "DELETE MY ACCOUNT" exactly to confirm.');
-      setTimeout(() => setShowSuccess(''), 3000);
-      return;
-    }
-
-    setIsDeleting(true);
-    try {
-      console.log('🗑️ Starting account deletion with audit logging...');
-      
-      // Use enhanced deletion with export and audit logging
-      await dbHelpers.deleteStudentAccountWithExport(
-        user.uid,
-        studentData.id,
-        studentData.entityId,
-        studentData.schoolId,
-        false // Don't auto-export since user can export manually
-      );
-      
-      console.log('✅ Account deleted successfully with audit trail');
-      
-      // Clear any local storage
-      if (typeof window !== 'undefined') {
-        localStorage.clear();
-      }
-      
-      // Redirect to homepage
-      window.location.href = '/';
-      
-    } catch (error) {
-      console.error('❌ Error deleting account:', error);
-      setShowSuccess('❌ Failed to delete account. Please try again or contact support.');
-      setTimeout(() => setShowSuccess(''), 5000);
-      setIsDeleting(false);
-      setShowDeleteConfirm(false);
-      setDeleteConfirmText('');
     }
   };
 
@@ -1581,17 +1534,6 @@ export default function StudentSettings() {
             )}
           </div>
 
-          {/* Data Export Section */}
-          <DataExportComponent 
-            accountType="student"
-            studentData={studentData}
-            theme={previewTheme}
-            onExportComplete={(result) => {
-              setShowSuccess('📦 Data exported successfully!');
-              setTimeout(() => setShowSuccess(''), 3000);
-            }}
-          />
-
           {/* Account & Other Settings */}
           <div style={{
             backgroundColor: previewTheme.surface,
@@ -1644,7 +1586,7 @@ export default function StudentSettings() {
               </button>
 
               <button
-                onClick={() => setShowDeleteConfirm(true)}
+                onClick={() => router.push('/student-account-deletion')}
                 style={{
                   backgroundColor: 'transparent',
                   border: '1px solid #dc2626',
@@ -1657,7 +1599,7 @@ export default function StudentSettings() {
                   fontWeight: '600'
                 }}
               >
-                🗑️ Delete Account & Data
+                📦 Export & Delete Account
               </button>
             </div>
           </div>
@@ -1760,148 +1702,6 @@ export default function StudentSettings() {
                     }}
                   >
                     {isSaving ? 'Signing out...' : 'Sign Out'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Delete Account Confirmation Modal */}
-          {showDeleteConfirm && (
-            <div style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: 'rgba(0, 0, 0, 0.5)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 2000,
-              padding: '20px'
-            }}>
-              <div style={{
-                backgroundColor: previewTheme.surface,
-                borderRadius: '16px',
-                padding: '24px',
-                maxWidth: '450px',
-                width: '100%',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
-              }}>
-                <h3 style={{
-                  fontSize: '18px',
-                  fontWeight: 'bold',
-                  color: '#dc2626',
-                  marginBottom: '12px',
-                  textAlign: 'center'
-                }}>
-                  🗑️ Delete Account & Data
-                </h3>
-                <div style={{
-                  backgroundColor: '#fef2f2',
-                  border: '1px solid #fca5a5',
-                  borderRadius: '8px',
-                  padding: '16px',
-                  marginBottom: '16px'
-                }}>
-                  <p style={{
-                    fontSize: '14px',
-                    color: '#dc2626',
-                    margin: '0 0 12px 0',
-                    lineHeight: '1.4',
-                    fontWeight: '600'
-                  }}>
-                    ⚠️ This action cannot be undone!
-                  </p>
-                  <p style={{
-                    fontSize: '14px',
-                    color: '#dc2626',
-                    margin: 0,
-                    lineHeight: '1.4'
-                  }}>
-                    Deleting your account will permanently remove:
-                  </p>
-                  <ul style={{
-                    fontSize: '13px',
-                    color: '#dc2626',
-                    margin: '8px 0 0 16px',
-                    lineHeight: '1.4'
-                  }}>
-                    <li>Your reading progress and bookshelf</li>
-                    <li>All achievements and saints unlocked</li>
-                    <li>Your account settings and preferences</li>
-                    <li>Connection to your parents (if any)</li>
-                  </ul>
-                </div>
-                
-                <div style={{ marginBottom: '20px' }}>
-                  <label style={{
-                    display: 'block',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: previewTheme.textPrimary,
-                    marginBottom: '6px'
-                  }}>
-                    Type &quot;DELETE MY ACCOUNT&quot; to confirm:
-                  </label>
-                  <input
-                    type="text"
-                    value={deleteConfirmText}
-                    onChange={(e) => setDeleteConfirmText(e.target.value)}
-                    placeholder="DELETE MY ACCOUNT"
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      border: `2px solid ${deleteConfirmText === 'DELETE MY ACCOUNT' ? '#dc2626' : '#e5e7eb'}`,
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      fontFamily: 'monospace',
-                      backgroundColor: previewTheme.background
-                    }}
-                  />
-                </div>
-                
-                <div style={{
-                  display: 'flex',
-                  gap: '12px',
-                  justifyContent: 'center'
-                }}>
-                  <button
-                    onClick={() => {
-                      setShowDeleteConfirm(false);
-                      setDeleteConfirmText('');
-                    }}
-                    disabled={isDeleting}
-                    style={{
-                      backgroundColor: 'transparent',
-                      border: `1px solid ${previewTheme.primary}50`,
-                      color: previewTheme.textPrimary,
-                      padding: '10px 20px',
-                      borderRadius: '8px',
-                      cursor: isDeleting ? 'not-allowed' : 'pointer',
-                      fontSize: '14px',
-                      opacity: isDeleting ? 0.5 : 1
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleDeleteAccount}
-                    disabled={isDeleting || deleteConfirmText !== 'DELETE MY ACCOUNT'}
-                    style={{
-                      backgroundColor: '#dc2626',
-                      color: 'white',
-                      border: 'none',
-                      padding: '10px 20px',
-                      borderRadius: '8px',
-                      cursor: (isDeleting || deleteConfirmText !== 'DELETE MY ACCOUNT') ? 'not-allowed' : 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      opacity: (isDeleting || deleteConfirmText !== 'DELETE MY ACCOUNT') ? 0.5 : 1
-                    }}
-                  >
-                    {isDeleting ? 'Deleting...' : 'Delete Account'}
                   </button>
                 </div>
               </div>
