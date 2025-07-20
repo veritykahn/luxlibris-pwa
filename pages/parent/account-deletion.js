@@ -527,9 +527,9 @@ export default function ParentAccountDeletion() {
                 <li><strong>Your parent account:</strong> Deleted immediately and permanently</li>
                 <li><strong>Family settings:</strong> Family name and preferences removed</li>
                 <li><strong>Quiz codes:</strong> All saved teacher codes deleted</li>
-                <li><strong>Children's accounts:</strong> Remain active and keep all reading progress</li>
+                <li><strong>Children&apos;s accounts:</strong> Remain active and keep all reading progress</li>
                 <li><strong>Parent connection:</strong> Children lose parent dashboard access</li>
-                <li><strong>Quiz approval:</strong> You can no longer approve children's quiz requests</li>
+                <li><strong>Quiz approval:</strong> You can no longer approve children&apos;s quiz requests</li>
               </ul>
             </div>
 
@@ -550,7 +550,7 @@ export default function ParentAccountDeletion() {
                     color: '#0284c7',
                     margin: 0
                   }}>
-                    Your Children's Accounts Will Be Preserved
+                    Your Children&apos;s Accounts Will Be Preserved
                   </h4>
                 </div>
                 
@@ -612,7 +612,7 @@ export default function ParentAccountDeletion() {
                   color: '#92400e',
                   margin: 0
                 }}>
-                  Additional Options for Children's Accounts
+                  Additional Options for Children&apos;s Accounts
                 </h4>
               </div>
               
@@ -637,7 +637,7 @@ export default function ParentAccountDeletion() {
                     margin: 0,
                     lineHeight: '1.4'
                   }}>
-                    Contact your children's teachers to request temporary account deactivation. 
+                    Contact your children&apos;s teachers to request temporary account deactivation. 
                     This preserves their data while preventing access to the platform.
                   </p>
                 </div>
@@ -661,7 +661,7 @@ export default function ParentAccountDeletion() {
                     margin: '0 0 8px 0',
                     lineHeight: '1.4'
                   }}>
-                    If you need your children's reading accounts completely deleted, you can:
+                    If you need your children&apos;s reading accounts completely deleted, you can:
                   </p>
                   <ul style={{
                     fontSize: 'clamp(10px, 2.5vw, 12px)',
@@ -860,7 +860,7 @@ ${parentData.firstName} ${parentData.lastName}`);
                         margin: 0,
                         fontWeight: '600'
                       }}>
-                        ✅ Your children's accounts and reading progress will remain safe.
+                        ✅ Your children&apos;s accounts and reading progress will remain safe.
                       </p>
                     </div>
                   )}
