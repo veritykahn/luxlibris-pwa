@@ -1785,14 +1785,23 @@ const loadSaintsData = useCallback(async () => {
 
                 {/* LARGE SAINT IMAGE - TRANSPARENT BACKGROUND */}
                 <div className="saint-modal-image-container" style={{
-                  width: '300px',
-                  height: '360px',
-                  marginBottom: '16px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginTop: '40px' // Space for close button
-                }}>
+  width: '300px',
+  height: '360px',
+  marginBottom: '16px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  marginTop: '40px',
+  position: 'relative'
+}}>
+  <div style={{
+    position: 'absolute',
+    inset: '20px',
+    background: 'radial-gradient(circle, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 40%, transparent 70%)',
+    borderRadius: '50%',
+    filter: 'blur(8px)',
+    zIndex: 0
+  }} />
                   <img 
                     src={selectedSaint.icon_asset?.replace('assets/', '/') || `/saints/${selectedSaint.id}.png`} 
                     alt={selectedSaint.name}
@@ -1800,7 +1809,9 @@ const loadSaintsData = useCallback(async () => {
                       width: '100%',
                       height: '100%',
                       objectFit: 'contain',
-                      filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.3)) drop-shadow(0 0 15px rgba(255,255,255,0.4))'
+                      filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.3))',
+background: 'radial-gradient(circle at center, rgba(255,255,255,0.1) 0%, transparent 70%)',
+borderRadius: '12px'
                     }}
                     onError={(e) => {
                       e.target.style.display = 'none';
@@ -1816,7 +1827,7 @@ const loadSaintsData = useCallback(async () => {
                     justifyContent: 'center',
                     fontSize: '80px',
                     color: 'rgba(255,255,255,0.8)',
-                    filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.3)) drop-shadow(0 0 15px rgba(255,255,255,0.4))'
+                    filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.3))'
                   }}>
                     ♔
                   </div>
