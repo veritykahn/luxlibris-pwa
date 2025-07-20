@@ -1295,27 +1295,43 @@ export default function StudentHealthyHabits() {
               flexWrap: 'wrap'
             }}>
               {!isTimerActive ? (
-                <button
-                  onClick={handleStartTimer}
-                  style={{
-                    backgroundColor: currentTheme.primary,
-                    color: currentTheme.textPrimary,
-                    border: 'none',
-                    borderRadius: '20px',
-                    padding: '14px 28px',
-                    fontSize: 'clamp(14px, 4vw, 16px)',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    minHeight: '48px',
-                    minWidth: '140px',
-                    justifyContent: 'center'
-                  }}
-                >
-                  ▶️ Start Session
-                </button>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                  <button
+                    onClick={handleStartTimer}
+                    style={{
+                      backgroundColor: currentTheme.primary,
+                      color: currentTheme.textPrimary,
+                      border: 'none',
+                      borderRadius: '20px',
+                      padding: '14px 28px',
+                      fontSize: 'clamp(14px, 4vw, 16px)',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      minHeight: '48px',
+                      minWidth: '140px',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    ▶️ Start Session
+                  </button>
+                  <button
+                    className="timer-settings-link"
+                    onClick={() => router.push('/student-settings')}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: currentTheme.textSecondary,
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      textDecoration: 'underline'
+                    }}
+                  >
+                    Timer length can be adjusted in settings →
+                  </button>
+                </div>
               ) : (
                 <>
                   <button
@@ -1380,20 +1396,6 @@ export default function StudentHealthyHabits() {
                 ⏸️ Timer paused while away from this page
               </div>
             )}
-
-            <button
-              onClick={() => router.push('/student-settings')}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: currentTheme.textSecondary,
-                fontSize: '12px',
-                cursor: 'pointer',
-                textDecoration: 'underline'
-              }}
-            >
-              Timer length can be adjusted in settings →
-            </button>
           </div>
 
           {/* TODAY'S PROGRESS */}
@@ -1541,15 +1543,6 @@ export default function StudentHealthyHabits() {
               }}>
                 🗓️ {streakStats.months} months
               </div>
-            </div>
-
-            {/* Month Labels - Enhanced for iPad */}
-            <div className="calendar-month-labels" style={{ display: 'none' }}>
-              {streakCalendar.map((day, index) => (
-                <div key={`month-${index}`} style={{ fontSize: '10px', color: currentTheme.textSecondary }}>
-                  {index === 0 || day.dayNumber === 1 ? new Date(day.date).toLocaleDateString('en-US', { month: 'short' }) : ''}
-                </div>
-              ))}
             </div>
 
             {/* Timeline Calendar */}
@@ -1853,58 +1846,63 @@ export default function StudentHealthyHabits() {
             
             .timer-controls {
               gap: 16px !important;
+              flex-direction: column !important;
+              align-items: stretch !important;
             }
             
+            .timer-settings-link {
+              margin-top: 12px !important;
+              display: block !important;
+            }
+            
+            /* CENTER ALL TODAY'S PROGRESS CONTENT */
             .progress-section {
               padding: 24px !important;
+              text-align: center !important;
+            }
+            
+            .progress-section h3 {
+              text-align: center !important;
             }
             
             .stats-grid {
-              grid-template-columns: 1fr 1fr 1fr !important;
-              gap: 24px !important;
+              grid-template-columns: 1fr 1fr !important;
+              gap: 20px !important;
+              justify-items: center !important;
+              max-width: 400px !important;
+              margin: 0 auto !important;
             }
             
+            .reading-level-card {
+              text-align: center !important;
+              max-width: 300px !important;
+              margin: 0 auto 16px auto !important;
+            }
+            
+            /* LARGER STREAK CALENDAR - SINGLE SCROLLABLE ROW */
             .streak-calendar-section {
               padding: 24px !important;
             }
             
             .timeline-calendar {
-              display: grid !important;
-              grid-template-columns: repeat(10, 1fr) !important;
-              gap: 8px !important;
-              padding: 16px 0 !important;
-              overflow: visible !important;
-              justify-items: center !important;
+              gap: 12px !important;
+              padding: 16px 8px !important;
+              justify-content: flex-start !important;
             }
             
             .timeline-calendar > div {
-              min-width: 48px !important;
-              height: 68px !important;
-              border-radius: 12px !important;
-              position: relative !important;
-            }
-            
-            .calendar-month-labels {
-              display: grid !important;
-              grid-template-columns: repeat(10, 1fr) !important;
-              gap: 8px !important;
-              margin-bottom: 8px !important;
-              font-size: 10px !important;
-              color: #666 !important;
-              text-align: center !important;
-            }
-            
-            .reading-level-card {
-              display: flex !important;
-              align-items: center !important;
-              gap: 20px !important;
-              text-align: left !important;
-              padding: 20px !important;
-            }
-            
-            .reading-level-emoji {
-              font-size: 48px !important;
+              min-width: 56px !important;
+              height: 80px !important;
+              border-radius: 16px !important;
               flex-shrink: 0 !important;
+            }
+            
+            .timeline-calendar > div > div:first-child {
+              font-size: 12px !important;
+            }
+            
+            .timeline-calendar > div > div:nth-child(2) {
+              font-size: 18px !important;
             }
           }
         `}</style>

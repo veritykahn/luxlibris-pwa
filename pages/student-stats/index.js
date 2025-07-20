@@ -461,8 +461,7 @@ export default function StudentStatsMain() {
       document.removeEventListener('keydown', handleEscape);
     };
   }, [showNavMenu, showStatsDropdown, showFirstBookCelebration, showBraggingRights, showBadgeChallenge]);
-
-  // UPDATED: Generate dynamic celebration messages with phase awareness
+// UPDATED: Generate dynamic celebration messages with phase awareness
   const generateCelebrationMessages = useCallback((stats) => {
     const messages = {
       books: '',
@@ -1269,7 +1268,7 @@ export default function StudentStatsMain() {
           <>
             {/* NEW: Compact but Beautiful Phase-Specific Alert Banner */}
             {getPhaseSpecificMessage() && (
-              <div style={{
+              <div className="phase-alert-banner" style={{
                 background: phaseData.currentPhase === 'VOTING' ? 'linear-gradient(135deg, #8b5cf6, #a855f7)' : 
                            phaseData.currentPhase === 'RESULTS' ? 'linear-gradient(135deg, #f59e0b, #f97316)' : 
                            'linear-gradient(135deg, #3b82f6, #2563eb)',
@@ -1307,11 +1306,12 @@ export default function StudentStatsMain() {
             )}
 
             {/* MAIN CONTENT - ENHANCED WITH CELEBRATIONS */}
-            <div style={{ padding: 'clamp(16px, 5vw, 20px)', maxWidth: '400px', margin: '0 auto' }}>
+            <div className="stats-main-content" style={{ padding: 'clamp(16px, 5vw, 20px)', maxWidth: '500px', margin: '0 auto' }}>
           
           {/* BADGE CHALLENGE PILL - Only show during ACTIVE phase */}
           {hasAccess('achievements') && currentWeekBadge && (
             <button
+              className="badge-challenge-pill"
               onClick={handleBadgeChallengeClick}
               style={{
                 backgroundColor: currentTheme.surface,
@@ -1404,7 +1404,7 @@ export default function StudentStatsMain() {
             const heroStat = getHeroStat(quickStats);
             
             return (
-              <div style={{
+              <div className="reading-journey-card" style={{
                 backgroundColor: currentTheme.surface,
                 borderRadius: '20px',
                 padding: '20px',
@@ -1421,7 +1421,7 @@ export default function StudentStatsMain() {
                   🚀 Your Reading Adventure
                 </div>
                 
-                <div style={{
+                <div className="stats-grid" style={{
                   display: 'grid',
                   gridTemplateColumns: '1fr 1fr 1fr',
                   gap: '16px',
@@ -1515,7 +1515,7 @@ export default function StudentStatsMain() {
                 </div>
 
                 {/* ENHANCED XP DISPLAY WITH CELEBRATION */}
-                <div style={{
+                <div className="xp-display-card" style={{
                   backgroundColor: `${currentTheme.primary}20`,
                   borderRadius: '12px',
                   padding: '12px',
@@ -1572,6 +1572,7 @@ export default function StudentStatsMain() {
 
                 {/* UPDATED: ENHANCED BRAGGING RIGHTS BUTTON WITH PHASE AWARENESS AND ANIMATIONS */}
                 <button
+                  className="bragging-rights-button"
                   onClick={() => setShowBraggingRights(true)}
                   disabled={!hasAccess('votingInterface') && !hasAccess('votingResults') && phaseData.currentPhase === 'ACTIVE'}
                   style={{
@@ -1682,7 +1683,7 @@ export default function StudentStatsMain() {
 
           {/* ENHANCED FUN TIDBITS SECTION */}
           {funTidbits.length > 0 && (
-            <div style={{
+            <div className="fun-tidbits-section" style={{
               backgroundColor: currentTheme.surface,
               borderRadius: '16px',
               padding: '20px',
@@ -1698,23 +1699,25 @@ export default function StudentStatsMain() {
                 ✨ Exciting Updates
               </h3>
               
-              {funTidbits.map((tidbit, index) => (
-                <div
-                  key={index}
-                  style={{
-                    backgroundColor: `${currentTheme.primary}15`,
-                    borderRadius: '12px',
-                    padding: '12px',
-                    marginBottom: index < funTidbits.length - 1 ? '8px' : '0',
-                    fontSize: 'clamp(12px, 3.5vw, 14px)',
-                    color: currentTheme.textPrimary,
-                    fontWeight: '500',
-                    animation: `statsSlideIn 0.6s ease-out ${0.7 + (index * 0.1)}s both`
-                  }}
-                >
-                  {tidbit}
-                </div>
-              ))}
+              <div className="tidbits-grid">
+                {funTidbits.map((tidbit, index) => (
+                  <div
+                    key={index}
+                    style={{
+                      backgroundColor: `${currentTheme.primary}15`,
+                      borderRadius: '12px',
+                      padding: '12px',
+                      marginBottom: index < funTidbits.length - 1 ? '8px' : '0',
+                      fontSize: 'clamp(12px, 3.5vw, 14px)',
+                      color: currentTheme.textPrimary,
+                      fontWeight: '500',
+                      animation: `statsSlideIn 0.6s ease-out ${0.7 + (index * 0.1)}s both`
+                    }}
+                  >
+                    {tidbit}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
@@ -2291,6 +2294,56 @@ export default function StudentStatsMain() {
           * {
             -webkit-overflow-scrolling: touch;
             scroll-behavior: smooth;
+          }
+
+          /* ADDED: Adaptive CSS for tablet/iPad layouts */
+          @media screen and (min-width: 768px) and (max-width: 1024px) {
+            .stats-main-content {
+              max-width: 600px !important; /* Wider container */
+              padding: 24px !important; /* More breathing room */
+            }
+            
+            .phase-alert-banner {
+              margin: 0 24px 20px 24px !important;
+              padding: 16px 20px !important;
+            }
+            
+            .badge-challenge-pill {
+              padding: 16px 24px !important;
+              gap: 16px !important;
+            }
+            
+            .stats-grid {
+              grid-template-columns: 1fr 1fr 1fr !important;
+              gap: 32px !important; /* Much more spacious */
+              padding: 0 20px !important;
+              margin-bottom: 24px !important;
+            }
+            
+            .reading-journey-card {
+              padding: 28px !important;
+            }
+            
+            .fun-tidbits-section {
+              padding: 24px !important;
+            }
+            
+            /* Show tidbits in 2 columns on iPad */
+            .tidbits-grid {
+              display: grid !important;
+              grid-template-columns: 1fr 1fr !important;
+              gap: 12px !important;
+            }
+            
+            .xp-display-card {
+              padding: 16px 20px !important;
+            }
+            
+            .bragging-rights-button {
+              padding: 16px 24px !important;
+              max-width: 300px !important;
+              margin: 0 auto !important;
+            }
           }
         `}</style>
       </div>
