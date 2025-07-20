@@ -1,5 +1,5 @@
-// pages/parent/settings.js - Updated and Cleaned Up (Export/Delete moved to separate page)
-import { useState, useEffect } from 'react'
+// pages/parent/settings.js - Updated with hamburger menu and student login credentials
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
 import Head from 'next/head'
@@ -18,6 +18,12 @@ export default function ParentSettings() {
   const [teacherQuizCodes, setTeacherQuizCodes] = useState([])
   const [isEditing, setIsEditing] = useState({})
   const [editedData, setEditedData] = useState({})
+  
+  // Navigation menu state
+  const [showNavMenu, setShowNavMenu] = useState(false)
+  
+  // Student credentials state
+  const [expandedStudentCredentials, setExpandedStudentCredentials] = useState(null)
 
   // Lux Libris Classic Theme
   const luxTheme = {
@@ -30,6 +36,17 @@ export default function ParentSettings() {
     textSecondary: '#556B7A'
   }
 
+  // Navigation menu items (same as dashboard)
+  const navMenuItems = useMemo(() => [
+    { name: 'Family Dashboard', path: '/parent/dashboard', icon: '⌂' },
+    { name: 'Book Nominees', path: '/parent/nominees', icon: '□' },
+    { name: 'Reading Habits', path: '/parent/healthy-habits', icon: '◉' },
+    { name: 'Family DNA Lab', path: '/parent/dna-lab', icon: '🧬' },
+    { name: 'Quiz Unlock Center', path: '/parent/quiz-unlock', icon: '▦' },
+    { name: 'Family Celebrations', path: '/parent/celebrations', icon: '♔' },
+    { name: 'Settings', path: '/parent/settings', icon: '⚙', current: true }
+  ], [])
+
   useEffect(() => {
     if (!authLoading && isAuthenticated && user && userProfile?.accountType === 'parent') {
       loadSettingsData()
@@ -39,6 +56,31 @@ export default function ParentSettings() {
       router.push('/student-dashboard')
     }
   }, [authLoading, isAuthenticated, user, userProfile])
+
+  // Close nav menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showNavMenu && !event.target.closest('.nav-menu-container')) {
+        setShowNavMenu(false)
+      }
+    }
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape' && showNavMenu) {
+        setShowNavMenu(false)
+      }
+    }
+
+    if (showNavMenu) {
+      document.addEventListener('mousedown', handleClickOutside)
+      document.addEventListener('keydown', handleEscape)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleEscape)
+    }
+  }, [showNavMenu])
 
   const loadSettingsData = async () => {
     try {
@@ -108,17 +150,17 @@ export default function ParentSettings() {
               students.push(studentData)
               
               // Load teacher's quiz code for this student
-              if (studentData.teacherId) {
-                const teacherRef = doc(db, `entities/${entityId}/schools/${schoolId}/teachers`, studentData.teacherId)
+              if (studentData.currentTeacherId) {
+                const teacherRef = doc(db, `entities/${entityId}/schools/${schoolId}/teachers`, studentData.currentTeacherId)
                 const teacherDoc = await getDoc(teacherRef)
                 
                 if (teacherDoc.exists()) {
                   const teacherData = teacherDoc.data()
-                  const existingCode = quizCodes.find(code => code.teacherId === studentData.teacherId)
+                  const existingCode = quizCodes.find(code => code.teacherId === studentData.currentTeacherId)
                   
                   if (!existingCode && teacherData.parentQuizCode) {
                     quizCodes.push({
-                      teacherId: studentData.teacherId,
+                      teacherId: studentData.currentTeacherId,
                       teacherName: `${teacherData.firstName} ${teacherData.lastName}`,
                       schoolName: schoolData.name,
                       parentQuizCode: teacherData.parentQuizCode,
@@ -129,6 +171,9 @@ export default function ParentSettings() {
                     // Add student to existing teacher's list
                     existingCode.students.push(studentData.firstName)
                   }
+                  
+                  // Add teacher code to student data for login credentials
+                  studentData.teacherJoinCode = teacherData.parentQuizCode
                 }
               }
             }
@@ -215,11 +260,11 @@ export default function ParentSettings() {
   const copyToClipboard = async (text) => {
     try {
       await navigator.clipboard.writeText(text)
-      setSuccess('Code copied to clipboard!')
+      setSuccess('Copied to clipboard!')
       setTimeout(() => setSuccess(''), 2000)
     } catch (error) {
       console.error('Failed to copy:', error)
-      setError('Failed to copy code. Please copy manually.')
+      setError('Failed to copy. Please copy manually.')
       setTimeout(() => setError(''), 3000)
     }
   }
@@ -234,8 +279,22 @@ export default function ParentSettings() {
     }
   }
 
-  const handleBack = () => {
-    router.push('/parent/dashboard')
+  const handleTabClick = (tabName) => {
+    if (tabName === 'Settings') {
+      setSuccess('You\'re already here! ⚙')
+      setTimeout(() => setSuccess(''), 1500)
+    } else if (tabName === 'Family Dashboard') {
+      router.push('/parent/dashboard')
+    } else if (tabName === 'Book Nominees') {
+      router.push('/parent/nominees')
+    } else {
+      setSuccess(`${tabName} is coming soon! 🚧`)
+      setTimeout(() => setSuccess(''), 3000)
+    }
+  }
+
+  const handleStudentCredentialsTap = (studentId) => {
+    setExpandedStudentCredentials(expandedStudentCredentials === studentId ? null : studentId)
   }
 
   // Show loading while data loads
@@ -279,7 +338,7 @@ export default function ParentSettings() {
         fontFamily: 'system-ui, -apple-system, sans-serif'
       }}>
         
-        {/* Header */}
+        {/* Header - Updated to match dashboard format */}
         <div style={{
           background: `linear-gradient(135deg, ${luxTheme.primary}F0, ${luxTheme.secondary}F0)`,
           backdropFilter: 'blur(20px)',
@@ -287,41 +346,122 @@ export default function ParentSettings() {
           position: 'relative',
           borderRadius: '0 0 25px 25px',
           boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+          zIndex: 100,
           display: 'flex',
           alignItems: 'center',
-          gap: '16px'
+          justifyContent: 'center'
         }}>
-          <button
-            onClick={handleBack}
-            style={{
-              backgroundColor: 'rgba(255,255,255,0.3)',
-              border: 'none',
-              borderRadius: '50%',
-              width: '44px',
-              height: '44px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '18px',
-              cursor: 'pointer',
-              color: luxTheme.textPrimary,
-              backdropFilter: 'blur(10px)',
-              flexShrink: 0,
-              touchAction: 'manipulation'
-            }}
-          >
-            ←
-          </button>
+          {/* Centered Title */}
           <h1 style={{
             fontSize: 'clamp(20px, 5vw, 24px)',
             fontWeight: '400',
             color: luxTheme.textPrimary,
             margin: '0',
             letterSpacing: '1px',
-            fontFamily: 'Didot, "Times New Roman", serif'
+            fontFamily: 'Didot, "Times New Roman", serif',
+            textAlign: 'center'
           }}>
             Family Settings
           </h1>
+
+          {/* Hamburger Menu */}
+          <div className="nav-menu-container" style={{ position: 'absolute', right: '20px' }}>
+            <button
+              onClick={() => setShowNavMenu(!showNavMenu)}
+              style={{
+                backgroundColor: 'rgba(255,255,255,0.3)',
+                border: 'none',
+                borderRadius: '50%',
+                width: '44px',
+                height: '44px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '18px',
+                cursor: 'pointer',
+                color: luxTheme.textPrimary,
+                backdropFilter: 'blur(10px)',
+                flexShrink: 0,
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent'
+              }}
+            >
+              ☰
+            </button>
+
+            {/* Dropdown Menu */}
+            {showNavMenu && (
+              <div style={{
+                position: 'absolute',
+                top: '50px',
+                right: '0',
+                backgroundColor: luxTheme.surface,
+                borderRadius: '12px',
+                minWidth: '200px',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                backdropFilter: 'blur(20px)',
+                border: `2px solid ${luxTheme.primary}60`,
+                overflow: 'hidden',
+                zIndex: 9999
+              }}>
+                {navMenuItems.map((item, index) => (
+                  <button
+                    key={item.path}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setShowNavMenu(false)
+                      
+                      if (item.current) return
+                      
+                      setTimeout(() => {
+                        // Navigate to actual pages for unlocked items
+                        if (item.path === '/parent/settings' || item.path === '/parent/nominees' || item.path === '/parent/dashboard') {
+                          router.push(item.path)
+                        } else {
+                          handleTabClick(item.name)
+                        }
+                      }, 100)
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      backgroundColor: item.current ? `${luxTheme.primary}30` : 'transparent',
+                      border: 'none',
+                      borderBottom: index < navMenuItems.length - 1 ? `1px solid ${luxTheme.primary}40` : 'none',
+                      cursor: item.current ? 'default' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      fontSize: '14px',
+                      color: luxTheme.textPrimary,
+                      fontWeight: item.current ? '600' : '500',
+                      textAlign: 'left',
+                      touchAction: 'manipulation',
+                      WebkitTapHighlightColor: 'transparent',
+                      transition: 'background-color 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!item.current) {
+                        e.target.style.backgroundColor = `${luxTheme.primary}20`
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!item.current) {
+                        e.target.style.backgroundColor = 'transparent'
+                      }
+                    }}
+                  >
+                    <span style={{ fontSize: '16px' }}>{item.icon}</span>
+                    <span>{item.name}</span>
+                    {item.current && (
+                      <span style={{ marginLeft: 'auto', fontSize: '12px', color: luxTheme.primary }}>●</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Content */}
@@ -913,7 +1053,7 @@ export default function ParentSettings() {
             </div>
           )}
 
-          {/* Linked Children */}
+          {/* Linked Children - Updated with tap to view credentials */}
           <div style={{
             backgroundColor: luxTheme.surface,
             borderRadius: '16px',
@@ -925,7 +1065,7 @@ export default function ParentSettings() {
               fontSize: 'clamp(16px, 4vw, 18px)',
               fontWeight: '600',
               color: luxTheme.textPrimary,
-              margin: '0 0 16px 0',
+              margin: '0 0 12px 0',
               display: 'flex',
               alignItems: 'center',
               gap: '8px'
@@ -933,46 +1073,269 @@ export default function ParentSettings() {
               👨‍👩‍👧‍👦 Linked Children
             </h3>
             
+            <p style={{
+              fontSize: 'clamp(12px, 3.5vw, 14px)',
+              color: luxTheme.textSecondary,
+              margin: '0 0 16px 0',
+              lineHeight: '1.5'
+            }}>
+              Tap any child to view their login details for the app.
+            </p>
+            
             {linkedStudents.length > 0 ? (
               <div style={{ display: 'grid', gap: '8px' }}>
                 {linkedStudents.map((student, index) => (
-                  <div 
-                    key={student.id}
-                    style={{
-                      backgroundColor: `${luxTheme.primary}10`,
-                      borderRadius: '8px',
-                      padding: '12px',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      gap: '12px'
-                    }}
-                  >
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{
-                        fontSize: 'clamp(12px, 3.5vw, 14px)',
-                        fontWeight: '600',
-                        color: luxTheme.textPrimary,
-                        marginBottom: '2px'
-                      }}>
-                        {student.firstName} {student.lastInitial}.
+                  <div key={student.id}>
+                    <div 
+                      style={{
+                        backgroundColor: `${luxTheme.primary}10`,
+                        borderRadius: '8px',
+                        padding: '12px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: '12px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        border: `1px solid ${luxTheme.primary}30`
+                      }}
+                      onClick={() => handleStudentCredentialsTap(student.id)}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = `${luxTheme.primary}20`
+                        e.currentTarget.style.transform = 'translateY(-1px)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = `${luxTheme.primary}10`
+                        e.currentTarget.style.transform = 'translateY(0)'
+                      }}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{
+                          fontSize: 'clamp(12px, 3.5vw, 14px)',
+                          fontWeight: '600',
+                          color: luxTheme.textPrimary,
+                          marginBottom: '2px'
+                        }}>
+                          {student.firstName} {student.lastInitial}.
+                        </div>
+                        <div style={{
+                          fontSize: 'clamp(10px, 3vw, 12px)',
+                          color: luxTheme.textSecondary,
+                          wordBreak: 'break-word'
+                        }}>
+                          Grade {student.grade} • {student.schoolName}
+                        </div>
                       </div>
                       <div style={{
-                        fontSize: 'clamp(10px, 3vw, 12px)',
-                        color: luxTheme.textSecondary,
-                        wordBreak: 'break-word'
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
                       }}>
-                        Grade {student.grade} • {student.schoolName}
+                        <div style={{
+                          fontSize: 'clamp(10px, 3vw, 12px)',
+                          color: luxTheme.textSecondary,
+                          textAlign: 'right',
+                          flexShrink: 0
+                        }}>
+                          {student.booksSubmittedThisYear || 0} books
+                        </div>
+                        <div style={{
+                          fontSize: '14px',
+                          color: luxTheme.textSecondary,
+                          transform: expandedStudentCredentials === student.id ? 'rotate(90deg)' : 'rotate(0deg)',
+                          transition: 'transform 0.2s ease',
+                          flexShrink: 0
+                        }}>
+                          ▶
+                        </div>
                       </div>
                     </div>
-                    <div style={{
-                      fontSize: 'clamp(10px, 3vw, 12px)',
-                      color: luxTheme.textSecondary,
-                      textAlign: 'right',
-                      flexShrink: 0
-                    }}>
-                      {student.booksSubmittedThisYear || 0} books
-                    </div>
+                    
+                    {/* Student Credentials Expanded View */}
+                    {expandedStudentCredentials === student.id && (
+                      <div style={{
+                        backgroundColor: `${luxTheme.secondary}15`,
+                        borderRadius: '8px',
+                        padding: '16px',
+                        marginTop: '8px',
+                        border: `1px solid ${luxTheme.secondary}40`
+                      }}>
+                        <h4 style={{
+                          fontSize: 'clamp(14px, 4vw, 16px)',
+                          fontWeight: '600',
+                          color: luxTheme.textPrimary,
+                          margin: '0 0 12px 0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}>
+                          🔐 {student.firstName}&apos;s Login Details
+                        </h4>
+                        
+                        <div style={{ display: 'grid', gap: '12px' }}>
+                          {/* Username */}
+                          <div style={{
+                            backgroundColor: luxTheme.surface,
+                            borderRadius: '8px',
+                            padding: '12px',
+                            border: `1px solid ${luxTheme.primary}30`
+                          }}>
+                            <div style={{
+                              fontSize: 'clamp(10px, 3vw, 12px)',
+                              fontWeight: '600',
+                              color: luxTheme.textSecondary,
+                              marginBottom: '4px'
+                            }}>
+                              Username:
+                            </div>
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px'
+                            }}>
+                              <div style={{
+                                fontFamily: 'monospace',
+                                fontSize: 'clamp(14px, 4vw, 16px)',
+                                fontWeight: 'bold',
+                                color: luxTheme.textPrimary,
+                                flex: 1
+                              }}>
+                                {student.displayUsername || 'Not set'}
+                              </div>
+                              <button
+                                onClick={() => copyToClipboard(student.displayUsername || '')}
+                                style={{
+                                  backgroundColor: luxTheme.primary,
+                                  color: luxTheme.textPrimary,
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  padding: '4px 8px',
+                                  fontSize: 'clamp(8px, 2.5vw, 10px)',
+                                  fontWeight: '600',
+                                  cursor: 'pointer',
+                                  flexShrink: 0
+                                }}
+                              >
+                                Copy
+                              </button>
+                            </div>
+                          </div>
+                          
+                          {/* Teacher Code */}
+                          <div style={{
+                            backgroundColor: luxTheme.surface,
+                            borderRadius: '8px',
+                            padding: '12px',
+                            border: `1px solid ${luxTheme.primary}30`
+                          }}>
+                            <div style={{
+                              fontSize: 'clamp(10px, 3vw, 12px)',
+                              fontWeight: '600',
+                              color: luxTheme.textSecondary,
+                              marginBottom: '4px'
+                            }}>
+                              Teacher Code:
+                            </div>
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px'
+                            }}>
+                              <div style={{
+                                fontFamily: 'monospace',
+                                fontSize: 'clamp(14px, 4vw, 16px)',
+                                fontWeight: 'bold',
+                                color: luxTheme.textPrimary,
+                                flex: 1
+                              }}>
+                                {student.teacherJoinCode || 'Not available'}
+                              </div>
+                              <button
+                                onClick={() => copyToClipboard(student.teacherJoinCode || '')}
+                                style={{
+                                  backgroundColor: luxTheme.primary,
+                                  color: luxTheme.textPrimary,
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  padding: '4px 8px',
+                                  fontSize: 'clamp(8px, 2.5vw, 10px)',
+                                  fontWeight: '600',
+                                  cursor: 'pointer',
+                                  flexShrink: 0
+                                }}
+                              >
+                                Copy
+                              </button>
+                            </div>
+                          </div>
+                          
+                          {/* Password */}
+                          <div style={{
+                            backgroundColor: luxTheme.surface,
+                            borderRadius: '8px',
+                            padding: '12px',
+                            border: `1px solid ${luxTheme.primary}30`
+                          }}>
+                            <div style={{
+                              fontSize: 'clamp(10px, 3vw, 12px)',
+                              fontWeight: '600',
+                              color: luxTheme.textSecondary,
+                              marginBottom: '4px'
+                            }}>
+                              Password:
+                            </div>
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px'
+                            }}>
+                              <div style={{
+                                fontFamily: 'monospace',
+                                fontSize: 'clamp(14px, 4vw, 16px)',
+                                fontWeight: 'bold',
+                                color: luxTheme.textPrimary,
+                                flex: 1
+                              }}>
+                                {student.personalPassword || 'Not set'}
+                              </div>
+                              <button
+                                onClick={() => copyToClipboard(student.personalPassword || '')}
+                                style={{
+                                  backgroundColor: luxTheme.primary,
+                                  color: luxTheme.textPrimary,
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  padding: '4px 8px',
+                                  fontSize: 'clamp(8px, 2.5vw, 10px)',
+                                  fontWeight: '600',
+                                  cursor: 'pointer',
+                                  flexShrink: 0
+                                }}
+                              >
+                                Copy
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div style={{
+                          backgroundColor: '#E6FFFA',
+                          border: '1px solid #81E6D9',
+                          borderRadius: '8px',
+                          padding: '12px',
+                          marginTop: '12px'
+                        }}>
+                          <p style={{
+                            margin: 0,
+                            fontSize: 'clamp(10px, 3vw, 12px)',
+                            color: '#065F46',
+                            lineHeight: '1.4'
+                          }}>
+                            💡 <strong>How to use:</strong> Your child needs these credentials to sign into the Lux Libris app on their device.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -1091,6 +1454,11 @@ export default function ParentSettings() {
           @media (max-width: 768px) {
             input {
               font-size: 16px !important; /* Prevents zoom on iOS */
+            }
+            
+            .nav-menu-container > div {
+              right: 10px !important;
+              minWidth: 180px !important;
             }
           }
         `}</style>

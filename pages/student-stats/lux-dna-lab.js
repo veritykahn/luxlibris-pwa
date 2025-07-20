@@ -1330,14 +1330,23 @@ export default function LuxDnaLab() {
 
                 {/* LARGE SAINT IMAGE */}
                 <div style={{
-                  width: '300px',
-                  height: '360px',
-                  marginBottom: '16px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginTop: '40px'
-                }}>
+  width: '300px',
+  height: '360px',
+  marginBottom: '16px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  marginTop: '40px',
+  position: 'relative'
+}}>
+  <div style={{
+    position: 'absolute',
+    inset: '20px',
+    background: 'radial-gradient(circle, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 40%, transparent 70%)',
+    borderRadius: '50%',
+    filter: 'blur(8px)',
+    zIndex: 0
+  }} />
                   <img 
                     src={quizResult.icon_asset?.replace('assets/', '/') || `/saints/${quizResult.saint_id}.png`} 
                     alt={quizResult.name}
@@ -1345,7 +1354,9 @@ export default function LuxDnaLab() {
                       width: '100%',
                       height: '100%',
                       objectFit: 'contain',
-                      filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.4)) drop-shadow(0 0 20px rgba(255,255,255,0.3)) drop-shadow(0 0 40px rgba(255,255,255,0.2))'
+                      filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.3))',
+background: 'radial-gradient(circle at center, rgba(255,255,255,0.1) 0%, transparent 70%)',
+borderRadius: '12px'
                     }}
                     onError={(e) => {
                       e.target.style.display = 'none';
@@ -1361,7 +1372,7 @@ export default function LuxDnaLab() {
                     justifyContent: 'center',
                     fontSize: '80px',
                     color: 'rgba(255,255,255,0.8)',
-                    filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.4)) drop-shadow(0 0 20px rgba(255,255,255,0.3)) drop-shadow(0 0 40px rgba(255,255,255,0.2))'
+                    filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.3))'
                   }}>
                     ♔
                   </div>
@@ -1394,7 +1405,7 @@ export default function LuxDnaLab() {
                     color: seriesColor.modalText,
                     margin: '0 0 8px 0',
                     fontFamily: 'Didot, "Times New Roman", serif',
-                    textShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                    textShadow: '0 1px 2px rgba(0,0,0,0.2)'
                   }}>
                     You are {quizResult.name}!
                   </h2>
