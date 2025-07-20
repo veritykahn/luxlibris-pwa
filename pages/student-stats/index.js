@@ -23,6 +23,7 @@ export default function StudentStatsMain() {
   const [showStatsDropdown, setShowStatsDropdown] = useState(false);
   const [showFirstBookCelebration, setShowFirstBookCelebration] = useState(false);
   const [showBraggingRights, setShowBraggingRights] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(''); // NEW: Success message state
   
   // NEW STATE VARIABLES FOR BADGE CHALLENGE
   const [showBadgeChallenge, setShowBadgeChallenge] = useState(false);
@@ -171,26 +172,38 @@ export default function StudentStatsMain() {
     },
     { name: 'Family Battle', path: '/student-stats/family-battle', icon: '👨‍👩‍👧‍👦', description: 'Coming soon!', disabled: true }
   ], [phaseData.currentPhase]);
-
-  // BADGE CHALLENGE FUNCTIONS (same as before)
+// BADGE CHALLENGE FUNCTIONS (same as before)
   const calculateChallengeProgress = useCallback(async (studentData, weekBadge) => {
     if (!weekBadge || !studentData) return null;
     
     try {
       const sessionsRef = collection(db, `entities/${studentData.entityId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
       
-      // Get current week's sessions (Monday to Sunday)
-      const today = new Date();
-      const currentDay = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
-      const daysFromMonday = currentDay === 0 ? 6 : currentDay - 1; // Adjust so Monday = 0
-      
-      const weekStart = new Date(today);
-      weekStart.setDate(today.getDate() - daysFromMonday);
-      weekStart.setHours(0, 0, 0, 0);
-      
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekStart.getDate() + 6);
-      weekEnd.setHours(23, 59, 59, 999);
+      // Get current week's sessions (aligned with badge week system)
+const today = new Date();
+const currentYear = today.getFullYear();
+const june1 = new Date(currentYear, 5, 1); // June 1st this year
+
+// Calculate days since June 1st
+let daysSinceJune1;
+if (today < june1) {
+  const previousJune1 = new Date(currentYear - 1, 5, 1);
+  daysSinceJune1 = Math.floor((today.getTime() - previousJune1.getTime()) / (1000 * 60 * 60 * 24));
+} else {
+  daysSinceJune1 = Math.floor((today.getTime() - june1.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+// Calculate the start of the current badge week (7-day periods from June 1st)
+const weekNumber = Math.floor(daysSinceJune1 / 7);
+const weekStartDays = weekNumber * 7;
+
+const weekStart = new Date(today < june1 ? new Date(currentYear - 1, 5, 1) : june1);
+weekStart.setDate(weekStart.getDate() + weekStartDays);
+weekStart.setHours(0, 0, 0, 0);
+
+const weekEnd = new Date(weekStart);
+weekEnd.setDate(weekStart.getDate() + 6);
+weekEnd.setHours(23, 59, 59, 999);
       
       // Format dates for Firestore query
       const getLocalDateString = (date) => {
@@ -448,6 +461,7 @@ export default function StudentStatsMain() {
         setShowFirstBookCelebration(false);
         setShowBraggingRights(false);
         setShowBadgeChallenge(false);
+        setShowSuccess(''); // NEW: Clear success message on escape
       }
     };
 
@@ -461,6 +475,7 @@ export default function StudentStatsMain() {
       document.removeEventListener('keydown', handleEscape);
     };
   }, [showNavMenu, showStatsDropdown, showFirstBookCelebration, showBraggingRights, showBadgeChallenge]);
+
 // UPDATED: Generate dynamic celebration messages with phase awareness
   const generateCelebrationMessages = useCallback((stats) => {
     const messages = {
@@ -584,13 +599,13 @@ export default function StudentStatsMain() {
       }
       
       // Enhanced badge celebration
-      if (earnedBadges.length >= 5) {
-        const latestBadge = earnedBadges[earnedBadges.length - 1];
-        tidbits.push(`🎯 Badge Champion! Latest: ${latestBadge.emoji} ${latestBadge.name}!`);
-      } else if (earnedBadges.length > 0) {
-        const latestBadge = earnedBadges[earnedBadges.length - 1];
-        tidbits.push(`🏅 Achievement unlocked: ${latestBadge.emoji} ${latestBadge.name}!`);
-      }
+if (earnedBadges.length >= 5) {
+  const latestBadge = earnedBadges[earnedBadges.length - 1];
+  tidbits.push(`🎯 Badge Champion! Latest: ${latestBadge.name}!`);
+} else if (earnedBadges.length > 0) {
+  const latestBadge = earnedBadges[earnedBadges.length - 1];
+  tidbits.push(`🏅 Achievement unlocked: ${latestBadge.name}!`);
+}
       
       // School community impact
       const schoolSnapshot = await getDocs(studentsRef);
@@ -890,6 +905,29 @@ export default function StudentStatsMain() {
         backgroundColor: currentTheme.background,
         paddingBottom: '100px'
       }}>
+        
+        {/* NEW: Success Message Display */}
+        {showSuccess && (
+          <div style={{
+            position: 'fixed',
+            top: '20px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: '#4CAF50',
+            color: 'white',
+            padding: '12px 20px',
+            borderRadius: '12px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+            zIndex: 10000,
+            fontSize: '14px',
+            fontWeight: '600',
+            textAlign: 'center',
+            maxWidth: '90vw',
+            animation: 'slideInDown 0.3s ease-out'
+          }}>
+            {showSuccess}
+          </div>
+        )}
         
         {/* HEADER WITH REORDERED DROPDOWN NAVIGATION */}
         <div style={{
@@ -1570,23 +1608,27 @@ export default function StudentStatsMain() {
                   )}
                 </div>
 
-                {/* UPDATED: ENHANCED BRAGGING RIGHTS BUTTON WITH PHASE AWARENESS AND ANIMATIONS */}
+                {/* UPDATED: ENHANCED BRAGGING RIGHTS BUTTON WITH NEW ONCLICK HANDLER */}
                 <button
+                  onClick={() => {
+                    if (!hasAccess('votingInterface') && !hasAccess('votingResults') && phaseData.currentPhase === 'ACTIVE') {
+                      // Show click message for locked state
+                      setShowSuccess('🗓️ Bragging Rights unlocks March 31st when voting begins! Keep reading nominees, making submissions, and earning XP until then! 🏆');
+                      setTimeout(() => setShowSuccess(''), 4000);
+                    } else {
+                      setShowBraggingRights(true);
+                    }
+                  }}
                   className="bragging-rights-button"
-                  onClick={() => setShowBraggingRights(true)}
-                  disabled={!hasAccess('votingInterface') && !hasAccess('votingResults') && phaseData.currentPhase === 'ACTIVE'}
                   style={{
-                    backgroundColor: (!hasAccess('votingInterface') && !hasAccess('votingResults') && phaseData.currentPhase === 'ACTIVE') ? 
-                      `${currentTheme.textSecondary}30` : currentTheme.primary,
-                    color: (!hasAccess('votingInterface') && !hasAccess('votingResults') && phaseData.currentPhase === 'ACTIVE') ? 
-                      currentTheme.textSecondary : currentTheme.textPrimary,
+                    backgroundColor: currentTheme.primary,
+                    color: currentTheme.textPrimary,
                     border: 'none',
                     borderRadius: '16px',
                     padding: 'clamp(10px, 3vw, 12px) clamp(16px, 5vw, 20px)',
                     fontSize: 'clamp(12px, 3.5vw, 14px)',
                     fontWeight: '600',
-                    cursor: (!hasAccess('votingInterface') && !hasAccess('votingResults') && phaseData.currentPhase === 'ACTIVE') ? 
-                      'not-allowed' : 'pointer',
+                    cursor: 'pointer', // Always clickable
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -1602,13 +1644,11 @@ export default function StudentStatsMain() {
                     overflow: 'hidden',
                     transform: 'translateY(0)',
                     transition: 'all 0.3s ease',
-                    opacity: (!hasAccess('votingInterface') && !hasAccess('votingResults') && phaseData.currentPhase === 'ACTIVE') ? 0.5 : 1
+                    opacity: (!hasAccess('votingInterface') && !hasAccess('votingResults') && phaseData.currentPhase === 'ACTIVE') ? 0.8 : 1 // Slightly dimmed when locked
                   }}
                   onMouseEnter={(e) => {
-                    if (hasAccess('votingInterface') || hasAccess('votingResults') || phaseData.currentPhase !== 'ACTIVE') {
-                      e.target.style.transform = 'translateY(-2px)';
-                      e.target.style.boxShadow = '0 6px 20px rgba(0,0,0,0.2)';
-                    }
+                    e.target.style.transform = 'translateY(-2px)';
+                    e.target.style.boxShadow = '0 6px 20px rgba(0,0,0,0.2)';
                   }}
                   onMouseLeave={(e) => {
                     e.target.style.transform = 'translateY(0)';
