@@ -328,8 +328,7 @@ export default function StudentHealthyHabits() {
       console.log('Browser notifications not supported');
     }
   };
-
-  // 🍔 useEFFECTS for hamburger menu
+// 🍔 useEFFECTS for hamburger menu
   // Check notification permission on load
   useEffect(() => {
     if ('Notification' in window && Notification.permission === 'granted') {
@@ -1183,7 +1182,7 @@ export default function StudentHealthyHabits() {
 
           {/* PHASE-AWARE MESSAGE - Beautiful but more compact! */}
           {phaseMessage && (
-            <div className="phase-message-card" style={{
+            <div style={{
               background: phaseMessage.bgGradient,
               borderRadius: '12px',
               padding: '12px',
@@ -1298,7 +1297,6 @@ export default function StudentHealthyHabits() {
               {!isTimerActive ? (
                 <button
                   onClick={handleStartTimer}
-                  className="timer-button timer-start"
                   style={{
                     backgroundColor: currentTheme.primary,
                     color: currentTheme.textPrimary,
@@ -1322,7 +1320,6 @@ export default function StudentHealthyHabits() {
                 <>
                   <button
                     onClick={isTimerPaused ? handleResumeTimer : handlePauseTimer}
-                    className="timer-button timer-pause-resume"
                     style={{
                       backgroundColor: currentTheme.secondary,
                       color: currentTheme.textPrimary,
@@ -1344,7 +1341,6 @@ export default function StudentHealthyHabits() {
                   {isTimerPaused ? (
                     <button
                       onClick={handleBankSession}
-                      className="timer-button timer-bank"
                       style={{
                         backgroundColor: '#4CAF50',
                         color: 'white',
@@ -1399,7 +1395,8 @@ export default function StudentHealthyHabits() {
               Timer length can be adjusted in settings →
             </button>
           </div>
-{/* TODAY'S PROGRESS */}
+
+          {/* TODAY'S PROGRESS */}
           <div className="progress-section" style={{
             backgroundColor: currentTheme.surface,
             borderRadius: '16px',
@@ -1423,7 +1420,7 @@ export default function StudentHealthyHabits() {
               marginBottom: '16px',
               textAlign: 'center'
             }}>
-              <div style={{ fontSize: '32px', marginBottom: '8px' }}>
+              <div className="reading-level-emoji" style={{ fontSize: '32px', marginBottom: '8px' }}>
                 {readingLevel.emoji}
               </div>
               <div style={{
@@ -1521,7 +1518,7 @@ export default function StudentHealthyHabits() {
             </div>
 
             {/* Stats */}
-            <div className="streak-stats" style={{
+            <div style={{
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
@@ -1544,6 +1541,15 @@ export default function StudentHealthyHabits() {
               }}>
                 🗓️ {streakStats.months} months
               </div>
+            </div>
+
+            {/* Month Labels - Enhanced for iPad */}
+            <div className="calendar-month-labels" style={{ display: 'none' }}>
+              {streakCalendar.map((day, index) => (
+                <div key={`month-${index}`} style={{ fontSize: '10px', color: currentTheme.textSecondary }}>
+                  {index === 0 || day.dayNumber === 1 ? new Date(day.date).toLocaleDateString('en-US', { month: 'short' }) : ''}
+                </div>
+              ))}
             </div>
 
             {/* Timeline Calendar */}
@@ -1812,109 +1818,6 @@ export default function StudentHealthyHabits() {
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
           }
-          
-          /* Tablet scaling for iPad-sized devices */
-          @media screen and (min-width: 768px) and (max-width: 1024px) {
-            .healthy-habits-main {
-              padding: clamp(22px, 7vw, 28px) !important; /* Scale padding */
-              max-width: 560px !important; /* 400px * 1.4 */
-            }
-            
-            .phase-message-card {
-              border-radius: 17px !important; /* 12px * 1.4 */
-              padding: 17px !important; /* 12px * 1.4 */
-              margin-bottom: 22px !important; /* 16px * 1.4 */
-            }
-            
-            .timer-section {
-              border-radius: 28px !important; /* 20px * 1.4 */
-              padding: 42px 28px !important; /* 30px 20px * 1.4 */
-              margin-bottom: 28px !important; /* 20px * 1.4 */
-            }
-            
-            .timer-container {
-              margin-bottom: 28px !important; /* 20px * 1.4 */
-            }
-            
-            /* Scale the timer SVG for iPad */
-            .timer-container svg {
-              width: 280px !important; /* 200px * 1.4 */
-              height: 280px !important; /* 200px * 1.4 */
-              max-width: 280px !important;
-              max-height: 280px !important;
-            }
-            
-            .timer-controls {
-              gap: 17px !important; /* 12px * 1.4 */
-              margin-bottom: 22px !important; /* 16px * 1.4 */
-            }
-            
-            .timer-button {
-              border-radius: 22px !important; /* 16px * 1.4 for most buttons */
-            }
-            
-            .timer-start {
-              border-radius: 28px !important; /* 20px * 1.4 for start button */
-              padding: 20px 39px !important; /* 14px 28px * 1.4 */
-              min-height: 67px !important; /* 48px * 1.4 */
-              min-width: 196px !important; /* 140px * 1.4 */
-              gap: 11px !important; /* 8px * 1.4 */
-            }
-            
-            .timer-pause-resume, .timer-bank {
-              padding: 17px 28px !important; /* 12px 20px * 1.4 */
-              min-height: 67px !important; /* 48px * 1.4 */
-              min-width: 140px !important; /* 100px * 1.4 */
-            }
-            
-            .progress-section {
-              border-radius: 22px !important; /* 16px * 1.4 */
-              padding: 28px !important; /* 20px * 1.4 */
-              margin-bottom: 28px !important; /* 20px * 1.4 */
-            }
-            
-            .reading-level-card {
-              border-radius: 17px !important; /* 12px * 1.4 */
-              padding: 22px !important; /* 16px * 1.4 */
-              margin-bottom: 22px !important; /* 16px * 1.4 */
-            }
-            
-            .stats-grid {
-              gap: 17px !important; /* 12px * 1.4 */
-              margin-bottom: 22px !important; /* 16px * 1.4 */
-            }
-            
-            .stats-grid > div {
-              border-radius: 17px !important; /* 12px * 1.4 */
-              padding: 17px !important; /* 12px * 1.4 */
-            }
-            
-            .streak-calendar-section {
-              border-radius: 22px !important; /* 16px * 1.4 */
-              padding: 28px !important; /* 20px * 1.4 */
-              margin-bottom: 28px !important; /* 20px * 1.4 */
-            }
-            
-            .streak-stats {
-              margin-bottom: 22px !important; /* 16px * 1.4 */
-              padding: 11px 17px !important; /* 8px 12px * 1.4 */
-              border-radius: 11px !important; /* 8px * 1.4 */
-            }
-            
-            .timeline-calendar {
-              gap: 8px !important; /* 6px * 1.4 */
-              padding: 11px 6px !important; /* 8px 4px * 1.4 */
-              margin-bottom: 17px !important; /* 12px * 1.4 */
-            }
-            
-            /* Scale individual calendar day items */
-            .timeline-calendar > div {
-              min-width: 45px !important; /* 32px * 1.4 */
-              height: 67px !important; /* 48px * 1.4 */
-              border-radius: 14px !important; /* 10px * 1.4 */
-            }
-          }
-          
           @media screen and (max-width: 480px) {
             input, textarea, select, button {
               font-size: 16px !important;
@@ -1922,6 +1825,86 @@ export default function StudentHealthyHabits() {
             body {
               -webkit-text-size-adjust: 100%;
               -ms-text-size-adjust: 100%;
+            }
+          }
+          
+          /* ADAPTIVE CSS FOR TABLET/IPAD */
+          @media screen and (min-width: 768px) and (max-width: 1024px) {
+            .healthy-habits-main {
+              max-width: 600px !important;
+              padding: 24px !important;
+            }
+            
+            .timer-section {
+              padding: 32px 24px !important;
+              display: flex !important;
+              align-items: center !important;
+              gap: 32px !important;
+            }
+            
+            .timer-container {
+              flex-shrink: 0 !important;
+            }
+            
+            .timer-container svg {
+              width: 240px !important;
+              height: 240px !important;
+            }
+            
+            .timer-controls {
+              gap: 16px !important;
+            }
+            
+            .progress-section {
+              padding: 24px !important;
+            }
+            
+            .stats-grid {
+              grid-template-columns: 1fr 1fr 1fr !important;
+              gap: 24px !important;
+            }
+            
+            .streak-calendar-section {
+              padding: 24px !important;
+            }
+            
+            .timeline-calendar {
+              display: grid !important;
+              grid-template-columns: repeat(10, 1fr) !important;
+              gap: 8px !important;
+              padding: 16px 0 !important;
+              overflow: visible !important;
+              justify-items: center !important;
+            }
+            
+            .timeline-calendar > div {
+              min-width: 48px !important;
+              height: 68px !important;
+              border-radius: 12px !important;
+              position: relative !important;
+            }
+            
+            .calendar-month-labels {
+              display: grid !important;
+              grid-template-columns: repeat(10, 1fr) !important;
+              gap: 8px !important;
+              margin-bottom: 8px !important;
+              font-size: 10px !important;
+              color: #666 !important;
+              text-align: center !important;
+            }
+            
+            .reading-level-card {
+              display: flex !important;
+              align-items: center !important;
+              gap: 20px !important;
+              text-align: left !important;
+              padding: 20px !important;
+            }
+            
+            .reading-level-emoji {
+              font-size: 48px !important;
+              flex-shrink: 0 !important;
             }
           }
         `}</style>
