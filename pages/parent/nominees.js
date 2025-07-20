@@ -1342,7 +1342,7 @@ export default function ParentNominees() {
               color: luxTheme.textSecondary,
               marginBottom: '24px'
             }}>
-              Your children's school hasn't selected their book nominees yet.
+              Your children&apos;s school hasn&apos;t selected their book nominees yet.
             </p>
             <button
               onClick={() => router.push('/parent/dashboard')}
@@ -1554,7 +1554,7 @@ export default function ParentNominees() {
               margin: '0 0 8px 0',
               fontWeight: '600'
             }}>
-              Supporting Your Children's Reading
+              Supporting Your Children&apos;s Reading
             </h2>
             <p style={{
               fontSize: 'clamp(12px, 3.5vw, 14px)',
