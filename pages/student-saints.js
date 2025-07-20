@@ -1341,12 +1341,12 @@ const loadSaintsData = useCallback(async () => {
         </div>
 
         {/* PROGRESS SUMMARY */}
-        <div style={{
+        <div className="saints-progress-section" style={{
           padding: '15px',
           position: 'relative',
           zIndex: 10
         }}>
-          <div style={{
+          <div className="progress-summary-card" style={{
             backgroundColor: 'rgba(255,255,255,0.95)',
             borderRadius: '16px',
             padding: '16px',
@@ -1410,7 +1410,7 @@ const loadSaintsData = useCallback(async () => {
 
           {/* SMALLER PHASE-AWARE MESSAGE - Show when not in ACTIVE phase */}
           {phaseMessage && (
-            <div style={{
+            <div className="phase-message-card" style={{
               background: phaseMessage.bgGradient,
               borderRadius: '12px',
               padding: '12px',
@@ -1450,14 +1450,14 @@ const loadSaintsData = useCallback(async () => {
           margin: '0 auto'
         }}>
           {shelves.map((shelf, shelfIndex) => (
-            <div key={shelf.type} style={{ 
+            <div key={shelf.type} className="saint-shelf-row" style={{ 
               marginBottom: '4px',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center'
             }}>
               {/* Saints Collection Area - FIXED: More room for saints */}
-              <div style={{
+              <div className="saints-collection-area" style={{
                 height: '90px', // Slightly smaller for mobile
                 marginBottom: '1px',
                 display: 'flex',
@@ -1479,6 +1479,7 @@ const loadSaintsData = useCallback(async () => {
                       <button
                         key={saint.id}
                         onClick={() => isUnlocked && openSaintModal(saint)}
+                        className="saint-button"
                         style={{
                           background: 'none',
                           border: 'none',
@@ -1492,7 +1493,7 @@ const loadSaintsData = useCallback(async () => {
                           minHeight: '44px'
                         }}
                       >
-                        <div style={{
+                        <div className="saint-icon-container" style={{
                           width: shelf.capacity === 1 ? '75px' : '65px', // Mobile-optimized sizes
                           height: shelf.capacity === 1 ? '88px' : '80px', // Mobile-optimized sizes
                           display: 'flex',
@@ -1529,7 +1530,7 @@ const loadSaintsData = useCallback(async () => {
                               }}
                             />
                           ) : (
-                            <div style={{
+                            <div className="saint-placeholder-container" style={{
                               width: '100%',
                               height: '100%',
                               display: 'flex',
@@ -1537,7 +1538,7 @@ const loadSaintsData = useCallback(async () => {
                               justifyContent: 'center',
                               position: 'relative'
                             }}>
-                              <div style={{
+                              <div className="saint-placeholder-silhouette" style={{
                                 width: '38px', // Mobile-optimized placeholder
                                 height: '54px',
                                 background: 'linear-gradient(180deg, rgba(40, 40, 40, 0.85), rgba(20, 20, 20, 0.85))',
@@ -1545,7 +1546,7 @@ const loadSaintsData = useCallback(async () => {
                                 position: 'relative',
                                 opacity: 0.85
                               }}>
-                                <div style={{
+                                <div className="saint-placeholder-halo" style={{
                                   width: '34px',
                                   height: '9px',
                                   border: '2px solid rgba(60, 60, 60, 0.85)',
@@ -1557,7 +1558,7 @@ const loadSaintsData = useCallback(async () => {
                                 }} />
                                 {/* Removed the bottom base piece */}
                               </div>
-                              <div style={{
+                              <div className="saint-placeholder-question" style={{
                                 position: 'absolute',
                                 color: 'rgba(60, 60, 60, 0.85)',
                                 fontSize: '20px', // Mobile-appropriate size
@@ -1610,7 +1611,7 @@ const loadSaintsData = useCallback(async () => {
                           justifyContent: 'center'
                         }}
                       >
-                        <div style={{
+                        <div className="saint-placeholder-silhouette" style={{
                           width: '38px', // Match mobile-optimized placeholder
                           height: '54px',
                           background: 'linear-gradient(180deg, rgba(40, 40, 40, 0.85), rgba(20, 20, 20, 0.85))',
@@ -1618,7 +1619,7 @@ const loadSaintsData = useCallback(async () => {
                           position: 'relative',
                           opacity: 0.85
                         }}>
-                          <div style={{
+                          <div className="saint-placeholder-halo" style={{
                             width: '34px',
                             height: '9px',
                             border: '2px solid rgba(60, 60, 60, 0.85)',
@@ -1630,7 +1631,7 @@ const loadSaintsData = useCallback(async () => {
                           }} />
                           {/* Removed the bottom base piece */}
                         </div>
-                        <div style={{
+                        <div className="saint-placeholder-question" style={{
                           position: 'absolute',
                           color: 'rgba(60, 60, 60, 0.85)',
                           fontSize: '20px', // Match mobile-appropriate size
@@ -1645,7 +1646,7 @@ const loadSaintsData = useCallback(async () => {
               </div>
 
               {/* VISIBLE SHELF */}
-              <div style={{
+              <div className="shelf-board" style={{
                 width: shelf.capacity === 1 ? '75px' : '85%', // All other shelves are now 5 capacity
                 height: '10px',
                 backgroundColor: shelf.shelfColor,
@@ -1655,7 +1656,7 @@ const loadSaintsData = useCallback(async () => {
               }} />
 
               {/* SHELF LABEL */}
-              <div style={{
+              <div className="shelf-label" style={{
                 fontSize: '12px',
                 fontWeight: '700',
                 color: '#FFFFFF',
@@ -1676,7 +1677,7 @@ const loadSaintsData = useCallback(async () => {
         </div>
 
         {/* 📋 Simple Info Card - Properly Centered */}
-        <div style={{
+        <div className="info-guide-section" style={{
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
@@ -1686,6 +1687,7 @@ const loadSaintsData = useCallback(async () => {
         }}>
           <button
             onClick={() => setShowInfoModal(true)}
+            className="info-guide-button"
             style={{
               background: `linear-gradient(135deg, ${currentTheme.surface}F5, ${currentTheme.background}F0)`,
               borderRadius: '14px',
@@ -1726,8 +1728,7 @@ const loadSaintsData = useCallback(async () => {
             </div>
           </button>
         </div>
-
-        {/* SAINT MODAL - FIXED WITH SERIES COLORS */}
+{/* SAINT MODAL - FIXED WITH SERIES COLORS */}
         {showSaintModal && selectedSaint && (() => {
           const seriesColor = seriesColors[selectedSaint.luxlings_series] || seriesColors['Pocket Patrons'];
           
@@ -1745,7 +1746,7 @@ const loadSaintsData = useCallback(async () => {
               justifyContent: 'center',
               padding: '20px'
             }}>
-              <div style={{
+              <div className="saint-modal-container" style={{
                 maxWidth: '360px',
                 width: '100%',
                 maxHeight: '85vh',
@@ -1757,6 +1758,7 @@ const loadSaintsData = useCallback(async () => {
               }}>
                 <button
                   onClick={closeSaintModal}
+                  className="saint-modal-close"
                   style={{
                     position: 'absolute',
                     top: '12px',
@@ -1782,7 +1784,7 @@ const loadSaintsData = useCallback(async () => {
                 </button>
 
                 {/* LARGE SAINT IMAGE - TRANSPARENT BACKGROUND */}
-                <div style={{
+                <div className="saint-modal-image-container" style={{
                   width: '300px',
                   height: '360px',
                   marginBottom: '16px',
@@ -1821,7 +1823,7 @@ const loadSaintsData = useCallback(async () => {
                 </div>
 
                 {/* COMPACT INFO CARD - SERIES BACKGROUND COLOR */}
-                <div style={{
+                <div className="saint-modal-info-card" style={{
                   backgroundColor: seriesColor.bg,
                   borderRadius: '14px',
                   padding: '16px',
@@ -1936,7 +1938,7 @@ const loadSaintsData = useCallback(async () => {
             justifyContent: 'center',
             padding: '20px'
           }}>
-            <div style={{
+            <div className="info-modal-container" style={{
               backgroundColor: '#FFFFFF',
               borderRadius: '20px',
               maxWidth: '380px',
@@ -1948,6 +1950,7 @@ const loadSaintsData = useCallback(async () => {
             }}>
               <button
                 onClick={() => setShowInfoModal(false)}
+                className="info-modal-close"
                 style={{
                   position: 'absolute',
                   top: '12px',
@@ -2240,6 +2243,135 @@ const loadSaintsData = useCallback(async () => {
             -webkit-tap-highlight-color: transparent;
             -webkit-user-select: none;
             user-select: none;
+          }
+          
+          /* Tablet scaling for iPad-sized devices */
+          @media screen and (min-width: 768px) and (max-width: 1024px) {
+            .saints-progress-section {
+              padding: 21px !important; /* 15px * 1.4 */
+            }
+            
+            .progress-summary-card {
+              border-radius: 22px !important; /* 16px * 1.4 */
+              padding: 22px !important; /* 16px * 1.4 */
+              margin-bottom: 28px !important; /* 20px * 1.4 */
+            }
+            
+            .phase-message-card {
+              border-radius: 17px !important; /* 12px * 1.4 */
+              padding: 17px !important; /* 12px * 1.4 */
+              margin-bottom: 22px !important; /* 16px * 1.4 */
+            }
+            
+            .saints-container {
+              padding: 0 14px 28px !important; /* 0 10px 20px * 1.4 */
+              max-width: 490px !important; /* 350px * 1.4 */
+            }
+            
+            .saint-shelf-row {
+              margin-bottom: 6px !important; /* 4px * 1.4 */
+            }
+            
+            .saints-collection-area {
+              height: 126px !important; /* 90px * 1.4 */
+              margin-bottom: 1px !important; /* Keep at 1px */
+              max-width: 105px !important; /* 75px * 1.4 for single items */
+            }
+            
+            .saints-collection-area:not(:has(.saint-icon-container[style*="75px"])) {
+              max-width: 462px !important; /* 330px * 1.4 for multi items */
+            }
+            
+            .saint-icon-container {
+              width: 105px !important; /* 75px * 1.4 for single */
+              height: 123px !important; /* 88px * 1.4 for single */
+            }
+            
+            .saint-icon-container:not([style*="75px"]) {
+              width: 91px !important; /* 65px * 1.4 for multi */
+              height: 112px !important; /* 80px * 1.4 for multi */
+            }
+            
+            .saint-placeholder-silhouette {
+              width: 53px !important; /* 38px * 1.4 */
+              height: 76px !important; /* 54px * 1.4 */
+            }
+            
+            .saint-placeholder-halo {
+              width: 48px !important; /* 34px * 1.4 */
+              height: 13px !important; /* 9px * 1.4 */
+              top: -7px !important; /* -5px * 1.4 */
+            }
+            
+            .saint-placeholder-question {
+              font-size: 28px !important; /* 20px * 1.4 */
+            }
+            
+            .shelf-board {
+              width: 105px !important; /* 75px * 1.4 for single shelf */
+              height: 14px !important; /* 10px * 1.4 */
+              border-radius: 4px !important; /* 3px * 1.4 */
+              margin-bottom: 3px !important; /* 2px * 1.4 */
+            }
+            
+            .shelf-board:not([style*="75px"]) {
+              width: 85% !important; /* Keep percentage for multi shelves */
+            }
+            
+            .shelf-label {
+              font-size: 17px !important; /* 12px * 1.4 */
+              border-radius: 28px !important; /* 20px * 1.4 */
+              padding: 6px 11px !important; /* 4px 8px * 1.4 */
+            }
+            
+            .info-guide-section {
+              padding: 0 28px !important; /* 0 20px * 1.4 */
+              margin-top: 21px !important; /* 15px * 1.4 */
+            }
+            
+            .info-guide-button {
+              border-radius: 20px !important; /* 14px * 1.4 */
+              padding: 17px !important; /* 12px * 1.4 */
+              width: 392px !important; /* 280px * 1.4 */
+            }
+            
+            .saint-modal-container {
+              max-width: 504px !important; /* 360px * 1.4 */
+            }
+            
+            .saint-modal-close {
+              top: 17px !important; /* 12px * 1.4 */
+              right: 17px !important; /* 12px * 1.4 */
+              width: 50px !important; /* 36px * 1.4 */
+              height: 50px !important; /* 36px * 1.4 */
+              font-size: 22px !important; /* 16px * 1.4 */
+            }
+            
+            .saint-modal-image-container {
+              width: 420px !important; /* 300px * 1.4 */
+              height: 504px !important; /* 360px * 1.4 */
+              margin-bottom: 22px !important; /* 16px * 1.4 */
+              margin-top: 56px !important; /* 40px * 1.4 */
+            }
+            
+            .saint-modal-info-card {
+              border-radius: 20px !important; /* 14px * 1.4 */
+              padding: 22px !important; /* 16px * 1.4 */
+              max-width: 448px !important; /* 320px * 1.4 */
+            }
+            
+            .info-modal-container {
+              border-radius: 28px !important; /* 20px * 1.4 */
+              max-width: 532px !important; /* 380px * 1.4 */
+            }
+            
+            .info-modal-close {
+              top: 17px !important; /* 12px * 1.4 */
+              right: 17px !important; /* 12px * 1.4 */
+              width: 50px !important; /* 36px * 1.4 */
+              height: 50px !important; /* 36px * 1.4 */
+              font-size: 22px !important; /* 16px * 1.4 */
+            }
           }
           
           /* PWA Mobile Optimizations */
