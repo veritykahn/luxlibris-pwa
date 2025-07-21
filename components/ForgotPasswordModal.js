@@ -75,7 +75,7 @@ export function ForgotPasswordModal({ accountType, email, onClose, onSuccess }) 
           color: '#6b7280',
           lineHeight: '1.4'
         }}>
-          We'll send a password reset link to <strong>{email}</strong>
+          We&apos;ll send a password reset link to <strong>{email}</strong>
         </p>
         
         {message && (
