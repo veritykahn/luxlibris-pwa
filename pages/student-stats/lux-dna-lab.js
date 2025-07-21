@@ -1,4 +1,4 @@
-// pages/student-stats/lux-dna-lab.js - Complete Lux DNA Lab with Saint Quizzes and Phase Awareness
+// pages/student-stats/lux-dna-lab.js - Complete Lux DNA Lab with Saint Quizzes, Nominee Quizzes, and Phase Awareness
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../contexts/AuthContext';
@@ -16,13 +16,19 @@ export default function LuxDnaLab() {
   const [currentTheme, setCurrentTheme] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [quizzes, setQuizzes] = useState([]);
+  const [nomineeQuizzes, setNomineeQuizzes] = useState([]);
+  const [masterNominees, setMasterNominees] = useState([]);
   const [showMyDnaModal, setShowMyDnaModal] = useState(false);
   const [showQuizModal, setShowQuizModal] = useState(false);
+  const [showNomineeQuizModal, setShowNomineeQuizModal] = useState(false);
   const [currentQuiz, setCurrentQuiz] = useState(null);
+  const [currentNomineeQuiz, setCurrentNomineeQuiz] = useState(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState({});
   const [showQuizResult, setShowQuizResult] = useState(false);
+  const [showNomineeQuizResult, setShowNomineeQuizResult] = useState(false);
   const [quizResult, setQuizResult] = useState(null);
+  const [nomineeQuizResult, setNomineeQuizResult] = useState(null);
   const [isSaintQuizzesExpanded, setIsSaintQuizzesExpanded] = useState(false);
   const [showNavMenu, setShowNavMenu] = useState(false);
   const [showStatsDropdown, setShowStatsDropdown] = useState(false);
@@ -190,6 +196,47 @@ export default function LuxDnaLab() {
     }
   }, []);
 
+  // Load nominee quizzes from Firebase
+  const loadNomineeQuizzes = useCallback(async () => {
+    try {
+      console.log('📚 Loading nominee quizzes from Firebase...');
+      const nomineeQuizzesRef = collection(db, 'nominee-quizzes');
+      const nomineeQuizzesSnapshot = await getDocs(nomineeQuizzesRef);
+      
+      const nomineeQuizzesData = [];
+      nomineeQuizzesSnapshot.forEach(doc => {
+        nomineeQuizzesData.push({ id: doc.id, ...doc.data() });
+      });
+      
+      console.log('✅ Loaded', nomineeQuizzesData.length, 'nominee quizzes');
+      setNomineeQuizzes(nomineeQuizzesData);
+    } catch (error) {
+      console.error('❌ Error loading nominee quizzes:', error);
+      setNomineeQuizzes([]);
+    }
+  }, []);
+
+  // Load master nominees from Firebase (for book cover images)
+  const loadMasterNominees = useCallback(async () => {
+    try {
+      console.log('📖 Loading master nominees from Firebase...');
+      const masterNomineesRef = collection(db, 'masterNominees');
+      const masterNomineesSnapshot = await getDocs(masterNomineesRef);
+      
+      const nomineesData = [];
+      masterNomineesSnapshot.forEach(doc => {
+        const data = doc.data();
+        nomineesData.push({ firebaseId: doc.id, ...data });
+      });
+      
+      console.log('✅ Loaded', nomineesData.length, 'master nominees');
+      setMasterNominees(nomineesData);
+    } catch (error) {
+      console.error('❌ Error loading master nominees:', error);
+      setMasterNominees([]);
+    }
+  }, []);
+
   // Close nav menus when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -206,7 +253,9 @@ export default function LuxDnaLab() {
         setShowNavMenu(false);
         setShowStatsDropdown(false);
         setShowQuizModal(false);
+        setShowNomineeQuizModal(false);
         setShowQuizResult(false);
+        setShowNomineeQuizResult(false);
         setShowMyDnaModal(false);
       }
     };
@@ -255,6 +304,8 @@ export default function LuxDnaLab() {
       
       // Load quizzes
       await loadQuizzes();
+      await loadNomineeQuizzes();
+      await loadMasterNominees();
       
     } catch (error) {
       console.error('Error loading data:', error);
@@ -262,7 +313,7 @@ export default function LuxDnaLab() {
     }
     
     setIsLoading(false);
-  }, [user, router, themes, loadQuizzes]);
+  }, [user, router, themes, loadQuizzes, loadNomineeQuizzes, loadMasterNominees]);
 
   useEffect(() => {
     if (!loading && isAuthenticated && user) {
@@ -319,12 +370,69 @@ export default function LuxDnaLab() {
     return quiz.results[winnerKey];
   }, []);
 
+  // Calculate nominee quiz result
+  const calculateNomineeQuizResult = useCallback((quiz, answers) => {
+    const scores = {};
+    
+    // Initialize scores for all possible book results
+    quiz.results.forEach(result => {
+      scores[result.book_id] = 0;
+    });
+    
+    // Calculate scores based on answers
+    quiz.questions.forEach((question, questionIndex) => {
+      const answer = answers[questionIndex];
+      if (answer !== undefined && question.options[answer] && question.options[answer].points) {
+        Object.entries(question.options[answer].points).forEach(([bookId, points]) => {
+          if (scores.hasOwnProperty(bookId)) {
+            scores[bookId] += points;
+          }
+        });
+      }
+    });
+    
+    console.log('📚 Nominee quiz scores calculated:', scores);
+    
+    // Find the highest score
+    const maxScore = Math.max(...Object.values(scores));
+    console.log('🏆 Highest score:', maxScore);
+    
+    // Get all books with the highest score (handles ties)
+    const winners = Object.entries(scores).filter(([bookId, score]) => score === maxScore);
+    console.log('🎯 Winners (tied for highest):', winners);
+    
+    // If no one has any points, pick a random result as fallback
+    if (maxScore === 0) {
+      console.log('⚠️ No points scored, using random fallback');
+      const randomResult = quiz.results[Math.floor(Math.random() * quiz.results.length)];
+      return randomResult;
+    }
+    
+    // If there are ties, pick randomly among winners
+    const randomWinner = winners[Math.floor(Math.random() * winners.length)];
+    const [winnerBookId] = randomWinner;
+    
+    // Find the result object for this book_id
+    const result = quiz.results.find(r => r.book_id === winnerBookId);
+    
+    console.log('✅ Final nominee result:', winnerBookId, result?.title || 'Unknown');
+    return result;
+  }, []);
+
   // Start a quiz
   const startQuiz = (quiz) => {
     setCurrentQuiz(quiz);
     setCurrentQuestionIndex(0);
     setAnswers({});
     setShowQuizModal(true);
+  };
+
+  // Start a nominee quiz
+  const startNomineeQuiz = (quiz) => {
+    setCurrentNomineeQuiz(quiz);
+    setCurrentQuestionIndex(0);
+    setAnswers({});
+    setShowNomineeQuizModal(true);
   };
 
   // Answer a question
@@ -344,6 +452,26 @@ export default function LuxDnaLab() {
       
       // Save result to student profile
       saveQuizResult(currentQuiz.quiz_id, result);
+    }
+  };
+
+  // Answer a nominee quiz question
+  const answerNomineeQuestion = (answerIndex) => {
+    const newAnswers = { ...answers, [currentQuestionIndex]: answerIndex };
+    setAnswers(newAnswers);
+    
+    // Move to next question or finish quiz
+    if (currentQuestionIndex < currentNomineeQuiz.questions.length - 1) {
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
+    } else {
+      // Quiz complete - calculate result
+      const result = calculateNomineeQuizResult(currentNomineeQuiz, newAnswers);
+      setNomineeQuizResult(result);
+      setShowNomineeQuizModal(false);
+      setShowNomineeQuizResult(true);
+      
+      // Save result to student profile
+      saveNomineeQuizResult(currentNomineeQuiz.id, result);
     }
   };
 
@@ -379,6 +507,73 @@ export default function LuxDnaLab() {
     }
   };
 
+  // Save nominee quiz result to student profile
+  const saveNomineeQuizResult = async (quizId, result) => {
+    try {
+      console.log('💾 Saving nominee quiz result:', quizId, result?.book_id);
+      
+      const existingResults = studentData.nomineeQuizResults || {};
+      const updatedResults = {
+        ...existingResults,
+        [quizId]: {
+          result: result?.book_id || 'unknown',
+          bookTitle: result?.title || 'Unknown',
+          completedAt: new Date(),
+          timesCompleted: (existingResults[quizId]?.timesCompleted || 0) + 1
+        }
+      };
+      
+      await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
+        nomineeQuizResults: updatedResults
+      });
+      
+      // Update local state
+      setStudentData(prev => ({
+        ...prev,
+        nomineeQuizResults: updatedResults
+      }));
+      
+      console.log('✅ Nominee quiz result saved successfully');
+    } catch (error) {
+      console.error('❌ Error saving nominee quiz result:', error);
+    }
+  };
+
+  // Get completed quizzes count
+  const getCompletedQuizzesCount = () => {
+    return Object.keys(studentData?.quizResults || {}).length;
+  };
+
+  // Get completed nominee quizzes count
+  const getCompletedNomineeQuizzesCount = () => {
+    return Object.keys(studentData?.nomineeQuizResults || {}).length;
+  };
+
+  // Check if quiz is completed
+  const isQuizCompleted = (quizId) => {
+    return !!(studentData?.quizResults?.[quizId]);
+  };
+
+  // Check if nominee quiz is completed
+  const isNomineeQuizCompleted = (quizId) => {
+    return !!(studentData?.nomineeQuizResults?.[quizId]);
+  };
+
+  // Get quiz result for display
+  const getQuizResult = (quizId) => {
+    return studentData?.quizResults?.[quizId];
+  };
+
+  // Get nominee quiz result for display
+  const getNomineeQuizResult = (quizId) => {
+    return studentData?.nomineeQuizResults?.[quizId];
+  };
+
+  // Get book details from master nominees
+  const getBookDetails = (bookId) => {
+    return masterNominees.find(book => book.id === bookId);
+  };
+
   // NEW: Show result modal from DNA results
   const showDnaResult = (quizId, result) => {
     // Find the quiz that matches this result
@@ -408,19 +603,28 @@ export default function LuxDnaLab() {
     setShowQuizResult(true);
   };
 
-  // Get completed quizzes count
-  const getCompletedQuizzesCount = () => {
-    return Object.keys(studentData?.quizResults || {}).length;
-  };
+  // Show nominee result modal from DNA results
+  const showNomineeDnaResult = (quizId, result) => {
+    // Find the quiz that matches this result
+    const quiz = nomineeQuizzes.find(q => q.id === quizId);
+    if (!quiz) {
+      return;
+    }
 
-  // Check if quiz is completed
-  const isQuizCompleted = (quizId) => {
-    return !!(studentData?.quizResults?.[quizId]);
-  };
-
-  // Get quiz result for display
-  const getQuizResult = (quizId) => {
-    return studentData?.quizResults?.[quizId];
+    // Find the result object for this book_id
+    const bookResult = quiz.results.find(r => r.book_id === result.result);
+    
+    if (!bookResult) {
+      return;
+    }
+    
+    // Set the current quiz for retake functionality
+    setCurrentNomineeQuiz(quiz);
+    
+    // Set the quiz result and show modal
+    setNomineeQuizResult(bookResult);
+    setShowMyDnaModal(false);
+    setShowNomineeQuizResult(true);
   };
 
   // NEW: Get phase-specific messaging for the DNA Lab
@@ -468,6 +672,7 @@ export default function LuxDnaLab() {
   }
 
   const currentQuestion = currentQuiz?.questions[currentQuestionIndex];
+  const currentNomineeQuestion = currentNomineeQuiz?.questions[currentQuestionIndex];
 
   return (
     <>
@@ -857,7 +1062,7 @@ export default function LuxDnaLab() {
                   fontWeight: 'bold',
                   color: currentTheme.textPrimary
                 }}>
-                  {getCompletedQuizzesCount()}
+                  {getCompletedQuizzesCount() + getCompletedNomineeQuizzesCount()}
                 </div>
                 <div style={{
                   fontSize: '11px',
@@ -878,7 +1083,7 @@ export default function LuxDnaLab() {
                   fontWeight: 'bold',
                   color: currentTheme.textPrimary
                 }}>
-                  {quizzes.length}
+                  {quizzes.length + nomineeQuizzes.length}
                 </div>
                 <div style={{
                   fontSize: '11px',
@@ -950,33 +1155,125 @@ export default function LuxDnaLab() {
               </div>
             </div>
             
-            <div style={{
-              backgroundColor: isNomineesDnaLocked() ? `${currentTheme.textSecondary}20` : 
-                              phaseData.currentPhase === 'TEACHER_SELECTION' ? `${currentTheme.primary}20` : `${currentTheme.primary}20`,
-              borderRadius: '12px',
-              padding: '12px',
-              textAlign: 'center',
-              border: isNomineesDnaLocked() ? `2px dashed ${currentTheme.textSecondary}60` : 
-                      phaseData.currentPhase === 'TEACHER_SELECTION' ? `2px solid ${currentTheme.primary}60` : `2px dashed ${currentTheme.primary}60`
-            }}>
+            {isNomineesDnaLocked() ? (
               <div style={{
-                fontSize: '14px',
-                fontWeight: '600',
-                color: isNomineesDnaLocked() ? currentTheme.textSecondary : currentTheme.textPrimary,
-                marginBottom: '4px'
+                backgroundColor: `${currentTheme.textSecondary}20`,
+                borderRadius: '12px',
+                padding: '12px',
+                textAlign: 'center',
+                border: `2px dashed ${currentTheme.textSecondary}60`
               }}>
-                {isNomineesDnaLocked() ? '🔒 Closed for This Year!' : 
-                 phaseData.currentPhase === 'TEACHER_SELECTION' ? '🚀 NEW DNA Coming Next Week!' : '🚧 Coming Soon!'}
+                <div style={{
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: currentTheme.textSecondary,
+                  marginBottom: '4px'
+                }}>
+                  🔒 Closed for This Year!
+                </div>
+                <div style={{
+                  fontSize: '12px',
+                  color: currentTheme.textSecondary
+                }}>
+                  Book character quizzes are closed for this academic year
+                </div>
               </div>
+            ) : phaseData.currentPhase === 'TEACHER_SELECTION' ? (
               <div style={{
-                fontSize: '12px',
-                color: currentTheme.textSecondary
+                backgroundColor: `${currentTheme.primary}20`,
+                borderRadius: '12px',
+                padding: '12px',
+                textAlign: 'center',
+                border: `2px solid ${currentTheme.primary}60`
               }}>
-                {isNomineesDnaLocked() ? 'Book character quizzes are closed for this academic year' :
-                 phaseData.currentPhase === 'TEACHER_SELECTION' ? 'Brand new book character personality quizzes launch with the new program!' :
-                 'Book character personality quizzes are in development'}
+                <div style={{
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: currentTheme.textPrimary,
+                  marginBottom: '4px'
+                }}>
+                  🚀 NEW DNA Coming Next Week!
+                </div>
+                <div style={{
+                  fontSize: '12px',
+                  color: currentTheme.textSecondary
+                }}>
+                  Brand new book character personality quizzes launch with the new program!
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="nominee-quiz-grid" style={{
+                display: 'grid',
+                gap: '8px'
+              }}>
+                {nomineeQuizzes.map((quiz) => {
+                  const completed = isNomineeQuizCompleted(quiz.id);
+                  const result = getNomineeQuizResult(quiz.id);
+                  
+                  return (
+                    <button
+                      key={quiz.id}
+                      onClick={() => startNomineeQuiz(quiz)}
+                      style={{
+                        backgroundColor: completed ? `${currentTheme.primary}30` : `${currentTheme.primary}15`,
+                        border: completed ? `2px solid ${currentTheme.primary}80` : `1px solid ${currentTheme.primary}40`,
+                        borderRadius: '12px',
+                        padding: '12px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        textAlign: 'left',
+                        touchAction: 'manipulation',
+                        WebkitTapHighlightColor: 'transparent',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <div style={{
+                        fontSize: '24px',
+                        flexShrink: 0
+                      }}>
+                        {completed ? '✅' : '📚'}
+                      </div>
+                      
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          color: currentTheme.textPrimary,
+                          marginBottom: '2px'
+                        }}>
+                          {quiz.title}
+                        </div>
+                        <div style={{
+                          fontSize: '11px',
+                          color: currentTheme.textSecondary
+                        }}>
+                          {quiz.description}
+                        </div>
+                        {completed && result && (
+                          <div style={{
+                            fontSize: '10px',
+                            color: currentTheme.primary,
+                            fontWeight: '600',
+                            marginTop: '4px'
+                          }}>
+                            Your result: {result.bookTitle} • Completed {result.timesCompleted} time{result.timesCompleted > 1 ? 's' : ''} • Retake?
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div style={{
+                        fontSize: '16px',
+                        color: currentTheme.textSecondary
+                      }}>
+                        ▶
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Saint DNA Quizzes */}
@@ -1274,6 +1571,167 @@ export default function LuxDnaLab() {
           </div>
         )}
 
+        {/* NOMINEE QUIZ TAKING MODAL */}
+        {showNomineeQuizModal && currentNomineeQuiz && currentNomineeQuestion && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.85)',
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}>
+            <div className="nominee-quiz-modal-content" style={{
+              backgroundColor: currentTheme.surface,
+              borderRadius: '20px',
+              maxWidth: '380px',
+              width: '100%',
+              maxHeight: '85vh',
+              overflowY: 'auto',
+              position: 'relative',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.3)'
+            }}>
+              <button
+                onClick={() => setShowNomineeQuizModal(false)}
+                style={{
+                  position: 'absolute',
+                  top: '12px',
+                  right: '12px',
+                  backgroundColor: 'rgba(0,0,0,0.7)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '36px',
+                  height: '36px',
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 10,
+                  touchAction: 'manipulation',
+                  WebkitTapHighlightColor: 'transparent'
+                }}
+              >
+                ✕
+              </button>
+
+              {/* Quiz Header */}
+              <div style={{
+                background: `linear-gradient(135deg, ${currentTheme.primary}, ${currentTheme.secondary})`,
+                borderRadius: '20px 20px 0 0',
+                padding: '20px',
+                textAlign: 'center',
+                color: currentTheme.textPrimary
+              }}>
+                <div style={{
+                  fontSize: '20px',
+                  fontWeight: '600',
+                  margin: '0 0 8px 0',
+                  fontFamily: 'Didot, "Times New Roman", serif'
+                }}>
+                  {currentNomineeQuiz.title}
+                </div>
+                <div style={{
+                  fontSize: '12px',
+                  opacity: 0.8
+                }}>
+                  Question {currentQuestionIndex + 1} of {currentNomineeQuiz.questions.length}
+                </div>
+              </div>
+
+              {/* Question Content */}
+              <div style={{ padding: '20px' }}>
+                <div style={{
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  color: currentTheme.textPrimary,
+                  marginBottom: '20px',
+                  textAlign: 'center',
+                  lineHeight: '1.4'
+                }}>
+                  {currentNomineeQuestion.question}
+                </div>
+
+                {/* Answer Options */}
+                <div style={{
+                  display: 'grid',
+                  gap: '10px'
+                }}>
+                  {currentNomineeQuestion.options.map((option, index) => (
+                    <button
+                      key={index}
+                      onClick={() => answerNomineeQuestion(index)}
+                      style={{
+                        backgroundColor: `${currentTheme.primary}15`,
+                        border: `2px solid ${currentTheme.primary}40`,
+                        borderRadius: '12px',
+                        padding: '14px',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        fontSize: '14px',
+                        color: currentTheme.textPrimary,
+                        fontWeight: '500',
+                        lineHeight: '1.3',
+                        minHeight: '44px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        touchAction: 'manipulation',
+                        WebkitTapHighlightColor: 'transparent',
+                        transition: 'all 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.target.style.backgroundColor = `${currentTheme.primary}25`;
+                        e.target.style.borderColor = `${currentTheme.primary}60`;
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.backgroundColor = `${currentTheme.primary}15`;
+                        e.target.style.borderColor = `${currentTheme.primary}40`;
+                      }}
+                    >
+                      {option.text}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Progress Bar */}
+                <div style={{
+                  marginTop: '20px',
+                  textAlign: 'center'
+                }}>
+                  <div style={{
+                    height: '6px',
+                    backgroundColor: '#E0E0E0',
+                    borderRadius: '3px',
+                    overflow: 'hidden',
+                    marginBottom: '8px'
+                  }}>
+                    <div style={{
+                      height: '100%',
+                      width: `${((currentQuestionIndex + 1) / currentNomineeQuiz.questions.length) * 100}%`,
+                      background: `linear-gradient(90deg, ${currentTheme.primary}, ${currentTheme.secondary})`,
+                      borderRadius: '3px',
+                      transition: 'width 0.3s ease'
+                    }} />
+                  </div>
+                  <div style={{
+                    fontSize: '11px',
+                    color: currentTheme.textSecondary
+                  }}>
+                    {Math.round(((currentQuestionIndex + 1) / currentNomineeQuiz.questions.length) * 100)}% Complete
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* QUIZ RESULT MODAL */}
         {showQuizResult && quizResult && (() => {
           const seriesColor = seriesColors[quizResult.series] || seriesColors['Pocket Patrons'];
@@ -1330,23 +1788,23 @@ export default function LuxDnaLab() {
 
                 {/* LARGE SAINT IMAGE */}
                 <div style={{
-  width: '300px',
-  height: '360px',
-  marginBottom: '16px',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  marginTop: '40px',
-  position: 'relative'
-}}>
-  <div style={{
-    position: 'absolute',
-    inset: '20px',
-    background: 'radial-gradient(circle, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 40%, transparent 70%)',
-    borderRadius: '50%',
-    filter: 'blur(8px)',
-    zIndex: 0
-  }} />
+                  width: '300px',
+                  height: '360px',
+                  marginBottom: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginTop: '40px',
+                  position: 'relative'
+                }}>
+                  <div style={{
+                    position: 'absolute',
+                    inset: '20px',
+                    background: 'radial-gradient(circle, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 40%, transparent 70%)',
+                    borderRadius: '50%',
+                    filter: 'blur(8px)',
+                    zIndex: 0
+                  }} />
                   <img 
                     src={quizResult.icon_asset?.replace('assets/', '/') || `/saints/${quizResult.saint_id}.png`} 
                     alt={quizResult.name}
@@ -1355,8 +1813,8 @@ export default function LuxDnaLab() {
                       height: '100%',
                       objectFit: 'contain',
                       filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.3))',
-background: 'radial-gradient(circle at center, rgba(255,255,255,0.1) 0%, transparent 70%)',
-borderRadius: '12px'
+                      background: 'radial-gradient(circle at center, rgba(255,255,255,0.1) 0%, transparent 70%)',
+                      borderRadius: '12px'
                     }}
                     onError={(e) => {
                       e.target.style.display = 'none';
@@ -1509,7 +1967,229 @@ borderRadius: '12px'
           );
         })()}
 
-        {/* MY DNA RESULTS MODAL - UPDATED WITH CLICKABLE RESULTS */}
+        {/* NOMINEE QUIZ RESULT MODAL */}
+        {showNomineeQuizResult && nomineeQuizResult && (() => {
+          const bookDetails = getBookDetails(nomineeQuizResult.book_id);
+          
+          return (
+            <div style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0,0,0,0.85)',
+              zIndex: 1000,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '20px'
+            }}>
+              <div className="nominee-result-modal-content" style={{
+                maxWidth: '360px',
+                width: '100%',
+                maxHeight: '85vh',
+                overflowY: 'auto',
+                position: 'relative',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center'
+              }}>
+                <button
+                  onClick={() => setShowNomineeQuizResult(false)}
+                  style={{
+                    position: 'absolute',
+                    top: '12px',
+                    right: '12px',
+                    backgroundColor: 'rgba(0,0,0,0.7)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '36px',
+                    height: '36px',
+                    fontSize: '16px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 10,
+                    touchAction: 'manipulation',
+                    WebkitTapHighlightColor: 'transparent'
+                  }}
+                >
+                  ✕
+                </button>
+
+                {/* LARGE BOOK COVER */}
+                <div style={{
+                  width: '280px',
+                  height: '420px',
+                  marginBottom: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginTop: '40px',
+                  position: 'relative'
+                }}>
+                  <div style={{
+                    position: 'absolute',
+                    inset: '20px',
+                    background: 'radial-gradient(circle, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 40%, transparent 70%)',
+                    borderRadius: '12px',
+                    filter: 'blur(8px)',
+                    zIndex: 0
+                  }} />
+                  <img 
+                    src={bookDetails?.coverImageURL || '/placeholder-book.png'} 
+                    alt={nomineeQuizResult.title}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      borderRadius: '12px',
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                      background: 'linear-gradient(135deg, #f0f0f0, #e0e0e0)',
+                      zIndex: 1,
+                      position: 'relative'
+                    }}
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.nextSibling.style.display = 'flex';
+                    }}
+                  />
+                  {/* Fallback for missing cover */}
+                  <div style={{
+                    width: '100%',
+                    height: '100%',
+                    display: 'none',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '60px',
+                    color: 'rgba(255,255,255,0.8)',
+                    backgroundColor: 'rgba(0,0,0,0.5)',
+                    borderRadius: '12px',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                    zIndex: 1,
+                    position: 'relative'
+                  }}>
+                    📚
+                  </div>
+                </div>
+
+                {/* RESULT INFO CARD */}
+                <div style={{
+                  backgroundColor: currentTheme.surface,
+                  borderRadius: '14px',
+                  padding: '20px',
+                  width: '90%',
+                  maxWidth: '320px',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                  textAlign: 'center',
+                  border: `2px solid ${currentTheme.primary}40`
+                }}>
+                  {/* Result Header */}
+                  <div style={{
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: currentTheme.textPrimary,
+                    marginBottom: '8px'
+                  }}>
+                    🎉 Your Book World Result 🎉
+                  </div>
+
+                  {/* Book Title */}
+                  <h2 style={{
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    color: currentTheme.textPrimary,
+                    margin: '0 0 8px 0',
+                    fontFamily: 'Didot, "Times New Roman", serif',
+                    lineHeight: '1.3'
+                  }}>
+                    {nomineeQuizResult.title}
+                  </h2>
+
+                  {/* Book Details */}
+                  {bookDetails && (
+                    <div style={{
+                      backgroundColor: `${currentTheme.primary}20`,
+                      color: currentTheme.textPrimary,
+                      padding: '4px 10px',
+                      borderRadius: '12px',
+                      fontSize: '10px',
+                      fontWeight: '600',
+                      display: 'inline-block',
+                      marginBottom: '12px'
+                    }}>
+                      {bookDetails.title} by {bookDetails.author}
+                    </div>
+                  )}
+
+                  {/* Description */}
+                  <div style={{
+                    fontSize: '13px',
+                    color: currentTheme.textPrimary,
+                    lineHeight: '1.4',
+                    marginBottom: '16px',
+                    textAlign: 'center'
+                  }}>
+                    {nomineeQuizResult.description}
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '8px',
+                    marginTop: '16px'
+                  }}>
+                    <button
+                      onClick={() => {
+                        setShowNomineeQuizResult(false);
+                        startNomineeQuiz(currentNomineeQuiz);
+                      }}
+                      style={{
+                        backgroundColor: `${currentTheme.primary}20`,
+                        color: currentTheme.textPrimary,
+                        border: `1px solid ${currentTheme.primary}40`,
+                        borderRadius: '8px',
+                        padding: '8px',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        touchAction: 'manipulation',
+                        WebkitTapHighlightColor: 'transparent'
+                      }}
+                    >
+                      🔄 Retake Quiz
+                    </button>
+                    
+                    <button
+                      onClick={() => setShowNomineeQuizResult(false)}
+                      style={{
+                        backgroundColor: currentTheme.primary,
+                        color: currentTheme.textPrimary,
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '8px',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        touchAction: 'manipulation',
+                        WebkitTapHighlightColor: 'transparent'
+                      }}
+                    >
+                      ✨ Perfect!
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* MY DNA RESULTS MODAL - UPDATED WITH NOMINEE RESULTS */}
         {showMyDnaModal && (
           <div style={{
             position: 'fixed',
@@ -1582,7 +2262,7 @@ borderRadius: '12px'
                 backgroundColor: '#FFFFFF',
                 borderRadius: '0 0 20px 20px'
               }}>
-                {Object.keys(studentData?.quizResults || {}).length === 0 ? (
+                {Object.keys(studentData?.quizResults || {}).length === 0 && Object.keys(studentData?.nomineeQuizResults || {}).length === 0 ? (
                   <div style={{
                     textAlign: 'center',
                     padding: '20px'
@@ -1601,82 +2281,165 @@ borderRadius: '12px'
                       color: currentTheme.textSecondary,
                       lineHeight: '1.5'
                     }}>
-                      Take some saint quizzes to discover your personality matches!
+                      Take some quizzes to discover your personality matches!
                     </div>
                   </div>
                 ) : (
                   <div>
-                    <div style={{
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      color: currentTheme.textPrimary,
-                      marginBottom: '16px',
-                      textAlign: 'center'
-                    }}>
-                      Your Saint Personality Matches:
-                    </div>
-                    
-                    <div className="dna-results-grid" style={{
-                      display: 'grid',
-                      gap: '8px'
-                    }}>
-                      {Object.entries(studentData?.quizResults || {}).map(([quizId, result]) => {
-                        const quiz = quizzes.find(q => q.quiz_id === quizId);
-                        if (!quiz) return null;
+                    {/* Saint Quiz Results */}
+                    {Object.keys(studentData?.quizResults || {}).length > 0 && (
+                      <>
+                        <div style={{
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          color: currentTheme.textPrimary,
+                          marginBottom: '16px',
+                          textAlign: 'center'
+                        }}>
+                          Your Saint Personality Matches:
+                        </div>
                         
-                        return (
-                          <button
-                            key={quizId}
-                            onClick={() => showDnaResult(quizId, result)}
-                            style={{
-                              backgroundColor: `${currentTheme.primary}15`,
-                              border: `1px solid ${currentTheme.primary}30`,
-                              borderRadius: '12px',
-                              padding: '12px',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '12px',
-                              textAlign: 'left',
-                              touchAction: 'manipulation',
-                              WebkitTapHighlightColor: 'transparent',
-                              width: '100%'
-                            }}
-                          >
-                            <div style={{
-                              fontSize: '20px',
-                              flexShrink: 0
-                            }}>
-                              ♔
-                            </div>
+                        <div className="dna-results-grid" style={{
+                          display: 'grid',
+                          gap: '8px',
+                          marginBottom: '20px'
+                        }}>
+                          {Object.entries(studentData?.quizResults || {}).map(([quizId, result]) => {
+                            const quiz = quizzes.find(q => q.quiz_id === quizId);
+                            if (!quiz) return null;
                             
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{
-                                fontSize: '12px',
-                                color: currentTheme.textSecondary,
-                                marginBottom: '2px'
-                              }}>
-                                {quiz.title}
-                              </div>
-                              <div style={{
-                                fontSize: '14px',
-                                fontWeight: '600',
-                                color: currentTheme.textPrimary,
-                                marginBottom: '2px'
-                              }}>
-                                {result.saintName}
-                              </div>
-                              <div style={{
-                                fontSize: '10px',
-                                color: currentTheme.textSecondary
-                              }}>
-                                Completed {result.timesCompleted} time{result.timesCompleted > 1 ? 's' : ''}
-                              </div>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
+                            return (
+                              <button
+                                key={quizId}
+                                onClick={() => showDnaResult(quizId, result)}
+                                style={{
+                                  backgroundColor: `${currentTheme.primary}15`,
+                                  border: `1px solid ${currentTheme.primary}30`,
+                                  borderRadius: '12px',
+                                  padding: '12px',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '12px',
+                                  textAlign: 'left',
+                                  touchAction: 'manipulation',
+                                  WebkitTapHighlightColor: 'transparent',
+                                  width: '100%'
+                                }}
+                              >
+                                <div style={{
+                                  fontSize: '20px',
+                                  flexShrink: 0
+                                }}>
+                                  ♔
+                                </div>
+                                
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{
+                                    fontSize: '12px',
+                                    color: currentTheme.textSecondary,
+                                    marginBottom: '2px'
+                                  }}>
+                                    {quiz.title}
+                                  </div>
+                                  <div style={{
+                                    fontSize: '14px',
+                                    fontWeight: '600',
+                                    color: currentTheme.textPrimary,
+                                    marginBottom: '2px'
+                                  }}>
+                                    {result.saintName}
+                                  </div>
+                                  <div style={{
+                                    fontSize: '10px',
+                                    color: currentTheme.textSecondary
+                                  }}>
+                                    Completed {result.timesCompleted} time{result.timesCompleted > 1 ? 's' : ''}
+                                  </div>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </>
+                    )}
+
+                    {/* Nominee Quiz Results */}
+                    {Object.keys(studentData?.nomineeQuizResults || {}).length > 0 && (
+                      <>
+                        <div style={{
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          color: currentTheme.textPrimary,
+                          marginBottom: '16px',
+                          textAlign: 'center'
+                        }}>
+                          Your Book World Matches:
+                        </div>
+                        
+                        <div className="nominee-dna-results-grid" style={{
+                          display: 'grid',
+                          gap: '8px'
+                        }}>
+                          {Object.entries(studentData?.nomineeQuizResults || {}).map(([quizId, result]) => {
+                            const quiz = nomineeQuizzes.find(q => q.id === quizId);
+                            if (!quiz) return null;
+                            
+                            return (
+                              <button
+                                key={quizId}
+                                onClick={() => showNomineeDnaResult(quizId, result)}
+                                style={{
+                                  backgroundColor: `${currentTheme.secondary}15`,
+                                  border: `1px solid ${currentTheme.secondary}30`,
+                                  borderRadius: '12px',
+                                  padding: '12px',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '12px',
+                                  textAlign: 'left',
+                                  touchAction: 'manipulation',
+                                  WebkitTapHighlightColor: 'transparent',
+                                  width: '100%'
+                                }}
+                              >
+                                <div style={{
+                                  fontSize: '20px',
+                                  flexShrink: 0
+                                }}>
+                                  📚
+                                </div>
+                                
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{
+                                    fontSize: '12px',
+                                    color: currentTheme.textSecondary,
+                                    marginBottom: '2px'
+                                  }}>
+                                    {quiz.title}
+                                  </div>
+                                  <div style={{
+                                    fontSize: '14px',
+                                    fontWeight: '600',
+                                    color: currentTheme.textPrimary,
+                                    marginBottom: '2px'
+                                  }}>
+                                    {result.bookTitle}
+                                  </div>
+                                  <div style={{
+                                    fontSize: '10px',
+                                    color: currentTheme.textSecondary
+                                  }}>
+                                    Completed {result.timesCompleted} time{result.timesCompleted > 1 ? 's' : ''}
+                                  </div>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
@@ -1746,7 +2509,17 @@ borderRadius: '12px'
               gap: 12px !important;
             }
             
+            .nominee-quiz-grid {
+              grid-template-columns: 1fr 1fr !important;
+              gap: 12px !important;
+            }
+            
             .quiz-modal-content {
+              max-width: 480px !important;
+              padding: 24px !important;
+            }
+            
+            .nominee-quiz-modal-content {
               max-width: 480px !important;
               padding: 24px !important;
             }
@@ -1755,7 +2528,16 @@ borderRadius: '12px'
               max-width: 420px !important;
             }
             
+            .nominee-result-modal-content {
+              max-width: 420px !important;
+            }
+            
             .dna-results-grid {
+              grid-template-columns: 1fr 1fr !important;
+              gap: 12px !important;
+            }
+            
+            .nominee-dna-results-grid {
               grid-template-columns: 1fr 1fr !important;
               gap: 12px !important;
             }

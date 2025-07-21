@@ -744,6 +744,30 @@ export default function SignIn() {
                     />
                   </div>
 
+                  {/* Forgot Password Link for Teachers */}
+                  <div style={{ textAlign: 'right', marginTop: '0.5rem', marginBottom: '1rem' }}>
+                    <button
+                      onClick={() => {
+                        if (!formData.email?.trim()) {
+                          setError('Please enter your email address first');
+                          return;
+                        }
+                        setShowForgotPassword(true);
+                      }}
+                      type="button"
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#ADD4EA',
+                        fontSize: '0.875rem',
+                        cursor: 'pointer',
+                        textDecoration: 'underline'
+                      }}
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
+
                   <div style={{ marginBottom: '1.5rem' }}>
                     <label style={{
                       display: 'block',
