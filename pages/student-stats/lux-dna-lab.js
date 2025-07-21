@@ -1039,7 +1039,7 @@ export default function LuxDnaLab() {
               marginBottom: '8px',
               fontFamily: 'Didot, "Times New Roman", serif'
             }}>
-              Welcome to Your DNA Lab!
+              Welcome to Your Lux DNA Lab!
             </div>
             
             <div style={{
@@ -1049,10 +1049,10 @@ export default function LuxDnaLab() {
               lineHeight: '1.5'
             }}>
               {phaseData.currentPhase === 'RESULTS' ? 
-                'Discover your saint personality through fun quizzes! Book character DNA is closed for this year.' :
+                'Discover your Lux Libris literary and saint personality through fun quizzes! Book character DNA is closed for this year.' :
                 phaseData.currentPhase === 'TEACHER_SELECTION' ?
-                'Discover your saint personality and get ready for brand new book character quizzes coming next week!' :
-                'Discover your personality through fun quizzes and learn which saints match your spirit!'}
+                'Discover your Lux Libris literary and saint personality and get ready for brand new book character quizzes coming next week!' :
+                'Discover your personality through fun quizzes and learn which Lux Libris literary characters and saints match your spirit!'}
             </div>
 
             <div style={{
@@ -1828,7 +1828,7 @@ export default function LuxDnaLab() {
                 </button>
 
                 {/* LARGE SAINT IMAGE */}
-                <div style={{
+                <div className="result-image-container" style={{
                   width: '300px',
                   height: '360px',
                   marginBottom: '16px',
@@ -1878,7 +1878,7 @@ export default function LuxDnaLab() {
                 </div>
 
                 {/* RESULT INFO CARD */}
-                <div style={{
+                <div className="result-info-card" style={{
                   backgroundColor: seriesColor.bg,
                   borderRadius: '14px',
                   padding: '20px',
@@ -1957,7 +1957,7 @@ export default function LuxDnaLab() {
                   )}
 
                   {/* Action Buttons */}
-                  <div style={{
+                  <div className="result-action-buttons" style={{
                     display: 'grid',
                     gridTemplateColumns: '1fr 1fr',
                     gap: '8px',
@@ -2063,7 +2063,7 @@ export default function LuxDnaLab() {
                 </button>
 
                 {/* LARGE BOOK COVER */}
-                <div style={{
+                <div className="nominee-result-image-container" style={{
                   width: '280px',
                   height: '420px',
                   marginBottom: '16px',
@@ -2119,7 +2119,7 @@ export default function LuxDnaLab() {
                 </div>
 
                 {/* RESULT INFO CARD */}
-                <div style={{
+                <div className="nominee-result-info-card" style={{
                   backgroundColor: currentTheme.surface,
                   borderRadius: '14px',
                   padding: '20px',
@@ -2179,7 +2179,7 @@ export default function LuxDnaLab() {
                   </div>
 
                   {/* Action Buttons */}
-                  <div style={{
+                  <div className="nominee-result-action-buttons" style={{
                     display: 'grid',
                     gridTemplateColumns: '1fr 1fr',
                     gap: '8px',
@@ -2245,7 +2245,7 @@ export default function LuxDnaLab() {
             justifyContent: 'center',
             padding: '20px'
           }}>
-            <div style={{
+            <div className="my-dna-modal-content" style={{
               backgroundColor: currentTheme.surface,
               borderRadius: '20px',
               maxWidth: '380px',
@@ -2281,7 +2281,7 @@ export default function LuxDnaLab() {
                 ✕
               </button>
 
-              <div style={{
+              <div className="my-dna-modal-header" style={{
                 padding: '20px 20px 10px',
                 textAlign: 'center',
                 backgroundColor: currentTheme.primary,
@@ -2298,7 +2298,7 @@ export default function LuxDnaLab() {
                 </h2>
               </div>
 
-              <div style={{
+              <div className="my-dna-modal-body" style={{
                 padding: '20px',
                 backgroundColor: '#FFFFFF',
                 borderRadius: '0 0 20px 20px'
@@ -2531,7 +2531,7 @@ export default function LuxDnaLab() {
             -moz-osx-font-smoothing: grayscale;
           }
 
-          /* ADDED: Adaptive CSS for tablet/iPad layouts */
+          /* UPDATED: Adaptive CSS for tablet/iPad layouts with modal optimizations */
           @media screen and (min-width: 768px) and (max-width: 1024px) {
             .stats-main-content {
               max-width: 600px !important;
@@ -2579,6 +2579,52 @@ export default function LuxDnaLab() {
             
             .nominee-result-modal-content {
               max-width: 420px !important;
+            }
+            
+            /* ADDED: iPad optimization for result modal image containers */
+            .result-image-container {
+              width: 340px !important;
+              height: 400px !important;
+            }
+            
+            .nominee-result-image-container {
+              width: 320px !important;
+              height: 460px !important;
+            }
+            
+            /* ADDED: iPad optimization for result info cards */
+            .result-info-card {
+              padding: 24px !important;
+              width: 95% !important;
+              max-width: 360px !important;
+            }
+            
+            .nominee-result-info-card {
+              padding: 24px !important;
+              width: 95% !important;
+              max-width: 360px !important;
+            }
+            
+            /* ADDED: iPad optimization for result action buttons */
+            .result-action-buttons {
+              gap: 12px !important;
+            }
+            
+            .nominee-result-action-buttons {
+              gap: 12px !important;
+            }
+            
+            /* ADDED: iPad optimization for My DNA modal */
+            .my-dna-modal-content {
+              max-width: 480px !important;
+            }
+            
+            .my-dna-modal-header {
+              padding: 24px 24px 12px !important;
+            }
+            
+            .my-dna-modal-body {
+              padding: 24px !important;
             }
             
             .dna-results-grid {
