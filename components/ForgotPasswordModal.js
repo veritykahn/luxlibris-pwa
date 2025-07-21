@@ -1,7 +1,5 @@
-// components/ForgotPasswordModal.js - Simple Password Reset Modal
-
+// components/ForgotPasswordModal.js - Fixed with Dynamic Import
 import { useState } from 'react'
-import { parentPasswordReset, teacherPasswordReset } from '../lib/accountRecovery'
 
 export function ForgotPasswordModal({ accountType, email, onClose, onSuccess }) {
   const [loading, setLoading] = useState(false)
@@ -17,6 +15,9 @@ export function ForgotPasswordModal({ accountType, email, onClose, onSuccess }) 
     setMessage('')
     
     try {
+      // Dynamic import to avoid build issues
+      const { parentPasswordReset, teacherPasswordReset } = await import('../lib/accountRecovery')
+      
       let result
       if (accountType === 'parent') {
         result = await parentPasswordReset.sendResetEmail(email)
@@ -24,13 +25,14 @@ export function ForgotPasswordModal({ accountType, email, onClose, onSuccess }) 
         result = await teacherPasswordReset.sendResetEmail(email)
       }
       
-      if (result.success) {
+      if (result?.success) {
         setMessage('Password reset email sent! Check your inbox.')
         if (onSuccess) onSuccess()
       } else {
-        setMessage(result.error)
+        setMessage(result?.error || 'Failed to send reset email.')
       }
     } catch (error) {
+      console.error('Error:', error)
       setMessage('Failed to send reset email. Please try again.')
     }
     
@@ -60,7 +62,7 @@ export function ForgotPasswordModal({ accountType, email, onClose, onSuccess }) 
         textAlign: 'center',
         boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
       }}>
-        <h3 style={{ 
+        <h3 style={{
           marginBottom: '1rem',
           color: '#223848',
           fontSize: '1.25rem'
@@ -68,12 +70,12 @@ export function ForgotPasswordModal({ accountType, email, onClose, onSuccess }) 
           Reset Password
         </h3>
         
-        <p style={{ 
-          marginBottom: '1.5rem', 
+        <p style={{
+          marginBottom: '1.5rem',
           color: '#6b7280',
-          lineHeight: '1.4' 
+          lineHeight: '1.4'
         }}>
-          We&apos;ll send a password reset link to <strong>{email}</strong>
+          We'll send a password reset link to <strong>{email}</strong>
         </p>
         
         {message && (
@@ -128,5 +130,3 @@ export function ForgotPasswordModal({ accountType, email, onClose, onSuccess }) 
     </div>
   )
 }
-
-console.log('✅ Forgot Password Modal component loaded')
