@@ -2132,10 +2132,12 @@ export default function LuxDnaLab() {
                 }}>
                   {/* Result Header */}
                   <div style={{
-                    fontSize: '16px',
+                    fontSize: resultTitlePrefix.length > 25 ? '14px' : '16px',
                     fontWeight: '600',
                     color: currentTheme.textPrimary,
-                    marginBottom: '8px'
+                    marginBottom: '12px',
+                    lineHeight: '1.3',
+                    textAlign: 'center'
                   }}>
                     🎉 {resultTitlePrefix} 🎉
                   </div>
