@@ -513,6 +513,7 @@ function ParentBookCard({ book, theme, linkedStudents, nominees, onOpenParentGui
       iconBg: '#FF9800'
     };
   };
+
   const getCategoryColorPalette = (book) => {
     const category = book.displayCategory || book.internalCategory || ''
 
@@ -747,12 +748,12 @@ function ParentBookCard({ book, theme, linkedStudents, nominees, onOpenParentGui
         background: `linear-gradient(180deg, ${colorPalette.surface || theme.surface}, ${colorPalette.background || theme.background})`
       }}>
         {/* Cover and Stats Section */}
-        <div style={{
+        <div className="cover-stats-container" style={{
           display: 'flex',
           gap: 'clamp(12px, 4vw, 16px)',
           marginBottom: '16px'
         }}>
-          <div style={{
+          <div className="book-cover" style={{
             width: '100px',
             height: '150px',
             flexShrink: 0,
@@ -921,13 +922,8 @@ function ParentBookCard({ book, theme, linkedStudents, nominees, onOpenParentGui
             💡 Parent Guide
           </button>
         </div>
-      </div>
 
-      {/* Children's Status Section */}
-      <div style={{
-        padding: '12px 20px 20px',
-        background: `linear-gradient(180deg, ${colorPalette.background || theme.background}, ${colorPalette.surface || theme.surface})`
-      }}>
+        {/* Children's Status Section - Moved up to be closer to Parent Guide */}
         <div style={{
           display: 'flex',
           flexDirection: 'column',
@@ -1246,12 +1242,16 @@ export default function ParentNominees() {
     }
   }
 
-  const handleTabClick = (tabName) => {
-    if (tabName === 'Book Nominees') {
-      return // Already here
-    } else {
-      console.log(`${tabName} navigation coming soon`)
-    }
+  // Fixed navigation handler
+  const handleNavigation = (item) => {
+    if (item.current) return // Already here
+    
+    setShowNavMenu(false)
+    
+    setTimeout(() => {
+      // Navigate to all valid paths, not just dashboard
+      router.push(item.path)
+    }, 100)
   }
 
   // Show loading while data loads
@@ -1480,17 +1480,7 @@ export default function ParentNominees() {
                     onClick={(e) => {
                       e.preventDefault()
                       e.stopPropagation()
-                      setShowNavMenu(false)
-                      
-                      if (item.current) return
-                      
-                      setTimeout(() => {
-                        if (item.path === '/parent/dashboard') {
-                          router.push(item.path)
-                        } else {
-                          handleTabClick(item.name)
-                        }
-                      }, 100)
+                      handleNavigation(item)
                     }}
                     style={{
                       width: '100%',
@@ -1534,7 +1524,7 @@ export default function ParentNominees() {
         </div>
 
         {/* Main Content */}
-        <div style={{
+        <div className="nominees-main-content" style={{
           padding: '20px 20px 0 20px',
           display: 'flex',
           flexDirection: 'column',
@@ -1567,7 +1557,7 @@ export default function ParentNominees() {
           </div>
 
           {/* Main Card with Navigation Arrows */}
-          <div style={{
+          <div className="card-container" style={{
             position: 'relative',
             width: '100%',
             maxWidth: '360px',
@@ -1576,6 +1566,7 @@ export default function ParentNominees() {
             {/* Left Arrow */}
             <button
               onClick={goToPrevCard}
+              className="nav-arrow nav-arrow-left"
               style={{
                 position: 'absolute',
                 left: '-24px',
@@ -1606,6 +1597,7 @@ export default function ParentNominees() {
             {/* Right Arrow */}
             <button
               onClick={goToNextCard}
+              className="nav-arrow nav-arrow-right"
               style={{
                 position: 'absolute',
                 right: '-24px',
@@ -1637,13 +1629,14 @@ export default function ParentNominees() {
               book={currentBook}
               theme={luxTheme}
               linkedStudents={linkedStudents}
+              nominees={nominees}
               currentCardIndex={currentCardIndex}
               onOpenParentGuide={() => setShowParentModal(true)}
             />
           </div>
 
           {/* Navigation Hint */}
-          <div style={{
+          <div className="navigation-hint" style={{
             fontSize: '12px',
             color: luxTheme.textSecondary,
             textAlign: 'center',
@@ -1653,12 +1646,12 @@ export default function ParentNominees() {
           </div>
 
           {/* Quick Browse */}
-          <div style={{
+          <div className="quick-browse-section" style={{
             width: '100%',
             maxWidth: '400px',
             marginBottom: '40px'
           }}>
-            <h3 style={{
+            <h3 className="quick-browse-title" style={{
               fontSize: '16px',
               fontWeight: 'bold',
               color: luxTheme.textPrimary,
@@ -1667,7 +1660,7 @@ export default function ParentNominees() {
             }}>
               Quick Browse
             </h3>
-            <div style={{
+            <div className="quick-browse-strip" style={{
               display: 'flex',
               gap: '8px',
               overflowX: 'auto',
@@ -1754,10 +1747,79 @@ export default function ParentNominees() {
             scroll-behavior: smooth;
           }
           
+          /* iPad optimizations - similar to student page */
+          @media screen and (min-width: 768px) and (max-width: 1024px) {
+            .nominees-main-content {
+              padding: 28px 28px 0 28px !important;
+              padding-top: 28px !important;
+            }
+            
+            .card-container {
+              margin-bottom: 28px !important;
+            }
+            
+            .nav-arrow {
+              width: 67px !important;
+              height: 67px !important;
+              font-size: 25px !important;
+            }
+            
+            .nav-arrow-left {
+              left: -34px !important;
+            }
+            
+            .nav-arrow-right {
+              right: -34px !important;
+            }
+            
+            .navigation-hint {
+              font-size: 17px !important;
+              margin-bottom: 28px !important;
+            }
+            
+            .quick-browse-section {
+              max-width: 800px !important;
+              margin-bottom: 56px !important;
+            }
+            
+            .quick-browse-title {
+              font-size: 22px !important;
+              margin: 0 0 17px 0 !important;
+            }
+            
+            .quick-browse-strip {
+              gap: 11px !important;
+              padding: 11px 0 56px 0 !important;
+            }
+            
+            .quick-browse-item {
+              width: 90px !important;
+              height: 134px !important;
+              border-radius: 11px !important;
+              font-size: 34px !important;
+            }
+          }
+          
           @media (max-width: 768px) {
             .nav-menu-container > div {
               right: 10px !important;
               minWidth: 180px !important;
+            }
+          }
+          
+          @media (max-width: 480px) {
+            .cover-stats-container {
+              flex-direction: column !important;
+              align-items: center !important;
+            }
+            .book-cover {
+              width: 120px !important;
+              height: 180px !important;
+              margin-bottom: 12px;
+            }
+            .quick-browse-item {
+              width: 56px !important;
+              height: 84px !important;
             }
           }
         `}</style>
