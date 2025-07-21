@@ -2163,7 +2163,7 @@ export default function LuxDnaLab() {
                       display: 'inline-block',
                       marginBottom: '12px'
                     }}>
-                      {bookDetails.title} by {bookDetails.author}
+                      {bookDetails.title} by {bookDetails.authors}
                     </div>
                   )}
 
