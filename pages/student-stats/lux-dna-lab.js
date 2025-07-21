@@ -146,15 +146,15 @@ export default function LuxDnaLab() {
 
   // Stats navigation options
   const statsNavOptions = useMemo(() => [
-  { name: 'Stats Dashboard', path: '/student-stats', icon: '📊', description: 'Fun overview' },
-  { name: 'My Stats', path: '/student-stats/my-stats', icon: '📈', description: 'Personal deep dive' },
-  { name: 'Grade Stats', path: '/student-stats/grade-stats', icon: '🎓', description: 'Compare with classmates' },
-  { name: 'School Stats', path: '/student-stats/school-stats', icon: '🏫', description: 'School-wide progress' },
-  { name: 'Diocese Stats', path: '/student-stats/diocese-stats', icon: '⛪', description: 'Coming soon!', disabled: true },
-  { name: 'Global Stats', path: '/student-stats/global-stats', icon: '🌎', description: 'Coming soon!', disabled: true },
-  { name: 'Lux DNA Lab', path: '/student-stats/lux-dna-lab', icon: '🧬', description: 'Discover your reading personality', current: true },
-  { name: 'Family Battle', path: '/student-stats/family-battle', icon: '👨‍👩‍👧‍👦', description: 'Coming soon!', disabled: true }
-], []);
+    { name: 'Stats Dashboard', path: '/student-stats', icon: '📊', description: 'Fun overview' },
+    { name: 'My Stats', path: '/student-stats/my-stats', icon: '📈', description: 'Personal deep dive' },
+    { name: 'Grade Stats', path: '/student-stats/grade-stats', icon: '🎓', description: 'Compare with classmates' },
+    { name: 'School Stats', path: '/student-stats/school-stats', icon: '🏫', description: 'School-wide progress' },
+    { name: 'Diocese Stats', path: '/student-stats/diocese-stats', icon: '⛪', description: 'Coming soon!', disabled: true },
+    { name: 'Global Stats', path: '/student-stats/global-stats', icon: '🌎', description: 'Coming soon!', disabled: true },
+    { name: 'Lux DNA Lab', path: '/student-stats/lux-dna-lab', icon: '🧬', description: 'Discover your reading personality', current: true },
+    { name: 'Family Battle', path: '/student-stats/family-battle', icon: '👨‍👩‍👧‍👦', description: 'Coming soon!', disabled: true }
+  ], []);
 
   // Series colors for quiz results (same as saints collection)
   const seriesColors = useMemo(() => ({
@@ -577,7 +577,7 @@ export default function LuxDnaLab() {
     return masterNominees.find(book => book.id === bookId);
   };
 
-  // NEW: Show result modal from DNA results
+  // Show result modal from DNA results
   const showDnaResult = (quizId, result) => {
     // Find the quiz that matches this result
     const quiz = quizzes.find(q => q.quiz_id === quizId);
@@ -637,7 +637,7 @@ export default function LuxDnaLab() {
     setShowNomineeQuizResult(true);
   };
 
-  // NEW: Get phase-specific messaging for the DNA Lab
+  // Get phase-specific messaging for the DNA Lab
   const getPhaseSpecificMessage = () => {
     switch (phaseData.currentPhase) {
       case 'VOTING':
@@ -651,7 +651,7 @@ export default function LuxDnaLab() {
     }
   };
 
-  // NEW: Check if nominees DNA should be locked (during RESULTS phase)
+  // Check if nominees DNA should be locked (during RESULTS phase)
   const isNomineesDnaLocked = () => {
     return phaseData.currentPhase === 'RESULTS';
   };
@@ -973,7 +973,7 @@ export default function LuxDnaLab() {
           </div>
         </div>
 
-        {/* NEW: Phase-Specific Alert Banner */}
+        {/* Phase-Specific Alert Banner */}
         {getPhaseSpecificMessage() && (
           <div className="phase-alert-banner" style={{
             background: phaseData.currentPhase === 'VOTING' ? 'linear-gradient(135deg, #8b5cf6, #a855f7)' : 
@@ -1131,7 +1131,7 @@ export default function LuxDnaLab() {
 
           {/* QUIZ CATEGORIES */}
           
-          {/* UPDATED: Lux Libris Nominees DNA with Phase Awareness and Collapsible */}
+          {/* Lux Libris Nominees DNA with Phase Awareness and Collapsible */}
           <div className="quiz-category-card" style={{
             backgroundColor: currentTheme.surface,
             borderRadius: '16px',
@@ -2230,289 +2230,286 @@ export default function LuxDnaLab() {
           );
         })()}
 
-        /* MY DNA RESULTS MODAL - UPDATED WITH DYNAMIC RESULT TITLE PREFIX */
-{showMyDnaModal && (
-  <div style={{
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.85)',
-    zIndex: 1000,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '20px'
-  }}>
-    <div className="my-dna-modal-content" style={{
-      backgroundColor: currentTheme.surface,
-      borderRadius: '20px',
-      maxWidth: '380px',
-      width: '100%',
-      maxHeight: '85vh',
-      overflowY: 'auto',
-      position: 'relative',
-      boxShadow: '0 20px 40px rgba(0,0,0,0.3)'
-    }}>
-      <button
-        onClick={() => setShowMyDnaModal(false)}
-        style={{
-          position: 'absolute',
-          top: '12px',
-          right: '12px',
-          backgroundColor: 'rgba(0,0,0,0.7)',
-          color: 'white',
-          border: 'none',
-          borderRadius: '50%',
-          width: '36px',
-          height: '36px',
-          fontSize: '16px',
-          fontWeight: 'bold',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 10,
-          touchAction: 'manipulation',
-          WebkitTapHighlightColor: 'transparent'
-        }}
-      >
-        ✕
-      </button>
-
-      <div className="my-dna-modal-header" style={{
-        padding: '20px 20px 10px',
-        textAlign: 'center',
-        backgroundColor: currentTheme.primary,
-        borderRadius: '20px 20px 0 0'
-      }}>
-        <h2 style={{
-          fontSize: '20px',
-          fontWeight: '600',
-          color: currentTheme.textPrimary,
-          margin: '0',
-          fontFamily: 'Didot, "Times New Roman", serif'
-        }}>
-          🧬 My Lux DNA Results
-        </h2>
-      </div>
-
-      <div className="my-dna-modal-body" style={{
-        padding: '20px',
-        backgroundColor: '#FFFFFF',
-        borderRadius: '0 0 20px 20px'
-      }}>
-        {Object.keys(studentData?.quizResults || {}).length === 0 && Object.keys(studentData?.nomineeQuizResults || {}).length === 0 ? (
+        {/* MY DNA RESULTS MODAL - UPDATED WITH DYNAMIC RESULT TITLE PREFIX */}
+        {showMyDnaModal && (
           <div style={{
-            textAlign: 'center',
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.85)',
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             padding: '20px'
           }}>
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔬</div>
-            <div style={{
-              fontSize: '16px',
-              fontWeight: '600',
-              color: currentTheme.textPrimary,
-              marginBottom: '8px'
+            <div className="my-dna-modal-content" style={{
+              backgroundColor: currentTheme.surface,
+              borderRadius: '20px',
+              maxWidth: '380px',
+              width: '100%',
+              maxHeight: '85vh',
+              overflowY: 'auto',
+              position: 'relative',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.3)'
             }}>
-              No DNA Results Yet
-            </div>
-            <div style={{
-              fontSize: '14px',
-              color: currentTheme.textSecondary,
-              lineHeight: '1.5'
-            }}>
-              Take some quizzes to discover your personality matches!
-            </div>
-          </div>
-        ) : (
-          <div>
-            {/* Saint Quiz Results */}
-            {Object.keys(studentData?.quizResults || {}).length > 0 && (
-              <>
-                <div style={{
-                  fontSize: '14px',
+              <button
+                onClick={() => setShowMyDnaModal(false)}
+                style={{
+                  position: 'absolute',
+                  top: '12px',
+                  right: '12px',
+                  backgroundColor: 'rgba(0,0,0,0.7)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '36px',
+                  height: '36px',
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 10,
+                  touchAction: 'manipulation',
+                  WebkitTapHighlightColor: 'transparent'
+                }}
+              >
+                ✕
+              </button>
+
+              <div className="my-dna-modal-header" style={{
+                padding: '20px 20px 10px',
+                textAlign: 'center',
+                backgroundColor: currentTheme.primary,
+                borderRadius: '20px 20px 0 0'
+              }}>
+                <h2 style={{
+                  fontSize: '20px',
                   fontWeight: '600',
                   color: currentTheme.textPrimary,
-                  marginBottom: '16px',
-                  textAlign: 'center'
+                  margin: '0',
+                  fontFamily: 'Didot, "Times New Roman", serif'
                 }}>
-                  Your Saint Personality Matches:
-                </div>
-                
-                <div className="dna-results-grid" style={{
-                  display: 'grid',
-                  gap: '8px',
-                  marginBottom: '20px'
-                }}>
-                  {Object.entries(studentData?.quizResults || {}).map(([quizId, result]) => {
-                    const quiz = quizzes.find(q => q.quiz_id === quizId);
-                    if (!quiz) return null;
-                    
-                    return (
-                      <button
-                        key={quizId}
-                        onClick={() => showDnaResult(quizId, result)}
-                        style={{
-                          backgroundColor: `${currentTheme.primary}15`,
-                          border: `1px solid ${currentTheme.primary}30`,
-                          borderRadius: '12px',
-                          padding: '12px',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '12px',
-                          textAlign: 'left',
-                          touchAction: 'manipulation',
-                          WebkitTapHighlightColor: 'transparent',
-                          width: '100%'
-                        }}
-                      >
+                  🧬 My Lux DNA Results
+                </h2>
+              </div>
+
+              <div className="my-dna-modal-body" style={{
+                padding: '20px',
+                backgroundColor: '#FFFFFF',
+                borderRadius: '0 0 20px 20px'
+              }}>
+                {Object.keys(studentData?.quizResults || {}).length === 0 && Object.keys(studentData?.nomineeQuizResults || {}).length === 0 ? (
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '20px'
+                  }}>
+                    <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔬</div>
+                    <div style={{
+                      fontSize: '16px',
+                      fontWeight: '600',
+                      color: currentTheme.textPrimary,
+                      marginBottom: '8px'
+                    }}>
+                      No DNA Results Yet
+                    </div>
+                    <div style={{
+                      fontSize: '14px',
+                      color: currentTheme.textSecondary,
+                      lineHeight: '1.5'
+                    }}>
+                      Take some quizzes to discover your personality matches!
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    {/* Saint Quiz Results */}
+                    {Object.keys(studentData?.quizResults || {}).length > 0 && (
+                      <>
                         <div style={{
-                          fontSize: '20px',
-                          flexShrink: 0
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          color: currentTheme.textPrimary,
+                          marginBottom: '16px',
+                          textAlign: 'center'
                         }}>
-                          ♔
+                          Your Saint Personality Matches:
                         </div>
                         
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{
-                            fontSize: '12px',
-                            color: currentTheme.textSecondary,
-                            marginBottom: '2px'
-                          }}>
-                            {quiz.title}
-                          </div>
-                          <div style={{
-                            fontSize: '14px',
-                            fontWeight: '600',
-                            color: currentTheme.textPrimary,
-                            marginBottom: '2px'
-                          }}>
-                            {result.saintName}
-                          </div>
-                          <div style={{
-                            fontSize: '10px',
-                            color: currentTheme.textSecondary
-                          }}>
-                            Completed {result.timesCompleted} time{result.timesCompleted > 1 ? 's' : ''}
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-
-            {/* UPDATED: Nominee Quiz Results with Dynamic Title Prefix */}
-            {Object.keys(studentData?.nomineeQuizResults || {}).length > 0 && (
-              <>
-                {/* Group results by quiz and show each with its own result_title_prefix */}
-                {(() => {
-                  // Group nominee quiz results by quiz
-                  const groupedResults = {};
-                  Object.entries(studentData?.nomineeQuizResults || {}).forEach(([quizId, result]) => {
-                    // Try finding quiz with flexible ID matching
-                    let quiz = nomineeQuizzes.find(q => q.id === quizId);
-                    if (!quiz) {
-                      quiz = nomineeQuizzes.find(q => q.id === String(quizId));
-                    }
-                    if (!quiz) {
-                      quiz = nomineeQuizzes.find(q => q.id === Number(quizId));
-                    }
-                    
-                    if (quiz) {
-                      if (!groupedResults[quiz.id]) {
-                        groupedResults[quiz.id] = {
-                          quiz: quiz,
-                          results: []
-                        };
-                      }
-                      groupedResults[quiz.id].results.push({ quizId, result });
-                    }
-                  });
-                  
-                  return Object.values(groupedResults).map((group) => (
-                    <div key={group.quiz.id} style={{ marginBottom: '20px' }}>
-                      {/* Dynamic Title using result_title_prefix */}
-                      <div style={{
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        color: currentTheme.textPrimary,
-                        marginBottom: '16px',
-                        textAlign: 'center'
-                      }}>
-                        {group.quiz.result_title_prefix || 'Your Book World Matches:'}
-                      </div>
-                      
-                      <div className="nominee-dna-results-grid" style={{
-                        display: 'grid',
-                        gap: '8px'
-                      }}>
-                        {group.results.map(({ quizId, result }) => (
-                          <button
-                            key={quizId}
-                            onClick={() => showNomineeDnaResult(quizId, result)}
-                            style={{
-                              backgroundColor: `${currentTheme.secondary}15`,
-                              border: `1px solid ${currentTheme.secondary}30`,
-                              borderRadius: '12px',
-                              padding: '12px',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '12px',
-                              textAlign: 'left',
-                              touchAction: 'manipulation',
-                              WebkitTapHighlightColor: 'transparent',
-                              width: '100%'
-                            }}
-                          >
-                            <div style={{
-                              fontSize: '20px',
-                              flexShrink: 0
-                            }}>
-                              □
-                            </div>
+                        <div className="dna-results-grid" style={{
+                          display: 'grid',
+                          gap: '8px',
+                          marginBottom: '20px'
+                        }}>
+                          {Object.entries(studentData?.quizResults || {}).map(([quizId, result]) => {
+                            const quiz = quizzes.find(q => q.quiz_id === quizId);
+                            if (!quiz) return null;
                             
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{
-                                fontSize: '12px',
-                                color: currentTheme.textSecondary,
-                                marginBottom: '2px'
-                              }}>
-                                {group.quiz.title}
-                              </div>
+                            return (
+                              <button
+                                key={quizId}
+                                onClick={() => showDnaResult(quizId, result)}
+                                style={{
+                                  backgroundColor: `${currentTheme.primary}15`,
+                                  border: `1px solid ${currentTheme.primary}30`,
+                                  borderRadius: '12px',
+                                  padding: '12px',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '12px',
+                                  textAlign: 'left',
+                                  touchAction: 'manipulation',
+                                  WebkitTapHighlightColor: 'transparent',
+                                  width: '100%'
+                                }}
+                              >
+                                <div style={{
+                                  fontSize: '20px',
+                                  flexShrink: 0
+                                }}>
+                                  ♔
+                                </div>
+                                
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{
+                                    fontSize: '12px',
+                                    color: currentTheme.textSecondary,
+                                    marginBottom: '2px'
+                                  }}>
+                                    {quiz.title}
+                                  </div>
+                                  <div style={{
+                                    fontSize: '14px',
+                                    fontWeight: '600',
+                                    color: currentTheme.textPrimary,
+                                    marginBottom: '2px'
+                                  }}>
+                                    {result.saintName}
+                                  </div>
+                                  <div style={{
+                                    fontSize: '10px',
+                                    color: currentTheme.textSecondary
+                                  }}>
+                                    Completed {result.timesCompleted} time{result.timesCompleted > 1 ? 's' : ''}
+                                  </div>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </>
+                    )}
+
+                    {/* Nominee Quiz Results with Dynamic Title Prefix */}
+                    {Object.keys(studentData?.nomineeQuizResults || {}).length > 0 && (
+                      <>
+                        {(() => {
+                          const groupedResults = {};
+                          Object.entries(studentData?.nomineeQuizResults || {}).forEach(([quizId, result]) => {
+                            let quiz = nomineeQuizzes.find(q => q.id === quizId);
+                            if (!quiz) {
+                              quiz = nomineeQuizzes.find(q => q.id === String(quizId));
+                            }
+                            if (!quiz) {
+                              quiz = nomineeQuizzes.find(q => q.id === Number(quizId));
+                            }
+                            
+                            if (quiz) {
+                              if (!groupedResults[quiz.id]) {
+                                groupedResults[quiz.id] = {
+                                  quiz: quiz,
+                                  results: []
+                                };
+                              }
+                              groupedResults[quiz.id].results.push({ quizId, result });
+                            }
+                          });
+                          
+                          return Object.values(groupedResults).map((group) => (
+                            <div key={group.quiz.id} style={{ marginBottom: '20px' }}>
+                              {/* Dynamic Title using result_title_prefix */}
                               <div style={{
                                 fontSize: '14px',
                                 fontWeight: '600',
                                 color: currentTheme.textPrimary,
-                                marginBottom: '2px'
+                                marginBottom: '16px',
+                                textAlign: 'center'
                               }}>
-                                {result.bookTitle}
+                                {group.quiz.result_title_prefix || 'Your Book World Matches:'}
                               </div>
-                              <div style={{
-                                fontSize: '10px',
-                                color: currentTheme.textSecondary
+                              
+                              <div className="nominee-dna-results-grid" style={{
+                                display: 'grid',
+                                gap: '8px'
                               }}>
-                                Completed {result.timesCompleted} time{result.timesCompleted > 1 ? 's' : ''}
+                                {group.results.map(({ quizId, result }) => (
+                                  <button
+                                    key={quizId}
+                                    onClick={() => showNomineeDnaResult(quizId, result)}
+                                    style={{
+                                      backgroundColor: `${currentTheme.secondary}15`,
+                                      border: `1px solid ${currentTheme.secondary}30`,
+                                      borderRadius: '12px',
+                                      padding: '12px',
+                                      cursor: 'pointer',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '12px',
+                                      textAlign: 'left',
+                                      touchAction: 'manipulation',
+                                      WebkitTapHighlightColor: 'transparent',
+                                      width: '100%'
+                                    }}
+                                  >
+                                    <div style={{
+                                      fontSize: '20px',
+                                      flexShrink: 0
+                                    }}>
+                                      □
+                                    </div>
+                                    
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      <div style={{
+                                        fontSize: '12px',
+                                        color: currentTheme.textSecondary,
+                                        marginBottom: '2px'
+                                      }}>
+                                        {group.quiz.title}
+                                      </div>
+                                      <div style={{
+                                        fontSize: '14px',
+                                        fontWeight: '600',
+                                        color: currentTheme.textPrimary,
+                                        marginBottom: '2px'
+                                      }}>
+                                        {result.bookTitle}
+                                      </div>
+                                      <div style={{
+                                        fontSize: '10px',
+                                        color: currentTheme.textSecondary
+                                      }}>
+                                        Completed {result.timesCompleted} time{result.timesCompleted > 1 ? 's' : ''}
+                                      </div>
+                                    </div>
+                                  </button>
+                                ))}
                               </div>
                             </div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ));
-                })()}
-              </>
-            )}
+                          ));
+                        })()}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
-      </div>
-    </div>
-  </div>
-)}
 
         <style jsx>{`
           @keyframes spin {
@@ -2549,7 +2546,6 @@ export default function LuxDnaLab() {
             -moz-osx-font-smoothing: grayscale;
           }
 
-          /* UPDATED: Adaptive CSS for tablet/iPad layouts with modal optimizations */
           @media screen and (min-width: 768px) and (max-width: 1024px) {
             .stats-main-content {
               max-width: 600px !important;
@@ -2599,7 +2595,6 @@ export default function LuxDnaLab() {
               max-width: 420px !important;
             }
             
-            /* ADDED: iPad optimization for result modal image containers */
             .result-image-container {
               width: 340px !important;
               height: 400px !important;
@@ -2610,7 +2605,6 @@ export default function LuxDnaLab() {
               height: 460px !important;
             }
             
-            /* ADDED: iPad optimization for result info cards */
             .result-info-card {
               padding: 24px !important;
               width: 95% !important;
@@ -2623,7 +2617,6 @@ export default function LuxDnaLab() {
               max-width: 360px !important;
             }
             
-            /* ADDED: iPad optimization for result action buttons */
             .result-action-buttons {
               gap: 12px !important;
             }
@@ -2632,7 +2625,6 @@ export default function LuxDnaLab() {
               gap: 12px !important;
             }
             
-            /* ADDED: iPad optimization for My DNA modal */
             .my-dna-modal-content {
               max-width: 480px !important;
             }
