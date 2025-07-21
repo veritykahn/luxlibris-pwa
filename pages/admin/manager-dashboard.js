@@ -1,4 +1,4 @@
-// pages/admin/dashboard.js - Enhanced with Books Management & Academic Year System - FIXED
+// pages/admin/dashboard.js - Enhanced with Books, Nominee Quizzes Management & Academic Year System - COMPLETE
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import saintsManager from '../../enhanced-saints-manager'
@@ -6,6 +6,7 @@ import quizzesManager from '../../enhanced-quizzes-manager'
 import programsSetup from '../../setup-programs'
 import booksManager from '../../enhanced-books-manager'
 import bookQuizzesManager from '../../book-quizzes-manager'
+import nomineeQuizzesManager from '../../nominee-quizzes-manager' // NEW IMPORT
 
 export default function EnhancedAdminDashboard() {
   // Authentication State
@@ -27,8 +28,9 @@ export default function EnhancedAdminDashboard() {
   const [programsStats, setProgramsStats] = useState(null)
   const [booksStats, setBooksStats] = useState(null)
   const [bookQuizzesStats, setBookQuizzesStats] = useState(null)
+  const [nomineeQuizzesStats, setNomineeQuizzesStats] = useState(null) // NEW STATE
   
-  // Form states - FIXED: No duplicates
+  // Form states
   const [newSaintForm, setNewSaintForm] = useState({
     name: '',
     patronage: '',
@@ -78,6 +80,19 @@ export default function EnhancedAdminDashboard() {
     target_grades: [4, 5, 6, 7, 8],
     questions: [],
     results: {}
+  })
+
+  // NEW FORM STATE FOR NOMINEE QUIZZES
+  const [newNomineeQuizForm, setNewNomineeQuizForm] = useState({
+    id: '',
+    title: '',
+    description: '',
+    academic_year: '2025-26',
+    quiz_type: 'personality',
+    target_grades: [4, 5, 6, 7, 8],
+    status: 'active',
+    questions: [],
+    results: []
   })
 
   // Session timeout and authentication logic
@@ -183,25 +198,28 @@ export default function EnhancedAdminDashboard() {
     setProgramsStats(null)
     setBooksStats(null)
     setBookQuizzesStats(null)
+    setNomineeQuizzesStats(null) // RESET NOMINEE QUIZZES STATS
     setLogs([])
     setResult(null)
   }
 
-  // FIXED: Load all stats including book quizzes
+  // UPDATED: Load all stats including nominee quizzes
   const loadAllStats = async () => {
     try {
-      const [saints, saintsQuizzes, luxDnaQuizzes, books, bookQuizzes] = await Promise.all([
+      const [saints, saintsQuizzes, luxDnaQuizzes, books, bookQuizzes, nomineeQuizzes] = await Promise.all([
         saintsManager.getSaintsStats(),
         quizzesManager.getQuizzesStats('saints'),
         quizzesManager.getQuizzesStats('books'),
         booksManager.getBooksStats(),
-        bookQuizzesManager.getBookQuizzesStats()
+        bookQuizzesManager.getBookQuizzesStats(),
+        nomineeQuizzesManager.getNomineeQuizzesStats() // NEW STATS CALL
       ])
       
       setSaintsStats(saints)
       setQuizzesStats({ saints: saintsQuizzes, luxDna: luxDnaQuizzes })
       setBooksStats(books)
       setBookQuizzesStats(bookQuizzes)
+      setNomineeQuizzesStats(nomineeQuizzes) // SET NOMINEE QUIZZES STATS
     } catch (error) {
       console.error('Error loading stats:', error)
     }
@@ -325,6 +343,42 @@ export default function EnhancedAdminDashboard() {
       let setupResult
       
       switch (operation) {
+        // NOMINEE QUIZZES OPERATIONS (NEW)
+        case 'nominee-quizzes-setup':
+          console.log('🎯 Starting nominee quizzes bulk setup...')
+          setupResult = await nomineeQuizzesManager.setupAllNomineeQuizzes()
+          break
+          
+        case 'nominee-quizzes-archive':
+          console.log('📦 Archiving previous year nominee quizzes...')
+          const previousNomineeYear = prompt('Enter previous academic year to archive (e.g., "2024-25"):')
+          if (previousNomineeYear) {
+            setupResult = await nomineeQuizzesManager.archivePreviousYearQuizzes(previousNomineeYear)
+          } else {
+            setupResult = { success: false, message: 'Archive cancelled - no year specified' }
+          }
+          break
+          
+        case 'nominee-quizzes-add-single':
+          console.log('➕ Adding single nominee quiz...')
+          const nextNomineeId = await nomineeQuizzesManager.getNextNomineeQuizId()
+          const nomineeQuizData = { ...newNomineeQuizForm, id: nextNomineeId }
+          setupResult = await nomineeQuizzesManager.addSingleNomineeQuiz(nomineeQuizData)
+          if (setupResult.success) {
+            setNewNomineeQuizForm({
+              id: '',
+              title: '',
+              description: '',
+              academic_year: '2025-26',
+              quiz_type: 'personality',
+              target_grades: [4, 5, 6, 7, 8],
+              status: 'active',
+              questions: [],
+              results: []
+            })
+          }
+          break
+
         // BOOK QUIZZES OPERATIONS
         case 'book-quizzes-setup':
           console.log('🎯 Starting book quizzes bulk setup...')
@@ -528,9 +582,15 @@ export default function EnhancedAdminDashboard() {
     setNewLuxDnaQuizForm(prev => ({ ...prev, [field]: value }))
   }
 
-  // Navigation sections
+  // NEW FORM HANDLER FOR NOMINEE QUIZZES
+  const handleNomineeQuizFormChange = (field, value) => {
+    setNewNomineeQuizForm(prev => ({ ...prev, [field]: value }))
+  }
+
+  // Navigation sections - UPDATED to include nominee quizzes
   const sections = [
     { id: 'books', name: 'Books Management', icon: '📚', color: '#f59e0b' },
+    { id: 'nominee-quizzes', name: 'Nominee Quizzes', icon: '🏆', color: '#f97316' }, // NEW SECTION
     { id: 'book-quizzes', name: 'Book Quizzes', icon: '🎯', color: '#8b5cf6' },
     { id: 'saints', name: 'Saints Management', icon: '👼', color: '#7c3aed' },
     { id: 'quizzes', name: 'Lux DNA Quizzes', icon: '🧩', color: '#059669' },
@@ -538,7 +598,7 @@ export default function EnhancedAdminDashboard() {
     { id: 'analytics', name: 'Analytics & Stats', icon: '📊', color: '#0891b2' }
   ]
 
-  // Tabs for sections
+  // Tabs for sections - UPDATED to include nominee quiz tabs
   const getTabsForSection = (section) => {
     switch (section) {
       case 'books':
@@ -548,6 +608,13 @@ export default function EnhancedAdminDashboard() {
           { id: 'books-archive', name: 'Archive Previous Year', icon: '📦' },
           { id: 'books-add-single', name: 'Add Single Book', icon: '📖' },
           { id: 'books-setup', name: 'Setup Status Field', icon: '🚀' }
+        ]
+      case 'nominee-quizzes': // NEW TABS
+        return [
+          { id: 'nominee-quizzes-current-year', name: 'Current Year (2025-26)', icon: '📅' },
+          { id: 'nominee-quizzes-setup', name: 'Setup Nominee Quizzes', icon: '🏆' },
+          { id: 'nominee-quizzes-archive', name: 'Archive Previous Year', icon: '📦' },
+          { id: 'nominee-quizzes-add-single', name: 'Add Single Quiz', icon: '➕' }
         ]
       case 'book-quizzes':
         return [
@@ -603,6 +670,9 @@ export default function EnhancedAdminDashboard() {
     'Apostolic All-Stars', 'Mini Marians', 'Faithful Families', 'Cherub Chibis'
   ]
 
+  // Quiz type options for nominee quizzes
+  const quizTypeOptions = ['personality', 'knowledge', 'preference', 'assessment']
+
   return (
     <>
       <Head>
@@ -637,7 +707,7 @@ export default function EnhancedAdminDashboard() {
               <div style={{
                 width: '5rem',
                 height: '5rem',
-                background: 'linear-gradient(135deg, #f59e0b, #7c3aed, #059669, #dc2626, #0891b2)',
+                background: 'linear-gradient(135deg, #f59e0b, #f97316, #7c3aed, #059669, #dc2626, #0891b2)',
                 borderRadius: '50%',
                 display: 'flex',
                 alignItems: 'center',
@@ -701,11 +771,11 @@ export default function EnhancedAdminDashboard() {
               fontSize: '1.25rem',
               marginBottom: '0'
             }}>
-              Complete management for Books, Saints, Quizzes, Programs & Analytics
+              Complete management for Books, Nominee Quizzes, Saints, Quizzes, Programs & Analytics
             </p>
             
-            {/* Quick Stats */}
-            {(booksStats || saintsStats || quizzesStats || bookQuizzesStats) && (
+            {/* Quick Stats - UPDATED to include nominee quizzes */}
+            {(booksStats || saintsStats || quizzesStats || bookQuizzesStats || nomineeQuizzesStats) && (
               <div style={{
                 display: 'flex',
                 gap: '1rem',
@@ -722,6 +792,17 @@ export default function EnhancedAdminDashboard() {
                   }}>
                     <span style={{ color: '#fbbf24', fontSize: '0.875rem', display: 'block' }}>Books (2025-26)</span>
                     <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '1.25rem' }}>{booksStats.currentYear}</span>
+                  </div>
+                )}
+                {nomineeQuizzesStats && (
+                  <div style={{
+                    background: 'rgba(249, 115, 22, 0.2)',
+                    borderRadius: '0.5rem',
+                    padding: '0.75rem 1rem',
+                    border: '1px solid rgba(249, 115, 22, 0.3)'
+                  }}>
+                    <span style={{ color: '#fb923c', fontSize: '0.875rem', display: 'block' }}>Nominee Quizzes</span>
+                    <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '1.25rem' }}>{nomineeQuizzesStats.currentYear}</span>
                   </div>
                 )}
                 {bookQuizzesStats && (
@@ -937,7 +1018,7 @@ export default function EnhancedAdminDashboard() {
                       marginBottom: '2rem'
                     }}>
                       <strong style={{ color: '#10b981' }}>✅ Academic Year System:</strong>
-                      <span style={{ color: '#a7f3d0' }}> Books will be added with academicYear: &quot;2025-26&quot; and status: &quot;active&quot;</span>
+                      <span style={{ color: '#a7f3d0' }}> Books will be added with academicYear: "2025-26" and status: "active"</span>
                     </div>
                     
                     <button
@@ -968,7 +1049,7 @@ export default function EnhancedAdminDashboard() {
                     </h3>
                     <p style={{ color: '#c4b5fd', marginBottom: '2rem' }}>
                       Archive nominees from a previous academic year. 
-                      This marks them as &quot;archived&quot; status but keeps them in the database.
+                      This marks them as "archived" status but keeps them in the database.
                     </p>
                     
                     <div style={{
@@ -1142,7 +1223,7 @@ export default function EnhancedAdminDashboard() {
                         📚 What This Setup Does:
                       </h4>
                       <ul style={{ color: '#a7f3d0', lineHeight: '1.6', margin: 0, paddingLeft: '1.5rem' }}>
-                        <li><strong>Adds Status Field:</strong> Sets all existing books to &quot;active&quot;</li>
+                        <li><strong>Adds Status Field:</strong> Sets all existing books to "active"</li>
                         <li><strong>Enables Archiving:</strong> Allows books to be archived in future years</li>
                         <li><strong>Preserves Existing Data:</strong> No existing fields are modified</li>
                         <li><strong>Academic Year Already Set:</strong> Skips books that already have status</li>
@@ -1166,6 +1247,296 @@ export default function EnhancedAdminDashboard() {
                       }}
                     >
                       {isRunning ? '⏳ Setting up...' : '🚀 Setup Status Field'}
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* NOMINEE QUIZZES MANAGEMENT CONTENT (NEW SECTION) */}
+            {activeSection === 'nominee-quizzes' && (
+              <>
+                {activeTab === 'nominee-quizzes-current-year' && (
+                  <div>
+                    <h3 style={{ color: '#f97316', marginBottom: '1rem', fontSize: '1.5rem' }}>
+                      📅 Current Nominee Quizzes: 2025-26
+                    </h3>
+                    <p style={{ color: '#c4b5fd', marginBottom: '2rem' }}>
+                      View and manage nominee quizzes for the current academic year.
+                      These quizzes help match readers with books based on their preferences and personality.
+                    </p>
+                    
+                    {nomineeQuizzesStats && (
+                      <div style={{
+                        background: 'rgba(249, 115, 22, 0.1)',
+                        border: '1px solid rgba(249, 115, 22, 0.3)',
+                        borderRadius: '0.75rem',
+                        padding: '1.5rem',
+                        marginBottom: '2rem'
+                      }}>
+                        <h4 style={{ color: '#fb923c', marginBottom: '1rem', fontSize: '1.25rem' }}>
+                          📊 Nominee Quiz Statistics
+                        </h4>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                          <div>
+                            <span style={{ color: '#fed7aa', display: 'block', fontSize: '0.875rem' }}>Current Year (2025-26)</span>
+                            <span style={{ color: '#f97316', fontWeight: 'bold', fontSize: '1.5rem' }}>{nomineeQuizzesStats.currentYear}</span>
+                          </div>
+                          <div>
+                            <span style={{ color: '#fed7aa', display: 'block', fontSize: '0.875rem' }}>Total Quizzes</span>
+                            <span style={{ color: '#f97316', fontWeight: 'bold', fontSize: '1.5rem' }}>{nomineeQuizzesStats.total}</span>
+                          </div>
+                          <div>
+                            <span style={{ color: '#fed7aa', display: 'block', fontSize: '0.875rem' }}>Active Quizzes</span>
+                            <span style={{ color: '#f97316', fontWeight: 'bold', fontSize: '1.5rem' }}>{nomineeQuizzesStats.active}</span>
+                          </div>
+                          <div>
+                            <span style={{ color: '#fed7aa', display: 'block', fontSize: '0.875rem' }}>Archived Quizzes</span>
+                            <span style={{ color: '#f97316', fontWeight: 'bold', fontSize: '1.5rem' }}>{nomineeQuizzesStats.archived}</span>
+                          </div>
+                        </div>
+                        
+                        {nomineeQuizzesStats.byQuizType && Object.keys(nomineeQuizzesStats.byQuizType).length > 0 && (
+                          <div style={{ marginTop: '1rem' }}>
+                            <h5 style={{ color: '#fb923c', marginBottom: '0.5rem' }}>By Quiz Type</h5>
+                            {Object.entries(nomineeQuizzesStats.byQuizType).map(([type, count]) => (
+                              <div key={type} style={{ color: '#fed7aa', marginBottom: '0.25rem', fontSize: '0.875rem' }}>
+                                {type}: {count}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    <button
+                      onClick={loadAllStats}
+                      style={{
+                        background: 'linear-gradient(135deg, #f97316, #ea580c)',
+                        color: 'white',
+                        padding: '0.75rem 1.5rem',
+                        borderRadius: '0.5rem',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '1rem',
+                        fontWeight: '500'
+                      }}
+                    >
+                      🔄 Refresh Statistics
+                    </button>
+                  </div>
+                )}
+
+                {activeTab === 'nominee-quizzes-setup' && (
+                  <div>
+                    <h3 style={{ color: '#f97316', marginBottom: '1rem', fontSize: '1.5rem' }}>
+                      🏆 Setup Nominee Quizzes (Overwrites)
+                    </h3>
+                    <p style={{ color: '#c4b5fd', marginBottom: '2rem' }}>
+                      Set up nominee quizzes for the current academic year. 
+                      This OVERWRITES existing quizzes for 2025-26 with new ones from the data file.
+                    </p>
+                    
+                    <div style={{
+                      background: 'rgba(239, 68, 68, 0.1)',
+                      border: '1px solid rgba(239, 68, 68, 0.3)',
+                      borderRadius: '0.5rem',
+                      padding: '1rem',
+                      marginBottom: '2rem'
+                    }}>
+                      <strong style={{ color: '#ef4444' }}>⚠️ Warning:</strong>
+                      <span style={{ color: '#fca5a5' }}> This deletes all existing 2025-26 nominee quizzes and replaces them.</span>
+                    </div>
+                    
+                    <button
+                      onClick={() => runOperation('nominee-quizzes-setup')}
+                      disabled={isRunning}
+                      style={{
+                        background: isRunning 
+                          ? 'linear-gradient(135deg, #6b7280, #4b5563)' 
+                          : 'linear-gradient(135deg, #f97316, #ea580c)',
+                        color: 'white',
+                        padding: '1rem 2rem',
+                        borderRadius: '0.75rem',
+                        border: 'none',
+                        cursor: isRunning ? 'not-allowed' : 'pointer',
+                        fontSize: '1.125rem',
+                        fontWeight: '600'
+                      }}
+                    >
+                      {isRunning ? '⏳ Processing...' : '🏆 Setup Nominee Quizzes'}
+                    </button>
+                  </div>
+                )}
+
+                {activeTab === 'nominee-quizzes-archive' && (
+                  <div>
+                    <h3 style={{ color: '#f97316', marginBottom: '1rem', fontSize: '1.5rem' }}>
+                      📦 Archive Previous Year Nominee Quizzes
+                    </h3>
+                    <p style={{ color: '#c4b5fd', marginBottom: '2rem' }}>
+                      Archive nominee quizzes from a previous academic year. 
+                      This marks them as "archived" but keeps them in the database for historical reference.
+                    </p>
+                    
+                    <div style={{
+                      background: 'rgba(59, 130, 246, 0.1)',
+                      border: '1px solid rgba(59, 130, 246, 0.3)',
+                      borderRadius: '0.5rem',
+                      padding: '1rem',
+                      marginBottom: '2rem'
+                    }}>
+                      <strong style={{ color: '#3b82f6' }}>ℹ️ Archive Process:</strong>
+                      <span style={{ color: '#93c5fd' }}> Quizzes will be marked as archived but remain for historical reference.</span>
+                    </div>
+                    
+                    <button
+                      onClick={() => runOperation('nominee-quizzes-archive')}
+                      disabled={isRunning}
+                      style={{
+                        background: isRunning 
+                          ? 'linear-gradient(135deg, #6b7280, #4b5563)' 
+                          : 'linear-gradient(135deg, #6b7280, #4b5563)',
+                        color: 'white',
+                        padding: '1rem 2rem',
+                        borderRadius: '0.75rem',
+                        border: 'none',
+                        cursor: isRunning ? 'not-allowed' : 'pointer',
+                        fontSize: '1.125rem',
+                        fontWeight: '600'
+                      }}
+                    >
+                      {isRunning ? '⏳ Archiving...' : '📦 Archive Previous Year'}
+                    </button>
+                  </div>
+                )}
+
+                {activeTab === 'nominee-quizzes-add-single' && (
+                  <div>
+                    <h3 style={{ color: '#f97316', marginBottom: '1rem', fontSize: '1.5rem' }}>
+                      ➕ Add Single Nominee Quiz
+                    </h3>
+                    <p style={{ color: '#c4b5fd', marginBottom: '2rem' }}>
+                      Add a single nominee quiz manually. Perfect for quick additions or custom quizzes.
+                    </p>
+                    
+                    <div style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
+                      gap: '1rem',
+                      marginBottom: '2rem'
+                    }}>
+                      <div>
+                        <label style={{ color: '#c4b5fd', display: 'block', marginBottom: '0.5rem' }}>
+                          Quiz Title *
+                        </label>
+                        <input
+                          type="text"
+                          value={newNomineeQuizForm.title}
+                          onChange={(e) => handleNomineeQuizFormChange('title', e.target.value)}
+                          placeholder="Which Book Matches Your Personality?"
+                          style={{
+                            width: '100%',
+                            padding: '0.75rem',
+                            borderRadius: '0.5rem',
+                            border: '1px solid rgba(249, 115, 22, 0.3)',
+                            background: 'rgba(0, 0, 0, 0.3)',
+                            color: 'white'
+                          }}
+                        />
+                      </div>
+                      
+                      <div>
+                        <label style={{ color: '#c4b5fd', display: 'block', marginBottom: '0.5rem' }}>
+                          Description
+                        </label>
+                        <input
+                          type="text"
+                          value={newNomineeQuizForm.description}
+                          onChange={(e) => handleNomineeQuizFormChange('description', e.target.value)}
+                          placeholder="Discover your perfect book match..."
+                          style={{
+                            width: '100%',
+                            padding: '0.75rem',
+                            borderRadius: '0.5rem',
+                            border: '1px solid rgba(249, 115, 22, 0.3)',
+                            background: 'rgba(0, 0, 0, 0.3)',
+                            color: 'white'
+                          }}
+                        />
+                      </div>
+                      
+                      <div>
+                        <label style={{ color: '#c4b5fd', display: 'block', marginBottom: '0.5rem' }}>
+                          Quiz Type
+                        </label>
+                        <select
+                          value={newNomineeQuizForm.quiz_type}
+                          onChange={(e) => handleNomineeQuizFormChange('quiz_type', e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '0.75rem',
+                            borderRadius: '0.5rem',
+                            border: '1px solid rgba(249, 115, 22, 0.3)',
+                            background: 'rgba(0, 0, 0, 0.3)',
+                            color: 'white'
+                          }}
+                        >
+                          {quizTypeOptions.map(type => (
+                            <option key={type} value={type}>{type}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label style={{ color: '#c4b5fd', display: 'block', marginBottom: '0.5rem' }}>
+                          Academic Year
+                        </label>
+                        <input
+                          type="text"
+                          value={newNomineeQuizForm.academic_year}
+                          onChange={(e) => handleNomineeQuizFormChange('academic_year', e.target.value)}
+                          placeholder="2025-26"
+                          style={{
+                            width: '100%',
+                            padding: '0.75rem',
+                            borderRadius: '0.5rem',
+                            border: '1px solid rgba(249, 115, 22, 0.3)',
+                            background: 'rgba(0, 0, 0, 0.3)',
+                            color: 'white'
+                          }}
+                        />
+                      </div>
+                    </div>
+                    
+                    <div style={{
+                      background: 'rgba(59, 130, 246, 0.1)',
+                      border: '1px solid rgba(59, 130, 246, 0.3)',
+                      borderRadius: '0.5rem',
+                      padding: '1rem',
+                      marginBottom: '2rem'
+                    }}>
+                      <strong style={{ color: '#3b82f6' }}>📝 Note:</strong>
+                      <span style={{ color: '#93c5fd' }}> You'll need to add the quiz questions and results manually in Firebase after creation.</span>
+                    </div>
+                    
+                    <button
+                      onClick={() => runOperation('nominee-quizzes-add-single')}
+                      disabled={isRunning || !newNomineeQuizForm.title}
+                      style={{
+                        background: (isRunning || !newNomineeQuizForm.title)
+                          ? 'linear-gradient(135deg, #6b7280, #4b5563)' 
+                          : 'linear-gradient(135deg, #f97316, #ea580c)',
+                        color: 'white',
+                        padding: '1rem 2rem',
+                        borderRadius: '0.75rem',
+                        border: 'none',
+                        cursor: (isRunning || !newNomineeQuizForm.title) ? 'not-allowed' : 'pointer',
+                        fontSize: '1.125rem',
+                        fontWeight: '600'
+                      }}
+                    >
+                      {isRunning ? '⏳ Adding...' : '➕ Add Nominee Quiz'}
                     </button>
                   </div>
                 )}
@@ -1284,7 +1655,7 @@ export default function EnhancedAdminDashboard() {
                     </h3>
                     <p style={{ color: '#c4b5fd', marginBottom: '2rem' }}>
                       Archive book quizzes from a previous academic year. 
-                      This marks them as &quot;archived&quot; but keeps them in the database.
+                      This marks them as "archived" but keeps them in the database.
                     </p>
                     
                     <div style={{
@@ -1325,7 +1696,7 @@ export default function EnhancedAdminDashboard() {
                       ➕ Add Single Book Quiz
                     </h3>
                     <p style={{ color: '#c4b5fd', marginBottom: '2rem' }}>
-                      Add a quiz for a specific book using the book&apos;s ID.
+                      Add a quiz for a specific book using the book's ID.
                     </p>
                     
                     <div style={{ 
@@ -1363,7 +1734,7 @@ export default function EnhancedAdminDashboard() {
                       marginBottom: '2rem'
                     }}>
                       <strong style={{ color: '#3b82f6' }}>📝 Note:</strong>
-                      <span style={{ color: '#93c5fd' }}> You&apos;ll need to add the quiz questions manually in Firebase after creation.</span>
+                      <span style={{ color: '#93c5fd' }}> You'll need to add the quiz questions manually in Firebase after creation.</span>
                     </div>
                     
                     <button
@@ -1863,7 +2234,7 @@ export default function EnhancedAdminDashboard() {
               </>
             )}
 
-            {/* ANALYTICS CONTENT */}
+            {/* ANALYTICS CONTENT - UPDATED to include nominee quizzes stats */}
             {activeSection === 'analytics' && (
               <>
                 {activeTab === 'analytics-overview' && (
@@ -1904,6 +2275,51 @@ export default function EnhancedAdminDashboard() {
                             {booksStats.byYear && Object.entries(booksStats.byYear).map(([year, count]) => (
                               <div key={year} style={{ color: '#fbbf24', marginBottom: '0.25rem', fontSize: '0.875rem' }}>
                                 {year}: {count}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Nominee Quizzes Stats (NEW) */}
+                      {nomineeQuizzesStats && (
+                        <div style={{
+                          background: 'rgba(249, 115, 22, 0.1)',
+                          border: '1px solid rgba(249, 115, 22, 0.3)',
+                          borderRadius: '0.75rem',
+                          padding: '1.5rem'
+                        }}>
+                          <h4 style={{ color: '#fb923c', marginBottom: '1rem', fontSize: '1.25rem' }}>
+                            🏆 Nominee Quizzes ({nomineeQuizzesStats.total} total)
+                          </h4>
+                          
+                          <div style={{ marginBottom: '1rem' }}>
+                            <h5 style={{ color: '#fed7aa', marginBottom: '0.5rem' }}>By Status</h5>
+                            <div style={{ color: '#fb923c', marginBottom: '0.25rem' }}>
+                              Active: {nomineeQuizzesStats.active}
+                            </div>
+                            <div style={{ color: '#fb923c', marginBottom: '0.25rem' }}>
+                              Archived: {nomineeQuizzesStats.archived}
+                            </div>
+                          </div>
+                          
+                          <div style={{ marginBottom: '1rem' }}>
+                            <h5 style={{ color: '#fed7aa', marginBottom: '0.5rem' }}>By Academic Year</h5>
+                            <div style={{ color: '#fb923c', marginBottom: '0.25rem', fontSize: '0.875rem' }}>
+                              2025-26: {nomineeQuizzesStats.currentYear}
+                            </div>
+                            {nomineeQuizzesStats.byYear && Object.entries(nomineeQuizzesStats.byYear).map(([year, count]) => (
+                              <div key={year} style={{ color: '#fb923c', marginBottom: '0.25rem', fontSize: '0.875rem' }}>
+                                {year}: {count}
+                              </div>
+                            ))}
+                          </div>
+
+                          <div>
+                            <h5 style={{ color: '#fed7aa', marginBottom: '0.5rem' }}>By Quiz Type</h5>
+                            {nomineeQuizzesStats.byQuizType && Object.entries(nomineeQuizzesStats.byQuizType).map(([type, count]) => (
+                              <div key={type} style={{ color: '#fb923c', marginBottom: '0.25rem', fontSize: '0.875rem' }}>
+                                {type}: {count}
                               </div>
                             ))}
                           </div>
@@ -2120,9 +2536,12 @@ export default function EnhancedAdminDashboard() {
                     Operation Details:
                   </h4>
                   <div style={{ color: '#a7f3d0', fontSize: '0.875rem' }}>
+                    {result.stats.operation === 'yearly_overwrite' && `Total items processed: ${result.stats.total}`}
+                    {result.stats.operation === 'archive' && `Archived: ${result.stats.archived} from ${result.stats.academic_year}`}
+                    {result.stats.operation === 'single_add' && `Successfully added 1 item`}
                     {result.stats.operation === 'bulk' && `Total items processed: ${result.stats.total}`}
                     {result.stats.operation === 'add_new' && `Added: ${result.stats.added}, Skipped: ${result.stats.skipped}`}
-                    {result.stats.operation === 'single_add' && `Successfully added 1 item`}
+                    {result.stats.academic_year && ` • Academic Year: ${result.stats.academic_year}`}
                   </div>
                 </div>
               )}

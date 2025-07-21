@@ -323,7 +323,7 @@ export default function ParentSettings() {
   return (
     <>
       <Head>
-        <title>Family Settings - Lux Libris</title>
+        <title>Settings - Lux Libris</title>
         <meta name="description" content="Manage your family account settings and preferences" />
         <link rel="icon" href="/images/lux_libris_logo.png" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
@@ -335,7 +335,7 @@ export default function ParentSettings() {
         fontFamily: 'system-ui, -apple-system, sans-serif'
       }}>
         
-        {/* Header - Updated to match dashboard format */}
+        {/* Header - Updated to keep back button and hamburger menu */}
         <div style={{
           background: `linear-gradient(135deg, ${luxTheme.primary}F0, ${luxTheme.secondary}F0)`,
           backdropFilter: 'blur(20px)',
@@ -348,6 +348,31 @@ export default function ParentSettings() {
           alignItems: 'center',
           justifyContent: 'center'
         }}>
+          {/* Back Button */}
+          <button
+            onClick={() => router.push('/parent/dashboard')}
+            style={{
+              backgroundColor: 'rgba(255,255,255,0.3)',
+              border: 'none',
+              borderRadius: '50%',
+              width: '44px',
+              height: '44px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '18px',
+              cursor: 'pointer',
+              color: luxTheme.textPrimary,
+              backdropFilter: 'blur(10px)',
+              flexShrink: 0,
+              touchAction: 'manipulation',
+              position: 'absolute',
+              left: '20px'
+            }}
+          >
+            ←
+          </button>
+
           {/* Centered Title */}
           <h1 style={{
             fontSize: 'clamp(20px, 5vw, 24px)',
@@ -358,7 +383,7 @@ export default function ParentSettings() {
             fontFamily: 'Didot, "Times New Roman", serif',
             textAlign: 'center'
           }}>
-            Family Settings
+            Settings
           </h1>
 
           {/* Hamburger Menu */}

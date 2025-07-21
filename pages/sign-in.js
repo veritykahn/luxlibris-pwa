@@ -6,6 +6,7 @@ import Head from 'next/head';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { authHelpers, dbHelpers, auth } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { ForgotPasswordModal } from '../components/ForgotPasswordModal';
 
 export default function SignIn() {
   const router = useRouter();
@@ -15,6 +16,7 @@ export default function SignIn() {
   const [waitingForProfile, setWaitingForProfile] = useState(false); // NEW STATE
   const [error, setError] = useState('');
   const [showSessionExpiredMessage, setShowSessionExpiredMessage] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   const [formData, setFormData] = useState({
     accountType: '',
@@ -235,10 +237,6 @@ export default function SignIn() {
     } else {
       router.push('/');
     }
-  };
-
-  const handleForgotPassword = () => {
-    setError('Password reset feature coming soon! Please contact support at support@luxlibris.org');
   };
 
   // FIXED: Show loading state while waiting for profile
@@ -902,7 +900,14 @@ export default function SignIn() {
                   {/* Forgot Password Link */}
                   <div style={{ textAlign: 'right', marginBottom: '1.5rem' }}>
                     <button
-                      onClick={handleForgotPassword}
+                      onClick={() => {
+                        if (!formData.email?.trim()) {
+                          setError('Please enter your email address first');
+                          return;
+                        }
+                        setShowForgotPassword(true);
+                      }}
+                      type="button"
                       style={{
                         background: 'none',
                         border: 'none',
@@ -1105,6 +1110,19 @@ export default function SignIn() {
           </div>
         </div>
       </div>
+
+      {/* Forgot Password Modal */}
+      {showForgotPassword && (
+        <ForgotPasswordModal
+          accountType={formData.accountType}
+          email={formData.email}
+          onClose={() => setShowForgotPassword(false)}
+          onSuccess={() => {
+            setShowForgotPassword(false);
+            setError('');
+          }}
+        />
+      )}
 
       <style jsx>{`
         @keyframes spin {
