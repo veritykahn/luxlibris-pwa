@@ -1,0 +1,1131 @@
+// pages/parent/family-battle.js - Dedicated Family Battle page with unlock system
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useRouter } from 'next/router'
+import { useAuth } from '../../contexts/AuthContext'
+import Head from 'next/head'
+import { collection, getDocs, doc, getDoc, updateDoc, query, where } from 'firebase/firestore'
+import { db } from '../../lib/firebase'
+
+export default function ParentFamilyBattle() {
+  const router = useRouter()
+  const { user, userProfile, isAuthenticated, loading: authLoading } = useAuth()
+  
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [parentData, setParentData] = useState(null)
+  const [linkedStudents, setLinkedStudents] = useState([])
+  const [familyBattleData, setFamilyBattleData] = useState(null)
+  const [showNavMenu, setShowNavMenu] = useState(false)
+  
+  // Unlock states
+  const [isEligibleToUnlock, setIsEligibleToUnlock] = useState(false)
+  const [isUnlocked, setIsUnlocked] = useState(false)
+  const [completedSessions, setCompletedSessions] = useState(0)
+  const [showUnlockModal, setShowUnlockModal] = useState(false)
+  const [unlockInProgress, setUnlockInProgress] = useState(false)
+  const [showSuccess, setShowSuccess] = useState('')
+
+  // Lux Libris Classic Theme
+  const luxTheme = {
+    primary: '#ADD4EA',
+    secondary: '#C3E0DE',
+    accent: '#A1E5DB',
+    background: '#FFFCF5',
+    surface: '#FFFFFF',
+    textPrimary: '#223848',
+    textSecondary: '#556B7A'
+  }
+
+  // Navigation menu items
+  const navMenuItems = useMemo(() => [
+    { name: 'Family Dashboard', path: '/parent/dashboard', icon: '⌂' },
+    { name: 'Book Nominees', path: '/parent/nominees', icon: '□' },
+    { name: 'Reading Habits', path: '/parent/healthy-habits', icon: '◉' },
+    { name: 'Family DNA Lab', path: '/parent/dna-lab', icon: '🧬' },
+    { name: 'Quiz Unlock Center', path: '/parent/quiz-unlock', icon: '▦' },
+    { name: 'Family Celebrations', path: '/parent/celebrations', icon: '♔' },
+    { name: 'Settings', path: '/parent/settings', icon: '⚙' }
+  ], [])
+
+  // Utility function for local date
+  const getLocalDateString = (date = new Date()) => {
+    const d = new Date(date)
+    const year = d.getFullYear()
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  // Load family battle data (aggregate parent + student minutes)
+  const loadFamilyBattleData = useCallback(async () => {
+    try {
+      const today = new Date()
+      const startOfWeek = new Date(today.setDate(today.getDate() - today.getDay()))
+      const weekStr = getLocalDateString(startOfWeek)
+      
+      // Get parent minutes this week
+      const parentSessionsRef = collection(db, `parents/${user.uid}/readingSessions`)
+      const parentWeekQuery = query(
+        parentSessionsRef,
+        where('date', '>=', weekStr)
+      )
+      const parentWeekSnapshot = await getDocs(parentWeekQuery)
+      let parentMinutes = 0
+      
+      parentWeekSnapshot.forEach(docSnap => {
+        const session = docSnap.data()
+        parentMinutes += session.duration
+      })
+
+      // Get children's minutes this week
+      let childrenMinutes = 0
+      const childrenDetails = []
+      
+      for (const student of linkedStudents) {
+        const studentSessionsRef = collection(db, `entities/${student.entityId}/schools/${student.schoolId}/students/${student.id}/readingSessions`)
+        const studentWeekQuery = query(
+          studentSessionsRef,
+          where('date', '>=', weekStr)
+        )
+        const studentWeekSnapshot = await getDocs(studentWeekQuery)
+        
+        let studentMinutes = 0
+        studentWeekSnapshot.forEach(docSnap => {
+          const session = docSnap.data()
+          studentMinutes += session.duration
+          childrenMinutes += session.duration
+        })
+        
+        childrenDetails.push({
+          name: student.firstName,
+          minutes: studentMinutes,
+          grade: student.grade
+        })
+      }
+
+      const battleData = {
+        weekStarting: weekStr,
+        parentMinutes,
+        childrenMinutes,
+        childrenDetails,
+        totalMinutes: parentMinutes + childrenMinutes,
+        winner: parentMinutes > childrenMinutes ? 'parents' : 'children',
+        lead: Math.abs(parentMinutes - childrenMinutes),
+        weekNumber: getWeekNumber(new Date())
+      }
+
+      setFamilyBattleData(battleData)
+    } catch (error) {
+      console.error('Error loading family battle data:', error)
+    }
+  }, [linkedStudents, user?.uid])
+
+  // Helper function to get week number
+  const getWeekNumber = (date) => {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
+    const dayNum = d.getUTCDay() || 7
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum)
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
+    return Math.ceil((((d - yearStart) / 86400000) + 1) / 7)
+  }
+
+  // Load initial data
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && user && userProfile?.accountType === 'parent') {
+      loadInitialData()
+    } else if (!authLoading && !isAuthenticated) {
+      router.push('/role-selector')
+    } else if (!authLoading && userProfile?.accountType !== 'parent') {
+      router.push('/student-dashboard')
+    }
+  }, [authLoading, isAuthenticated, user, userProfile])
+
+  // Check for unlock parameter
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search)
+      if (urlParams.get('unlock') === 'true' && isEligibleToUnlock && !isUnlocked) {
+        setShowUnlockModal(true)
+      }
+    }
+  }, [isEligibleToUnlock, isUnlocked])
+
+  const loadInitialData = async () => {
+    try {
+      console.log('🏆 Loading family battle data...')
+      
+      // Load parent profile
+      const parentRef = doc(db, 'parents', user.uid)
+      const parentDoc = await getDoc(parentRef)
+      
+      if (!parentDoc.exists()) {
+        throw new Error('Parent profile not found')
+      }
+
+      const parentProfile = parentDoc.data()
+      setParentData(parentProfile)
+      
+      // Check if already unlocked
+      if (parentProfile.familyBattleUnlocked) {
+        setIsUnlocked(true)
+      }
+
+      // Load linked students
+      await loadLinkedStudentsData(parentProfile.linkedStudents || [])
+      
+      // Check parent's reading session count
+      const sessionsRef = collection(db, `parents/${user.uid}/readingSessions`)
+      const allSessionsSnapshot = await getDocs(sessionsRef)
+      const completedCount = allSessionsSnapshot.docs.filter(doc => 
+        doc.data().completed === true
+      ).length
+      
+      setCompletedSessions(completedCount)
+      setIsEligibleToUnlock(completedCount >= 3)
+      
+      // Load battle data if unlocked
+      if (parentProfile.familyBattleUnlocked) {
+        await loadFamilyBattleData()
+      }
+      
+    } catch (error) {
+      console.error('❌ Error loading family battle data:', error)
+      setError('Failed to load family battle data. Please try again.')
+    }
+    
+    setLoading(false)
+  }
+
+  const loadLinkedStudentsData = async (linkedStudentIds) => {
+    try {
+      const students = []
+      const entitiesSnapshot = await getDocs(collection(db, 'entities'))
+      
+      for (const entityDoc of entitiesSnapshot.docs) {
+        const entityId = entityDoc.id
+        const schoolsSnapshot = await getDocs(collection(db, `entities/${entityId}/schools`))
+        
+        for (const schoolDoc of schoolsSnapshot.docs) {
+          const schoolId = schoolDoc.id
+          const schoolData = schoolDoc.data()
+          const studentsSnapshot = await getDocs(collection(db, `entities/${entityId}/schools/${schoolId}/students`))
+          
+          for (const studentDoc of studentsSnapshot.docs) {
+            if (linkedStudentIds.includes(studentDoc.id)) {
+              const studentData = {
+                id: studentDoc.id,
+                entityId,
+                schoolId,
+                schoolName: schoolData.name,
+                ...studentDoc.data()
+              }
+              students.push(studentData)
+            }
+          }
+        }
+      }
+      
+      setLinkedStudents(students)
+      console.log('✅ Linked students loaded:', students.length)
+      
+    } catch (error) {
+      console.error('❌ Error loading linked students:', error)
+    }
+  }
+
+  // Handle family battle unlock
+  const handleUnlockFamilyBattle = async () => {
+    try {
+      setUnlockInProgress(true)
+      
+      // Update parent document
+      const parentRef = doc(db, 'parents', user.uid)
+      await updateDoc(parentRef, {
+        familyBattleUnlocked: true,
+        familyBattleUnlockedAt: new Date()
+      })
+      
+      // Update all linked students
+      for (const student of linkedStudents) {
+        const studentRef = doc(db, `entities/${student.entityId}/schools/${student.schoolId}/students`, student.id)
+        await updateDoc(studentRef, {
+          familyBattleUnlocked: true,
+          familyBattleUnlockedAt: new Date(),
+          familyBattleUnlockedBy: 'parent'
+        })
+      }
+      
+      setIsUnlocked(true)
+      setShowUnlockModal(false)
+      
+      // Load battle data
+      await loadFamilyBattleData()
+      
+      setShowSuccess('🎉 Family Battle unlocked for the whole family!')
+      setTimeout(() => setShowSuccess(''), 4000)
+      
+    } catch (error) {
+      console.error('❌ Error unlocking family battle:', error)
+      setShowSuccess('❌ Error unlocking family battle. Please try again.')
+      setTimeout(() => setShowSuccess(''), 3000)
+    }
+    
+    setUnlockInProgress(false)
+  }
+
+  // Close nav menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showNavMenu && !event.target.closest('.nav-menu-container')) {
+        setShowNavMenu(false)
+      }
+    }
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        if (showNavMenu) setShowNavMenu(false)
+        if (showUnlockModal) setShowUnlockModal(false)
+      }
+    }
+
+    if (showNavMenu || showUnlockModal) {
+      document.addEventListener('mousedown', handleClickOutside)
+      document.addEventListener('keydown', handleEscape)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleEscape)
+    }
+  }, [showNavMenu, showUnlockModal])
+
+  // Navigation handler
+  const handleNavigation = (item) => {
+    setShowNavMenu(false)
+    
+    setTimeout(() => {
+      router.push(item.path)
+    }, 100)
+  }
+
+  // Show loading while data loads
+  if (authLoading || loading || !userProfile) {
+    return (
+      <>
+        <Head>
+          <title>Family Battle - Lux Libris Parent</title>
+          <meta name="description" content="Compete with your children in weekly family reading challenges" />
+          <link rel="icon" href="/images/lux_libris_logo.png" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+        </Head>
+        <div style={{
+          backgroundColor: luxTheme.background,
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              border: `3px solid ${luxTheme.primary}30`,
+              borderTop: `3px solid ${luxTheme.primary}`,
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite',
+              margin: '0 auto 16px'
+            }} />
+            <p style={{ color: luxTheme.textPrimary }}>Loading family battle...</p>
+          </div>
+        </div>
+        <style jsx>{`
+          @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
+      </>
+    )
+  }
+
+  if (error) {
+    return (
+      <>
+        <Head>
+          <title>Family Battle - Lux Libris Parent</title>
+          <meta name="description" content="Compete with your children in weekly family reading challenges" />
+          <link rel="icon" href="/images/lux_libris_logo.png" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+        </Head>
+        <div style={{
+          backgroundColor: luxTheme.background,
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <div style={{ textAlign: 'center', padding: '2rem' }}>
+            <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>😞</div>
+            <h2 style={{ color: luxTheme.textPrimary, marginBottom: '1rem' }}>Oops!</h2>
+            <p style={{ color: luxTheme.textSecondary, marginBottom: '1.5rem' }}>{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                backgroundColor: luxTheme.primary,
+                color: luxTheme.textPrimary,
+                border: 'none',
+                padding: '12px 24px',
+                borderRadius: '8px',
+                cursor: 'pointer'
+              }}
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  return (
+    <>
+      <Head>
+        <title>Family Battle - Lux Libris Parent</title>
+        <meta name="description" content="Compete with your children in weekly family reading challenges" />
+        <link rel="icon" href="/images/lux_libris_logo.png" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+      </Head>
+
+      <div style={{
+        backgroundColor: luxTheme.background,
+        minHeight: '100vh',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        paddingBottom: '100px'
+      }}>
+        
+        {/* Header */}
+        <div style={{
+          background: `linear-gradient(135deg, ${luxTheme.primary}F0, ${luxTheme.secondary}F0)`,
+          backdropFilter: 'blur(20px)',
+          padding: '30px 20px 12px',
+          position: 'relative',
+          borderRadius: '0 0 25px 25px',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+          zIndex: 100,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          {/* Back Button */}
+          <button
+            onClick={() => router.push('/parent/healthy-habits')}
+            style={{
+              position: 'absolute',
+              left: '20px',
+              backgroundColor: 'rgba(255,255,255,0.3)',
+              border: 'none',
+              borderRadius: '50%',
+              width: '44px',
+              height: '44px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '18px',
+              cursor: 'pointer',
+              color: luxTheme.textPrimary,
+              backdropFilter: 'blur(10px)',
+              flexShrink: 0,
+              touchAction: 'manipulation',
+              WebkitTapHighlightColor: 'transparent'
+            }}
+          >
+            ←
+          </button>
+
+          {/* Centered Title */}
+          <h1 style={{
+            fontSize: 'clamp(20px, 5vw, 24px)',
+            fontWeight: '400',
+            color: luxTheme.textPrimary,
+            margin: '0',
+            letterSpacing: '1px',
+            fontFamily: 'Didot, "Times New Roman", serif',
+            textAlign: 'center'
+          }}>
+            Family Battle
+          </h1>
+
+          {/* Hamburger Menu */}
+          <div className="nav-menu-container" style={{ position: 'absolute', right: '20px' }}>
+            <button
+              onClick={() => setShowNavMenu(!showNavMenu)}
+              style={{
+                backgroundColor: 'rgba(255,255,255,0.3)',
+                border: 'none',
+                borderRadius: '50%',
+                width: '44px',
+                height: '44px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '18px',
+                cursor: 'pointer',
+                color: luxTheme.textPrimary,
+                backdropFilter: 'blur(10px)',
+                flexShrink: 0,
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent'
+              }}
+            >
+              ☰
+            </button>
+
+            {/* Dropdown Menu */}
+            {showNavMenu && (
+              <div style={{
+                position: 'absolute',
+                top: '50px',
+                right: '0',
+                backgroundColor: luxTheme.surface,
+                borderRadius: '12px',
+                minWidth: '200px',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                backdropFilter: 'blur(20px)',
+                border: `2px solid ${luxTheme.primary}60`,
+                overflow: 'hidden',
+                zIndex: 9999
+              }}>
+                {navMenuItems.map((item, index) => (
+                  <button
+                    key={item.path}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      handleNavigation(item)
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      backgroundColor: 'transparent',
+                      border: 'none',
+                      borderBottom: index < navMenuItems.length - 1 ? `1px solid ${luxTheme.primary}40` : 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      fontSize: '14px',
+                      color: luxTheme.textPrimary,
+                      fontWeight: '500',
+                      textAlign: 'left',
+                      touchAction: 'manipulation',
+                      WebkitTapHighlightColor: 'transparent',
+                      transition: 'background-color 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.backgroundColor = `${luxTheme.primary}20`
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.backgroundColor = 'transparent'
+                    }}
+                  >
+                    <span style={{ fontSize: '16px' }}>{item.icon}</span>
+                    <span>{item.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
+
+          {/* Not Eligible to Unlock */}
+          {!isEligibleToUnlock && (
+            <div style={{
+              backgroundColor: luxTheme.surface,
+              borderRadius: '20px',
+              padding: '40px',
+              textAlign: 'center',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+              border: `2px dashed ${luxTheme.primary}60`
+            }}>
+              <div style={{ fontSize: '64px', marginBottom: '20px' }}>🔒</div>
+              
+              <h2 style={{
+                fontSize: '24px',
+                fontWeight: 'bold',
+                color: luxTheme.textPrimary,
+                marginBottom: '12px'
+              }}>
+                Family Battle Locked
+              </h2>
+              
+              <p style={{
+                fontSize: '16px',
+                color: luxTheme.textSecondary,
+                marginBottom: '20px',
+                lineHeight: '1.5'
+              }}>
+                Complete <strong>{3 - completedSessions}</strong> more reading sessions to unlock family-wide reading competition!
+              </p>
+
+              <div style={{
+                backgroundColor: `${luxTheme.primary}15`,
+                borderRadius: '12px',
+                padding: '16px',
+                marginBottom: '24px'
+              }}>
+                <div style={{
+                  fontSize: '14px',
+                  color: luxTheme.textPrimary,
+                  fontWeight: '600',
+                  marginBottom: '8px'
+                }}>
+                  📊 Progress: {completedSessions}/3 sessions completed
+                </div>
+                <div style={{
+                  background: `${luxTheme.primary}30`,
+                  borderRadius: '6px',
+                  height: '8px',
+                  overflow: 'hidden'
+                }}>
+                  <div style={{
+                    background: luxTheme.primary,
+                    height: '100%',
+                    width: `${(completedSessions / 3) * 100}%`,
+                    transition: 'width 0.5s ease'
+                  }} />
+                </div>
+              </div>
+
+              <button
+                onClick={() => router.push('/parent/healthy-habits')}
+                style={{
+                  backgroundColor: luxTheme.primary,
+                  color: luxTheme.textPrimary,
+                  border: 'none',
+                  borderRadius: '16px',
+                  padding: '16px 32px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  margin: '0 auto'
+                }}
+              >
+                📚 Start Reading Sessions
+              </button>
+
+              <p style={{
+                fontSize: '12px',
+                color: luxTheme.textSecondary,
+                marginTop: '16px',
+                lineHeight: '1.4'
+              }}>
+                Each completed 20+ minute reading session counts towards unlocking family competition
+              </p>
+            </div>
+          )}
+
+          {/* Eligible but Not Unlocked */}
+          {isEligibleToUnlock && !isUnlocked && (
+            <div style={{
+              backgroundColor: luxTheme.surface,
+              borderRadius: '20px',
+              padding: '40px',
+              textAlign: 'center',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+              border: `2px solid ${luxTheme.primary}40`
+            }}>
+              <div style={{ fontSize: '64px', marginBottom: '20px' }}>🎉</div>
+              
+              <h2 style={{
+                fontSize: '24px',
+                fontWeight: 'bold',
+                color: luxTheme.textPrimary,
+                marginBottom: '12px'
+              }}>
+                Ready to Unlock Family Battle!
+              </h2>
+              
+              <p style={{
+                fontSize: '16px',
+                color: luxTheme.textSecondary,
+                marginBottom: '24px',
+                lineHeight: '1.5'
+              }}>
+                You&apos;ve completed {completedSessions} reading sessions! You can now unlock family reading competition for your whole family.
+              </p>
+
+              <button
+                onClick={() => setShowUnlockModal(true)}
+                style={{
+                  backgroundColor: luxTheme.primary,
+                  color: luxTheme.textPrimary,
+                  border: 'none',
+                  borderRadius: '16px',
+                  padding: '16px 32px',
+                  fontSize: '18px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  margin: '0 auto',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                }}
+              >
+                🏆 Unlock Family Battle
+              </button>
+            </div>
+          )}
+
+          {/* Family Battle Dashboard - Full Feature */}
+          {isUnlocked && familyBattleData && (
+            <>
+              {/* Header Card */}
+              <div style={{
+                background: `linear-gradient(135deg, ${luxTheme.primary}, ${luxTheme.secondary})`,
+                borderRadius: '20px',
+                padding: '24px',
+                marginBottom: '20px',
+                boxShadow: `0 8px 24px ${luxTheme.primary}30`,
+                color: luxTheme.textPrimary,
+                textAlign: 'center'
+              }}>
+                <div style={{ fontSize: '48px', marginBottom: '12px' }}>🏆</div>
+                <h2 style={{
+                  fontSize: '22px',
+                  fontWeight: 'bold',
+                  fontFamily: 'Didot, serif',
+                  margin: '0 0 8px 0'
+                }}>
+                  Weekly Family Reading Battle
+                </h2>
+                <p style={{
+                  fontSize: '14px',
+                  margin: '0 0 16px 0',
+                  opacity: 0.9,
+                  lineHeight: '1.4'
+                }}>
+                  Week {familyBattleData.weekNumber} • {new Date(familyBattleData.weekStarting).toLocaleDateString()}
+                </p>
+
+                <div style={{
+                  background: 'rgba(255,255,255,0.2)',
+                  borderRadius: '12px',
+                  padding: '12px',
+                  fontSize: '16px',
+                  fontWeight: '600'
+                }}>
+                  Winner: {familyBattleData.winner === 'parents' ? '👨‍👩 Parents' : '👧👦 Children'} 
+                  {familyBattleData.lead > 0 && ` (+${familyBattleData.lead} min)`}
+                  {familyBattleData.lead === 0 && ' (Tied!)'}
+                </div>
+              </div>
+
+              {/* Battle Dashboard */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '16px',
+                marginBottom: '24px'
+              }}>
+                {/* Parents Team */}
+                <div style={{
+                  backgroundColor: familyBattleData.winner === 'parents' ? `${luxTheme.primary}30` : luxTheme.surface,
+                  borderRadius: '16px',
+                  padding: '20px',
+                  textAlign: 'center',
+                  border: familyBattleData.winner === 'parents' ? `3px solid ${luxTheme.primary}` : '2px solid #E5E7EB',
+                  boxShadow: familyBattleData.winner === 'parents' ? `0 8px 24px ${luxTheme.primary}30` : '0 2px 8px rgba(0,0,0,0.1)'
+                }}>
+                  <div style={{ fontSize: '36px', marginBottom: '8px' }}>👨‍👩</div>
+                  <h3 style={{
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: luxTheme.textPrimary,
+                    marginBottom: '4px'
+                  }}>
+                    Parents
+                  </h3>
+                  <div style={{
+                    fontSize: '28px',
+                    fontWeight: 'bold',
+                    color: luxTheme.textPrimary,
+                    marginBottom: '4px'
+                  }}>
+                    {familyBattleData.parentMinutes}
+                  </div>
+                  <div style={{
+                    fontSize: '12px',
+                    color: luxTheme.textSecondary
+                  }}>
+                    minutes this week
+                  </div>
+                  {familyBattleData.winner === 'parents' && (
+                    <div style={{
+                      backgroundColor: luxTheme.primary,
+                      color: 'white',
+                      borderRadius: '6px',
+                      padding: '4px 8px',
+                      fontSize: '10px',
+                      fontWeight: '600',
+                      marginTop: '8px',
+                      display: 'inline-block'
+                    }}>
+                      🎉 WINNING!
+                    </div>
+                  )}
+                </div>
+                
+                {/* Children Team */}
+                <div style={{
+                  backgroundColor: familyBattleData.winner === 'children' ? '#10B98130' : luxTheme.surface,
+                  borderRadius: '16px',
+                  padding: '20px',
+                  textAlign: 'center',
+                  border: familyBattleData.winner === 'children' ? '3px solid #10B981' : '2px solid #E5E7EB',
+                  boxShadow: familyBattleData.winner === 'children' ? '0 8px 24px rgba(16, 185, 129, 0.3)' : '0 2px 8px rgba(0,0,0,0.1)'
+                }}>
+                  <div style={{ fontSize: '36px', marginBottom: '8px' }}>👧👦</div>
+                  <h3 style={{
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: luxTheme.textPrimary,
+                    marginBottom: '4px'
+                  }}>
+                    Children
+                  </h3>
+                  <div style={{
+                    fontSize: '28px',
+                    fontWeight: 'bold',
+                    color: luxTheme.textPrimary,
+                    marginBottom: '4px'
+                  }}>
+                    {familyBattleData.childrenMinutes}
+                  </div>
+                  <div style={{
+                    fontSize: '12px',
+                    color: luxTheme.textSecondary
+                  }}>
+                    minutes this week
+                  </div>
+                  {familyBattleData.winner === 'children' && (
+                    <div style={{
+                      backgroundColor: '#10B981',
+                      color: 'white',
+                      borderRadius: '6px',
+                      padding: '4px 8px',
+                      fontSize: '10px',
+                      fontWeight: '600',
+                      marginTop: '8px',
+                      display: 'inline-block'
+                    }}>
+                      🎉 WINNING!
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Individual Children Breakdown */}
+              {familyBattleData.childrenDetails && familyBattleData.childrenDetails.length > 0 && (
+                <div style={{
+                  backgroundColor: luxTheme.surface,
+                  borderRadius: '16px',
+                  padding: '20px',
+                  marginBottom: '20px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                }}>
+                  <h3 style={{
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    color: luxTheme.textPrimary,
+                    margin: '0 0 16px 0'
+                  }}>
+                    👧👦 Individual Progress
+                  </h3>
+                  
+                  <div style={{ display: 'grid', gap: '12px' }}>
+                    {familyBattleData.childrenDetails.map((child, index) => (
+                      <div key={index} style={{
+                        backgroundColor: `${luxTheme.primary}10`,
+                        borderRadius: '12px',
+                        padding: '12px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}>
+                        <div>
+                          <div style={{
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            color: luxTheme.textPrimary
+                          }}>
+                            {child.name}
+                          </div>
+                          <div style={{
+                            fontSize: '12px',
+                            color: luxTheme.textSecondary
+                          }}>
+                            Grade {child.grade}
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{
+                            fontSize: '16px',
+                            fontWeight: 'bold',
+                            color: luxTheme.textPrimary
+                          }}>
+                            {child.minutes}
+                          </div>
+                          <div style={{
+                            fontSize: '10px',
+                            color: luxTheme.textSecondary
+                          }}>
+                            minutes
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Family Total & Motivation */}
+              <div style={{
+                backgroundColor: luxTheme.surface,
+                borderRadius: '16px',
+                padding: '20px',
+                textAlign: 'center',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                border: `2px solid ${luxTheme.primary}30`
+              }}>
+                <h3 style={{
+                  fontSize: '18px',
+                  fontWeight: '600',
+                  color: luxTheme.textPrimary,
+                  margin: '0 0 8px 0'
+                }}>
+                  📊 Family Reading Total
+                </h3>
+                
+                <div style={{
+                  fontSize: '32px',
+                  fontWeight: 'bold',
+                  color: luxTheme.primary,
+                  marginBottom: '8px'
+                }}>
+                  {familyBattleData.totalMinutes} minutes
+                </div>
+                
+                <p style={{
+                  fontSize: '14px',
+                  color: luxTheme.textSecondary,
+                  margin: '0 0 16px 0'
+                }}>
+                  Your family read together this week!
+                </p>
+
+                <div style={{
+                  backgroundColor: `${luxTheme.primary}15`,
+                  borderRadius: '12px',
+                  padding: '12px',
+                  fontSize: '14px',
+                  color: luxTheme.textPrimary,
+                  fontWeight: '500',
+                  lineHeight: '1.4'
+                }}>
+                  {familyBattleData.winner === 'parents' 
+                    ? "🏆 Amazing leadership! You're showing your children how valuable reading is!"
+                    : familyBattleData.winner === 'children'
+                      ? "📚 The kids are motivating you! Time to read more and catch up!"
+                      : "🤝 Perfect tie! You're all equally dedicated to reading!"
+                  }
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Unlock Modal */}
+        {showUnlockModal && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px'
+          }}>
+            <div style={{
+              backgroundColor: luxTheme.surface,
+              borderRadius: '20px',
+              padding: '32px',
+              maxWidth: '90vw',
+              width: '100%',
+              maxWidth: '400px',
+              textAlign: 'center',
+              border: `3px solid ${luxTheme.primary}`
+            }}>
+              <div style={{ fontSize: '64px', marginBottom: '20px' }}>🏆</div>
+              
+              <h2 style={{
+                fontSize: '24px',
+                fontWeight: 'bold',
+                color: luxTheme.textPrimary,
+                marginBottom: '16px'
+              }}>
+                Unlock Family Battle?
+              </h2>
+              
+              <p style={{
+                fontSize: '16px',
+                color: luxTheme.textSecondary,
+                marginBottom: '20px',
+                lineHeight: '1.5'
+              }}>
+                This will enable weekly reading competition for your <strong>entire family</strong>, including all {linkedStudents.length} of your children.
+              </p>
+
+              <div style={{
+                backgroundColor: '#FEF3C7',
+                border: '2px solid #F59E0B',
+                borderRadius: '12px',
+                padding: '16px',
+                marginBottom: '24px'
+              }}>
+                <h4 style={{
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#92400E',
+                  margin: '0 0 8px 0'
+                }}>
+                  ⚠️ This will unlock for:
+                </h4>
+                <ul style={{
+                  fontSize: '14px',
+                  color: '#A16207',
+                  margin: 0,
+                  paddingLeft: '20px',
+                  textAlign: 'left'
+                }}>
+                  <li>Your parent dashboard</li>
+                  {linkedStudents.map((student, index) => (
+                    <li key={index}>{student.firstName} (Grade {student.grade})</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div style={{
+                display: 'flex',
+                gap: '12px',
+                justifyContent: 'center',
+                flexWrap: 'wrap'
+              }}>
+                <button
+                  onClick={() => setShowUnlockModal(false)}
+                  disabled={unlockInProgress}
+                  style={{
+                    backgroundColor: luxTheme.textSecondary,
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '16px',
+                    padding: '12px 24px',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    cursor: unlockInProgress ? 'wait' : 'pointer',
+                    opacity: unlockInProgress ? 0.6 : 1,
+                    minWidth: '120px',
+                    minHeight: '48px'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleUnlockFamilyBattle}
+                  disabled={unlockInProgress}
+                  style={{
+                    backgroundColor: luxTheme.primary,
+                    color: luxTheme.textPrimary,
+                    border: 'none',
+                    borderRadius: '16px',
+                    padding: '12px 24px',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    cursor: unlockInProgress ? 'wait' : 'pointer',
+                    opacity: unlockInProgress ? 0.6 : 1,
+                    minWidth: '120px',
+                    minHeight: '48px',
+                    boxShadow: unlockInProgress ? 'none' : '0 4px 12px rgba(0,0,0,0.2)'
+                  }}
+                >
+                  {unlockInProgress ? '⏳ Unlocking...' : '🏆 Unlock!'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Success Message */}
+        {showSuccess && (
+          <div style={{
+            position: 'fixed',
+            bottom: '30px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: luxTheme.primary,
+            color: luxTheme.textPrimary,
+            padding: '12px 24px',
+            borderRadius: '24px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+            zIndex: 1001,
+            fontSize: 'clamp(12px, 3.5vw, 14px)',
+            fontWeight: '600',
+            maxWidth: '90vw',
+            textAlign: 'center'
+          }}>
+            {showSuccess}
+          </div>
+        )}
+
+        <style jsx>{`
+          @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+          
+          button {
+            -webkit-tap-highlight-color: transparent;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+            touch-action: manipulation;
+          }
+          
+          * {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
+          }
+          
+          @media (max-width: 768px) {
+            .nav-menu-container > div {
+              right: 10px !important;
+              min-width: 180px !important;
+            }
+          }
+        `}</style>
+      </div>
+    </>
+  )
+}
