@@ -233,6 +233,12 @@ export default function StudentSettings() {
 
   const loadStudentData = useCallback(async () => {
   try {
+    // 🔧 CRITICAL FIX: Check signing out state FIRST
+    if (signingOut) {
+      console.log('🚪 Currently signing out, skipping data load');
+      return;
+    }
+
     if (!user?.uid) {
       // ✅ FIXED: Don't redirect during sign-out process
       if (!signingOut) {

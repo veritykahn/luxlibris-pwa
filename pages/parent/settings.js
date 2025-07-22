@@ -8,7 +8,7 @@ import { db } from '../../lib/firebase'
 
 export default function ParentSettings() {
   const router = useRouter()
-  const { user, userProfile, signOut, isAuthenticated, loading: authLoading } = useAuth()
+  const { user, userProfile, signOut, isAuthenticated, loading: authLoading, signingOut } = useAuth()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -50,12 +50,12 @@ export default function ParentSettings() {
   useEffect(() => {
     if (!authLoading && isAuthenticated && user && userProfile?.accountType === 'parent') {
       loadSettingsData()
-    } else if (!authLoading && !isAuthenticated) {
-      router.push('/role-selector')
+    } else if (!authLoading && !isAuthenticated && !signingOut) {
+  router.push('/role-selector')
     } else if (!authLoading && userProfile?.accountType !== 'parent') {
       router.push('/student-dashboard')
     }
-  }, [authLoading, isAuthenticated, user, userProfile])
+  }, [authLoading, isAuthenticated, user, userProfile, signingOut])
 
   // Close nav menu when clicking outside
   useEffect(() => {

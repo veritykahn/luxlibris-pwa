@@ -15,7 +15,8 @@ export default function TeacherSettings() {
     isAuthenticated, 
     isSessionExpired, 
     signOut,
-    updateLastActivity
+    updateLastActivity,
+    signingOut 
   } = useAuth()
 
   const [loading, setLoading] = useState(true)
@@ -45,15 +46,15 @@ export default function TeacherSettings() {
     const checkAuth = async () => {
       if (authLoading) return
 
-      if (!isAuthenticated) {
-        router.push('/sign-in')
-        return
-      }
+      if (!isAuthenticated && !signingOut) {
+  router.push('/sign-in')
+  return
+}
 
-      if (userProfile && !['teacher', 'admin'].includes(userProfile.accountType)) {
-        router.push('/role-selector')
-        return
-      }
+if (userProfile && !['teacher', 'admin'].includes(userProfile.accountType) && !signingOut) {
+  router.push('/role-selector')
+  return
+}
 
       if (userProfile?.accountType && ['teacher', 'admin'].includes(userProfile.accountType) && isSessionExpired()) {
   await signOut({ redirectTo: '/' })  // ✅ FIXED: redirect to homepage like other pages
@@ -66,7 +67,7 @@ export default function TeacherSettings() {
     }
 
     checkAuth()
-  }, [authLoading, isAuthenticated, userProfile, router, isSessionExpired, signOut])
+  }, [authLoading, isAuthenticated, userProfile, router, isSessionExpired, signOut, signingOut])
 
   // Load selected books details
   const loadSelectedBooksDetails = async (selectedNominees) => {
