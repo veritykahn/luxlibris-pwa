@@ -1342,7 +1342,7 @@ export default function ParentFamilyDNALab() {
               fontFamily: 'Didot, serif',
               margin: '0 0 12px 0'
             }}>
-              Discover Your Family's Reading DNA
+              Discover Your Family&apos;s Reading DNA
             </h2>
             <p style={{
               fontSize: '16px',
@@ -1350,7 +1350,7 @@ export default function ParentFamilyDNALab() {
               opacity: 0.9,
               lineHeight: '1.5'
             }}>
-              Understanding your family's reading personalities helps you support each child's unique learning style and build stronger connections through books.
+              Understanding your family&apos;s reading personalities helps you support each child&apos;s unique learning style and build stronger connections through books.
             </p>
             {!hasCompletedAssessment && (
               <div style={{
@@ -1470,7 +1470,7 @@ export default function ParentFamilyDNALab() {
                   color: luxTheme.textPrimary,
                   margin: '0 0 8px 0'
                 }}>
-                  You'll discover:
+                  You&apos;ll discover:
                 </h4>
                 <ul style={{
                   fontSize: '14px',
@@ -1482,7 +1482,7 @@ export default function ParentFamilyDNALab() {
                   <li>Your natural parent reading support style</li>
                   <li>How you intuitively motivate your children</li>
                   <li>Insights about family reading dynamics</li>
-                  <li>Personalized tips for each child's style and modifiers</li>
+                  <li>Personalized tips for each child&apos;s style and modifiers</li>
                 </ul>
               </div>
 
@@ -1750,7 +1750,7 @@ export default function ParentFamilyDNALab() {
                   margin: '0 0 20px 0',
                   textAlign: 'center'
                 }}>
-                  👨‍👩‍👧‍👦 Your Children's Reading DNA
+                  👨‍👩‍👧‍👦 Your Children&apos;s Reading DNA
                 </h3>
 
                 {linkedStudents.length > 0 ? (
@@ -1908,7 +1908,7 @@ export default function ParentFamilyDNALab() {
                                 color: luxTheme.textSecondary,
                                 fontStyle: 'italic'
                               }}>
-                                They'll find it in their student dashboard under "Discover My Reading DNA"
+                                They&apos;ll find it in their student dashboard under &quot;Discover My Reading DNA&quot;
                               </p>
                             </div>
                           ) : (
@@ -2158,7 +2158,7 @@ export default function ParentFamilyDNALab() {
                     marginBottom: '20px',
                     lineHeight: '1.5'
                   }}>
-                    Once your children complete their reading personality assessments, you'll see detailed compatibility insights with modifier support and personalized family recommendations!
+                    Once your children complete their reading personality assessments, you&apos;ll see detailed compatibility insights with modifier support and personalized family recommendations!
                   </p>
 
                   <div style={{
@@ -2453,7 +2453,7 @@ export default function ParentFamilyDNALab() {
                 textAlign: 'left'
               }}>
                 <h4 style={{ color: luxTheme.textPrimary, fontSize: '14px', margin: '0 0 8px 0' }}>
-                  💡 What you'll get:
+                  💡 What you&apos;ll get:
                 </h4>
                 <ul style={{
                   fontSize: '13px',
@@ -2731,8 +2731,8 @@ export default function ParentFamilyDNALab() {
                   margin: 0,
                   lineHeight: '1.4'
                 }}>
-                  Use these insights as a starting point for understanding your family's reading preferences, 
-                  but trust your own observations and your children's individual needs above all.
+                  Use these insights as a starting point for understanding your family&apos;s reading preferences, 
+                  but trust your own observations and your children&apos;s individual needs above all.
                 </p>
               </div>
 

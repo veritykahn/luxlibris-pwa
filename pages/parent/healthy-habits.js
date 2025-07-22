@@ -1256,7 +1256,7 @@ export default function ParentHealthyHabits() {
                   color: luxTheme.textSecondary,
                   lineHeight: '1.4'
                 }}>
-                  Children model what they observe. Reading openly shows them it's valuable and enjoyable.
+                  Children model what they observe. Reading openly shows them it&apos;s valuable and enjoyable.
                 </div>
               </div>
 
@@ -1272,7 +1272,7 @@ export default function ParentHealthyHabits() {
                   color: luxTheme.textPrimary,
                   marginBottom: '4px'
                 }}>
-                  👨‍👩‍👧‍👦 Share What You're Reading
+                  👨‍👩‍👧‍👦 Share What You&apos;re Reading
                 </div>
                 <div style={{
                   fontSize: '12px',
