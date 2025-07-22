@@ -3655,7 +3655,7 @@ const showLearningStyleDiscovery = () => {
                   lineHeight: '1.4'
                 }}>
                   Scientists who study how kids learn to love reading have discovered cool things about what makes reading exciting! 
-                  This tool is inspired by their discoveries, but it's our fun way of helping you understand yourself.
+                  This tool is inspired by their discoveries, but it&apos;s our fun way of helping you understand yourself.
                 </p>
               </div>
 
@@ -3669,14 +3669,14 @@ const showLearningStyleDiscovery = () => {
                   margin: 0,
                   lineHeight: '1.4'
                 }}>
-                  This isn't a test or grade - it's like a fun personality quiz! It helps you think about what you like 
+                  This isn&apos;t a test or grade - it&apos;s like a fun personality quiz! It helps you think about what you like 
                   and how you can make reading even more awesome for yourself.
                 </p>
               </div>
 
               <div style={{ marginBottom: '14px' }}>
                 <h4 style={{ color: currentTheme.textPrimary, fontSize: '14px', margin: '0 0 6px 0' }}>
-                  🌟 You're Unique and Special!
+                  🌟 You&apos;re Unique and Special!
                 </h4>
                 <p style={{ 
                   fontSize: '12px', 
@@ -3685,7 +3685,7 @@ const showLearningStyleDiscovery = () => {
                   lineHeight: '1.4'
                 }}>
                   Remember, this is just one way to think about reading. You might be a mix of different types, 
-                  or you might change over time. Every reader is different and that's what makes it exciting!
+                  or you might change over time. Every reader is different and that&apos;s what makes it exciting!
                 </p>
               </div>
 
