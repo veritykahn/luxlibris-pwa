@@ -7,40 +7,43 @@ import { useAuth } from '../contexts/AuthContext'
 export default function Home() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const router = useRouter()
-  const { user, userProfile, loading, isAuthenticated, getDashboardUrl } = useAuth()
+  const { user, userProfile, loading, isAuthenticated, getDashboardUrl, signingOut } = useAuth() // 🔧 NEW: Added signingOut
 
-  // CRITICAL: Check authentication and redirect immediately if user is logged in
+  // 🔧 UPDATED: Check authentication and redirect, but NOT during sign-out
   useEffect(() => {
     console.log('🔍 HOMEPAGE DEBUG - Auth state:', {
       loading,
       isAuthenticated,
+      signingOut, // 🔧 NEW: Log signing out state
       userProfile: userProfile ? {
         accountType: userProfile.accountType,
         firstName: userProfile.firstName,
         uid: userProfile.uid || 'no uid'
       } : 'null',
-      condition1: !loading,
-      condition2: isAuthenticated,
-      condition3: !!userProfile,
-      allConditionsMet: !loading && isAuthenticated && userProfile
+      shouldRedirect: !loading && isAuthenticated && userProfile && !signingOut
     });
 
-    if (!loading && isAuthenticated && userProfile) {
+    // 🔧 UPDATED: Don't redirect if signing out
+    if (!loading && isAuthenticated && userProfile && !signingOut) {
       const dashboardUrl = getDashboardUrl();
       console.log('✅ User already authenticated, redirecting to:', dashboardUrl);
       router.push(dashboardUrl);
+    } else if (signingOut) {
+      console.log('🚪 Currently signing out, not redirecting');
     } else {
       console.log('❌ Not redirecting because conditions not met');
     }
-  }, [loading, isAuthenticated, userProfile, router, getDashboardUrl])
+  }, [loading, isAuthenticated, userProfile, router, getDashboardUrl, signingOut]) // 🔧 NEW: Added signingOut dependency
 
-  // Show loading while checking authentication
-  if (loading) {
+  // 🔧 UPDATED: Show loading while checking authentication OR signing out
+  if (loading || signingOut) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-teal-50 to-blue-50 flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-teal-200 border-t-teal-600 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-slate-600">Loading...</p>
+          <p className="text-slate-600">
+            {signingOut ? 'Signing out...' : 'Loading...'}
+          </p>
         </div>
       </div>
     )
@@ -83,8 +86,8 @@ export default function Home() {
                 Features
               </a>
               <Link href="/for-schools" className="text-slate-600 hover:text-teal-600 transition-colors">
-  For Schools
-</Link>
+                For Schools
+              </Link>
               <a href="#contact" className="text-slate-600 hover:text-teal-600 transition-colors">
                 Contact
               </a>
@@ -127,12 +130,12 @@ export default function Home() {
                   Features
                 </a>
                 <Link
-  href="/for-schools"
-  className="block text-slate-600 hover:text-teal-600 transition-colors py-2"
-  onClick={() => setMobileMenuOpen(false)}
->
-  For Schools
-</Link>
+                  href="/for-schools"
+                  className="block text-slate-600 hover:text-teal-600 transition-colors py-2"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  For Schools
+                </Link>
                 <a 
                   href="#contact" 
                   className="block text-slate-600 hover:text-teal-600 transition-colors py-2"

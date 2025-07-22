@@ -101,7 +101,7 @@ const themes = {
 
 export default function StudentSettings() {
   const router = useRouter();
-  const { user, signOut } = useAuth();
+  const { user, signOut, signingOut } = useAuth();
   const { phaseData, hasAccess, getPhaseMessage, getPhaseInfo } = usePhaseAccess();
   const [studentData, setStudentData] = useState(null);
   const [currentTheme, setCurrentTheme] = useState(null);
@@ -232,51 +232,60 @@ export default function StudentSettings() {
   }, [showNavMenu]);
 
   const loadStudentData = useCallback(async () => {
-    try {
-      if (!user?.uid) {
+  try {
+    if (!user?.uid) {
+      // ✅ FIXED: Don't redirect during sign-out process
+      if (!signingOut) {
         router.push('/student-account-creation');
-        return;
       }
+      return;
+    }
 
-      console.log('🔍 Loading student data for UID:', user.uid);
-      
-      const realStudentData = await getStudentDataEntities(user.uid);
-      if (!realStudentData) {
-        console.error('❌ Student data not found');
+    console.log('🔍 Loading student data for UID:', user.uid);
+    
+    const realStudentData = await getStudentDataEntities(user.uid);
+    if (!realStudentData) {
+      console.error('❌ Student data not found');
+      // ✅ FIXED: Don't redirect during sign-out process
+      if (!signingOut) {
         router.push('/student-account-creation');
-        return;
       }
+      return;
+    }
 
-      console.log('✅ Loaded student data:', realStudentData);
-      
-      setStudentData(realStudentData);
-      setCurrentTheme(themes[realStudentData.selectedTheme] || themes.classic_lux);
-      setSelectedThemePreview(realStudentData.selectedTheme || 'classic_lux');
-      setNewGoal(realStudentData.personalGoal || 20);
-      setParentInviteCode(realStudentData.parentInviteCode || '');
-      setTimerDuration(realStudentData.readingSettings?.defaultTimerDuration || 20);
-      
-      if (realStudentData.entityId && realStudentData.schoolId) {
-        try {
-          const schoolNominees = await getSchoolNomineesEntities(
-            realStudentData.entityId, 
-            realStudentData.schoolId
-          );
-          const availableBooks = Math.min(schoolNominees.length || 100, 100);
-          setMaxNominees(availableBooks);
-          console.log(`📚 School has ${schoolNominees.length} nominees, reading goal capped at ${availableBooks}`);
-        } catch (error) {
-          console.warn('⚠️ Could not load nominees for reading goal cap:', error);
-          setMaxNominees(100);
-        }
+    console.log('✅ Loaded student data:', realStudentData);
+    
+    setStudentData(realStudentData);
+    setCurrentTheme(themes[realStudentData.selectedTheme] || themes.classic_lux);
+    setSelectedThemePreview(realStudentData.selectedTheme || 'classic_lux');
+    setNewGoal(realStudentData.personalGoal || 20);
+    setParentInviteCode(realStudentData.parentInviteCode || '');
+    setTimerDuration(realStudentData.readingSettings?.defaultTimerDuration || 20);
+    
+    if (realStudentData.entityId && realStudentData.schoolId) {
+      try {
+        const schoolNominees = await getSchoolNomineesEntities(
+          realStudentData.entityId, 
+          realStudentData.schoolId
+        );
+        const availableBooks = Math.min(schoolNominees.length || 100, 100);
+        setMaxNominees(availableBooks);
+        console.log(`📚 School has ${schoolNominees.length} nominees, reading goal capped at ${availableBooks}`);
+      } catch (error) {
+        console.warn('⚠️ Could not load nominees for reading goal cap:', error);
+        setMaxNominees(100);
       }
-      
-    } catch (error) {
-      console.error('❌ Error loading student data:', error);
+    }
+    
+  } catch (error) {
+    console.error('❌ Error loading student data:', error);
+    // ✅ FIXED: Don't redirect during sign-out process
+    if (!signingOut) {
       router.push('/student-account-creation');
     }
-    setIsLoading(false);
-  }, [user, router]);
+  }
+  setIsLoading(false);
+}, [user, router, signingOut]); // ✅ FIXED: Add signingOut to dependencies
 
   useEffect(() => {
     loadStudentData();
@@ -495,30 +504,32 @@ export default function StudentSettings() {
 
   const previewTheme = themes[selectedThemePreview] || themes.classic_lux;
 
-  if (isLoading || !studentData || !currentTheme) {
-    return (
-      <div style={{
-        backgroundColor: '#FFFCF5',
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{
-            width: '40px',
-            height: '40px',
-            border: '3px solid #ADD4EA30',
-            borderTop: '3px solid #ADD4EA',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            margin: '0 auto 16px'
-          }} />
-          <p style={{ color: '#223848' }}>Loading settings...</p>
-        </div>
+  if (isLoading || signingOut || !studentData || !currentTheme) {
+  return (
+    <div style={{
+      backgroundColor: '#FFFCF5',
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{
+          width: '40px',
+          height: '40px',
+          border: '3px solid #ADD4EA30',
+          borderTop: '3px solid #ADD4EA',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite',
+          margin: '0 auto 16px'
+        }} />
+        <p style={{ color: '#223848' }}>
+          {signingOut ? 'Signing out...' : 'Loading settings...'}
+        </p>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
   const readingGoalInfo = getReadingGoalMessage();
 

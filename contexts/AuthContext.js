@@ -1,4 +1,4 @@
-// contexts/AuthContext.js - FIXED to include parents collection
+// contexts/AuthContext.js - FIXED sign-out redirects
 import { createContext, useContext, useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import { auth, db } from '../lib/firebase'
@@ -20,6 +20,7 @@ export const AuthProvider = ({ children }) => {
   const [userProfile, setUserProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [initialized, setInitialized] = useState(false)
+  const [signingOut, setSigningOut] = useState(false) // 🔧 NEW: Track sign-out state
 
   // Session timeout settings
   const ADMIN_TIMEOUT = 60 * 60 * 1000 // 60 minutes (1 hour) for admins
@@ -457,9 +458,11 @@ export const AuthProvider = ({ children }) => {
     return () => unsubscribe()
   }, [initialized])
 
-  // Enhanced sign out with redirect options
+  // 🔧 UPDATED: Enhanced sign out with proper redirect handling
   const signOut = async (options = {}) => {
     try {
+      setSigningOut(true) // 🔧 NEW: Set signing out state
+      
       await firebaseSignOut(auth)
       setUser(null)
       setUserProfile(null)
@@ -478,12 +481,21 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('parentOnboardingData')
       }
       
-      // Handle redirects
-      if (options.redirectTo) {
-        window.location.href = options.redirectTo
-      }
+      console.log('🚪 Sign out complete, redirecting to homepage...')
+      
+      // 🔧 UPDATED: Always redirect to homepage after a brief delay
+      setTimeout(() => {
+        setSigningOut(false)
+        if (options.redirectTo) {
+          window.location.href = options.redirectTo
+        } else {
+          window.location.href = '/' // Always go to homepage
+        }
+      }, 100) // Small delay to ensure state is cleared
+      
     } catch (error) {
       console.error('Error signing out:', error)
+      setSigningOut(false)
       throw error
     }
   }
@@ -559,6 +571,7 @@ export const AuthProvider = ({ children }) => {
     loading,
     initialized,
     lastActivity,
+    signingOut, // 🔧 NEW: Expose signing out state
     
     // Helper functions
     signOut,
@@ -579,7 +592,7 @@ export const AuthProvider = ({ children }) => {
     getUserProfile,
     
     // Computed values
-    isAuthenticated: !!user,
+    isAuthenticated: !!user && !signingOut, // 🔧 UPDATED: Not authenticated while signing out
     isStudent: userProfile?.accountType === 'student',
     isParent: userProfile?.accountType === 'parent',
     isAdmin: userProfile?.accountType === 'admin',

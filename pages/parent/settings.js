@@ -267,14 +267,14 @@ export default function ParentSettings() {
   }
 
   const handleSignOut = async () => {
-    try {
-      await signOut()
-      router.push('/role-selector')
-    } catch (error) {
-      console.error('❌ Error signing out:', error)
-      setError('Failed to sign out. Please try again.')
-    }
+  try {
+    await signOut({ redirectTo: '/' })  // ✅ FIXED: Use signOut with redirect parameter
+    // ❌ REMOVE: Don't manually push to router after signOut
+  } catch (error) {
+    console.error('❌ Error signing out:', error)
+    setError('Failed to sign out. Please try again.')
   }
+}
 
   const handleTabClick = (tabName) => {
     if (tabName === 'Settings') {

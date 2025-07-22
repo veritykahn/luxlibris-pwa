@@ -56,9 +56,9 @@ export default function TeacherSettings() {
       }
 
       if (userProfile?.accountType && ['teacher', 'admin'].includes(userProfile.accountType) && isSessionExpired()) {
-        await signOut({ redirectTo: '/sign-in?reason=session-expired' })
-        return
-      }
+  await signOut({ redirectTo: '/' })  // ✅ FIXED: redirect to homepage like other pages
+  return
+}
 
       if (userProfile) {
         loadSettingsData()
@@ -387,20 +387,20 @@ export default function TeacherSettings() {
                 <span>{userProfile.firstName || 'Teacher'}</span>
               </div>
               <button 
-                onClick={() => signOut()}
-                style={{
-                  padding: '0.5rem 0.75rem',
-                  background: 'linear-gradient(135deg, #f87171, #ef4444)',
-                  color: 'white',
-                  borderRadius: '0.5rem',
-                  fontSize: '0.75rem',
-                  fontWeight: '600',
-                  border: 'none',
-                  cursor: 'pointer'
-                }}
-              >
-                🚪 Sign Out
-              </button>
+  onClick={() => signOut({ redirectTo: '/' })}  // ✅ FIXED: Explicit homepage redirect
+  style={{
+    padding: '0.5rem 0.75rem',
+    background: 'linear-gradient(135deg, #f87171, #ef4444)',
+    color: 'white',
+    borderRadius: '0.5rem',
+    fontSize: '0.75rem',
+    fontWeight: '600',
+    border: 'none',
+    cursor: 'pointer'
+  }}
+>
+  🚪 Sign Out
+</button>
             </div>
           </div>
         </header>

@@ -1,4 +1,4 @@
-// pages/student-nominees.js - COMPLETE version with phase locking, circular navigation, and hamburger menu
+// pages/student-nominees.js - COMPLETE version with phase locking, circular navigation, hamburger menu, and interactive book added dialog
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
@@ -21,6 +21,7 @@ export default function StudentNominees() {
   const [showAddMessage, setShowAddMessage] = useState('');
   const [isAddingBook, setIsAddingBook] = useState(false);
   const [showFormatSwitchDialog, setShowFormatSwitchDialog] = useState(null);
+  const [showBookAddedDialog, setShowBookAddedDialog] = useState(null);
 
   // 🍔 HAMBURGER MENU STATE VARIABLES
   const [showNavMenu, setShowNavMenu] = useState(false);
@@ -456,11 +457,14 @@ useEffect(() => {
         bookshelf: [...(prev.bookshelf || []), newBookProgress]
       }));
 
-      const message = format === 'audiobook'
-        ? `🎧 ${book.title} added as audiobook!`
-        : `📖 ${book.title} added to bookshelf!`;
-      setShowAddMessage(message);
-      setTimeout(() => setShowAddMessage(''), 3000);
+      // Show interactive "View in Bookshelf" dialog
+      setShowBookAddedDialog({
+        book: book,
+        format: format,
+        message: format === 'audiobook' 
+          ? `🎧 ${book.title} added as audiobook!`
+          : `📖 ${book.title} added to bookshelf!`
+      });
 
     } catch (error) {
       console.error('❌ Error adding book:', error);
@@ -512,11 +516,14 @@ useEffect(() => {
           };
         });
 
-        const message = newFormat === 'audiobook'
-          ? `🔄 Switched to audiobook version of ${book.title}!`
-          : `🔄 Switched to book version of ${book.title}!`;
-        setShowAddMessage(message);
-        setTimeout(() => setShowAddMessage(''), 3000);
+        // Show interactive "View in Bookshelf" dialog
+        setShowBookAddedDialog({
+          book: book,
+          format: newFormat,
+          message: newFormat === 'audiobook'
+            ? `🔄 Switched to audiobook version of ${book.title}!`
+            : `🔄 Switched to book version of ${book.title}!`
+        });
 
       } catch (error) {
         console.error('❌ Error switching format:', error);
@@ -1680,6 +1687,204 @@ useEffect(() => {
             </div>
           </div>
         </div>
+
+        {/* Book Added Success Dialog */}
+        {showBookAddedDialog && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 2000,
+            padding: '20px'
+          }}>
+            <div style={{
+              backgroundColor: currentTheme.surface,
+              borderRadius: '20px',
+              padding: '24px',
+              maxWidth: '320px',
+              width: '100%',
+              textAlign: 'center',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+              border: `3px solid ${currentTheme.primary}`,
+              position: 'relative'
+            }}>
+              {/* Success Icon */}
+              <div style={{
+                width: '64px',
+                height: '64px',
+                backgroundColor: currentTheme.primary,
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '32px',
+                margin: '0 auto 16px',
+                boxShadow: `0 4px 12px ${currentTheme.primary}40`,
+                color: currentTheme.textPrimary
+              }}>
+                ✓
+              </div>
+
+              {/* Success Message */}
+              <h3 style={{
+                fontSize: '18px',
+                color: currentTheme.textPrimary,
+                marginBottom: '8px',
+                fontWeight: '600'
+              }}>
+                Book Added!
+              </h3>
+              
+              <p style={{
+                fontSize: '14px',
+                color: currentTheme.textSecondary,
+                marginBottom: '20px',
+                lineHeight: '1.4'
+              }}>
+                {showBookAddedDialog.message}
+              </p>
+
+              {/* Book Preview */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                backgroundColor: `${currentTheme.primary}10`,
+                padding: '12px',
+                borderRadius: '12px',
+                marginBottom: '20px',
+                border: `2px solid ${currentTheme.primary}30`
+              }}>
+                <div style={{
+                  width: '40px',
+                  height: '60px',
+                  borderRadius: '6px',
+                  overflow: 'hidden',
+                  backgroundColor: `${currentTheme.primary}20`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  {showBookAddedDialog.book.coverImageUrl ? (
+                    <img
+                      src={showBookAddedDialog.book.coverImageUrl}
+                      alt={showBookAddedDialog.book.title}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover'
+                      }}
+                    />
+                  ) : (
+                    <span style={{ fontSize: '16px' }}>📚</span>
+                  )}
+                </div>
+                <div style={{ textAlign: 'left', flex: 1 }}>
+                  <div style={{
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: currentTheme.textPrimary,
+                    marginBottom: '4px',
+                    lineHeight: '1.2'
+                  }}>
+                    {showBookAddedDialog.book.title}
+                  </div>
+                  <div style={{
+                    fontSize: '12px',
+                    color: currentTheme.textSecondary,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}>
+                    {showBookAddedDialog.format === 'audiobook' ? '🎧' : '📖'}
+                    {showBookAddedDialog.format === 'audiobook' ? 'Audiobook' : 'Book'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px'
+              }}>
+                <button
+                  onClick={() => {
+                    setShowBookAddedDialog(null);
+                    router.push('/student-bookshelf');
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '14px 20px',
+                    backgroundColor: currentTheme.primary,
+                    border: 'none',
+                    borderRadius: '12px',
+                    color: currentTheme.textPrimary,
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  📖 View in Bookshelf
+                </button>
+                
+                <button
+                  onClick={() => setShowBookAddedDialog(null)}
+                  style={{
+                    width: '100%',
+                    padding: '12px 20px',
+                    backgroundColor: 'transparent',
+                    border: `2px solid ${currentTheme.primary}60`,
+                    borderRadius: '12px',
+                    color: currentTheme.textSecondary,
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  Keep Browsing
+                </button>
+              </div>
+
+              {/* Close X Button */}
+              <button
+                onClick={() => setShowBookAddedDialog(null)}
+                style={{
+                  position: 'absolute',
+                  top: '12px',
+                  right: '12px',
+                  backgroundColor: 'rgba(0,0,0,0.1)',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '32px',
+                  height: '32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '16px',
+                  cursor: 'pointer',
+                  color: currentTheme.textSecondary,
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Format Switch Confirmation Dialog */}
         {showFormatSwitchDialog && (

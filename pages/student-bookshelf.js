@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
 import { usePhaseAccess } from '../hooks/usePhaseAccess';
@@ -23,6 +23,15 @@ export default function StudentBookshelf() {
   const [textareaHeight, setTextareaHeight] = useState(50);
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState('');
+  
+  // NEW: Slider locking state for 100% completion
+  const [isSliderLocked, setIsSliderLocked] = useState(false);
+  
+  // NEW: Warning dialog state for unlocking slider
+  const [showUnlockWarning, setShowUnlockWarning] = useState(false);
+  
+  // NEW: Textarea ref for iPad compatibility
+  const textareaRef = useRef(null);
   
   // Phase access control
   const { hasAccess, getPhaseMessage, getPhaseInfo } = usePhaseAccess();
@@ -69,8 +78,7 @@ export default function StudentBookshelf() {
     { name: 'Stats', path: '/student-stats', icon: '△' },
     { name: 'Settings', path: '/student-settings', icon: '⚙' }
   ], [hasAccess]); // Add hasAccess as dependency
-
-  // 🍔 NOTIFICATION FUNCTIONS
+// 🍔 NOTIFICATION FUNCTIONS
   const requestNotificationPermission = useCallback(async () => {
     console.log('Starting notification permission request...');
     
@@ -341,8 +349,7 @@ export default function StudentBookshelf() {
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
-
-  // UPDATED: Book state management functions with revision handling
+// UPDATED: Book state management functions with revision handling
   const getBookState = (book) => {
     const now = new Date();
     
@@ -469,7 +476,54 @@ export default function StudentBookshelf() {
     const state = getBookState(book);
     return !['completed'].includes(state);
   };
-useEffect(() => {
+
+  // NEW: Helper function to determine if Submit Book button should show
+  const shouldShowSubmissionButton = (book) => {
+    const state = getBookState(book);
+    const total = getBookTotal(book);
+    const isAt100Percent = book.currentProgress >= total && total > 0;
+    
+    // Show submit button if:
+    // 1. Book is at 100% but not submitted/completed
+    // 2. Book is in revision_ready state (after cooldown)
+    // 3. Slider is locked at 100%
+    return (isAt100Percent && state === 'in_progress') || state === 'revision_ready' || isSliderLocked;
+  };
+
+  // NEW: Handle slider release - lock if at 100%
+  const handleSliderRelease = () => {
+    const total = getBookTotal(selectedBook);
+    const isAt100Percent = tempProgress >= total && total > 0;
+    
+    if (isAt100Percent && !isSliderLocked) {
+      setIsSliderLocked(true);
+    }
+  };
+
+  // NEW: Handle unlocking slider for editing
+  const handleUnlockSlider = () => {
+    setIsSliderLocked(false);
+  };
+
+  // NEW: Handler for direct submission button (updated for lock state)
+  const handleDirectSubmission = () => {
+    if (!selectedBook) return;
+    
+    const total = getBookTotal(selectedBook);
+    const isAt100Percent = tempProgress >= total && total > 0;
+    const bookState = getBookState(selectedBook);
+    
+    // Allow submission if book is at 100%, in revision_ready state, or slider is locked
+    if (!isAt100Percent && bookState !== 'revision_ready' && !isSliderLocked) {
+      setShowSuccess('📖 Please finish reading the book before submitting');
+      setTimeout(() => setShowSuccess(''), 3000);
+      return;
+    }
+    
+    setShowSubmissionPopup(true);
+  };
+
+  useEffect(() => {
     if (!loading && isAuthenticated && user) {
       loadBookshelfData();
     } else if (!loading && !isAuthenticated) {
@@ -632,7 +686,7 @@ useEffect(() => {
     setIsLoading(false);
   };
 
-const getBookTotal = (bookshelfBook) => {
+  const getBookTotal = (bookshelfBook) => {
     const bookDetails = getBookDetails(bookshelfBook.bookId);
     if (!bookDetails) return 0;
     
@@ -732,33 +786,71 @@ const getBookTotal = (bookshelfBook) => {
     return Math.round((book.currentProgress / total) * 100);
   };
 
-  const openBookModal = (bookshelfBook) => {
-    const bookDetails = getBookDetails(bookshelfBook.bookId);
-    if (!bookDetails) return;
-    
-    setSelectedBook({ ...bookshelfBook, details: bookDetails });
-    setTempProgress(bookshelfBook.currentProgress);
-    setTempRating(bookshelfBook.rating || 0);
-    setTempNotes(bookshelfBook.notes || '');
-    setShowBookModal(true);
-  };
+  // UPDATED: openBookModal with 100% state checking and textarea height fix
+const openBookModal = (bookshelfBook) => {
+  const bookDetails = getBookDetails(bookshelfBook.bookId);
+  if (!bookDetails) return;
+  
+  const total = bookDetails.format === 'audiobook' ? 
+    (bookDetails.totalMinutes || 0) : 
+    (bookDetails.pages || bookDetails.pageCount || 0);
+  
+  setSelectedBook({ ...bookshelfBook, details: bookDetails });
+  setTempProgress(bookshelfBook.currentProgress);
+  setTempRating(bookshelfBook.rating || 0);
+  setTempNotes(bookshelfBook.notes || '');
+  
+  // Set lock state based on whether book is actually at 100%
+  const isAt100Percent = bookshelfBook.currentProgress >= total && total > 0;
+  setIsSliderLocked(isAt100Percent);
+  
+  // Calculate initial textarea height for existing content
+  const notesContent = bookshelfBook.notes || '';
+  if (notesContent) {
+    // Estimate height based on content length
+    const lineCount = notesContent.split('\n').length;
+    const estimatedHeight = Math.min(Math.max(lineCount * 20 + 16, 50), 120);
+    setTextareaHeight(estimatedHeight);
+  } else {
+    setTextareaHeight(50);
+  }
+  
+  setShowBookModal(true);
+};
 
   const closeBookModal = () => {
     setShowBookModal(false);
     setSelectedBook(null);
+    setIsSliderLocked(false); // Reset slider lock when closing modal
   };
 
+  // ENHANCED iPad-Compatible Textarea Function
   const handleTextareaChange = (e) => {
     const textarea = e.target;
     setTempNotes(textarea.value);
     
-    // Reset height to auto to get the scrollHeight
-    textarea.style.height = 'auto';
-    
-    // Set height based on content, with min 50px and max 120px
-    const newHeight = Math.min(Math.max(textarea.scrollHeight, 50), 120);
-    textarea.style.height = newHeight + 'px';
-    setTextareaHeight(newHeight);
+    // iPad-compatible height adjustment
+    requestAnimationFrame(() => {
+      // Reset height to get accurate scrollHeight
+      textarea.style.height = 'auto';
+      
+      // Get scroll height with small delay for iOS Safari
+      setTimeout(() => {
+        const scrollHeight = textarea.scrollHeight;
+        const newHeight = Math.min(Math.max(scrollHeight, 50), 120);
+        
+        textarea.style.height = newHeight + 'px';
+        setTextareaHeight(newHeight);
+        
+        // Handle overflow for iPad
+        if (scrollHeight > 120) {
+          textarea.style.overflow = 'auto';
+          textarea.style.overflowX = 'hidden'; // Prevent horizontal scroll
+        } else {
+          textarea.style.overflow = 'hidden';
+        }
+      }, 0);
+    });
   };
 
   // NEW: Navigate to timer with book context
@@ -771,7 +863,7 @@ const getBookTotal = (bookshelfBook) => {
     router.push(`/student-healthy-habits?bookId=${book.bookId}&bookTitle=${bookTitle}`);
   };
 
-  // UPDATED: Save book progress with revision handling
+  // UPDATED: Save book progress with improved 100% handling
   const saveBookProgress = async () => {
     if (!selectedBook || !studentData) return;
     
@@ -790,14 +882,15 @@ const getBookTotal = (bookshelfBook) => {
       
       const isOnlyRatingNotesUpdate = tempProgress === selectedBook.currentProgress;
       
-      // Allow rating and notes updates even when locked
-      if (isOnlyRatingNotesUpdate) {
+      // Allow rating and notes updates even when locked OR when slider is locked at 100%
+      if (isOnlyRatingNotesUpdate || (isSliderLocked && isNowCompleted)) {
         console.log('📝 Saving rating/notes update only');
         
         const updatedBookshelf = studentData.bookshelf.map(book => {
           if (book.bookId === selectedBook.bookId) {
             return {
               ...book,
+              currentProgress: tempProgress, // Save the 100% progress too
               rating: tempRating,
               notes: tempNotes
             };
@@ -810,9 +903,9 @@ const getBookTotal = (bookshelfBook) => {
         });
         
         setStudentData({ ...studentData, bookshelf: updatedBookshelf });
-        setShowSuccess('⭐ Rating and notes saved!');
+        setShowSuccess('💾 Progress saved!');
         
-        closeBookModal();
+        // Don't close modal, just show success
         setTimeout(() => setShowSuccess(''), 3000);
         setIsSaving(false);
         return;
@@ -853,6 +946,11 @@ const getBookTotal = (bookshelfBook) => {
         });
         
         setStudentData({ ...studentData, bookshelf: updatedBookshelf });
+        
+        // Lock the slider since we're at 100%
+        setIsSliderLocked(true);
+        
+        // Show submission popup
         setShowSubmissionPopup(true);
         setIsSaving(false);
         return;
@@ -891,7 +989,42 @@ const getBookTotal = (bookshelfBook) => {
     setIsSaving(false);
   };
 
-  const deleteBook = async (bookId) => {
+  // NEW: Helper function to save progress and close modals when submission is cancelled
+  const saveProgressAndClose = async () => {
+    if (!selectedBook || !studentData) {
+      closeBookModal();
+      return;
+    }
+    
+    setIsSaving(true);
+    try {
+      const updatedBookshelf = studentData.bookshelf.map(book => {
+        if (book.bookId === selectedBook.bookId) {
+          return {
+            ...book,
+            currentProgress: tempProgress,
+            rating: tempRating,
+            notes: tempNotes
+          };
+        }
+        return book;
+      });
+      
+      await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
+        bookshelf: updatedBookshelf
+      });
+      
+      setStudentData({ ...studentData, bookshelf: updatedBookshelf });
+      
+    } catch (error) {
+      console.error('❌ Error saving progress on close:', error);
+    }
+    
+    setIsSaving(false);
+    setShowSubmissionPopup(false);
+    closeBookModal();
+  };
+const deleteBook = async (bookId) => {
     if (!studentData) return;
     
     setIsSaving(true);
@@ -1229,6 +1362,31 @@ const getBookTotal = (bookshelfBook) => {
     
     setIsSaving(false);
   };
+
+// Fix textarea height when modal opens with existing content
+  useEffect(() => {
+    if (showBookModal && selectedBook && tempNotes && textareaRef.current) {
+      // Small delay to ensure DOM is ready
+      setTimeout(() => {
+        const textarea = textareaRef.current;
+        if (textarea) {
+          // Trigger height recalculation
+          textarea.style.height = 'auto';
+          const scrollHeight = textarea.scrollHeight;
+          const newHeight = Math.min(Math.max(scrollHeight, 50), 120);
+          textarea.style.height = newHeight + 'px';
+          setTextareaHeight(newHeight);
+          
+          if (scrollHeight > 120) {
+            textarea.style.overflow = 'auto';
+            textarea.style.overflowX = 'hidden';
+          } else {
+            textarea.style.overflow = 'hidden';
+          }
+        }
+      }, 100);
+    }
+  }, [showBookModal, selectedBook, tempNotes]);
 
   // Show loading first
   if (loading || isLoading || !studentData || !currentTheme) {
@@ -2272,7 +2430,8 @@ const getBookTotal = (bookshelfBook) => {
             </div>
           )}
         </div>
-{/* BOOK MODAL - UPDATED WITH READ-ONLY FUNCTIONALITY */}
+
+        {/* BOOK MODAL - UPDATED WITH READ-ONLY FUNCTIONALITY */}
         {showBookModal && selectedBook && (() => {
           const colorPalette = getCategoryColorPalette(selectedBook.details);
           const total = getBookTotal(selectedBook);
@@ -2503,7 +2662,7 @@ const getBookTotal = (bookshelfBook) => {
                     )}
                   </div>
 
-                  {/* Progress section - READ ONLY during phase locks */}
+                  {/* ENHANCED Progress section with clickable warning */}
                   <div style={{ marginBottom: '15px' }}>
                     <label style={{
                       fontSize: '12px',
@@ -2516,27 +2675,62 @@ const getBookTotal = (bookshelfBook) => {
                     }}>
                       {selectedBook.format === 'audiobook' ? 'Minutes' : 'Pages'}: {tempProgress}/{total}
                       {!canEdit && <span style={{ color: colorPalette.textSecondary, fontStyle: 'italic' }}> (view only)</span>}
+                      {canEdit && isSliderLocked && <span style={{ color: '#4CAF50', fontStyle: 'italic' }}> (🔒 locked at 100%)</span>}
                     </label>
                     
-                    <input
-                      type="range"
-                      min="0"
-                      max={total}
-                      value={tempProgress}
-                      onChange={canEdit ? (e) => setTempProgress(parseInt(e.target.value)) : undefined}
-                      disabled={!canEdit}
-                      style={{
-                        width: '100%',
-                        height: '6px',
-                        borderRadius: '3px',
-                        background: `linear-gradient(to right, ${colorPalette.primary} 0%, ${colorPalette.primary} ${(tempProgress/total)*100}%, #E0E0E0 ${(tempProgress/total)*100}%, #E0E0E0 100%)`,
-                        outline: 'none',
-                        appearance: 'none',
-                        WebkitAppearance: 'none',
-                        cursor: canEdit ? 'pointer' : 'not-allowed',
-                        opacity: canEdit ? 1 : 0.6
+                    <div 
+                      onClick={isSliderLocked ? () => setShowUnlockWarning(true) : undefined}
+                      style={{ 
+                        cursor: isSliderLocked ? 'pointer' : 'default',
+                        position: 'relative'
                       }}
-                    />
+                    >
+                      <input
+                        type="range"
+                        min="0"
+                        max={total}
+                        value={tempProgress}
+                        onChange={canEdit && !isSliderLocked ? (e) => {
+                          const newProgress = parseInt(e.target.value);
+                          setTempProgress(newProgress);
+                          
+                          // Unlock slider if moved below 100%
+                          const newTotal = getBookTotal(selectedBook);
+                          if (newProgress < newTotal && isSliderLocked) {
+                            setIsSliderLocked(false);
+                          }
+                        } : undefined}
+                        onMouseUp={canEdit && !isSliderLocked ? handleSliderRelease : undefined}
+                        onTouchEnd={canEdit && !isSliderLocked ? handleSliderRelease : undefined}
+                        disabled={!canEdit || isSliderLocked}
+                        style={{
+                          width: '100%',
+                          height: '6px',
+                          borderRadius: '3px',
+                          background: `linear-gradient(to right, ${colorPalette.primary} 0%, ${colorPalette.primary} ${(tempProgress/total)*100}%, #E0E0E0 ${(tempProgress/total)*100}%, #E0E0E0 100%)`,
+                          outline: 'none',
+                          appearance: 'none',
+                          WebkitAppearance: 'none',
+                          cursor: isSliderLocked ? 'pointer' : (canEdit ? 'pointer' : 'not-allowed'),
+                          opacity: (canEdit && !isSliderLocked) ? 1 : 0.6
+                        }}
+                      />
+                      
+                      {/* Invisible overlay for locked slider click detection */}
+                      {isSliderLocked && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            cursor: 'pointer',
+                            zIndex: 1
+                          }}
+                        />
+                      )}
+                    </div>
                   </div>
 
                   {/* Rating section - READ ONLY during phase locks */}
@@ -2580,7 +2774,7 @@ const getBookTotal = (bookshelfBook) => {
                     </div>
                   </div>
 
-                  {/* Notes section - READ ONLY during phase locks */}
+                  {/* ENHANCED Notes section with iPad compatibility */}
                   <div style={{ marginBottom: '15px' }}>
                     <label style={{
                       fontSize: '12px',
@@ -2604,7 +2798,7 @@ const getBookTotal = (bookshelfBook) => {
                         padding: '8px',
                         border: `1px solid ${colorPalette.primary}40`,
                         borderRadius: '6px',
-                        fontSize: '16px',
+                        fontSize: '16px', // IMPORTANT: 16px prevents zoom on iPad
                         backgroundColor: canEdit ? '#FFFFFF' : '#F5F5F5',
                         color: colorPalette.textPrimary,
                         fontFamily: 'inherit',
@@ -2613,63 +2807,169 @@ const getBookTotal = (bookshelfBook) => {
                         resize: 'none',
                         overflow: 'hidden',
                         transition: 'height 0.1s ease',
-                        cursor: canEdit ? 'text' : 'default'
+                        cursor: canEdit ? 'text' : 'default',
+                        // iPad-specific fixes
+                        WebkitAppearance: 'none',
+                        lineHeight: '1.4',
+                        wordWrap: 'break-word',
+                        // Prevent zoom on focus (iPad)
+                        transformOrigin: 'left top',
+                        // Smooth scrolling on overflow
+                        WebkitOverflowScrolling: 'touch'
                       }}
-                      onInput={(e) => {
+                      // Dual event handling for better iPad compatibility
+                      onInput={canEdit ? (e) => {
+                        // Immediate overflow handling
                         if (e.target.scrollHeight > 120) {
                           e.target.style.overflow = 'auto';
+                          e.target.style.overflowX = 'hidden';
                         } else {
                           e.target.style.overflow = 'hidden';
                         }
-                      }}
+                      } : undefined}
+                      // iPad-specific event handlers
+                      onFocus={canEdit ? (e) => {
+                        // Prevent zoom by ensuring 16px font
+                        if (e.target.style.fontSize !== '16px') {
+                          e.target.style.fontSize = '16px';
+                        }
+                      } : undefined}
+                      onBlur={canEdit ? () => {
+                        // Recalculate height after keyboard closes (iPad specific)
+                        setTimeout(() => {
+                          if (textareaRef.current) {
+                            handleTextareaChange({ target: textareaRef.current });
+                          }
+                        }, 300);
+                      } : undefined}
+                      ref={textareaRef}
                     />
                   </div>
 
-                  {/* Action buttons - CONDITIONAL based on phase */}
+                  {/* ENHANCED Action buttons - CONDITIONAL based on phase and lock state */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {canEdit ? (
-                      // EDITING ALLOWED - Show normal buttons
+                      // EDITING ALLOWED - Show buttons based on slider lock state
                       <>
-                        <button
-                          onClick={saveBookProgress}
-                          disabled={isSaving}
-                          style={{
-                            backgroundColor: colorPalette.primary,
-                            color: colorPalette.textPrimary,
-                            border: 'none',
-                            padding: '10px 16px',
-                            borderRadius: '16px',
-                            fontSize: '12px',
-                            fontWeight: '500',
-                            cursor: 'pointer',
-                            opacity: isSaving ? 0.7 : 1,
-                            minHeight: '44px',
-                            fontFamily: 'system-ui, -apple-system, sans-serif'
-                          }}
-                        >
-                          {isSaving ? 'Saving...' : '💾 Save'}
-                        </button>
-                        
-                        {shouldShowRemoveButton(selectedBook) && (
-                          <button
-                            onClick={() => deleteBook(selectedBook.bookId)}
-                            disabled={isSaving || locked}
-                            style={{
-                              backgroundColor: locked ? '#E0E0E0' : colorPalette.textSecondary,
-                              color: locked ? '#999' : 'white',
-                              border: 'none',
-                              padding: '10px 16px',
-                              borderRadius: '16px',
-                              fontSize: '12px',
-                              cursor: locked ? 'not-allowed' : 'pointer',
-                              opacity: isSaving ? 0.7 : (locked ? 0.6 : 1),
-                              minHeight: '44px',
-                              fontWeight: '500',
-                              fontFamily: 'system-ui, -apple-system, sans-serif'
-                            }}
-                          >
-                            🗑️ Remove
-                          </button>
+                        {isSliderLocked ? (
+                          // SLIDER IS LOCKED AT 100% - Show BOTH Save and Submit buttons
+                          <>
+                            <button
+                              onClick={handleDirectSubmission}
+                              disabled={isSaving}
+                              style={{
+                                backgroundColor: '#4CAF50',
+                                color: 'white',
+                                border: 'none',
+                                padding: '12px 16px',
+                                borderRadius: '16px',
+                                fontSize: '12px',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                                opacity: isSaving ? 0.7 : 1,
+                                minHeight: '44px',
+                                fontFamily: 'system-ui, -apple-system, sans-serif',
+                                marginBottom: '4px'
+                              }}
+                            >
+                              {getBookState(selectedBook) === 'revision_ready' ? 
+                                '📝 Resubmit Book' : 
+                                '✅ Submit Book'
+                              }
+                            </button>
+                            
+                            <button
+                              onClick={saveBookProgress}
+                              disabled={isSaving}
+                              style={{
+                                backgroundColor: colorPalette.primary,
+                                color: colorPalette.textPrimary,
+                                border: 'none',
+                                padding: '10px 16px',
+                                borderRadius: '16px',
+                                fontSize: '12px',
+                                fontWeight: '500',
+                                cursor: 'pointer',
+                                opacity: isSaving ? 0.7 : 1,
+                                minHeight: '44px',
+                                fontFamily: 'system-ui, -apple-system, sans-serif'
+                              }}
+                            >
+                              {isSaving ? 'Saving...' : '💾 Save Progress'}
+                            </button>
+                          </>
+                        ) : (
+                          // SLIDER IS UNLOCKED - Show normal buttons + Submit if eligible
+                          <>
+                            {/* Submit Book Button (for non-locked 100% books) */}
+                            {shouldShowSubmissionButton(selectedBook) && !isSliderLocked && (
+                              <button
+                                onClick={handleDirectSubmission}
+                                disabled={isSaving}
+                                style={{
+                                  backgroundColor: '#4CAF50',
+                                  color: 'white',
+                                  border: 'none',
+                                  padding: '12px 16px',
+                                  borderRadius: '16px',
+                                  fontSize: '12px',
+                                  fontWeight: '600',
+                                  cursor: 'pointer',
+                                  opacity: isSaving ? 0.7 : 1,
+                                  minHeight: '44px',
+                                  fontFamily: 'system-ui, -apple-system, sans-serif',
+                                  marginBottom: '4px'
+                                }}
+                              >
+                                {getBookState(selectedBook) === 'revision_ready' ? 
+                                  '📝 Resubmit Book' : 
+                                  '✅ Submit Book'
+                                }
+                              </button>
+                            )}
+                            
+                            <button
+                              onClick={saveBookProgress}
+                              disabled={isSaving}
+                              style={{
+                                backgroundColor: colorPalette.primary,
+                                color: colorPalette.textPrimary,
+                                border: 'none',
+                                padding: '10px 16px',
+                                borderRadius: '16px',
+                                fontSize: '12px',
+                                fontWeight: '500',
+                                cursor: 'pointer',
+                                opacity: isSaving ? 0.7 : 1,
+                                minHeight: '44px',
+                                fontFamily: 'system-ui, -apple-system, sans-serif'
+                              }}
+                            >
+                              {isSaving ? 'Saving...' : '💾 Save Progress'}
+                            </button>
+                            
+                            {shouldShowRemoveButton(selectedBook) && (
+                              <button
+                                onClick={() => deleteBook(selectedBook.bookId)}
+                                disabled={isSaving || locked}
+                                style={{
+                                  backgroundColor: locked ? '#E0E0E0' : colorPalette.textSecondary,
+                                  color: locked ? '#999' : 'white',
+                                  border: 'none',
+                                  padding: '10px 16px',
+                                  borderRadius: '16px',
+                                  fontSize: '12px',
+                                  cursor: locked ? 'not-allowed' : 'pointer',
+                                  opacity: isSaving ? 0.7 : (locked ? 0.6 : 1),
+                                  minHeight: '44px',
+                                  fontWeight: '500',
+                                  fontFamily: 'system-ui, -apple-system, sans-serif'
+                                }}
+                              >
+                                🗑️ Remove
+                              </button>
+                            )}
+                          </>
                         )}
                       </>
                     ) : (
@@ -2730,7 +3030,7 @@ const getBookTotal = (bookshelfBook) => {
           );
         })()}
 
-        {/* SUBMISSION POPUP */}
+        {/* SUBMISSION POPUP - UPDATED with saveProgressAndClose */}
         {showSubmissionPopup && selectedBook && (() => {
           const colorPalette = currentTheme;
           
@@ -2767,7 +3067,8 @@ const getBookTotal = (bookshelfBook) => {
                   position: 'relative'
                 }}>
                   <button
-                    onClick={() => setShowSubmissionPopup(false)}
+                    onClick={saveProgressAndClose}
+                    disabled={isSaving}
                     style={{
                       position: 'absolute',
                       top: '10px',
@@ -2779,14 +3080,15 @@ const getBookTotal = (bookshelfBook) => {
                       height: '32px',
                       fontSize: '16px',
                       fontWeight: 'bold',
-                      cursor: 'pointer',
+                      cursor: isSaving ? 'wait' : 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      color: colorPalette.textPrimary
+                      color: colorPalette.textPrimary,
+                      opacity: isSaving ? 0.7 : 1
                     }}
                   >
-                    ✕
+                    {isSaving ? '⏳' : '✕'}
                   </button>
 
                   <div style={{ fontSize: '48px', marginBottom: '12px' }}>🎉</div>
@@ -3034,21 +3336,23 @@ const getBookTotal = (bookshelfBook) => {
                   )}
 
                   <button
-                    onClick={() => setShowSubmissionPopup(false)}
+                    onClick={saveProgressAndClose}
+                    disabled={isSaving}
                     style={{
                       width: '100%',
-                      backgroundColor: '#F5F5F5',
-                      color: '#666',
+                      backgroundColor: isSaving ? '#E0E0E0' : '#F5F5F5',
+                      color: isSaving ? '#999' : '#666',
                       border: 'none',
                       borderRadius: '12px',
                       padding: '14px',
                       fontSize: '14px',
                       fontWeight: '500',
-                      cursor: 'pointer',
-                      fontFamily: 'Avenir, system-ui, sans-serif'
+                      cursor: isSaving ? 'wait' : 'pointer',
+                      fontFamily: 'Avenir, system-ui, sans-serif',
+                      opacity: isSaving ? 0.7 : 1
                     }}
                   >
-                    Cancel
+                    {isSaving ? 'Saving...' : 'Cancel'}
                   </button>
                 </div>
               </div>
@@ -3536,6 +3840,91 @@ const getBookTotal = (bookshelfBook) => {
             </div>
           );
         })()}
+
+        {/* NEW: UNLOCK WARNING MODAL */}
+        {showUnlockWarning && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            zIndex: 2000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}>
+            <div style={{
+              backgroundColor: '#FFFFFF',
+              borderRadius: '16px',
+              maxWidth: '320px',
+              width: '100%',
+              padding: '24px',
+              textAlign: 'center',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.3)'
+            }}>
+              <div style={{ fontSize: '32px', marginBottom: '16px' }}>🔓</div>
+              <h3 style={{
+                fontSize: '18px',
+                fontWeight: '600',
+                color: currentTheme.textPrimary,
+                margin: '0 0 12px 0',
+                fontFamily: 'Didot, "Times New Roman", serif'
+              }}>
+                Unlock Progress Slider?
+              </h3>
+              <p style={{
+                fontSize: '14px',
+                color: currentTheme.textSecondary,
+                margin: '0 0 20px 0',
+                lineHeight: '1.4'
+              }}>
+                This will unlock the slider so you can edit your progress. You can still save your rating and notes, or submit the book.
+              </p>
+              
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  onClick={() => setShowUnlockWarning(false)}
+                  style={{
+                    flex: 1,
+                    backgroundColor: '#F5F5F5',
+                    color: '#666',
+                    border: 'none',
+                    borderRadius: '12px',
+                    padding: '12px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Keep Locked
+                </button>
+                
+                <button
+                  onClick={() => {
+                    setIsSliderLocked(false);
+                    setShowUnlockWarning(false);
+                  }}
+                  style={{
+                    flex: 1,
+                    backgroundColor: currentTheme.primary,
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '12px',
+                    padding: '12px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer'
+                  }}
+                >
+                  🔓 Unlock
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         
         {/* SUCCESS MESSAGE */}
         {showSuccess && (

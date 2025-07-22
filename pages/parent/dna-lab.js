@@ -642,10 +642,10 @@ export default function ParentFamilyDNALab() {
     const compatibilityMatrix = []
     
     studentDNAs.forEach(student => {
-      if (student.readingDNA && student.readingDNA.type) {
+      if (student.luxDNA && student.luxDNA.type) {
         const parentType = parentDNA.type
-        const studentType = student.readingDNA.type
-        const studentModifiers = student.readingDNA.modifiers || []
+        const studentType = student.luxDNA.type
+        const studentModifiers = student.luxDNA.modifiers || []
         
         // Get compatibility insights
         const compatibility = getCompatibilityInsights(parentType, studentType, studentModifiers)
@@ -662,7 +662,7 @@ export default function ParentFamilyDNALab() {
           considerations: compatibility.considerations,
           tips: compatibility.tips,
           hasCompletedDNA: true,
-          parentGuidance: getParentGuidanceForChild(student.readingDNA)
+          parentGuidance: getParentGuidanceForChild(student.luxDNA)
         })
       }
     })
@@ -960,7 +960,7 @@ export default function ParentFamilyDNALab() {
       
       // Only calculate compatibility if parent has completed assessment AND some children have too
       if (parentData?.luxDNA && parentData.luxDNA.type && parentData.luxDNA.details) {
-        const studentsWithDNA = students.filter(student => student.readingDNA && student.readingDNA.type)
+        const studentsWithDNA = students.filter(student => student.luxDNA && student.luxDNA.type)
         
         if (studentsWithDNA.length > 0) {
           const compatibility = calculateFamilyCompatibility(parentData.luxDNA, studentsWithDNA)
@@ -978,7 +978,7 @@ export default function ParentFamilyDNALab() {
       }
       
       console.log('✅ Linked students with DNA status loaded:', students.length)
-      console.log('Students with completed DNA:', students.filter(s => s.readingDNA && s.readingDNA.type).length)
+      console.log('Students with completed DNA:', students.filter(s => s.luxDNA && s.luxDNA.type).length)
       
     } catch (error) {
       console.error('❌ Error loading linked students DNA:', error)
@@ -1002,7 +1002,7 @@ export default function ParentFamilyDNALab() {
       setShowAssessment(false)
       
       // Only calculate compatibility with children who have completed their DNA
-      const studentsWithDNA = linkedStudents.filter(student => student.readingDNA && student.readingDNA.type)
+      const studentsWithDNA = linkedStudents.filter(student => student.luxDNA && student.luxDNA.type)
       
       if (studentsWithDNA.length > 0 && dnaResult && dnaResult.details) {
         const compatibility = calculateFamilyCompatibility(dnaResult, studentsWithDNA)
@@ -1552,7 +1552,7 @@ export default function ParentFamilyDNALab() {
                     fontSize: '12px',
                     fontWeight: '600'
                   }}>
-                    {linkedStudents.filter(s => s.readingDNA && s.readingDNA.type).length + 1} / {linkedStudents.length + 1} Complete
+                    {linkedStudents.filter(s => s.luxDNA && s.luxDNA.type).length + 1} / {linkedStudents.length + 1} Complete
                   </div>
                 </div>
 
@@ -1580,22 +1580,22 @@ export default function ParentFamilyDNALab() {
                   {/* Children Status */}
                   {linkedStudents.map((student, index) => (
                     <div key={student.id} style={{
-                      backgroundColor: (student.readingDNA && student.readingDNA.type) ? '#10B98120' : '#F59E0B20',
+                      backgroundColor: (student.luxDNA && student.luxDNA.type) ? '#10B98120' : '#F59E0B20',
                       borderRadius: '8px',
                       padding: '6px 12px',
                       fontSize: '12px',
                       fontWeight: '600',
-                      color: (student.readingDNA && student.readingDNA.type) ? '#047857' : '#92400E',
+                      color: (student.luxDNA && student.luxDNA.type) ? '#047857' : '#92400E',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '4px'
                     }}>
-                      {(student.readingDNA && student.readingDNA.type) ? '✅' : '⏳'} {student.firstName}
+                      {(student.luxDNA && student.luxDNA.type) ? '✅' : '⏳'} {student.firstName}
                     </div>
                   ))}
                 </div>
 
-                {linkedStudents.filter(s => !(s.readingDNA && s.readingDNA.type)).length > 0 && (
+                {linkedStudents.filter(s => !(s.luxDNA && s.luxDNA.type)).length > 0 && (
                   <p style={{
                     fontSize: '12px',
                     color: luxTheme.textSecondary,
@@ -1603,7 +1603,7 @@ export default function ParentFamilyDNALab() {
                     textAlign: 'center',
                     fontStyle: 'italic'
                   }}>
-                    {linkedStudents.filter(s => !(s.readingDNA && s.readingDNA.type)).length} children still need to complete their assessments for full family insights
+                    {linkedStudents.filter(s => !(s.luxDNA && s.luxDNA.type)).length} children still need to complete their assessments for full family insights
                   </p>
                 )}
               </div>
@@ -1756,9 +1756,9 @@ export default function ParentFamilyDNALab() {
                 {linkedStudents.length > 0 ? (
                   <div style={{ display: 'grid', gap: '16px' }}>
                     {linkedStudents.map((student, index) => {
-                      const hasCompletedDNA = student.readingDNA && student.readingDNA.type
+                      const hasCompletedDNA = student.luxDNA && student.luxDNA.type
                       const hasUnlockedDNA = student.dnaUnlocked === true
-                      const parentGuidance = hasCompletedDNA ? getParentGuidanceForChild(student.readingDNA) : null
+                      const parentGuidance = hasCompletedDNA ? getParentGuidanceForChild(student.luxDNA) : null
                       
                       return (
                         <div key={student.id} style={{
