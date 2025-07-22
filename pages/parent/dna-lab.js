@@ -1,4 +1,4 @@
-// pages/parent/dna-lab.js - Enhanced Family DNA Lab with Student Modifiers & Unlock System
+// pages/parent/dna-lab.js - Enhanced Family DNA Lab with Mobile-Friendly Design
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
@@ -27,6 +27,13 @@ export default function ParentFamilyDNALab() {
   // Results States
   const [familyCompatibility, setFamilyCompatibility] = useState([])
   const [familyRecommendations, setFamilyRecommendations] = useState([])
+
+  // NEW: Progressive Disclosure States
+  const [expandedChild, setExpandedChild] = useState(null)
+  const [showQuickTips, setShowQuickTips] = useState(false)
+  const [showDetailedParentModal, setShowDetailedParentModal] = useState(false)
+  const [showCompatibilityModal, setShowCompatibilityModal] = useState(null)
+  const [showFamilyActivitiesModal, setShowFamilyActivitiesModal] = useState(false)
 
   // Research Modal State
   const [showResearchModal, setShowResearchModal] = useState(false)
@@ -75,7 +82,7 @@ export default function ParentFamilyDNALab() {
     },
     {
       id: 'competence_building',
-      question: 'When your child struggles with reading, what&apos;s your instinct?',
+      question: 'When your child struggles with reading, what\'s your instinct?',
       researchBase: 'Self-Efficacy and Competence Support (Bandura)',
       options: [
         { id: 'emotional_support', text: 'Provide emotional support and remind them that struggle is normal', traits: ['emotionally_supportive', 'patient'] },
@@ -157,7 +164,6 @@ export default function ParentFamilyDNALab() {
         { id: 'natural_development', text: 'Motivation unfolds naturally when we create the right conditions', traits: ['developmental', 'organic', 'patient'] }
       ]
     },
-    // NEW QUESTION 9: Better captures Authentic Modeler
     {
       id: 'reading_modeling',
       question: 'How do you naturally share your own reading experiences with your children?',
@@ -170,7 +176,6 @@ export default function ParentFamilyDNALab() {
         { id: 'demonstrate_joy', text: 'I openly express my excitement and passion for books', traits: ['enthusiastic', 'joyful', 'expressive', 'inspiring'] }
       ]
     },
-    // NEW QUESTION 10: Better captures Growth Facilitator  
     {
       id: 'developmental_support',
       question: 'When your child is ready to tackle harder books, how do you support their growth?',
@@ -183,7 +188,6 @@ export default function ParentFamilyDNALab() {
         { id: 'celebration_growth', text: 'I celebrate their readiness and excitement for new challenges', traits: ['growth_celebrating', 'encouraging', 'positive'] }
       ]
     },
-    // NEW QUESTION 11: Better captures Meaning Maker
     {
       id: 'personal_relevance',
       question: 'How do you help your children find personal connections in their reading?',
@@ -196,7 +200,6 @@ export default function ParentFamilyDNALab() {
         { id: 'emotional_processing', text: 'I use books to help them process their feelings and experiences', traits: ['emotionally_supportive', 'therapeutic', 'caring'] }
       ]
     },
-    // NEW QUESTION 12: Better captures multiple types and reading environment
     {
       id: 'reading_struggles',
       question: 'When your child says "I don\'t like reading," what\'s your first instinct?',
@@ -565,6 +568,85 @@ export default function ParentFamilyDNALab() {
     }
   }
 
+  // NEW: Quick Tips for Parent Types
+  const getQuickTips = (parentType) => {
+    const tips = {
+      autonomy_supporter: {
+        daily: [
+          "Let them choose 2-3 books from options you provide",
+          "Ask 'What made you pick that book?' with genuine curiosity",
+          "Honor their reading choices without immediate suggestions"
+        ],
+        weekly: [
+          "Create a cozy reading corner they can customize",
+          "Visit the library and let them browse freely",
+          "Set up choice-based family reading time"
+        ]
+      },
+      competence_builder: {
+        daily: [
+          "Celebrate effort: 'I noticed you kept trying when it got hard!'",
+          "Point out strategies: 'You used that bookmark trick really well'",
+          "Notice growth: 'You're reading longer books than last month!'"
+        ],
+        weekly: [
+          "Set small, achievable reading goals together",
+          "Create a reading progress chart they help design",
+          "Practice one new reading strategy together"
+        ]
+      },
+      connection_creator: {
+        daily: [
+          "Ask about characters like they're real people: 'How is Harry feeling?'",
+          "Share your own reading: 'I'm reading about...'",
+          "Read together for at least 10 minutes"
+        ],
+        weekly: [
+          "Start a family book club with one shared book",
+          "Create discussion time after reading",
+          "Find books others in your community are reading"
+        ]
+      },
+      meaning_maker: {
+        daily: [
+          "Ask: 'What did this remind you of from your life?'",
+          "Explore themes: 'What do you think the author wants us to learn?'",
+          "Connect books to current events or family experiences"
+        ],
+        weekly: [
+          "Keep a family reading journal for deep thoughts",
+          "Choose books that relate to current life events",
+          "Discuss how books connect to family values"
+        ]
+      },
+      growth_facilitator: {
+        daily: [
+          "Acknowledge challenge: 'This book is making your brain work hard!'",
+          "Scaffold support: 'Would it help to read this part together?'",
+          "Celebrate persistence: 'You didn't give up when it got confusing!'"
+        ],
+        weekly: [
+          "Gradually increase book difficulty",
+          "Create step-by-step reading goals",
+          "Focus on progress over perfection"
+        ]
+      },
+      authentic_modeler: {
+        daily: [
+          "Read your own book where they can see your enjoyment",
+          "Share excitement: 'This part of my book was so surprising!'",
+          "Model reading choices: 'I chose this because...'"
+        ],
+        weekly: [
+          "Share what you're learning from your reading",
+          "Read different types of books visibly",
+          "Show how reading impacts your decisions"
+        ]
+      }
+    }
+    return tips[parentType] || tips.autonomy_supporter
+  }
+
   // Enhanced Parent Guidance for Child (extracts from Firebase readingDNA structure)
   const getParentGuidanceForChild = (childReadingDNA) => {
     if (!childReadingDNA || !childReadingDNA.type) return null;
@@ -702,19 +784,22 @@ export default function ParentFamilyDNALab() {
           level: 'Excellent Match',
           strengths: ['Natural autonomy alignment', 'Mutual respect for choices', 'Supports independent exploration'],
           considerations: ['May occasionally benefit from gentle guidance'],
-          tips: ['Celebrate their book choices enthusiastically', 'Create rich reading environments for discovery', 'Ask "What made you choose this?" with genuine curiosity']
+          tips: ['Celebrate their book choices enthusiastically', 'Create rich reading environments for discovery', 'Ask "What made you choose this?" with genuine curiosity'],
+          quickTip: 'Your natural trust in their choices perfectly supports their love of reading freedom!'
         },
         'creative_explorer': {
           level: 'Strong Match',
           strengths: ['Honors creative responses', 'Supports open-ended exploration', 'Values child\'s interpretations'],
           considerations: ['May occasionally need structure for skill-building'],
-          tips: ['Provide materials for creative book responses', 'Ask "What did this inspire you to create?"', 'Honor all forms of literary response']
+          tips: ['Provide materials for creative book responses', 'Ask "What did this inspire you to create?"', 'Honor all forms of literary response'],
+          quickTip: 'Your support for their choices gives them freedom to explore and create!'
         },
         'challenge_seeker': {
           level: 'Good Match',
           strengths: ['Supports self-chosen challenges', 'Trusts child\'s readiness', 'Avoids pressure'],
           considerations: ['May need to help identify appropriate challenge levels'],
-          tips: ['Let them choose their own reading goals', 'Celebrate self-directed achievement', 'Support their challenge preferences']
+          tips: ['Let them choose their own reading goals', 'Celebrate self-directed achievement', 'Support their challenge preferences'],
+          quickTip: 'Let them set their own reading challenges - they\'ll push themselves naturally!'
         }
       },
       'competence_builder': {
@@ -722,13 +807,15 @@ export default function ParentFamilyDNALab() {
           level: 'Excellent Match',
           strengths: ['Perfect competence alignment', 'Strategic challenge support', 'Celebrates growth and effort'],
           considerations: ['Keep focus on learning rather than performance'],
-          tips: ['Focus on effort and strategy development', 'Provide scaffolding for appropriate challenges', 'Celebrate persistence and problem-solving']
+          tips: ['Focus on effort and strategy development', 'Provide scaffolding for appropriate challenges', 'Celebrate persistence and problem-solving'],
+          quickTip: 'Your focus on building skills perfectly matches their love of challenge!'
         },
         'curious_investigator': {
           level: 'Strong Match',
           strengths: ['Supports skill development', 'Builds reading strategies', 'Encourages mastery'],
           considerations: ['Maintain focus on learning rather than achievement'],
-          tips: ['Help develop research and comprehension strategies', 'Celebrate knowledge gained', 'Support their investigative interests']
+          tips: ['Help develop research and comprehension strategies', 'Celebrate knowledge gained', 'Support their investigative interests'],
+          quickTip: 'Your strategic support helps them become even better at learning from books!'
         }
       },
       'connection_creator': {
@@ -736,7 +823,8 @@ export default function ParentFamilyDNALab() {
           level: 'Excellent Match',
           strengths: ['Perfect social alignment', 'Natural discussion partners', 'Shared reading enthusiasm'],
           considerations: ['Also support independent reading time'],
-          tips: ['Create regular book discussion times', 'Share your own reading excitement', 'Connect them with reading communities']
+          tips: ['Create regular book discussion times', 'Share your own reading excitement', 'Connect them with reading communities'],
+          quickTip: 'You both love sharing reading experiences - you\'re natural reading partners!'
         }
       },
       'meaning_maker': {
@@ -744,7 +832,8 @@ export default function ParentFamilyDNALab() {
           level: 'Excellent Match',
           strengths: ['Perfect meaning alignment', 'Deep connection focus', 'Personal relevance emphasis'],
           considerations: ['Also include lighter, fun reading sometimes'],
-          tips: ['Ask about personal connections to books', 'Explore deeper themes together', 'Connect reading to life experiences']
+          tips: ['Ask about personal connections to books', 'Explore deeper themes together', 'Connect reading to life experiences'],
+          quickTip: 'You both love finding deeper meaning in books - explore those big ideas together!'
         }
       },
       'growth_facilitator': {
@@ -752,7 +841,8 @@ export default function ParentFamilyDNALab() {
           level: 'Excellent Match',
           strengths: ['Perfect growth alignment', 'Optimal challenge support', 'Scaffolds appropriately'],
           considerations: ['Let them drive their own growth'],
-          tips: ['Provide just-right challenge levels', 'Celebrate growth and progress', 'Support their stretching goals']
+          tips: ['Provide just-right challenge levels', 'Celebrate growth and progress', 'Support their stretching goals'],
+          quickTip: 'Your growth focus perfectly supports their love of challenge!'
         }
       },
       'authentic_modeler': {
@@ -760,13 +850,15 @@ export default function ParentFamilyDNALab() {
           level: 'Strong Match',
           strengths: ['Models creative engagement', 'Shows authentic book joy', 'Inspires through example'],
           considerations: ['Honor their unique creative style'],
-          tips: ['Share your own creative responses to books', 'Read creatively together', 'Model joy in discovery']
+          tips: ['Share your own creative responses to books', 'Read creatively together', 'Model joy in discovery'],
+          quickTip: 'Your authentic reading joy inspires their creative exploration!'
         },
         'curious_investigator': {
           level: 'Strong Match',
           strengths: ['Models learning curiosity', 'Shows research excitement', 'Demonstrates question-asking'],
           considerations: ['Let them lead their investigations'],
-          tips: ['Share your own learning from books', 'Model curiosity and questioning', 'Research topics together']
+          tips: ['Share your own learning from books', 'Model curiosity and questioning', 'Research topics together'],
+          quickTip: 'Your visible love of learning encourages their natural curiosity!'
         }
       }
     }
@@ -776,22 +868,43 @@ export default function ParentFamilyDNALab() {
       level: 'Growing Together',
       strengths: ['Complementary motivation styles', 'Opportunity for mutual learning', 'Balanced reading support'],
       considerations: ['Understanding different motivational needs'],
-      tips: ['Ask your child what motivates their reading', 'Try adapting to their natural style', 'Combine your approaches thoughtfully']
+      tips: ['Ask your child what motivates their reading', 'Try adapting to their natural style', 'Combine your approaches thoughtfully'],
+      quickTip: 'Every parent-child reading combination is unique and wonderful!'
     }
     
     // Modify based on student modifiers
     const modifierAdjustments = {
       'A': { // Achieving - needs encouragement about mistakes
-        tips: [...baseCompatibility.tips, 'Remind them that confusion means learning is happening', 'Celebrate effort over perfection']
+        tips: [...baseCompatibility.tips, 'Remind them that confusion means learning is happening', 'Celebrate effort over perfection'],
+        socialTip: 'They have high standards - emphasize that struggle shows their brain is growing!'
       },
       'E': { // Emerging - needs confidence building
-        tips: [...baseCompatibility.tips, 'Choose books that ensure success', 'Celebrate every reading victory']
+        tips: [...baseCompatibility.tips, 'Choose books that ensure success', 'Celebrate every reading victory'],
+        confidenceTip: 'They\'re building confidence - celebrate every reading win, big or small!'
       },
       'S': { // Supported - needs community
-        tips: [...baseCompatibility.tips, 'Read along with them', 'Create discussion opportunities']
+        tips: [...baseCompatibility.tips, 'Read along with them', 'Create discussion opportunities'],
+        socialTip: 'They thrive with shared reading experiences - read together often!'
       },
       'F': { // Focus-needs - needs calm environment
-        tips: [...baseCompatibility.tips, 'Create distraction-free reading spaces', 'Use shorter reading sessions']
+        tips: [...baseCompatibility.tips, 'Create distraction-free reading spaces', 'Use shorter reading sessions'],
+        focusTip: 'They need quiet, calm reading environments to do their best thinking!'
+      },
+      'I': { // Independent - needs autonomy
+        tips: [...baseCompatibility.tips, 'Trust their book choices completely', 'Let them read at their own pace'],
+        independenceTip: 'They thrive with complete reading independence - trust their instincts!'
+      },
+      'P': { // Practical - needs purpose
+        tips: [...baseCompatibility.tips, 'Connect reading to their interests', 'Show real-world applications'],
+        practicalTip: 'They love reading that connects to their interests and goals!'
+      },
+      'G': { // Growth-oriented - embraces challenge
+        tips: [...baseCompatibility.tips, 'Celebrate when they struggle - it means growth!', 'Provide appropriately challenging books'],
+        growthTip: 'They see difficulty as exciting - celebrate their growth mindset!'
+      },
+      'R': { // Routine-loving - needs structure
+        tips: [...baseCompatibility.tips, 'Create predictable reading routines', 'Establish consistent reading times'],
+        routineTip: 'They thrive with consistent reading routines and predictable structure!'
       }
     }
     
@@ -800,7 +913,14 @@ export default function ParentFamilyDNALab() {
       if (modifierAdjustments[modifier]) {
         baseCompatibility = {
           ...baseCompatibility,
-          tips: modifierAdjustments[modifier].tips
+          tips: modifierAdjustments[modifier].tips,
+          socialTip: modifierAdjustments[modifier].socialTip || baseCompatibility.socialTip,
+          confidenceTip: modifierAdjustments[modifier].confidenceTip || baseCompatibility.confidenceTip,
+          focusTip: modifierAdjustments[modifier].focusTip || baseCompatibility.focusTip,
+          independenceTip: modifierAdjustments[modifier].independenceTip || baseCompatibility.independenceTip,
+          practicalTip: modifierAdjustments[modifier].practicalTip || baseCompatibility.practicalTip,
+          growthTip: modifierAdjustments[modifier].growthTip || baseCompatibility.growthTip,
+          routineTip: modifierAdjustments[modifier].routineTip || baseCompatibility.routineTip
         }
       }
     })
@@ -1365,7 +1485,7 @@ export default function ParentFamilyDNALab() {
               fontFamily: 'Didot, serif',
               margin: '0 0 12px 0'
             }}>
-              Discover Your Family&apos;s Reading DNA
+              Family Reading DNA Lab
             </h2>
             <p style={{
               fontSize: '16px',
@@ -1373,19 +1493,8 @@ export default function ParentFamilyDNALab() {
               opacity: 0.9,
               lineHeight: '1.5'
             }}>
-              Understanding your family&apos;s reading personalities helps you support each child&apos;s unique learning style and build stronger connections through books.
+              Smart insights for supporting each child's unique reading journey
             </p>
-            {!hasCompletedAssessment && (
-              <div style={{
-                background: 'rgba(255,255,255,0.2)',
-                borderRadius: '12px',
-                padding: '12px',
-                fontSize: '14px',
-                fontWeight: '600'
-              }}>
-                Take your Parent Reading Personality Assessment to unlock family insights!
-              </div>
-            )}
           </div>
 
           {/* Research-Inspired Tool Badge */}
@@ -1451,64 +1560,6 @@ export default function ParentFamilyDNALab() {
                 Discover your parenting reading style and get personalized guidance for supporting each of your {linkedStudents.length} children.
               </p>
 
-              {/* Research-Inspired Note */}
-              <div style={{
-                backgroundColor: `${luxTheme.secondary}20`,
-                borderRadius: '12px',
-                padding: '16px',
-                marginBottom: '20px'
-              }}>
-                <h4 style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '8px',
-                  margin: '0 0 8px 0',
-                  color: luxTheme.textPrimary,
-                  fontSize: '14px'
-                }}>
-                  <span>📚</span> Science-Inspired Approach
-                </h4>
-                <p style={{ 
-                  fontSize: '13px', 
-                  lineHeight: '1.4',
-                  margin: 0,
-                  color: luxTheme.textSecondary
-                }}>
-                  This enhanced tool draws from established theories in educational psychology, 
-                  including Self-Determination Theory and research by Wigfield, Guthrie, 
-                  Gambrell, and other leading scholars in reading motivation.
-                </p>
-              </div>
-
-              <div style={{
-                backgroundColor: `${luxTheme.primary}15`,
-                borderRadius: '12px',
-                padding: '16px',
-                marginBottom: '24px',
-                textAlign: 'left'
-              }}>
-                <h4 style={{
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: luxTheme.textPrimary,
-                  margin: '0 0 8px 0'
-                }}>
-                  You&apos;ll discover:
-                </h4>
-                <ul style={{
-                  fontSize: '14px',
-                  color: luxTheme.textSecondary,
-                  margin: 0,
-                  paddingLeft: '20px',
-                  lineHeight: '1.5'
-                }}>
-                  <li>Your natural parent reading support style</li>
-                  <li>How you intuitively motivate your children</li>
-                  <li>Insights about family reading dynamics</li>
-                  <li>Personalized tips for each child&apos;s style and modifiers</li>
-                </ul>
-              </div>
-
               <button
                 onClick={startAssessment}
                 style={{
@@ -1541,239 +1592,142 @@ export default function ParentFamilyDNALab() {
             </div>
           )}
 
-          {/* Assessment Completed - Show Results */}
+          {/* Assessment Completed - NEW MOBILE-FRIENDLY DESIGN */}
           {hasCompletedAssessment && parentDNA && (
             <>
-              {/* Family DNA Progress Summary */}
+              {/* Your Reading Parent Style - Condensed */}
               <div style={{
                 backgroundColor: luxTheme.surface,
                 borderRadius: '16px',
                 padding: '20px',
                 marginBottom: '20px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                border: `2px solid ${luxTheme.primary}40`
+                border: `2px solid ${parentDNA.details.color}40`,
+                textAlign: 'center'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '12px',
+                  marginBottom: '12px'
+                }}>
+                  <span style={{ fontSize: '32px' }}>{parentDNA.details.emoji}</span>
+                  <div>
+                    <div style={{
+                      fontSize: '16px',
+                      fontWeight: '600',
+                      color: luxTheme.textPrimary
+                    }}>
+                      You are a {parentDNA.details.name}
+                    </div>
+                    <div style={{
+                      fontSize: '12px',
+                      color: luxTheme.textSecondary
+                    }}>
+                      Your natural reading parent style
+                    </div>
+                  </div>
+                </div>
+                
+                <button
+                  onClick={() => setShowDetailedParentModal(true)}
+                  style={{
+                    backgroundColor: `${parentDNA.details.color}20`,
+                    border: `1px solid ${parentDNA.details.color}60`,
+                    borderRadius: '12px',
+                    padding: '8px 16px',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    color: luxTheme.textPrimary,
+                    cursor: 'pointer'
+                  }}
+                >
+                  📖 Learn About Your Style
+                </button>
+              </div>
+
+              {/* Quick Daily Tips */}
+              <div style={{
+                backgroundColor: luxTheme.surface,
+                borderRadius: '16px',
+                padding: '20px',
+                marginBottom: '20px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
               }}>
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  marginBottom: '12px'
+                  marginBottom: '16px'
                 }}>
                   <h3 style={{
-                    fontSize: '18px',
+                    fontSize: '16px',
                     fontWeight: '600',
                     color: luxTheme.textPrimary,
                     margin: 0
                   }}>
-                    🧬 Family DNA Progress
+                    ⚡ Quick Daily Tips
                   </h3>
-                  <div style={{
-                    backgroundColor: luxTheme.primary,
-                    color: luxTheme.textPrimary,
-                    borderRadius: '12px',
-                    padding: '4px 8px',
-                    fontSize: '12px',
-                    fontWeight: '600'
-                  }}>
-                    {linkedStudents.filter(s => s.readingDNA && s.readingDNA.type).length + 1} / {linkedStudents.length + 1} Complete
-                  </div>
-                </div>
-
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  flexWrap: 'wrap'
-                }}>
-                  {/* Parent Status */}
-                  <div style={{
-                    backgroundColor: `${luxTheme.primary}20`,
-                    borderRadius: '8px',
-                    padding: '6px 12px',
-                    fontSize: '12px',
-                    fontWeight: '600',
-                    color: luxTheme.textPrimary,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                  }}>
-                    ✅ You ({parentDNA && parentDNA.details ? parentDNA.details.name : 'Parent'})
-                  </div>
-                  
-                  {/* Children Status */}
-                  {linkedStudents.map((student, index) => (
-                    <div key={student.id} style={{
-                      backgroundColor: (student.readingDNA && student.readingDNA.type) ? '#10B98120' : '#F59E0B20',
+                  <button
+                    onClick={() => setShowQuickTips(!showQuickTips)}
+                    style={{
+                      backgroundColor: luxTheme.primary,
+                      border: 'none',
                       borderRadius: '8px',
                       padding: '6px 12px',
                       fontSize: '12px',
                       fontWeight: '600',
-                      color: (student.readingDNA && student.readingDNA.type) ? '#047857' : '#92400E',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px'
-                    }}>
-                      {(student.readingDNA && student.readingDNA.type) ? '✅' : '⏳'} {student.firstName}
-                    </div>
-                  ))}
+                      color: luxTheme.textPrimary,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {showQuickTips ? '✕ Close' : '✨ Show Tips'}
+                  </button>
                 </div>
 
-                {linkedStudents.filter(s => !(s.readingDNA && s.readingDNA.type)).length > 0 && (
-                  <p style={{
-                    fontSize: '12px',
-                    color: luxTheme.textSecondary,
-                    margin: '8px 0 0 0',
-                    textAlign: 'center',
-                    fontStyle: 'italic'
+                {showQuickTips && (
+                  <div style={{
+                    backgroundColor: `${luxTheme.primary}15`,
+                    borderRadius: '12px',
+                    padding: '16px'
                   }}>
-                    {linkedStudents.filter(s => !(s.readingDNA && s.readingDNA.type)).length} children still need to complete their assessments for full family insights
-                  </p>
+                    {getQuickTips(parentDNA.type)?.daily.map((tip, index) => (
+                      <div key={index} style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '8px',
+                        marginBottom: index < getQuickTips(parentDNA.type).daily.length - 1 ? '12px' : '0'
+                      }}>
+                        <span style={{ fontSize: '14px', flexShrink: 0 }}>💡</span>
+                        <span style={{
+                          fontSize: '14px',
+                          color: luxTheme.textPrimary,
+                          lineHeight: '1.4'
+                        }}>
+                          {tip}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
 
-              {/* Parent DNA Type Card */}
-              {parentDNA && parentDNA.details && (
-                <div style={{
-                  backgroundColor: luxTheme.surface,
-                  borderRadius: '20px',
-                  padding: '24px',
-                  marginBottom: '24px',
-                  boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-                  border: `3px solid ${parentDNA.details.color}`
-                }}>
-                  <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                    <div style={{
-                      fontSize: '64px',
-                      marginBottom: '12px',
-                      background: parentDNA.details.color,
-                      borderRadius: '50%',
-                      width: '100px',
-                      height: '100px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      margin: '0 auto 16px'
-                    }}>
-                      {parentDNA.details.emoji}
-                    </div>
-                    
-                    <h3 style={{
-                      fontSize: '24px',
-                      fontWeight: 'bold',
-                      color: luxTheme.textPrimary,
-                      marginBottom: '8px'
-                    }}>
-                      You are a {parentDNA.details.name}
-                    </h3>
-                    
-                    <p style={{
-                      fontSize: '16px',
-                      color: luxTheme.textSecondary,
-                      marginBottom: '16px',
-                      lineHeight: '1.5'
-                    }}>
-                      {parentDNA.details.description}
-                    </p>
-
-                    <button 
-                      onClick={() => openResearchModal(parentDNA.details)}
-                      style={{
-                        backgroundColor: 'transparent',
-                        border: 'none',
-                        color: luxTheme.primary,
-                        fontSize: '12px',
-                        cursor: 'pointer',
-                        textDecoration: 'underline',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        margin: '0 auto'
-                      }}
-                    >
-                      ℹ️ View Research Inspiration
-                    </button>
-                  </div>
-
-                  {/* Research Foundation Indicator */}
-                  <div style={{
-                    backgroundColor: `${parentDNA.details.color}10`,
-                    borderRadius: '8px',
-                    padding: '8px 12px',
-                    fontSize: '11px',
-                    color: luxTheme.textSecondary,
-                    marginBottom: '16px',
-                    textAlign: 'center'
-                  }}>
-                    <strong>Research Inspiration:</strong> {parentDNA.details.researchBase}
-                  </div>
-
-                  {/* Strengths */}
-                  <div style={{ marginBottom: '16px' }}>
-                    <h4 style={{
-                      fontSize: '16px',
-                      fontWeight: '600',
-                      color: luxTheme.textPrimary,
-                      marginBottom: '8px'
-                    }}>
-                      🌟 Your Reading Parent Strengths:
-                    </h4>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                      {parentDNA.details.strengths && parentDNA.details.strengths.map((strength, index) => (
-                        <div key={index} style={{
-                          backgroundColor: `${parentDNA.details.color}20`,
-                          color: luxTheme.textPrimary,
-                          borderRadius: '12px',
-                          padding: '6px 12px',
-                          fontSize: '12px',
-                          fontWeight: '500'
-                        }}>
-                          {strength}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Approaches */}
-                  <div>
-                    <h4 style={{
-                      fontSize: '16px',
-                      fontWeight: '600',
-                      color: luxTheme.textPrimary,
-                      marginBottom: '8px'
-                    }}>
-                      💡 Natural Approaches:
-                    </h4>
-                    <ul style={{
-                      fontSize: '14px',
-                      color: luxTheme.textSecondary,
-                      margin: 0,
-                      paddingLeft: '20px',
-                      lineHeight: '1.5'
-                    }}>
-                      {parentDNA.details.approaches && parentDNA.details.approaches.map((approach, index) => (
-                        <li key={index} style={{ marginBottom: '4px' }}>{approach}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              )}
-
-              {/* Enhanced Children DNA Status Cards with Unlock */}
+              {/* Children Section - Mobile-Friendly Cards */}
               <div style={{
                 backgroundColor: luxTheme.surface,
-                borderRadius: '20px',
-                padding: '24px',
-                marginBottom: '24px',
-                boxShadow: '0 4px 16px rgba(0,0,0,0.1)'
+                borderRadius: '16px',
+                padding: '20px',
+                marginBottom: '20px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
               }}>
                 <h3 style={{
-                  fontSize: '20px',
+                  fontSize: '16px',
                   fontWeight: '600',
                   color: luxTheme.textPrimary,
-                  margin: '0 0 20px 0',
+                  margin: '0 0 16px 0',
                   textAlign: 'center'
                 }}>
-                  👨‍👩‍👧‍👦 Your Children&apos;s Reading DNA
+                  👨‍👩‍👧‍👦 Your Children's Reading Styles
                 </h3>
 
                 {linkedStudents.length > 0 ? (
@@ -1782,202 +1736,262 @@ export default function ParentFamilyDNALab() {
                       const hasCompletedDNA = student.readingDNA && student.readingDNA.type
                       const hasUnlockedDNA = student.dnaUnlocked === true
                       const parentGuidance = hasCompletedDNA ? getParentGuidanceForChild(student.readingDNA) : null
+                      const isExpanded = expandedChild === student.id
                       
-                      return (
-                        <div key={student.id} style={{
-                          backgroundColor: hasCompletedDNA ? `${luxTheme.primary}15` : '#F3F4F6',
-                          borderRadius: '16px',
-                          padding: '20px',
-                          border: hasCompletedDNA ? `2px solid ${luxTheme.primary}40` : '2px dashed #9CA3AF',
-                          position: 'relative'
-                        }}>
-                          {/* Student Header */}
-                          <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            marginBottom: '12px'
+                      if (hasCompletedDNA) {
+                        const compatibility = getCompatibilityInsights(
+                          parentDNA.type, 
+                          student.readingDNA?.type, 
+                          student.readingDNA?.modifiers || []
+                        )
+
+                        return (
+                          <div key={student.id} style={{
+                            backgroundColor: `${luxTheme.primary}10`,
+                            borderRadius: '12px',
+                            padding: '16px',
+                            border: `1px solid ${luxTheme.primary}30`
                           }}>
-                            <div>
-                              <h4 style={{
-                                fontSize: '18px',
-                                fontWeight: '600',
-                                color: luxTheme.textPrimary,
-                                margin: '0 0 4px 0'
-                              }}>
-                                {student.firstName}
-                              </h4>
-                              <p style={{
-                                fontSize: '14px',
-                                color: luxTheme.textSecondary,
-                                margin: 0
-                              }}>
-                                Grade {student.grade} • {student.schoolName}
-                              </p>
-                            </div>
-                            
+                            {/* Child Header */}
                             <div style={{
-                              backgroundColor: hasCompletedDNA ? '#10B981' : hasUnlockedDNA ? '#F59E0B' : '#6B7280',
-                              color: 'white',
-                              borderRadius: '12px',
-                              padding: '6px 12px',
-                              fontSize: '12px',
-                              fontWeight: '600',
                               display: 'flex',
                               alignItems: 'center',
-                              gap: '4px'
+                              justifyContent: 'space-between',
+                              marginBottom: '12px'
                             }}>
-                              {hasCompletedDNA ? '✅ Complete' : hasUnlockedDNA ? '⏳ Unlocked' : '🔒 Locked'}
-                            </div>
-                          </div>
-
-                          {/* DNA Results or Actions */}
-                          {hasCompletedDNA ? (
-                            <>
-                              {/* Basic DNA Display */}
                               <div style={{
-                                backgroundColor: `${luxTheme.primary}20`,
-                                borderRadius: '12px',
-                                padding: '16px',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '12px',
-                                marginBottom: '16px'
+                                gap: '8px'
                               }}>
-                                <div style={{
-                                  fontSize: '32px',
-                                  backgroundColor: luxTheme.primary,
-                                  borderRadius: '50%',
-                                  width: '50px',
-                                  height: '50px',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center'
-                                }}>
-                                  🧬
-                                </div>
-                                <div style={{ flex: 1 }}>
+                                <span style={{ fontSize: '20px' }}>🧬</span>
+                                <div>
                                   <div style={{
-                                    fontSize: '16px',
+                                    fontSize: '14px',
                                     fontWeight: '600',
-                                    color: luxTheme.textPrimary,
-                                    marginBottom: '4px'
+                                    color: luxTheme.textPrimary
                                   }}>
-                                    {parentGuidance ? parentGuidance.childType : 'Reading DNA Complete'}
+                                    {student.firstName}
                                   </div>
                                   <div style={{
-                                    fontSize: '13px',
-                                    color: luxTheme.textSecondary,
-                                    lineHeight: '1.4'
+                                    fontSize: '11px',
+                                    color: luxTheme.textSecondary
                                   }}>
-                                    {parentGuidance ? parentGuidance.quickSummary : `${student.firstName} has completed their reading personality assessment!`}
+                                    Grade {student.grade}
                                   </div>
                                 </div>
                               </div>
-
-                              {/* Enhanced Parent Guidance */}
-                              {parentGuidance && (
-                                <div style={{
-                                  backgroundColor: `${luxTheme.secondary}15`,
-                                  borderRadius: '12px',
-                                  padding: '16px'
-                                }}>
-                                  <h5 style={{
-                                    fontSize: '14px',
-                                    fontWeight: '600',
-                                    color: luxTheme.textPrimary,
-                                    marginBottom: '8px'
-                                  }}>
-                                    💡 How to Support {student.firstName}:
-                                  </h5>
-                                  <ul style={{
-                                    fontSize: '13px',
-                                    color: luxTheme.textSecondary,
-                                    margin: '0 0 12px 0',
-                                    paddingLeft: '20px',
-                                    lineHeight: '1.4'
-                                  }}>
-                                    {parentGuidance.keyStrategies.slice(0, 3).map((strategy, idx) => (
-                                      <li key={idx}>{strategy}</li>
-                                    ))}
-                                  </ul>
-                                  
-                                  {parentGuidance.hasModifiers && (
-                                    <div style={{
-                                      backgroundColor: `${luxTheme.primary}10`,
-                                      borderRadius: '8px',
-                                      padding: '8px',
-                                      fontSize: '12px'
-                                    }}>
-                                      <strong>Special Notes:</strong> {parentGuidance.modifierExplanations.map(mod => mod.explanation).join(' ')}
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </>
-                          ) : hasUnlockedDNA ? (
-                            <div style={{ textAlign: 'center', padding: '12px' }}>
-                              <div style={{ fontSize: '32px', marginBottom: '8px' }}>⏳</div>
-                              <p style={{
-                                fontSize: '14px',
-                                color: luxTheme.textSecondary,
-                                marginBottom: '8px',
-                                lineHeight: '1.4'
-                              }}>
-                                Assessment is unlocked! {student.firstName} can now take their Reading DNA assessment in their student dashboard.
-                              </p>
-                              <p style={{
-                                fontSize: '11px',
-                                color: luxTheme.textSecondary,
-                                fontStyle: 'italic'
-                              }}>
-                                They&apos;ll find it in their student dashboard under &quot;Discover My Reading DNA&quot;
-                              </p>
-                            </div>
-                          ) : (
-                            <div style={{ textAlign: 'center', padding: '12px' }}>
-                              <div style={{ fontSize: '32px', marginBottom: '8px' }}>🔒</div>
-                              <p style={{
-                                fontSize: '14px',
-                                color: luxTheme.textSecondary,
-                                marginBottom: '16px',
-                                lineHeight: '1.4'
-                              }}>
-                                {student.firstName} needs permission to discover their reading personality. 
-                              </p>
                               
+                              <div style={{
+                                backgroundColor: compatibility.level === 'Excellent Match' ? '#10B981' : 
+                                               compatibility.level === 'Strong Match' ? '#059669' :
+                                               compatibility.level === 'Good Match' ? '#F59E0B' : '#6B7280',
+                                color: 'white',
+                                borderRadius: '8px',
+                                padding: '4px 8px',
+                                fontSize: '10px',
+                                fontWeight: '600'
+                              }}>
+                                {compatibility.level}
+                              </div>
+                            </div>
+
+                            {/* Quick Insight */}
+                            <div style={{
+                              backgroundColor: `${luxTheme.secondary}20`,
+                              borderRadius: '8px',
+                              padding: '12px',
+                              marginBottom: '12px'
+                            }}>
+                              <div style={{
+                                fontSize: '12px',
+                                color: luxTheme.textPrimary,
+                                lineHeight: '1.4',
+                                marginBottom: '8px'
+                              }}>
+                                💡 <strong>Quick insight:</strong> {compatibility.quickTip}
+                              </div>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div style={{
+                              display: 'grid',
+                              gridTemplateColumns: '1fr 1fr',
+                              gap: '8px'
+                            }}>
                               <button
-                                onClick={() => openUnlockModal(student)}
+                                onClick={() => setExpandedChild(isExpanded ? null : student.id)}
                                 style={{
-                                  backgroundColor: luxTheme.primary,
-                                  color: luxTheme.textPrimary,
-                                  border: 'none',
-                                  borderRadius: '12px',
-                                  padding: '12px 20px',
-                                  fontSize: '14px',
+                                  backgroundColor: 'transparent',
+                                  border: `1px solid ${luxTheme.primary}60`,
+                                  borderRadius: '8px',
+                                  padding: '8px',
+                                  fontSize: '11px',
                                   fontWeight: '600',
-                                  cursor: 'pointer',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '6px',
-                                  margin: '0 auto'
+                                  color: luxTheme.textPrimary,
+                                  cursor: 'pointer'
                                 }}
                               >
-                                🔓 Unlock Reading DNA Assessment
+                                {isExpanded ? '➖ Less' : '➕ More Tips'}
                               </button>
                               
-                              <p style={{
-                                fontSize: '11px',
-                                color: luxTheme.textSecondary,
-                                marginTop: '8px',
-                                lineHeight: '1.4'
-                              }}>
-                                This will allow them to take their personalized assessment
-                              </p>
+                              <button
+                                onClick={() => setShowCompatibilityModal(student.id)}
+                                style={{
+                                  backgroundColor: luxTheme.primary,
+                                  border: 'none',
+                                  borderRadius: '8px',
+                                  padding: '8px',
+                                  fontSize: '11px',
+                                  fontWeight: '600',
+                                  color: luxTheme.textPrimary,
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                🔍 Deep Dive
+                              </button>
                             </div>
-                          )}
-                        </div>
-                      )
+
+                            {/* Expanded Tips */}
+                            {isExpanded && (
+                              <div style={{
+                                marginTop: '12px',
+                                backgroundColor: luxTheme.surface,
+                                borderRadius: '8px',
+                                padding: '12px'
+                              }}>
+                                <div style={{
+                                  fontSize: '12px',
+                                  fontWeight: '600',
+                                  color: luxTheme.textPrimary,
+                                  marginBottom: '8px'
+                                }}>
+                                  ✨ This week, try:
+                                </div>
+                                
+                                {/* Learning style specific tips */}
+                                {compatibility.socialTip && (
+                                  <div style={{
+                                    fontSize: '11px',
+                                    color: luxTheme.textSecondary,
+                                    marginBottom: '6px',
+                                    paddingLeft: '12px'
+                                  }}>
+                                    👥 {compatibility.socialTip}
+                                  </div>
+                                )}
+                                
+                                {compatibility.confidenceTip && (
+                                  <div style={{
+                                    fontSize: '11px',
+                                    color: luxTheme.textSecondary,
+                                    marginBottom: '6px',
+                                    paddingLeft: '12px'
+                                  }}>
+                                    🌟 {compatibility.confidenceTip}
+                                  </div>
+                                )}
+                                
+                                {compatibility.independenceTip && (
+                                  <div style={{
+                                    fontSize: '11px',
+                                    color: luxTheme.textSecondary,
+                                    marginBottom: '6px',
+                                    paddingLeft: '12px'
+                                  }}>
+                                    🗺️ {compatibility.independenceTip}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      } else {
+                        // Child hasn't completed DNA yet
+                        return (
+                          <div key={student.id} style={{
+                            backgroundColor: hasUnlockedDNA ? '#F59E0B20' : '#F3F4F6',
+                            borderRadius: '12px',
+                            padding: '16px',
+                            border: hasUnlockedDNA ? '2px dashed #F59E0B' : '2px dashed #9CA3AF'
+                          }}>
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              marginBottom: '12px'
+                            }}>
+                              <div>
+                                <div style={{
+                                  fontSize: '14px',
+                                  fontWeight: '600',
+                                  color: luxTheme.textPrimary
+                                }}>
+                                  {student.firstName}
+                                </div>
+                                <div style={{
+                                  fontSize: '11px',
+                                  color: luxTheme.textSecondary
+                                }}>
+                                  Grade {student.grade}
+                                </div>
+                              </div>
+                              
+                              <div style={{
+                                backgroundColor: hasUnlockedDNA ? '#F59E0B' : '#6B7280',
+                                color: 'white',
+                                borderRadius: '8px',
+                                padding: '4px 8px',
+                                fontSize: '10px',
+                                fontWeight: '600'
+                              }}>
+                                {hasUnlockedDNA ? '⏳ Unlocked' : '🔒 Locked'}
+                              </div>
+                            </div>
+
+                            {hasUnlockedDNA ? (
+                              <div style={{ textAlign: 'center', padding: '12px' }}>
+                                <div style={{ fontSize: '24px', marginBottom: '8px' }}>⏳</div>
+                                <div style={{
+                                  fontSize: '12px',
+                                  color: luxTheme.textSecondary,
+                                  lineHeight: '1.4'
+                                }}>
+                                  Assessment is unlocked! {student.firstName} can now take their Reading DNA assessment in their student dashboard.
+                                </div>
+                              </div>
+                            ) : (
+                              <div style={{ textAlign: 'center', padding: '12px' }}>
+                                <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔒</div>
+                                <div style={{
+                                  fontSize: '12px',
+                                  color: luxTheme.textSecondary,
+                                  marginBottom: '12px',
+                                  lineHeight: '1.4'
+                                }}>
+                                  {student.firstName} needs permission to discover their reading personality.
+                                </div>
+                                
+                                <button
+                                  onClick={() => openUnlockModal(student)}
+                                  style={{
+                                    backgroundColor: luxTheme.primary,
+                                    color: luxTheme.textPrimary,
+                                    border: 'none',
+                                    borderRadius: '12px',
+                                    padding: '8px 16px',
+                                    fontSize: '12px',
+                                    fontWeight: '600',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  🔓 Unlock Assessment
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      }
                     })}
                   </div>
                 ) : (
@@ -1992,337 +2006,73 @@ export default function ParentFamilyDNALab() {
                 )}
               </div>
 
-              {/* Family Compatibility Matrix - Enhanced with modifiers */}
+              {/* Family Activities - Simplified */}
               {familyCompatibility.length > 0 && (
                 <div style={{
                   backgroundColor: luxTheme.surface,
-                  borderRadius: '20px',
-                  padding: '24px',
-                  marginBottom: '24px',
-                  boxShadow: '0 4px 16px rgba(0,0,0,0.1)'
+                  borderRadius: '16px',
+                  padding: '20px',
+                  marginBottom: '20px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                 }}>
-                  <h3 style={{
-                    fontSize: '20px',
-                    fontWeight: '600',
-                    color: luxTheme.textPrimary,
-                    margin: '0 0 20px 0',
-                    textAlign: 'center'
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: '16px'
                   }}>
-                    🤝 Family Reading Compatibility
-                  </h3>
-
-                  {familyCompatibility.map((childData, index) => (
-                    <div key={childData.studentId} style={{
-                      backgroundColor: `${luxTheme.primary}10`,
-                      borderRadius: '16px',
-                      padding: '20px',
-                      marginBottom: index < familyCompatibility.length - 1 ? '16px' : '0'
+                    <h3 style={{
+                      fontSize: '16px',
+                      fontWeight: '600',
+                      color: luxTheme.textPrimary,
+                      margin: 0
                     }}>
-                      {/* Child Header */}
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        marginBottom: '12px'
-                      }}>
-                        <div>
-                          <h4 style={{
-                            fontSize: '18px',
-                            fontWeight: '600',
-                            color: luxTheme.textPrimary,
-                            margin: '0 0 4px 0'
-                          }}>
-                            {childData.studentName}
-                          </h4>
-                          <p style={{
-                            fontSize: '14px',
-                            color: luxTheme.textSecondary,
-                            margin: 0
-                          }}>
-                            Grade {childData.studentGrade} • {childData.parentGuidance?.detailedType || childData.studentType?.replace('_', ' ') || 'Lux DNA type'}
-                            {childData.studentModifiers.length > 0 && (
-                              <span style={{ fontSize: '12px', fontStyle: 'italic' }}>
-                                {' '}(Learning Style: {childData.studentModifiers.join(', ')})
-                              </span>
-                            )}
-                          </p>
-                        </div>
-                        <div style={{
-                          backgroundColor: childData.compatibilityLevel === 'Excellent Match' ? '#10B981' : 
-                                         childData.compatibilityLevel === 'Strong Match' ? '#059669' :
-                                         childData.compatibilityLevel === 'Good Match' ? '#F59E0B' : '#6B7280',
-                          color: 'white',
-                          borderRadius: '12px',
-                          padding: '8px 12px',
-                          fontSize: '12px',
-                          fontWeight: '600'
-                        }}>
-                          {childData.compatibilityLevel}
-                        </div>
-                      </div>
-
-                      {/* Enhanced Tips with Parent Guidance */}
-                      <div>
-                        <h5 style={{
-                          fontSize: '14px',
-                          fontWeight: '600',
-                          color: luxTheme.textPrimary,
-                          marginBottom: '6px'
-                        }}>
-                          💡 Personalized Support Strategies:
-                        </h5>
-                        
-                        {/* Base Compatibility Tips */}
-                        <div style={{ marginBottom: '8px' }}>
-                          <div style={{
-                            fontSize: '12px',
-                            fontWeight: '600',
-                            color: luxTheme.textPrimary,
-                            marginBottom: '4px'
-                          }}>
-                            🤝 Your {childData.compatibilityLevel} with {childData.studentName}:
-                          </div>
-                          <ul style={{
-                            fontSize: '12px',
-                            color: luxTheme.textSecondary,
-                            margin: 0,
-                            paddingLeft: '16px',
-                            lineHeight: '1.4'
-                          }}>
-                            {(childData.parentGuidance ? 
-                              childData.parentGuidance.keyStrategies : 
-                              childData.tips
-                            ).slice(0, 2).map((strategy, idx) => (
-                              <li key={idx}>{strategy}</li>
-                            ))}
-                          </ul>
-                        </div>
-
-                        {/* Learning Style Specific Tips */}
-                        {childData.parentGuidance && childData.parentGuidance.hasModifiers && (
-                          <div>
-                            <div style={{
-                              fontSize: '12px',
-                              fontWeight: '600',
-                              color: luxTheme.textPrimary,
-                              marginBottom: '4px'
-                            }}>
-                              🌟 For Their Learning Style:
-                            </div>
-                            {childData.parentGuidance.modifierExplanations.slice(0, 2).map((modifier, idx) => (
-                              <div key={idx} style={{
-                                backgroundColor: `${luxTheme.primary}10`,
-                                borderRadius: '6px',
-                                padding: '6px',
-                                marginBottom: '4px'
-                              }}>
-                                <div style={{
-                                  fontSize: '11px',
-                                  fontWeight: '600',
-                                  color: luxTheme.textPrimary
-                                }}>
-                                  {modifier.name}:
-                                </div>
-                                <div style={{
-                                  fontSize: '10px',
-                                  color: luxTheme.textSecondary
-                                }}>
-                                  {modifier.strategies && modifier.strategies[0] ? 
-                                    modifier.strategies[0] : 
-                                    modifier.explanation}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Enhanced Family Recommendations */}
-              {familyRecommendations.length > 0 && (
-                <div style={{
-                  backgroundColor: luxTheme.surface,
-                  borderRadius: '20px',
-                  padding: '24px',
-                  marginBottom: '24px',
-                  boxShadow: '0 4px 16px rgba(0,0,0,0.1)'
-                }}>
-                  <h3 style={{
-                    fontSize: '20px',
-                    fontWeight: '600',
-                    color: luxTheme.textPrimary,
-                    margin: '0 0 20px 0',
-                    textAlign: 'center'
-                  }}>
-                    📚 Personalized Family Reading Recommendations
-                  </h3>
-
-                  {familyRecommendations.map((category, index) => (
-                    <div key={index} style={{
-                      marginBottom: index < familyRecommendations.length - 1 ? '24px' : '0'
-                    }}>
-                      <h4 style={{
-                        fontSize: '16px',
+                      🏠 This Week's Family Activities
+                    </h3>
+                    <button
+                      onClick={() => setShowFamilyActivitiesModal(true)}
+                      style={{
+                        backgroundColor: luxTheme.secondary,
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '6px 12px',
+                        fontSize: '12px',
                         fontWeight: '600',
                         color: luxTheme.textPrimary,
-                        marginBottom: '12px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px'
-                      }}>
-                        <span style={{ fontSize: '20px' }}>{category.icon}</span>
-                        {category.category}
-                      </h4>
-                      
-                      <div style={{ display: 'grid', gap: '8px' }}>
-                        {category.items.map((item, itemIndex) => (
-                          <div key={itemIndex} style={{
-                            backgroundColor: `${luxTheme.primary}10`,
-                            borderRadius: '12px',
-                            padding: '12px',
-                            borderLeft: `4px solid ${luxTheme.primary}`
-                          }}>
-                            <p style={{
-                              fontSize: '14px',
-                              color: luxTheme.textPrimary,
-                              margin: 0,
-                              lineHeight: '1.4'
-                            }}>
-                              {item}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Waiting for Children Message */}
-              {familyCompatibility.length === 0 && linkedStudents.length > 0 && (
-                <div style={{
-                  backgroundColor: luxTheme.surface,
-                  borderRadius: '20px',
-                  padding: '32px',
-                  marginBottom: '24px',
-                  boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-                  textAlign: 'center',
-                  border: `2px dashed ${luxTheme.primary}60`
-                }}>
-                  <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏳</div>
-                  
-                  <h3 style={{
-                    fontSize: '20px',
-                    fontWeight: '600',
-                    color: luxTheme.textPrimary,
-                    marginBottom: '12px'
-                  }}>
-                    Waiting for Your Children
-                  </h3>
-                  
-                  <p style={{
-                    fontSize: '16px',
-                    color: luxTheme.textSecondary,
-                    marginBottom: '20px',
-                    lineHeight: '1.5'
-                  }}>
-                    Once your children complete their reading personality assessments, you&apos;ll see detailed compatibility insights with modifier support and personalized family recommendations!
-                  </p>
+                        cursor: 'pointer'
+                      }}
+                    >
+                      📚 All Ideas
+                    </button>
+                  </div>
 
                   <div style={{
-                    backgroundColor: `${luxTheme.primary}15`,
+                    backgroundColor: `${luxTheme.accent}20`,
                     borderRadius: '12px',
                     padding: '16px',
-                    marginBottom: '20px'
+                    borderLeft: `4px solid ${luxTheme.accent}`
                   }}>
-                    <h4 style={{
+                    <div style={{
                       fontSize: '14px',
                       fontWeight: '600',
                       color: luxTheme.textPrimary,
-                      margin: '0 0 8px 0'
+                      marginBottom: '6px'
                     }}>
-                      🔓 Coming Soon:
-                    </h4>
-                    <ul style={{
-                      fontSize: '14px',
+                      📚 Choice-Based Family Reading Time
+                    </div>
+                    <div style={{
+                      fontSize: '12px',
                       color: luxTheme.textSecondary,
-                      margin: 0,
-                      paddingLeft: '20px',
-                      lineHeight: '1.5',
-                      textAlign: 'left'
+                      lineHeight: '1.4'
                     }}>
-                      <li>Compatibility insights with modifier support</li>
-                      <li>Personalized tips for supporting each reading style</li>
-                      <li>Family reading activity recommendations</li>
-                      <li>Guidance for understanding different approaches</li>
-                    </ul>
-                  </div>
-
-                  <p style={{
-                    fontSize: '12px',
-                    color: luxTheme.textSecondary,
-                    fontStyle: 'italic'
-                  }}>
-                    Remember to unlock their assessments first, then encourage them to discover their reading DNA!
-                  </p>
-                </div>
-              )}
-
-              {/* General Family Recommendations Based on Parent Type Only */}
-              {familyCompatibility.length === 0 && linkedStudents.length > 0 && parentDNA && parentDNA.details && (
-                <div style={{
-                  backgroundColor: luxTheme.surface,
-                  borderRadius: '20px',
-                  padding: '24px',
-                  marginBottom: '24px',
-                  boxShadow: '0 4px 16px rgba(0,0,0,0.1)'
-                }}>
-                  <h3 style={{
-                    fontSize: '20px',
-                    fontWeight: '600',
-                    color: luxTheme.textPrimary,
-                    margin: '0 0 16px 0',
-                    textAlign: 'center'
-                  }}>
-                    📚 General Family Reading Tips
-                  </h3>
-                  
-                  <p style={{
-                    fontSize: '14px',
-                    color: luxTheme.textSecondary,
-                    textAlign: 'center',
-                    marginBottom: '20px'
-                  }}>
-                    Based on your {parentDNA.details.name} personality type:
-                  </p>
-
-                  <div style={{ display: 'grid', gap: '12px' }}>
-                    {parentDNA.details.approaches && parentDNA.details.approaches.map((approach, index) => (
-                      <div key={index} style={{
-                        backgroundColor: `${parentDNA.details.color}15`,
-                        borderRadius: '12px',
-                        padding: '16px',
-                        borderLeft: `4px solid ${parentDNA.details.color}`
-                      }}>
-                        <p style={{
-                          fontSize: '14px',
-                          color: luxTheme.textPrimary,
-                          margin: 0,
-                          lineHeight: '1.5'
-                        }}>
-                          <strong>💡 Try This:</strong> {approach}
-                        </p>
-                      </div>
-                    ))}
+                      Set up reading time where everyone chooses their own book and reads together in the same space. Perfect for your {parentDNA.details.name} style!
+                    </div>
                   </div>
                 </div>
               )}
 
               {/* Retake Assessment Button */}
-              <div style={{ textAlign: 'center' }}>
+              <div style={{ textAlign: 'center', marginTop: '24px' }}>
                 <button
                   onClick={startAssessment}
                   style={{
@@ -2343,7 +2093,7 @@ export default function ParentFamilyDNALab() {
           )}
         </div>
 
-        {/* Enhanced Assessment Modal (with 12 questions) */}
+        {/* Assessment Modal */}
         {showAssessment && (
           <div style={{
             position: 'fixed',
@@ -2454,6 +2204,435 @@ export default function ParentFamilyDNALab() {
           </div>
         )}
 
+        {/* Detailed Parent Modal */}
+        {showDetailedParentModal && parentDNA && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px'
+          }}>
+            <div style={{
+              backgroundColor: luxTheme.surface,
+              borderRadius: '20px',
+              padding: '24px',
+              maxWidth: '400px',
+              width: '100%',
+              maxHeight: '80vh',
+              overflow: 'auto'
+            }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '20px'
+              }}>
+                <h3 style={{
+                  margin: 0,
+                  color: luxTheme.textPrimary,
+                  fontSize: '18px'
+                }}>
+                  {parentDNA.details.emoji} Your Reading Parent Style
+                </h3>
+                <button 
+                  onClick={() => setShowDetailedParentModal(false)}
+                  style={{
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    fontSize: '20px',
+                    cursor: 'pointer',
+                    color: luxTheme.textSecondary
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <div style={{
+                fontSize: '14px',
+                color: luxTheme.textPrimary,
+                lineHeight: '1.5',
+                marginBottom: '16px'
+              }}>
+                {parentDNA.details.description}
+              </div>
+
+              <div style={{
+                backgroundColor: `${parentDNA.details.color}15`,
+                borderRadius: '12px',
+                padding: '16px',
+                marginBottom: '16px'
+              }}>
+                <h4 style={{
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: luxTheme.textPrimary,
+                  margin: '0 0 8px 0'
+                }}>
+                  🌟 Your Natural Strengths:
+                </h4>
+                <ul style={{
+                  fontSize: '12px',
+                  color: luxTheme.textSecondary,
+                  margin: 0,
+                  paddingLeft: '20px',
+                  lineHeight: '1.5'
+                }}>
+                  {parentDNA.details.strengths.map((strength, index) => (
+                    <li key={index}>{strength}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div style={{
+                backgroundColor: `${luxTheme.secondary}15`,
+                borderRadius: '12px',
+                padding: '16px'
+              }}>
+                <h4 style={{
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: luxTheme.textPrimary,
+                  margin: '0 0 8px 0'
+                }}>
+                💫 How to Use Your Strengths:
+                </h4>
+                <ul style={{
+                  fontSize: '12px',
+                  color: luxTheme.textSecondary,
+                  margin: 0,
+                  paddingLeft: '20px',
+                  lineHeight: '1.5'
+                }}>
+                  {parentDNA.details.approaches.map((approach, index) => (
+                    <li key={index}>{approach}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <button
+                onClick={() => openResearchModal(parentDNA.details)}
+                style={{
+                  backgroundColor: 'transparent',
+                  border: `1px solid ${luxTheme.primary}60`,
+                  borderRadius: '8px',
+                  padding: '8px 16px',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  color: luxTheme.primary,
+                  cursor: 'pointer',
+                  marginTop: '16px',
+                  width: '100%'
+                }}
+              >
+                🔬 View Research Inspiration
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Compatibility Deep Dive Modal */}
+        {showCompatibilityModal && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px'
+          }}>
+            <div style={{
+              backgroundColor: luxTheme.surface,
+              borderRadius: '20px',
+              padding: '24px',
+              maxWidth: '400px',
+              width: '100%',
+              maxHeight: '80vh',
+              overflow: 'auto'
+            }}>
+              {(() => {
+                const child = linkedStudents.find(c => c.id === showCompatibilityModal)
+                if (!child) return null
+
+                const compatibility = getCompatibilityInsights(
+                  parentDNA.type,
+                  child.readingDNA?.type,
+                  child.readingDNA?.modifiers || []
+                )
+
+                return (
+                  <>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '20px'
+                    }}>
+                      <h3 style={{
+                        margin: 0,
+                        color: luxTheme.textPrimary,
+                        fontSize: '18px'
+                      }}>
+                        🔍 Supporting {child.firstName}
+                      </h3>
+                      <button 
+                        onClick={() => setShowCompatibilityModal(null)}
+                        style={{
+                          backgroundColor: 'transparent',
+                          border: 'none',
+                          fontSize: '20px',
+                          cursor: 'pointer',
+                          color: luxTheme.textSecondary
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    <div style={{
+                      backgroundColor: compatibility.level === 'Excellent Match' ? '#10B98120' : 
+                                     compatibility.level === 'Strong Match' ? '#05966920' :
+                                     compatibility.level === 'Good Match' ? '#F59E0B20' : '#6B728020',
+                      borderRadius: '12px',
+                      padding: '16px',
+                      marginBottom: '16px',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{
+                        fontSize: '16px',
+                        fontWeight: '600',
+                        color: luxTheme.textPrimary,
+                        marginBottom: '4px'
+                      }}>
+                        {compatibility.level} ✨
+                      </div>
+                      <div style={{
+                        fontSize: '12px',
+                        color: luxTheme.textSecondary
+                      }}>
+                        Your {parentDNA.details.name} style with their {child.readingDNA?.type?.replace('_', ' ')} personality
+                      </div>
+                    </div>
+
+                    <div style={{
+                      marginBottom: '16px'
+                    }}>
+                      <h4 style={{
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        color: luxTheme.textPrimary,
+                        margin: '0 0 8px 0'
+                      }}>
+                        💡 Quick Insight:
+                      </h4>
+                      <p style={{
+                        fontSize: '13px',
+                        color: luxTheme.textPrimary,
+                        lineHeight: '1.4',
+                        margin: 0,
+                        backgroundColor: `${luxTheme.primary}15`,
+                        padding: '12px',
+                        borderRadius: '8px'
+                      }}>
+                        {compatibility.quickTip}
+                      </p>
+                    </div>
+
+                    <div style={{
+                      marginBottom: '16px'
+                    }}>
+                      <h4 style={{
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        color: luxTheme.textPrimary,
+                        margin: '0 0 8px 0'
+                      }}>
+                        🎯 Specific Tips for {child.firstName}:
+                      </h4>
+                      <div style={{
+                        backgroundColor: `${luxTheme.secondary}15`,
+                        borderRadius: '8px',
+                        padding: '12px'
+                      }}>
+                        {compatibility.socialTip && (
+                          <div style={{
+                            fontSize: '12px',
+                            color: luxTheme.textPrimary,
+                            marginBottom: '8px',
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: '6px'
+                          }}>
+                            <span>👥</span>
+                            <span>{compatibility.socialTip}</span>
+                          </div>
+                        )}
+                        
+                        {compatibility.confidenceTip && (
+                          <div style={{
+                            fontSize: '12px',
+                            color: luxTheme.textPrimary,
+                            marginBottom: '8px',
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: '6px'
+                          }}>
+                            <span>🌟</span>
+                            <span>{compatibility.confidenceTip}</span>
+                          </div>
+                        )}
+                        
+                        {compatibility.independenceTip && (
+                          <div style={{
+                            fontSize: '12px',
+                            color: luxTheme.textPrimary,
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: '6px'
+                          }}>
+                            <span>🗺️</span>
+                            <span>{compatibility.independenceTip}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div style={{
+                      backgroundColor: `${luxTheme.accent}15`,
+                      borderRadius: '12px',
+                      padding: '16px',
+                      textAlign: 'center'
+                    }}>
+                      <h4 style={{
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        color: luxTheme.textPrimary,
+                        margin: '0 0 6px 0'
+                      }}>
+                        📚 This Week's Action:
+                      </h4>
+                      <p style={{
+                        fontSize: '11px',
+                        color: luxTheme.textSecondary,
+                        margin: 0,
+                        lineHeight: '1.4'
+                      }}>
+                        Try one tip from above and notice {child.firstName}'s response. 
+                        Small adjustments make big differences in reading motivation!
+                      </p>
+                    </div>
+                  </>
+                )
+              })()}
+            </div>
+          </div>
+        )}
+
+        {/* Family Activities Modal */}
+        {showFamilyActivitiesModal && familyRecommendations.length > 0 && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px'
+          }}>
+            <div style={{
+              backgroundColor: luxTheme.surface,
+              borderRadius: '20px',
+              padding: '24px',
+              maxWidth: '400px',
+              width: '100%',
+              maxHeight: '80vh',
+              overflow: 'auto'
+            }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '20px'
+              }}>
+                <h3 style={{
+                  margin: 0,
+                  color: luxTheme.textPrimary,
+                  fontSize: '18px'
+                }}>
+                  📚 Family Reading Activities
+                </h3>
+                <button 
+                  onClick={() => setShowFamilyActivitiesModal(false)}
+                  style={{
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    fontSize: '20px',
+                    cursor: 'pointer',
+                    color: luxTheme.textSecondary
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {familyRecommendations.map((category, index) => (
+                <div key={index} style={{
+                  marginBottom: index < familyRecommendations.length - 1 ? '20px' : '0'
+                }}>
+                  <h4 style={{
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: luxTheme.textPrimary,
+                    marginBottom: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}>
+                    <span style={{ fontSize: '16px' }}>{category.icon}</span>
+                    {category.category}
+                  </h4>
+                  
+                  <div style={{ display: 'grid', gap: '8px' }}>
+                    {category.items.map((item, itemIndex) => (
+                      <div key={itemIndex} style={{
+                        backgroundColor: `${luxTheme.primary}10`,
+                        borderRadius: '12px',
+                        padding: '12px',
+                        borderLeft: `4px solid ${luxTheme.primary}`
+                      }}>
+                        <p style={{
+                          fontSize: '13px',
+                          color: luxTheme.textPrimary,
+                          margin: 0,
+                          lineHeight: '1.4'
+                        }}>
+                          {item}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* DNA Unlock Modal */}
         {showUnlockModal && selectedChildForUnlock && (
           <div style={{
@@ -2524,7 +2703,7 @@ export default function ParentFamilyDNALab() {
                 textAlign: 'left'
               }}>
                 <h4 style={{ color: luxTheme.textPrimary, fontSize: '14px', margin: '0 0 8px 0' }}>
-                  💡 What you&apos;ll get:
+                  💡 What you'll get:
                 </h4>
                 <ul style={{
                   fontSize: '13px',
@@ -2802,8 +2981,8 @@ export default function ParentFamilyDNALab() {
                   margin: 0,
                   lineHeight: '1.4'
                 }}>
-                  Use these insights as a starting point for understanding your family&apos;s reading preferences, 
-                  but trust your own observations and your children&apos;s individual needs above all.
+                  Use these insights as a starting point for understanding your family's reading preferences, 
+                  but trust your own observations and your children's individual needs above all.
                 </p>
               </div>
 
@@ -2874,6 +3053,13 @@ export default function ParentFamilyDNALab() {
             .nav-menu-container > div {
               right: 10px !important;
               minWidth: 180px !important;
+            }
+          }
+
+          @media (max-width: 480px) {
+            .nav-menu-container > div {
+              right: 5px !important;
+              minWidth: 160px !important;
             }
           }
         `}</style>
