@@ -75,7 +75,7 @@ export default function ParentFamilyDNALab() {
     },
     {
       id: 'competence_building',
-      question: 'When your child struggles with reading, what\'s your instinct?',
+      question: 'When your child struggles with reading, what&apos;s your instinct?',
       researchBase: 'Self-Efficacy and Competence Support (Bandura)',
       options: [
         { id: 'emotional_support', text: 'Provide emotional support and remind them that struggle is normal', traits: ['emotionally_supportive', 'patient'] },
@@ -565,7 +565,7 @@ export default function ParentFamilyDNALab() {
     }
   }
 
-  // Get Parent Guidance for Child
+  // Enhanced Parent Guidance for Child (extracts from Firebase readingDNA structure)
   const getParentGuidanceForChild = (childReadingDNA) => {
     if (!childReadingDNA || !childReadingDNA.type) return null;
     
@@ -575,23 +575,46 @@ export default function ParentFamilyDNALab() {
     
     if (!base) return null;
     
+    // Extract modifier guidance from both our guide and Firebase data
     const modifierAdvice = modifiers.map(mod => parentReadingDnaGuide.modifiers[mod]).filter(Boolean);
+    const firebaseModifierDetails = childReadingDNA.modifierDetails || [];
+    
+    // Combine strategies from base type + modifiers + Firebase details
+    const allStrategies = [
+      ...base.parentStrategies, // All base strategies
+      ...modifierAdvice.flatMap(mod => mod.parentStrategies), // All modifier strategies
+      ...firebaseModifierDetails.flatMap(detail => detail.strategies || []) // Firebase strategies
+    ];
+    
+    // Remove duplicates and take top strategies
+    const uniqueStrategies = [...new Set(allStrategies)];
+    
+    // Create modifier descriptions
+    const modifierDescriptions = modifiers.map(mod => {
+      const guideData = parentReadingDnaGuide.modifiers[mod];
+      const firebaseData = firebaseModifierDetails.find(detail => 
+        detail.name && detail.name.charAt(0) === mod
+      );
+      
+      return {
+        code: mod,
+        name: guideData?.parentName || firebaseData?.name || `${mod} Learner`,
+        explanation: guideData?.whatThisMeans || firebaseData?.description || 'Special learning style',
+        strategies: guideData?.parentStrategies || firebaseData?.strategies || []
+      };
+    }).filter(Boolean);
     
     return {
       childType: base.parentName,
       quickSummary: base.quickSummary,
-      combinedDescription: `Your child is a ${base.parentName}${modifiers.length > 0 ? ' who also ' + modifiers.map(mod => parentReadingDnaGuide.modifiers[mod].parentName.toLowerCase()).join(' and ') : ''}.`,
-      keyStrategies: [
-        ...base.parentStrategies.slice(0, 2), // Top 2 base strategies
-        ...modifierAdvice.flatMap(mod => mod.parentStrategies.slice(0, 1)) // Top 1 from each modifier
-      ],
-      helpfulPhrases: modifierAdvice.flatMap(mod => mod.phrases),
+      combinedDescription: `Your child is a ${base.parentName}${modifiers.length > 0 ? ' with ' + modifierDescriptions.map(mod => mod.name).join(' and ') + ' traits' : ''}.`,
+      keyStrategies: uniqueStrategies.slice(0, 6), // Top 6 strategies
+      helpfulPhrases: modifierAdvice.flatMap(mod => mod.phrases || []),
       bookRecommendations: base.bookRecommendations,
       hasModifiers: modifiers.length > 0,
-      modifierExplanations: modifierAdvice.map(mod => ({
-        name: mod.parentName,
-        explanation: mod.whatThisMeans
-      }))
+      modifierExplanations: modifierDescriptions,
+      fullCode: childReadingDNA.fullCode || `${baseType}-${modifiers.join('')}`,
+      detailedType: `${base.parentName} (${modifierDescriptions.map(m => m.name).join(', ')})`
     };
   };
 
@@ -1342,7 +1365,7 @@ export default function ParentFamilyDNALab() {
               fontFamily: 'Didot, serif',
               margin: '0 0 12px 0'
             }}>
-              Discover Your Family&apos;s Reading DNA
+              Discover Your Family's Reading DNA
             </h2>
             <p style={{
               fontSize: '16px',
@@ -1350,7 +1373,7 @@ export default function ParentFamilyDNALab() {
               opacity: 0.9,
               lineHeight: '1.5'
             }}>
-              Understanding your family&apos;s reading personalities helps you support each child&apos;s unique learning style and build stronger connections through books.
+              Understanding your family's reading personalities helps you support each child's unique learning style and build stronger connections through books.
             </p>
             {!hasCompletedAssessment && (
               <div style={{
@@ -1470,7 +1493,7 @@ export default function ParentFamilyDNALab() {
                   color: luxTheme.textPrimary,
                   margin: '0 0 8px 0'
                 }}>
-                  You&apos;ll discover:
+                  You'll discover:
                 </h4>
                 <ul style={{
                   fontSize: '14px',
@@ -1482,7 +1505,7 @@ export default function ParentFamilyDNALab() {
                   <li>Your natural parent reading support style</li>
                   <li>How you intuitively motivate your children</li>
                   <li>Insights about family reading dynamics</li>
-                  <li>Personalized tips for each child&apos;s style and modifiers</li>
+                  <li>Personalized tips for each child's style and modifiers</li>
                 </ul>
               </div>
 
@@ -1750,7 +1773,7 @@ export default function ParentFamilyDNALab() {
                   margin: '0 0 20px 0',
                   textAlign: 'center'
                 }}>
-                  👨‍👩‍👧‍👦 Your Children&apos;s Reading DNA
+                  👨‍👩‍👧‍👦 Your Children's Reading DNA
                 </h3>
 
                 {linkedStudents.length > 0 ? (
@@ -1908,7 +1931,7 @@ export default function ParentFamilyDNALab() {
                                 color: luxTheme.textSecondary,
                                 fontStyle: 'italic'
                               }}>
-                                They&apos;ll find it in their student dashboard under &quot;Discover My Reading DNA&quot;
+                                They'll find it in their student dashboard under "Discover My Reading DNA"
                               </p>
                             </div>
                           ) : (
@@ -2016,10 +2039,10 @@ export default function ParentFamilyDNALab() {
                             color: luxTheme.textSecondary,
                             margin: 0
                           }}>
-                            Grade {childData.studentGrade} • {childData.parentGuidance?.childType || 'Reading DNA Complete'}
+                            Grade {childData.studentGrade} • {childData.parentGuidance?.detailedType || childData.studentType?.replace('_', ' ') || 'Lux DNA type'}
                             {childData.studentModifiers.length > 0 && (
                               <span style={{ fontSize: '12px', fontStyle: 'italic' }}>
-                                {' '}({childData.studentModifiers.join(', ')})
+                                {' '}(Learning Style: {childData.studentModifiers.join(', ')})
                               </span>
                             )}
                           </p>
@@ -2048,22 +2071,70 @@ export default function ParentFamilyDNALab() {
                         }}>
                           💡 Personalized Support Strategies:
                         </h5>
-                        <ul style={{
-                          fontSize: '13px',
-                          color: luxTheme.textSecondary,
-                          margin: 0,
-                          paddingLeft: '20px',
-                          lineHeight: '1.4'
-                        }}>
-                          {childData.parentGuidance ? 
-                            childData.parentGuidance.keyStrategies.map((strategy, idx) => (
+                        
+                        {/* Base Compatibility Tips */}
+                        <div style={{ marginBottom: '8px' }}>
+                          <div style={{
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            color: luxTheme.textPrimary,
+                            marginBottom: '4px'
+                          }}>
+                            🤝 Your {childData.compatibilityLevel} with {childData.studentName}:
+                          </div>
+                          <ul style={{
+                            fontSize: '12px',
+                            color: luxTheme.textSecondary,
+                            margin: 0,
+                            paddingLeft: '16px',
+                            lineHeight: '1.4'
+                          }}>
+                            {(childData.parentGuidance ? 
+                              childData.parentGuidance.keyStrategies : 
+                              childData.tips
+                            ).slice(0, 2).map((strategy, idx) => (
                               <li key={idx}>{strategy}</li>
-                            )) :
-                            childData.tips.map((tip, idx) => (
-                              <li key={idx}>{tip}</li>
-                            ))
-                          }
-                        </ul>
+                            ))}
+                          </ul>
+                        </div>
+
+                        {/* Learning Style Specific Tips */}
+                        {childData.parentGuidance && childData.parentGuidance.hasModifiers && (
+                          <div>
+                            <div style={{
+                              fontSize: '12px',
+                              fontWeight: '600',
+                              color: luxTheme.textPrimary,
+                              marginBottom: '4px'
+                            }}>
+                              🌟 For Their Learning Style:
+                            </div>
+                            {childData.parentGuidance.modifierExplanations.slice(0, 2).map((modifier, idx) => (
+                              <div key={idx} style={{
+                                backgroundColor: `${luxTheme.primary}10`,
+                                borderRadius: '6px',
+                                padding: '6px',
+                                marginBottom: '4px'
+                              }}>
+                                <div style={{
+                                  fontSize: '11px',
+                                  fontWeight: '600',
+                                  color: luxTheme.textPrimary
+                                }}>
+                                  {modifier.name}:
+                                </div>
+                                <div style={{
+                                  fontSize: '10px',
+                                  color: luxTheme.textSecondary
+                                }}>
+                                  {modifier.strategies && modifier.strategies[0] ? 
+                                    modifier.strategies[0] : 
+                                    modifier.explanation}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -2158,7 +2229,7 @@ export default function ParentFamilyDNALab() {
                     marginBottom: '20px',
                     lineHeight: '1.5'
                   }}>
-                    Once your children complete their reading personality assessments, you&apos;ll see detailed compatibility insights with modifier support and personalized family recommendations!
+                    Once your children complete their reading personality assessments, you'll see detailed compatibility insights with modifier support and personalized family recommendations!
                   </p>
 
                   <div style={{
@@ -2453,7 +2524,7 @@ export default function ParentFamilyDNALab() {
                 textAlign: 'left'
               }}>
                 <h4 style={{ color: luxTheme.textPrimary, fontSize: '14px', margin: '0 0 8px 0' }}>
-                  💡 What you&apos;ll get:
+                  💡 What you'll get:
                 </h4>
                 <ul style={{
                   fontSize: '13px',
@@ -2731,8 +2802,8 @@ export default function ParentFamilyDNALab() {
                   margin: 0,
                   lineHeight: '1.4'
                 }}>
-                  Use these insights as a starting point for understanding your family&apos;s reading preferences, 
-                  but trust your own observations and your children&apos;s individual needs above all.
+                  Use these insights as a starting point for understanding your family's reading preferences, 
+                  but trust your own observations and your children's individual needs above all.
                 </p>
               </div>
 
