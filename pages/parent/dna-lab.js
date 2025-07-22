@@ -1493,7 +1493,7 @@ export default function ParentFamilyDNALab() {
               opacity: 0.9,
               lineHeight: '1.5'
             }}>
-              Smart insights for supporting each child's unique reading journey
+              Smart insights for supporting each child&apos;s unique reading journey
             </p>
           </div>
 
@@ -1727,7 +1727,7 @@ export default function ParentFamilyDNALab() {
                   margin: '0 0 16px 0',
                   textAlign: 'center'
                 }}>
-                  👨‍👩‍👧‍👦 Your Children's Reading Styles
+                  👨‍👩‍👧‍👦 Your Children&apos;s Reading Styles
                 </h3>
 
                 {linkedStudents.length > 0 ? (
@@ -2027,7 +2027,7 @@ export default function ParentFamilyDNALab() {
                       color: luxTheme.textPrimary,
                       margin: 0
                     }}>
-                      🏠 This Week's Family Activities
+                      🏠 This Week&apos;s Family Activities
                     </h3>
                     <button
                       onClick={() => setShowFamilyActivitiesModal(true)}
@@ -2521,7 +2521,7 @@ export default function ParentFamilyDNALab() {
                         color: luxTheme.textPrimary,
                         margin: '0 0 6px 0'
                       }}>
-                        📚 This Week's Action:
+                        📚 This Week&apos;s Action:
                       </h4>
                       <p style={{
                         fontSize: '11px',
@@ -2529,7 +2529,7 @@ export default function ParentFamilyDNALab() {
                         margin: 0,
                         lineHeight: '1.4'
                       }}>
-                        Try one tip from above and notice {child.firstName}'s response. 
+                        Try one tip from above and notice {child.firstName}&apos;s response. 
                         Small adjustments make big differences in reading motivation!
                       </p>
                     </div>
@@ -2703,7 +2703,7 @@ export default function ParentFamilyDNALab() {
                 textAlign: 'left'
               }}>
                 <h4 style={{ color: luxTheme.textPrimary, fontSize: '14px', margin: '0 0 8px 0' }}>
-                  💡 What you'll get:
+                  💡 What you&apos;ll get:
                 </h4>
                 <ul style={{
                   fontSize: '13px',
@@ -2981,8 +2981,8 @@ export default function ParentFamilyDNALab() {
                   margin: 0,
                   lineHeight: '1.4'
                 }}>
-                  Use these insights as a starting point for understanding your family's reading preferences, 
-                  but trust your own observations and your children's individual needs above all.
+                  Use these insights as a starting point for understanding your family&apos;s reading preferences, 
+                  but trust your own observations and your children&apos;s individual needs above all.
                 </p>
               </div>
 
