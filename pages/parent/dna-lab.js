@@ -1494,7 +1494,7 @@ export default function ParentFamilyDNALab() {
               opacity: 0.9,
               lineHeight: '1.4'
             }}>
-              Smart insights for supporting each child's unique reading journey
+              Smart insights for supporting each child&apos;s unique reading journey
             </p>
           </div>
 
@@ -1527,7 +1527,7 @@ export default function ParentFamilyDNALab() {
               </button>
             </div>
             <p style={{ fontSize: '11px', color: luxTheme.textSecondary, margin: '0 0 8px 0', lineHeight: '1.4' }}>
-              Based on Self-Determination Theory and reading motivation research. This tool provides personalized insights to help support your family's reading journey.
+              Based on Self-Determination Theory and reading motivation research. This tool provides personalized insights to help support your family&apos;s reading journey.
             </p>
             <div style={{
               backgroundColor: `${luxTheme.secondary}20`,
@@ -1775,7 +1775,7 @@ export default function ParentFamilyDNALab() {
                   margin: '0 0 16px 0',
                   textAlign: 'center'
                 }}>
-                  👨‍👩‍👧‍👦 Your Children's Reading DNA Profiles
+                  👨‍👩‍👧‍👦 Your Children&apos;s Reading DNA Profiles
                 </h3>
 
                 {linkedStudents.length > 0 ? (
@@ -2225,7 +2225,7 @@ export default function ParentFamilyDNALab() {
                       color: luxTheme.textPrimary,
                       margin: 0
                     }}>
-                      🏠 This Week's Family Activities
+                      🏠 This Week&apos;s Family Activities
                     </h3>
                     <button
                       onClick={() => setShowFamilyActivitiesModal(true)}
@@ -2603,7 +2603,7 @@ export default function ParentFamilyDNALab() {
                         color: luxTheme.textPrimary,
                         fontSize: '18px'
                       }}>
-                        📋 {child.firstName}'s Reading Profile
+                        📋 {child.firstName}&apos;s Reading Profile
                       </h3>
                       <button 
                         onClick={() => setShowDetailedChildModal(null)}
@@ -2794,7 +2794,7 @@ export default function ParentFamilyDNALab() {
                         color: luxTheme.textPrimary,
                         margin: '0 0 6px 0'
                       }}>
-                        📚 This Week's Action:
+                        📚 This Week&apos;s Action:
                       </h4>
                       <p style={{
                         fontSize: '11px',
@@ -2802,7 +2802,7 @@ export default function ParentFamilyDNALab() {
                         margin: 0,
                         lineHeight: '1.4'
                       }}>
-                        Try one tip from above and notice {child.firstName}'s response. 
+                        Try one tip from above and notice {child.firstName}&apos;s response. 
                         Small adjustments make big differences in reading motivation!
                       </p>
                     </div>
@@ -3168,7 +3168,7 @@ export default function ParentFamilyDNALab() {
                 textAlign: 'left'
               }}>
                 <h4 style={{ color: luxTheme.textPrimary, fontSize: '14px', margin: '0 0 8px 0' }}>
-                  💡 What you'll get:
+                  💡 What you&apos;ll get:
                 </h4>
                 <ul style={{
                   fontSize: '13px',
@@ -3452,7 +3452,7 @@ export default function ParentFamilyDNALab() {
                 }}>
                   This tool provides general insights about reading preferences and motivation styles. 
                   Results are meant to spark conversation and offer gentle guidance - not replace professional judgment 
-                  or override your knowledge of your child's needs.
+                  or override your knowledge of your child&apos;s needs.
                 </p>
               </div>
 
@@ -3482,7 +3482,7 @@ export default function ParentFamilyDNALab() {
                   margin: 0,
                   lineHeight: '1.4'
                 }}>
-                  You know your children best. If any suggestions don't feel right for your family, 
+                  You know your children best. If any suggestions don&apos;t feel right for your family, 
                   trust your instincts. Every child is unique, and what works varies greatly from family to family.
                 </p>
               </div>
@@ -3499,7 +3499,7 @@ export default function ParentFamilyDNALab() {
                 }}>
                   These insights supplement - never replace - professional educational guidance, 
                   teacher recommendations, or clinical assessments. Use this as one perspective among many 
-                  when supporting your child's reading development.
+                  when supporting your child&apos;s reading development.
                 </p>
               </div>
 
@@ -3525,7 +3525,7 @@ export default function ParentFamilyDNALab() {
                   lineHeight: '1.4'
                 }}>
                   To spark joy, understanding, and meaningful conversations about reading in your family. 
-                  Every insight is offered with care, respect for your family's uniqueness, and hope for 
+                  Every insight is offered with care, respect for your family&apos;s uniqueness, and hope for 
                   wonderful reading adventures together! 📖✨
                 </p>
               </div>
