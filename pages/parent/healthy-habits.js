@@ -806,7 +806,7 @@ export default function ParentHealthyHabits() {
                   margin: 0,
                   opacity: 0.9
                 }}>
-                  You're part of our pilot program - premium reading habits tracking is free during the trial!
+                  You&apos;re part of our pilot program - premium reading habits tracking is free during the trial!
                 </p>
               </div>
             )}
@@ -1313,7 +1313,7 @@ export default function ParentHealthyHabits() {
                     color: luxTheme.textSecondary,
                     lineHeight: '1.4'
                   }}>
-                    Children model what they observe. Reading openly shows them it's valuable and enjoyable.
+                    Children model what they observe. Reading openly shows them it&apos;s valuable and enjoyable.
                   </div>
                 </div>
 
@@ -1329,7 +1329,7 @@ export default function ParentHealthyHabits() {
                     color: luxTheme.textPrimary,
                     marginBottom: '4px'
                   }}>
-                    👨‍👩‍👧‍👦 Share What You're Reading
+                    👨‍👩‍👧‍👦 Share What You&apos;re Reading
                   </div>
                   <div style={{
                     fontSize: '12px',

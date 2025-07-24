@@ -527,7 +527,7 @@ export default function ParentFamilyBattle() {
                 margin: 0,
                 opacity: 0.9
               }}>
-                You're part of our pilot - premium family reading competition is free during the trial!
+                You&apos;re part of our pilot - premium family reading competition is free during the trial!
               </p>
             </div>
           )}
@@ -826,7 +826,7 @@ export default function ParentFamilyBattle() {
                   marginBottom: '24px',
                   lineHeight: '1.5'
                 }}>
-                  Start reading sessions to see your family's weekly competition unfold! Both parents and children contribute to their team's total.
+                  Start reading sessions to see your family&apos;s weekly competition unfold! Both parents and children contribute to their team&apos;s total.
                 </p>
 
                 <div style={{
