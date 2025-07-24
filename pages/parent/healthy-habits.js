@@ -1,15 +1,18 @@
-// pages/parent/healthy-habits.js - Parent version with family battle unlock
+// pages/parent/healthy-habits.js - Integrated with Premium Gate (No Family Battle Unlock Requirements)
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
 import { useTimer } from '../../contexts/TimerContext'
+import { usePremiumFeatures } from '../../hooks/usePremiumFeatures'
+import PremiumGate from '../../components/PremiumGate'
 import Head from 'next/head'
-import { collection, addDoc, query, where, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore'
+import { collection, addDoc, query, where, getDocs, doc, getDoc } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
 
 export default function ParentHealthyHabits() {
   const router = useRouter()
   const { user, userProfile, isAuthenticated, loading: authLoading } = useAuth()
+  const { hasFeature, isPilotPhase } = usePremiumFeatures()
   
   // USE TIMER CONTEXT (same as student page)
   const {
@@ -48,9 +51,6 @@ export default function ParentHealthyHabits() {
   })
   const [totalXP, setTotalXP] = useState(0)
 
-  // Family battle states
-  const [familyBattleUnlocked, setFamilyBattleUnlocked] = useState(false)
-
   // UI states
   const [showSuccess, setShowSuccess] = useState('')
   const [showCompletionCelebration, setShowCompletionCelebration] = useState(false)
@@ -69,14 +69,14 @@ export default function ParentHealthyHabits() {
     textSecondary: '#556B7A'
   }
 
-  // Navigation menu items
+  // Updated Navigation menu items
   const navMenuItems = useMemo(() => [
     { name: 'Family Dashboard', path: '/parent/dashboard', icon: '⌂' },
+    { name: 'Child Progress', path: '/parent/child-progress', icon: '◐' },
     { name: 'Book Nominees', path: '/parent/nominees', icon: '□' },
     { name: 'Reading Habits', path: '/parent/healthy-habits', icon: '◉', current: true },
-    { name: 'Family DNA Lab', path: '/parent/dna-lab', icon: '🧬' },
-    { name: 'Quiz Unlock Center', path: '/parent/quiz-unlock', icon: '▦' },
-    { name: 'Family Celebrations', path: '/parent/celebrations', icon: '♔' },
+    { name: 'Family Battle', path: '/parent/family-battle', icon: '⚔️' },
+    { name: 'Reading DNA Lab', path: '/parent/dna-lab', icon: '⬢' },
     { name: 'Settings', path: '/parent/settings', icon: '⚙' }
   ], [])
 
@@ -236,14 +236,12 @@ export default function ParentHealthyHabits() {
       const todaySnapshot = await getDocs(todayQuery)
       const sessions = []
       let minutesToday = 0
-      let totalSessionsEver = 0
       let totalXPEver = 0
 
-      // Get all sessions to check unlock status and calculate total XP
+      // Get all sessions to calculate total XP
       const allSessionsSnapshot = await getDocs(sessionsRef)
       allSessionsSnapshot.forEach(docSnap => {
         const session = docSnap.data()
-        totalSessionsEver++
         totalXPEver += session.xpEarned || session.duration || 0
       })
 
@@ -270,13 +268,6 @@ export default function ParentHealthyHabits() {
       setTodaysSessions(sessions)
       setTodaysMinutes(minutesToday)
       setTotalXP(totalXPEver)
-
-      // Check if family battle should be unlocked (3+ completed sessions)
-      const completedSessions = allSessionsSnapshot.docs.filter(doc => 
-        doc.data().completed === true
-      ).length
-      
-      setFamilyBattleUnlocked(completedSessions >= 3)
 
       await loadStreakData(user.uid)
       await calculateParentReadingLevel(user.uid)
@@ -335,7 +326,7 @@ export default function ParentHealthyHabits() {
       )
       setTimeout(() => setShowSuccess(''), 3000)
 
-      // Reload to check for family battle unlock
+      // Reload to check stats
       await loadParentReadingData()
     } catch (error) {
       console.error('Error saving parent reading session:', error)
@@ -344,16 +335,21 @@ export default function ParentHealthyHabits() {
     }
   }, [user?.uid, timerDuration, currentBookTitle, totalXP, loadStreakData, calculateParentReadingLevel, loadParentReadingData])
 
-  // Load initial data
+  // Check authentication and premium access
   useEffect(() => {
     if (!authLoading && isAuthenticated && user && userProfile?.accountType === 'parent') {
-      loadInitialData()
+      // Check if they have access to healthy habits feature
+      if (hasFeature('healthyHabits')) {
+        loadInitialData()
+      } else {
+        setLoading(false) // Don't load data if no access
+      }
     } else if (!authLoading && !isAuthenticated) {
       router.push('/role-selector')
     } else if (!authLoading && userProfile?.accountType !== 'parent') {
       router.push('/student-dashboard')
     }
-  }, [authLoading, isAuthenticated, user, userProfile])
+  }, [authLoading, isAuthenticated, user, userProfile, hasFeature])
 
   const loadInitialData = async () => {
     try {
@@ -370,11 +366,6 @@ export default function ParentHealthyHabits() {
       const parentProfile = parentDoc.data()
       setParentData(parentProfile)
       
-      // Check if family battle was previously unlocked
-      if (parentProfile.familyBattleUnlocked) {
-        setFamilyBattleUnlocked(true)
-      }
-
       // Load linked students
       await loadLinkedStudentsData(parentProfile.linkedStudents || [])
       
@@ -664,18 +655,34 @@ export default function ParentHealthyHabits() {
             ←
           </button>
 
-          {/* Centered Title */}
-          <h1 style={{
-            fontSize: 'clamp(20px, 5vw, 24px)',
-            fontWeight: '400',
-            color: luxTheme.textPrimary,
-            margin: '0',
-            letterSpacing: '1px',
-            fontFamily: 'Didot, "Times New Roman", serif',
-            textAlign: 'center'
-          }}>
-            Reading Habits
-          </h1>
+          {/* Centered Title with Premium Badge */}
+          <div style={{ textAlign: 'center', position: 'relative' }}>
+            <h1 style={{
+              fontSize: 'clamp(20px, 5vw, 24px)',
+              fontWeight: '400',
+              color: luxTheme.textPrimary,
+              margin: '0',
+              letterSpacing: '1px',
+              fontFamily: 'Didot, "Times New Roman", serif'
+            }}>
+              Reading Habits
+            </h1>
+            {isPilotPhase && (
+              <div style={{
+                position: 'absolute',
+                top: '-8px',
+                right: '-16px',
+                backgroundColor: '#10B981',
+                color: 'white',
+                padding: '2px 6px',
+                borderRadius: '8px',
+                fontSize: '10px',
+                fontWeight: '600'
+              }}>
+                PILOT
+              </div>
+            )}
+          </div>
 
           {/* Hamburger Menu */}
           <div className="nav-menu-container" style={{ position: 'absolute', right: '20px' }}>
@@ -766,227 +773,230 @@ export default function ParentHealthyHabits() {
           </div>
         </div>
 
-        {/* Main Content */}
-        <div style={{ padding: '20px', maxWidth: '400px', margin: '0 auto' }}>
+        {/* Main Content - Wrapped in Premium Gate */}
+        <PremiumGate 
+          feature="healthyHabits"
+          customMessage={isPilotPhase ? 
+            "🎉 Premium reading habits feature unlocked for pilot users!" :
+            "Track your personal reading habits and lead by example for your children!"
+          }
+        >
+          <div style={{ padding: '20px', maxWidth: '400px', margin: '0 auto' }}>
 
-          {/* Parent Motivation Card */}
-          <div style={{
-            background: `linear-gradient(135deg, ${luxTheme.secondary}, ${luxTheme.primary})`,
-            borderRadius: '16px',
-            padding: '20px',
-            marginBottom: '20px',
-            boxShadow: `0 8px 24px ${luxTheme.primary}30`,
-            color: luxTheme.textPrimary,
-            textAlign: 'center'
-          }}>
-            <div style={{ fontSize: '48px', marginBottom: '12px' }}>📚👨‍👩‍👧‍👦</div>
-            <h2 style={{
-              fontSize: '18px',
-              fontWeight: 'bold',
-              fontFamily: 'Didot, serif',
-              margin: '0 0 8px 0'
-            }}>
-              Lead by Example
-            </h2>
-            <p style={{
-              fontSize: '14px',
-              margin: '0 0 12px 0',
-              opacity: 0.9,
-              lineHeight: '1.4'
-            }}>
-              Children who see parents reading are 6x more likely to become lifelong readers themselves!
-            </p>
-            {!familyBattleUnlocked && (
+            {/* Pilot Notice Banner */}
+            {isPilotPhase && (
               <div style={{
-                background: 'rgba(255,255,255,0.2)',
-                borderRadius: '8px',
-                padding: '8px 12px',
-                fontSize: '12px',
-                fontWeight: '600'
-              }}>
-                📊 Complete 3 reading sessions to unlock Family Battle!
-              </div>
-            )}
-          </div>
-
-          {/* Current Book Input */}
-          <div style={{
-            backgroundColor: luxTheme.surface,
-            borderRadius: '16px',
-            padding: '16px',
-            marginBottom: '20px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            border: `2px solid ${luxTheme.primary}30`
-          }}>
-            <label style={{
-              display: 'block',
-              fontSize: '14px',
-              fontWeight: '600',
-              color: luxTheme.textPrimary,
-              marginBottom: '8px'
-            }}>
-              📖 What are you reading?
-            </label>
-            <input
-              type="text"
-              value={currentBookTitle}
-              onChange={(e) => setCurrentBookTitle(e.target.value)}
-              placeholder="Enter book title (optional)"
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: `1px solid ${luxTheme.primary}40`,
-                borderRadius: '8px',
-                fontSize: '14px',
-                backgroundColor: luxTheme.background,
-                color: luxTheme.textPrimary,
-                boxSizing: 'border-box'
-              }}
-            />
-          </div>
-
-          {/* Timer Section */}
-          <div style={{
-            backgroundColor: luxTheme.surface,
-            borderRadius: '20px',
-            padding: '30px 20px',
-            marginBottom: '20px',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-            textAlign: 'center'
-          }}>
-            {/* Circular Timer */}
-            <div style={{ position: 'relative', display: 'inline-block', marginBottom: '20px' }}>
-              <svg
-                width={svgSize}
-                height={svgSize}
-                viewBox="0 0 200 200"
-                style={{ transform: 'rotate(-90deg)', maxWidth: '200px', maxHeight: '200px' }}
-              >
-                <circle
-                  cx="100"
-                  cy="100"
-                  r="85"
-                  fill="none"
-                  stroke={`${luxTheme.primary}30`}
-                  strokeWidth="8"
-                />
-                <circle
-                  cx="100"
-                  cy="100"
-                  r="85"
-                  fill="none"
-                  stroke={luxTheme.primary}
-                  strokeWidth="8"
-                  strokeDasharray={`${(getTimerProgress() / 100) * (2 * Math.PI * 85)} ${2 * Math.PI * 85}`}
-                  strokeLinecap="round"
-                  style={{ transition: 'stroke-dasharray 1s ease' }}
-                />
-              </svg>
-              
-              <div style={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
+                background: `linear-gradient(135deg, #10B981, #059669)`,
+                borderRadius: '16px',
+                padding: '16px',
+                marginBottom: '20px',
+                color: 'white',
                 textAlign: 'center'
               }}>
-                <div style={{
-                  fontSize: 'clamp(28px, 8vw, 36px)',
+                <div style={{ fontSize: '32px', marginBottom: '8px' }}>🎉</div>
+                <h3 style={{
+                  fontSize: '16px',
                   fontWeight: 'bold',
-                  color: luxTheme.textPrimary,
-                  fontFamily: 'system-ui, monospace',
-                  marginBottom: '4px'
+                  margin: '0 0 8px 0'
                 }}>
-                  {formatTime(timeRemaining)}
-                </div>
-                <div style={{
-                  fontSize: 'clamp(10px, 3vw, 12px)',
-                  color: luxTheme.textSecondary,
-                  fontWeight: '500'
+                  Premium Features Unlocked!
+                </h3>
+                <p style={{
+                  fontSize: '12px',
+                  margin: 0,
+                  opacity: 0.9
                 }}>
-                  {getTimerStatus()}
-                </div>
-                {wakeLock && (
-                  <div style={{
-                    fontSize: 'clamp(8px, 2.5vw, 10px)',
-                    color: luxTheme.primary,
-                    fontWeight: '600',
-                    marginTop: '2px'
-                  }}>
-                    📱 Screen staying on
-                  </div>
-                )}
+                  You're part of our pilot program - premium reading habits tracking is free during the trial!
+                </p>
               </div>
+            )}
+
+            {/* Parent Motivation Card */}
+            <div style={{
+              background: `linear-gradient(135deg, ${luxTheme.secondary}, ${luxTheme.primary})`,
+              borderRadius: '16px',
+              padding: '20px',
+              marginBottom: '20px',
+              boxShadow: `0 8px 24px ${luxTheme.primary}30`,
+              color: luxTheme.textPrimary,
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '48px', marginBottom: '12px' }}>📚👨‍👩‍👧‍👦</div>
+              <h2 style={{
+                fontSize: '18px',
+                fontWeight: 'bold',
+                fontFamily: 'Didot, serif',
+                margin: '0 0 8px 0'
+              }}>
+                Lead by Example
+              </h2>
+              <p style={{
+                fontSize: '14px',
+                margin: 0,
+                opacity: 0.9,
+                lineHeight: '1.4'
+              }}>
+                Children who see parents reading are 6x more likely to become lifelong readers themselves!
+              </p>
             </div>
 
-            {/* Timer Controls */}
+            {/* Current Book Input */}
             <div style={{
-              display: 'flex',
-              gap: '12px',
-              justifyContent: 'center',
-              marginBottom: '16px',
-              flexWrap: 'wrap'
+              backgroundColor: luxTheme.surface,
+              borderRadius: '16px',
+              padding: '16px',
+              marginBottom: '20px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              border: `2px solid ${luxTheme.primary}30`
             }}>
-              {!isTimerActive ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                  <button
-                    onClick={handleStartTimer}
-                    style={{
-                      backgroundColor: luxTheme.primary,
-                      color: luxTheme.textPrimary,
-                      border: 'none',
-                      borderRadius: '20px',
-                      padding: '14px 28px',
-                      fontSize: 'clamp(14px, 4vw, 16px)',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      minHeight: '48px',
-                      minWidth: '140px',
-                      justifyContent: 'center'
-                    }}
-                  >
-                    ▶️ Start Reading
-                  </button>
-                  <p style={{
-                    fontSize: '12px',
-                    color: luxTheme.textSecondary,
-                    margin: 0,
-                    textAlign: 'center'
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '600',
+                color: luxTheme.textPrimary,
+                marginBottom: '8px'
+              }}>
+                📖 What are you reading?
+              </label>
+              <input
+                type="text"
+                value={currentBookTitle}
+                onChange={(e) => setCurrentBookTitle(e.target.value)}
+                placeholder="Enter book title (optional)"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: `1px solid ${luxTheme.primary}40`,
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  backgroundColor: luxTheme.background,
+                  color: luxTheme.textPrimary,
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            {/* Timer Section */}
+            <div style={{
+              backgroundColor: luxTheme.surface,
+              borderRadius: '20px',
+              padding: '30px 20px',
+              marginBottom: '20px',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+              textAlign: 'center'
+            }}>
+              {/* Circular Timer */}
+              <div style={{ position: 'relative', display: 'inline-block', marginBottom: '20px' }}>
+                <svg
+                  width={svgSize}
+                  height={svgSize}
+                  viewBox="0 0 200 200"
+                  style={{ transform: 'rotate(-90deg)', maxWidth: '200px', maxHeight: '200px' }}
+                >
+                  <circle
+                    cx="100"
+                    cy="100"
+                    r="85"
+                    fill="none"
+                    stroke={`${luxTheme.primary}30`}
+                    strokeWidth="8"
+                  />
+                  <circle
+                    cx="100"
+                    cy="100"
+                    r="85"
+                    fill="none"
+                    stroke={luxTheme.primary}
+                    strokeWidth="8"
+                    strokeDasharray={`${(getTimerProgress() / 100) * (2 * Math.PI * 85)} ${2 * Math.PI * 85}`}
+                    strokeLinecap="round"
+                    style={{ transition: 'stroke-dasharray 1s ease' }}
+                  />
+                </svg>
+                
+                <div style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  textAlign: 'center'
+                }}>
+                  <div style={{
+                    fontSize: 'clamp(28px, 8vw, 36px)',
+                    fontWeight: 'bold',
+                    color: luxTheme.textPrimary,
+                    fontFamily: 'system-ui, monospace',
+                    marginBottom: '4px'
                   }}>
-                    Default: 25 minutes (perfect for busy parents!)
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <button
-                    onClick={isTimerPaused ? handleResumeTimer : handlePauseTimer}
-                    style={{
-                      backgroundColor: luxTheme.secondary,
-                      color: luxTheme.textPrimary,
-                      border: 'none',
-                      borderRadius: '16px',
-                      padding: '12px 20px',
-                      fontSize: 'clamp(12px, 3.5vw, 14px)',
+                    {formatTime(timeRemaining)}
+                  </div>
+                  <div style={{
+                    fontSize: 'clamp(10px, 3vw, 12px)',
+                    color: luxTheme.textSecondary,
+                    fontWeight: '500'
+                  }}>
+                    {getTimerStatus()}
+                  </div>
+                  {wakeLock && (
+                    <div style={{
+                      fontSize: 'clamp(8px, 2.5vw, 10px)',
+                      color: luxTheme.primary,
                       fontWeight: '600',
-                      cursor: 'pointer',
-                      minHeight: '48px',
-                      minWidth: '100px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                  >
-                    {isTimerPaused ? '▶️ Resume' : '⏸️ Pause'}
-                  </button>
-                  {isTimerPaused && (
+                      marginTop: '2px'
+                    }}>
+                      📱 Screen staying on
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Timer Controls */}
+              <div style={{
+                display: 'flex',
+                gap: '12px',
+                justifyContent: 'center',
+                marginBottom: '16px',
+                flexWrap: 'wrap'
+              }}>
+                {!isTimerActive ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                     <button
-                      onClick={handleBankSession}
+                      onClick={handleStartTimer}
                       style={{
-                        backgroundColor: '#4CAF50',
-                        color: 'white',
+                        backgroundColor: luxTheme.primary,
+                        color: luxTheme.textPrimary,
+                        border: 'none',
+                        borderRadius: '20px',
+                        padding: '14px 28px',
+                        fontSize: 'clamp(14px, 4vw, 16px)',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        minHeight: '48px',
+                        minWidth: '140px',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      ▶️ Start Reading
+                    </button>
+                    <p style={{
+                      fontSize: '12px',
+                      color: luxTheme.textSecondary,
+                      margin: 0,
+                      textAlign: 'center'
+                    }}>
+                      Default: 25 minutes (perfect for busy parents!)
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <button
+                      onClick={isTimerPaused ? handleResumeTimer : handlePauseTimer}
+                      style={{
+                        backgroundColor: luxTheme.secondary,
+                        color: luxTheme.textPrimary,
                         border: 'none',
                         borderRadius: '16px',
                         padding: '12px 20px',
@@ -997,409 +1007,457 @@ export default function ParentHealthyHabits() {
                         minWidth: '100px',
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        boxShadow: '0 4px 12px rgba(76, 175, 80, 0.3)'
+                        justifyContent: 'center'
                       }}
                     >
-                      💾 Bank Session
+                      {isTimerPaused ? '▶️ Resume' : '⏸️ Pause'}
                     </button>
-                  )}
-                </>
-              )}
+                    {isTimerPaused && (
+                      <button
+                        onClick={handleBankSession}
+                        style={{
+                          backgroundColor: '#4CAF50',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '16px',
+                          padding: '12px 20px',
+                          fontSize: 'clamp(12px, 3.5vw, 14px)',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          minHeight: '48px',
+                          minWidth: '100px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          boxShadow: '0 4px 12px rgba(76, 175, 80, 0.3)'
+                        }}
+                      >
+                        💾 Bank Session
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
-          </div>
 
-          {/* Today's Progress */}
-          <div style={{
-            backgroundColor: luxTheme.surface,
-            borderRadius: '16px',
-            padding: '20px',
-            marginBottom: '20px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-          }}>
-            <h3 style={{
-              fontSize: '18px',
-              fontWeight: '600',
-              color: luxTheme.textPrimary,
-              margin: '0 0 16px 0'
-            }}>
-              📈 Your Reading Progress
-            </h3>
-
-            {/* Parent Reading Level */}
+            {/* Today's Progress */}
             <div style={{
-              backgroundColor: parentReadingLevel.color,
-              borderRadius: '12px',
-              padding: '16px',
-              marginBottom: '16px',
-              textAlign: 'center'
-            }}>
-              <div style={{ fontSize: '32px', marginBottom: '8px' }}>
-                {parentReadingLevel.emoji}
-              </div>
-              <div style={{
-                fontSize: '16px',
-                fontWeight: 'bold',
-                color: parentReadingLevel.textColor,
-                marginBottom: '4px'
-              }}>
-                {parentReadingLevel.name}
-              </div>
-              <div style={{
-                fontSize: '12px',
-                color: parentReadingLevel.textColor,
-                opacity: 0.9
-              }}>
-                {parentReadingLevel.name === 'Legendary Leader' && 'Your reading leadership inspires the whole family!'}
-                {parentReadingLevel.name === 'Wisdom Keeper' && 'You are building a treasure trove of knowledge!'}
-                {parentReadingLevel.name === 'Family Champion' && 'You are setting an amazing example!'}
-                {parentReadingLevel.name === 'Reading Mentor' && 'Every page you read teaches your children!'}
-              </div>
-            </div>
-
-            {/* Stats Grid */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr 1fr',
-              gap: '12px',
-              marginBottom: '16px'
-            }}>
-              <div style={{
-                backgroundColor: `${luxTheme.primary}20`,
-                borderRadius: '12px',
-                padding: '12px',
-                textAlign: 'center'
-              }}>
-                <div style={{
-                  fontSize: '20px',
-                  fontWeight: 'bold',
-                  color: luxTheme.textPrimary
-                }}>
-                  {todaysMinutes}
-                </div>
-                <div style={{
-                  fontSize: '10px',
-                  color: luxTheme.textSecondary
-                }}>
-                  min today
-                </div>
-              </div>
-              <div style={{
-                backgroundColor: `${luxTheme.primary}20`,
-                borderRadius: '12px',
-                padding: '12px',
-                textAlign: 'center'
-              }}>
-                <div style={{
-                  fontSize: '20px',
-                  fontWeight: 'bold',
-                  color: luxTheme.textPrimary
-                }}>
-                  {currentStreak}
-                </div>
-                <div style={{
-                  fontSize: '10px',
-                  color: luxTheme.textSecondary
-                }}>
-                  day streak
-                </div>
-              </div>
-              <div style={{
-                backgroundColor: `${luxTheme.primary}20`,
-                borderRadius: '12px',
-                padding: '12px',
-                textAlign: 'center'
-              }}>
-                <div style={{
-                  fontSize: '20px',
-                  fontWeight: 'bold',
-                  color: luxTheme.textPrimary
-                }}>
-                  {totalXP}
-                </div>
-                <div style={{
-                  fontSize: '10px',
-                  color: luxTheme.textSecondary
-                }}>
-                  total XP
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Family Battle Card - Navigate to dedicated page */}
-          <div 
-            onClick={() => {
-              if (familyBattleUnlocked) {
-                router.push('/parent/family-battle')
-              } else {
-                // Check if they have enough sessions to unlock
-                const completedSessionCount = todaysSessions.filter(s => s.completed).length + Math.floor((totalXP - todaysMinutes) / 20)
-                if (completedSessionCount >= 3) {
-                  router.push('/parent/family-battle?unlock=true')
-                } else {
-                  setShowSuccess(`Complete ${3 - completedSessionCount} more reading sessions to unlock Family Battle!`)
-                  setTimeout(() => setShowSuccess(''), 3000)
-                }
-              }
-            }}
-            style={{
               backgroundColor: luxTheme.surface,
               borderRadius: '16px',
               padding: '20px',
               marginBottom: '20px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              border: familyBattleUnlocked 
-                ? `2px solid ${luxTheme.primary}40` 
-                : `2px dashed ${luxTheme.primary}60`,
-              cursor: 'pointer',
-              transition: 'all 0.3s ease',
-              opacity: familyBattleUnlocked ? 1 : 0.8
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-2px)'
-              e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.15)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)'
-              e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'
-            }}
-          >
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '48px', marginBottom: '12px' }}>
-                {familyBattleUnlocked ? '🏆' : '🔒'}
-              </div>
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+            }}>
               <h3 style={{
                 fontSize: '18px',
                 fontWeight: '600',
                 color: luxTheme.textPrimary,
-                margin: '0 0 8px 0'
+                margin: '0 0 16px 0'
               }}>
-                {familyBattleUnlocked ? 'Family Reading Battle' : 'Unlock Family Battle'}
+                📈 Your Reading Progress
               </h3>
-              <p style={{
-                fontSize: '14px',
-                color: luxTheme.textSecondary,
-                margin: '0 0 12px 0',
-                lineHeight: '1.4'
+
+              {/* Parent Reading Level */}
+              <div style={{
+                backgroundColor: parentReadingLevel.color,
+                borderRadius: '12px',
+                padding: '16px',
+                marginBottom: '16px',
+                textAlign: 'center'
               }}>
-                {familyBattleUnlocked 
-                  ? 'See how your family competes in weekly reading challenges!'
-                  : 'Complete 3 reading sessions to unlock family-wide reading competition!'
-                }
-              </p>
-              {familyBattleUnlocked ? (
+                <div style={{ fontSize: '32px', marginBottom: '8px' }}>
+                  {parentReadingLevel.emoji}
+                </div>
+                <div style={{
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  color: parentReadingLevel.textColor,
+                  marginBottom: '4px'
+                }}>
+                  {parentReadingLevel.name}
+                </div>
+                <div style={{
+                  fontSize: '12px',
+                  color: parentReadingLevel.textColor,
+                  opacity: 0.9
+                }}>
+                  {parentReadingLevel.name === 'Legendary Leader' && 'Your reading leadership inspires the whole family!'}
+                  {parentReadingLevel.name === 'Wisdom Keeper' && 'You are building a treasure trove of knowledge!'}
+                  {parentReadingLevel.name === 'Family Champion' && 'You are setting an amazing example!'}
+                  {parentReadingLevel.name === 'Reading Mentor' && 'Every page you read teaches your children!'}
+                </div>
+              </div>
+
+              {/* Stats Grid */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr 1fr',
+                gap: '12px',
+                marginBottom: '16px'
+              }}>
                 <div style={{
                   backgroundColor: `${luxTheme.primary}20`,
-                  borderRadius: '8px',
-                  padding: '8px 12px',
-                  display: 'inline-block',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  color: luxTheme.primary
+                  borderRadius: '12px',
+                  padding: '12px',
+                  textAlign: 'center'
                 }}>
-                  Tap to view battle dashboard →
-                </div>
-              ) : (
-                <div style={{
-                  backgroundColor: '#F59E0B20',
-                  borderRadius: '8px',
-                  padding: '8px 12px',
-                  display: 'inline-block',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  color: '#F59E0B'
-                }}>
-                  📊 Complete more sessions to unlock!
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Reading Tips for Parents */}
-          <div style={{
-            backgroundColor: luxTheme.surface,
-            borderRadius: '16px',
-            padding: '20px',
-            marginBottom: '20px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-          }}>
-            <h3 style={{
-              fontSize: '18px',
-              fontWeight: '600',
-              color: luxTheme.textPrimary,
-              margin: '0 0 16px 0',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}>
-              💡 Reading Tips for Parents
-            </h3>
-            
-            <div style={{ display: 'grid', gap: '12px' }}>
-              <div style={{
-                backgroundColor: `${luxTheme.primary}10`,
-                borderRadius: '8px',
-                padding: '12px',
-                borderLeft: `4px solid ${luxTheme.primary}`
-              }}>
-                <div style={{
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: luxTheme.textPrimary,
-                  marginBottom: '4px'
-                }}>
-                  📚 Read Where Kids Can See You
+                  <div style={{
+                    fontSize: '20px',
+                    fontWeight: 'bold',
+                    color: luxTheme.textPrimary
+                  }}>
+                    {todaysMinutes}
+                  </div>
+                  <div style={{
+                    fontSize: '10px',
+                    color: luxTheme.textSecondary
+                  }}>
+                    min today
+                  </div>
                 </div>
                 <div style={{
-                  fontSize: '12px',
-                  color: luxTheme.textSecondary,
-                  lineHeight: '1.4'
+                  backgroundColor: `${luxTheme.primary}20`,
+                  borderRadius: '12px',
+                  padding: '12px',
+                  textAlign: 'center'
                 }}>
-                  Children model what they observe. Reading openly shows them it&apos;s valuable and enjoyable.
-                </div>
-              </div>
-
-              <div style={{
-                backgroundColor: `${luxTheme.secondary}10`,
-                borderRadius: '8px',
-                padding: '12px',
-                borderLeft: `4px solid ${luxTheme.secondary}`
-              }}>
-                <div style={{
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: luxTheme.textPrimary,
-                  marginBottom: '4px'
-                }}>
-                  👨‍👩‍👧‍👦 Share What You&apos;re Reading
+                  <div style={{
+                    fontSize: '20px',
+                    fontWeight: 'bold',
+                    color: luxTheme.textPrimary
+                  }}>
+                    {currentStreak}
+                  </div>
+                  <div style={{
+                    fontSize: '10px',
+                    color: luxTheme.textSecondary
+                  }}>
+                    day streak
+                  </div>
                 </div>
                 <div style={{
-                  fontSize: '12px',
-                  color: luxTheme.textSecondary,
-                  lineHeight: '1.4'
+                  backgroundColor: `${luxTheme.primary}20`,
+                  borderRadius: '12px',
+                  padding: '12px',
+                  textAlign: 'center'
                 }}>
-                  Talk about your books at dinner. Ask about theirs. Create a family book culture.
-                </div>
-              </div>
-
-              <div style={{
-                backgroundColor: `${luxTheme.accent}10`,
-                borderRadius: '8px',
-                padding: '12px',
-                borderLeft: `4px solid ${luxTheme.accent}`
-              }}>
-                <div style={{
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: luxTheme.textPrimary,
-                  marginBottom: '4px'
-                }}>
-                  ⏰ Establish Reading Time
-                </div>
-                <div style={{
-                  fontSize: '12px',
-                  color: luxTheme.textSecondary,
-                  lineHeight: '1.4'
-                }}>
-                  Even 15-20 minutes of parent reading time creates powerful modeling for children.
+                  <div style={{
+                    fontSize: '20px',
+                    fontWeight: 'bold',
+                    color: luxTheme.textPrimary
+                  }}>
+                    {totalXP}
+                  </div>
+                  <div style={{
+                    fontSize: '10px',
+                    color: luxTheme.textSecondary
+                  }}>
+                    total XP
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Streak Calendar */}
-          <div style={{
-            backgroundColor: luxTheme.surface,
-            borderRadius: '16px',
-            padding: '20px',
-            marginBottom: '20px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-          }}>
-            <h3 style={{
-              fontSize: '18px',
-              fontWeight: '600',
-              color: luxTheme.textPrimary,
-              margin: '0 0 16px 0'
-            }}>
-              🔥 Your Reading Streak
-            </h3>
-
-            {/* Timeline Calendar */}
-            <div style={{
-              display: 'flex',
-              gap: '6px',
-              overflowX: 'auto',
-              padding: '8px 4px',
-              marginBottom: '12px',
-              scrollSnapType: 'x mandatory'
-            }}>
-              {streakCalendar.map((day, index) => (
-                <div
-                  key={index}
+            {/* Family Battle Card - Premium Gated */}
+            <PremiumGate 
+              feature="familyBattle"
+              fallback={
+                <div 
+                  onClick={() => {
+                    setShowSuccess('🔒 Family Battle requires premium access!')
+                    setTimeout(() => setShowSuccess(''), 3000)
+                  }}
                   style={{
-                    minWidth: '32px',
-                    height: '48px',
-                    borderRadius: '10px',
-                    backgroundColor: day.isFuture ?
-                      `${luxTheme.primary}10` :
-                      day.hasReading ? luxTheme.primary : `${luxTheme.primary}20`,
-                    border: day.isToday ? `3px solid ${luxTheme.primary}` :
-                      day.isRecent ? `1px solid ${luxTheme.primary}60` : 'none',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '2px',
-                    opacity: day.isFuture ? 0.4 : 1,
-                    transform: day.isToday ? 'scale(1.1)' : 'scale(1)',
-                    transition: 'all 0.2s ease',
-                    scrollSnapAlign: 'center',
-                    boxShadow: day.isToday ? `0 4px 12px ${luxTheme.primary}40` : 'none'
+                    backgroundColor: luxTheme.surface,
+                    borderRadius: '16px',
+                    padding: '20px',
+                    marginBottom: '20px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                    border: `2px solid ${luxTheme.primary}40`,
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    opacity: 0.7
                   }}
                 >
-                  <div style={{
-                    fontSize: '8px',
-                    fontWeight: '600',
-                    color: day.hasReading && !day.isFuture ? 'white' : luxTheme.textSecondary
-                  }}>
-                    {day.dayName}
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '48px', marginBottom: '12px' }}>🔒</div>
+                    <h3 style={{
+                      fontSize: '18px',
+                      fontWeight: '600',
+                      color: luxTheme.textPrimary,
+                      margin: '0 0 8px 0'
+                    }}>
+                      Family Battle (Premium Feature)
+                    </h3>
+                    <p style={{
+                      fontSize: '14px',
+                      color: luxTheme.textSecondary,
+                      margin: 0
+                    }}>
+                      Upgrade to compete with your family in reading challenges!
+                    </p>
                   </div>
-                  <div style={{
-                    fontSize: '11px',
-                    fontWeight: 'bold',
-                    color: day.hasReading && !day.isFuture ? 'white' : luxTheme.textPrimary
-                  }}>
-                    {day.dayNumber}
-                  </div>
-                  {day.hasReading && (
-                    <div style={{
-                      width: '3px',
-                      height: '3px',
-                      borderRadius: '50%',
-                      backgroundColor: 'white'
-                    }} />
-                  )}
                 </div>
-              ))}
+              }
+            >
+              <div 
+                onClick={() => router.push('/parent/family-battle')}
+                style={{
+                  backgroundColor: luxTheme.surface,
+                  borderRadius: '16px',
+                  padding: '20px',
+                  marginBottom: '20px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  border: `2px solid ${luxTheme.primary}40`,
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  position: 'relative'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)'
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.15)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)'
+                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'
+                }}
+              >
+                {/* Premium badge for family battle */}
+                {isPilotPhase && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '10px',
+                    right: '10px',
+                    backgroundColor: '#10B981',
+                    color: 'white',
+                    padding: '4px 8px',
+                    borderRadius: '12px',
+                    fontSize: '10px',
+                    fontWeight: '600',
+                    zIndex: 100
+                  }}>
+                    PREMIUM
+                  </div>
+                )}
+                
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '48px', marginBottom: '12px' }}>🏆</div>
+                  <h3 style={{
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    color: luxTheme.textPrimary,
+                    margin: '0 0 8px 0'
+                  }}>
+                    Family Reading Battle
+                  </h3>
+                  <p style={{
+                    fontSize: '14px',
+                    color: luxTheme.textSecondary,
+                    margin: '0 0 12px 0',
+                    lineHeight: '1.4'
+                  }}>
+                    See how your family competes in weekly reading challenges and motivate each other!
+                  </p>
+                  <div style={{
+                    backgroundColor: `${luxTheme.primary}20`,
+                    borderRadius: '8px',
+                    padding: '8px 12px',
+                    display: 'inline-block',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    color: luxTheme.primary
+                  }}>
+                    Tap to view battle dashboard →
+                  </div>
+                </div>
+              </div>
+            </PremiumGate>
+
+            {/* Reading Tips for Parents */}
+            <div style={{
+              backgroundColor: luxTheme.surface,
+              borderRadius: '16px',
+              padding: '20px',
+              marginBottom: '20px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+            }}>
+              <h3 style={{
+                fontSize: '18px',
+                fontWeight: '600',
+                color: luxTheme.textPrimary,
+                margin: '0 0 16px 0',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                💡 Reading Tips for Parents
+              </h3>
+              
+              <div style={{ display: 'grid', gap: '12px' }}>
+                <div style={{
+                  backgroundColor: `${luxTheme.primary}10`,
+                  borderRadius: '8px',
+                  padding: '12px',
+                  borderLeft: `4px solid ${luxTheme.primary}`
+                }}>
+                  <div style={{
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: luxTheme.textPrimary,
+                    marginBottom: '4px'
+                  }}>
+                    📚 Read Where Kids Can See You
+                  </div>
+                  <div style={{
+                    fontSize: '12px',
+                    color: luxTheme.textSecondary,
+                    lineHeight: '1.4'
+                  }}>
+                    Children model what they observe. Reading openly shows them it's valuable and enjoyable.
+                  </div>
+                </div>
+
+                <div style={{
+                  backgroundColor: `${luxTheme.secondary}10`,
+                  borderRadius: '8px',
+                  padding: '12px',
+                  borderLeft: `4px solid ${luxTheme.secondary}`
+                }}>
+                  <div style={{
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: luxTheme.textPrimary,
+                    marginBottom: '4px'
+                  }}>
+                    👨‍👩‍👧‍👦 Share What You're Reading
+                  </div>
+                  <div style={{
+                    fontSize: '12px',
+                    color: luxTheme.textSecondary,
+                    lineHeight: '1.4'
+                  }}>
+                    Talk about your books at dinner. Ask about theirs. Create a family book culture.
+                  </div>
+                </div>
+
+                <div style={{
+                  backgroundColor: `${luxTheme.accent}10`,
+                  borderRadius: '8px',
+                  padding: '12px',
+                  borderLeft: `4px solid ${luxTheme.accent}`
+                }}>
+                  <div style={{
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: luxTheme.textPrimary,
+                    marginBottom: '4px'
+                  }}>
+                    ⏰ Establish Reading Time
+                  </div>
+                  <div style={{
+                    fontSize: '12px',
+                    color: luxTheme.textSecondary,
+                    lineHeight: '1.4'
+                  }}>
+                    Even 15-20 minutes of parent reading time creates powerful modeling for children.
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <p style={{
-              fontSize: '13px',
-              color: luxTheme.textSecondary,
-              textAlign: 'center',
-              margin: 0,
-              fontWeight: '500'
+            {/* Streak Calendar */}
+            <div style={{
+              backgroundColor: luxTheme.surface,
+              borderRadius: '16px',
+              padding: '20px',
+              marginBottom: '20px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
             }}>
-              {currentStreak >= 7 
-                ? `🏆 ${currentStreak} days strong! You're showing incredible leadership!` 
-                : currentStreak >= 1 
-                  ? `💪 Great start! ${currentStreak} day${currentStreak > 1 ? 's' : ''} of modeling good habits!`
-                  : "Start your reading journey to inspire your children!"
-              }
-            </p>
+              <h3 style={{
+                fontSize: '18px',
+                fontWeight: '600',
+                color: luxTheme.textPrimary,
+                margin: '0 0 16px 0'
+              }}>
+                🔥 Your Reading Streak
+              </h3>
+
+              {/* Timeline Calendar */}
+              <div style={{
+                display: 'flex',
+                gap: '6px',
+                overflowX: 'auto',
+                padding: '8px 4px',
+                marginBottom: '12px',
+                scrollSnapType: 'x mandatory'
+              }}>
+                {streakCalendar.map((day, index) => (
+                  <div
+                    key={index}
+                    style={{
+                      minWidth: '32px',
+                      height: '48px',
+                      borderRadius: '10px',
+                      backgroundColor: day.isFuture ?
+                        `${luxTheme.primary}10` :
+                        day.hasReading ? luxTheme.primary : `${luxTheme.primary}20`,
+                      border: day.isToday ? `3px solid ${luxTheme.primary}` :
+                        day.isRecent ? `1px solid ${luxTheme.primary}60` : 'none',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '2px',
+                      opacity: day.isFuture ? 0.4 : 1,
+                      transform: day.isToday ? 'scale(1.1)' : 'scale(1)',
+                      transition: 'all 0.2s ease',
+                      scrollSnapAlign: 'center',
+                      boxShadow: day.isToday ? `0 4px 12px ${luxTheme.primary}40` : 'none'
+                    }}
+                  >
+                    <div style={{
+                      fontSize: '8px',
+                      fontWeight: '600',
+                      color: day.hasReading && !day.isFuture ? 'white' : luxTheme.textSecondary
+                    }}>
+                      {day.dayName}
+                    </div>
+                    <div style={{
+                      fontSize: '11px',
+                      fontWeight: 'bold',
+                      color: day.hasReading && !day.isFuture ? 'white' : luxTheme.textPrimary
+                    }}>
+                      {day.dayNumber}
+                    </div>
+                    {day.hasReading && (
+                      <div style={{
+                        width: '3px',
+                        height: '3px',
+                        borderRadius: '50%',
+                        backgroundColor: 'white'
+                      }} />
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <p style={{
+                fontSize: '13px',
+                color: luxTheme.textSecondary,
+                textAlign: 'center',
+                margin: 0,
+                fontWeight: '500'
+              }}>
+                {currentStreak >= 7 
+                  ? `🏆 ${currentStreak} days strong! You're showing incredible leadership!` 
+                  : currentStreak >= 1 
+                    ? `💪 Great start! ${currentStreak} day${currentStreak > 1 ? 's' : ''} of modeling good habits!`
+                    : "Start your reading journey to inspire your children!"
+                }
+              </p>
+            </div>
           </div>
-        </div>
+        </PremiumGate>
 
         {/* XP Reward Popup */}
         {showXPReward && (
