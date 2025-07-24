@@ -1,4 +1,4 @@
-// components/parent/dna-lab/modals/CompatibilityModal.js - IMPROVED WITH MERGED STRATEGIES TAB
+// components/parent/dna-lab/modals/CompatibilityModal.js - FIXED HOOKS ISSUE
 import { useState, useCallback } from 'react'
 import { luxTheme } from '../../../../utils/theme'
 import { getCompatibilityInsights, getParentGuidanceForChild, enhancedCompatibilityMatrix } from '../../../../utils/compatibilityInsights'
@@ -34,8 +34,8 @@ export default function CompatibilityModal({ student, parentDNA, onClose }) {
     })
   }, [])
 
-  // Expandable Section Component - fixed with proper event handling
-  const ExpandableSection = useCallback(({ 
+  // Expandable Section Component - FIXED: Now a proper React component
+  const ExpandableSection = ({ 
     id, 
     title, 
     icon, 
@@ -140,7 +140,7 @@ export default function CompatibilityModal({ student, parentDNA, onClose }) {
         )}
       </div>
     )
-  }, [toggleSection])
+  }
 
   if (!student || !parentDNA) return null
 
@@ -518,7 +518,7 @@ export default function CompatibilityModal({ student, parentDNA, onClose }) {
                       borderRadius: '8px',
                       borderLeft: '4px solid #F59E0B'
                     }}>
-                      "{enhancedCompat.realityCheck.theClash}"
+                      &quot;{enhancedCompat.realityCheck.theClash}&quot;
                     </div>
                   </div>
 
@@ -574,7 +574,7 @@ export default function CompatibilityModal({ student, parentDNA, onClose }) {
                     lineHeight: '1.5',
                     margin: 0
                   }}>
-                    Every parent-child reading combination is unique and wonderful. Your {parentData?.name || parentDNA.details.name} approach brings special gifts to supporting {student.firstName}'s reading journey.
+                    Every parent-child reading combination is unique and wonderful. Your {parentData?.name || parentDNA.details.name} approach brings special gifts to supporting {student.firstName}&apos;s reading journey.
                   </p>
                 </div>
               )}
@@ -620,7 +620,7 @@ export default function CompatibilityModal({ student, parentDNA, onClose }) {
                   color: luxTheme.textPrimary,
                   margin: '0 0 8px 0'
                 }}>
-                  {student.firstName}'s Reading DNA: {parentGuidance?.fullCode || 'Unique Reader'}
+                  {student.firstName}&apos;s Reading DNA: {parentGuidance?.fullCode || 'Unique Reader'}
                 </h4>
                 <p style={{
                   fontSize: '13px',
@@ -679,7 +679,7 @@ export default function CompatibilityModal({ student, parentDNA, onClose }) {
                     margin: '0 0 16px 0',
                     textAlign: 'center'
                   }}>
-                    🌟 Strategies for {student.firstName}'s Special Traits
+                    🌟 Strategies for {student.firstName}&apos;s Special Traits
                   </h4>
                   
                   <div style={{ display: 'grid', gap: '12px' }}>
@@ -950,7 +950,7 @@ export default function CompatibilityModal({ student, parentDNA, onClose }) {
                     color: luxTheme.textPrimary,
                     margin: '0 0 12px 0'
                   }}>
-                    Supporting {student.firstName}'s Core Reading Style
+                    Supporting {student.firstName}&apos;s Core Reading Style
                   </h4>
                   <p style={{
                     fontSize: '13px',

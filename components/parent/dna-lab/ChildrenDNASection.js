@@ -82,7 +82,7 @@ export default function ChildrenDNASection({
               margin: '0 0 8px 0',
               fontFamily: 'Didot, "Times New Roman", serif'
             }}>
-              Your Family's Reading DNA
+              Your Family&apos;s Reading DNA
             </h3>
             
             <div style={{
@@ -209,7 +209,7 @@ export default function ChildrenDNASection({
                 maxWidth: '300px',
                 margin: '0 auto'
               }}>
-                Connect with your children's accounts to see their reading personalities and get personalized parenting strategies!
+                Connect with your children&apos;s accounts to see their reading personalities and get personalized parenting strategies!
               </p>
             </div>
           )}

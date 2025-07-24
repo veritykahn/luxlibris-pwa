@@ -275,7 +275,7 @@ export default function FamilyActivitiesModal({ familyRecommendations, parentDNA
               fontSize: '11px',
               color: luxTheme.textSecondary
             }}>
-              Every small action builds your family's reading culture
+              Every small action builds your family&apos;s reading culture
             </div>
           </div>
         </div>

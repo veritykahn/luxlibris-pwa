@@ -229,7 +229,7 @@ export default function ChildDetailModal({ student, parentDNA, onClose }) {
               fontWeight: '600',
               fontFamily: 'Didot, "Times New Roman", serif'
             }}>
-              {student.firstName}'s Reading DNA
+              {student.firstName}&apos;s Reading DNA
             </h3>
             
             <div style={{
@@ -476,7 +476,7 @@ export default function ChildDetailModal({ student, parentDNA, onClose }) {
               margin: 0,
               lineHeight: '1.4'
             }}>
-              Every reader is unique! Understanding {student.firstName}'s natural {parentGuidance.childType} style 
+              Every reader is unique! Understanding {student.firstName}&apos;s natural {parentGuidance.childType} style 
               helps you support their reading journey in ways that feel natural and exciting to them.
             </p>
           </div>

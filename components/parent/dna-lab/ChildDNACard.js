@@ -262,7 +262,7 @@ export default function ChildDNACard({ student, parentDNA, onUnlockDNA }) {
                 textAlign: 'center'
               }}>
                 <span style={{ fontSize: '16px', marginRight: '8px' }}>🎯</span>
-                <strong>This Week's Focus:</strong> {(parentGuidance?.keyStrategies || compatibility.tips || [])[0] || 'Try reading together and notice what excites them most!'}
+                <strong>This Week&apos;s Focus:</strong> {(parentGuidance?.keyStrategies || compatibility.tips || [])[0] || 'Try reading together and notice what excites them most!'}
               </div>
             </div>
 
@@ -321,7 +321,7 @@ export default function ChildDNACard({ student, parentDNA, onUnlockDNA }) {
                   boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
                 }}
               >
-                🧬 Child's DNA
+                🧬 Child&apos;s DNA
               </button>
             </div>
 
@@ -571,7 +571,7 @@ export default function ChildDNACard({ student, parentDNA, onUnlockDNA }) {
                 maxWidth: '280px',
                 margin: '0 auto'
               }}>
-                {student.firstName} can now discover their Reading DNA! They'll find the assessment in their student dashboard under "Lux DNA Lab."
+                {student.firstName} can now discover their Reading DNA! They&apos;ll find the assessment in their student dashboard under &quot;Lux DNA Lab.&quot;
               </div>
             </div>
           ) : (

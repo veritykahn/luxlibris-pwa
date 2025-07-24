@@ -86,7 +86,7 @@ export default function AssessmentModal({
             lineHeight: '1.5',
             marginBottom: '24px'
           }}>
-            Discover your natural parenting style and unlock personalized strategies for supporting your family's reading journey!
+            Discover your natural parenting style and unlock personalized strategies for supporting your family&apos;s reading journey!
           </p>
 
           <div style={{
@@ -406,7 +406,7 @@ export default function AssessmentModal({
                 fontWeight: '600',
                 color: luxTheme.textPrimary
               }}>
-                You're halfway there! Your parenting DNA is taking shape...
+                You&apos;re halfway there! Your parenting DNA is taking shape...
               </div>
             </div>
           )}

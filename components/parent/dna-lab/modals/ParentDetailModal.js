@@ -4,6 +4,7 @@ import { luxTheme } from '../../../../utils/theme'
 import { enhancedParentTypes } from '../../../../utils/enhancedParentTypes'
 
 export default function ParentDetailModal({ parentDNA, onClose }) {
+  // ALL HOOKS MUST BE CALLED FIRST - BEFORE ANY EARLY RETURNS
   const [activeTab, setActiveTab] = useState('core')
   const [expandedSections, setExpandedSections] = useState({})
   const [starredStrategies, setStarredStrategies] = useState(new Set())
@@ -13,28 +14,21 @@ export default function ParentDetailModal({ parentDNA, onClose }) {
   const [showDismissed, setShowDismissed] = useState(false)
   const [hoveredButton, setHoveredButton] = useState(null)
 
-  // Early returns with proper error handling
-  if (!parentDNA?.details) {
-    console.warn('ParentDetailModal: parentDNA or parentDNA.details is missing')
-    return null
-  }
-
-  const enhancedType = enhancedParentTypes[parentDNA.type]
-  if (!enhancedType) {
-    console.warn(`ParentDetailModal: enhancedType not found for type: ${parentDNA.type}`)
-    return null
-  }
+  // Get enhancedType early for hooks
+  const enhancedType = enhancedParentTypes[parentDNA?.type]
 
   // Memoized helper functions
   const getDailyBehaviors = useMemo(() => {
+    if (!enhancedType) return []
     return enhancedType.psychologicalCore?.dailyBehaviors || 
            enhancedType.psychologyDeepDive?.howThisShowsDaily || 
            []
   }, [enhancedType])
 
   const getStrengths = useMemo(() => {
-    return parentDNA.details.strengths?.slice(0, 3) || []
-  }, [parentDNA.details.strengths])
+    if (!parentDNA?.details?.strengths) return []
+    return parentDNA.details.strengths.slice(0, 3)
+  }, [parentDNA?.details?.strengths])
 
   // Toggle expandable sections
   const toggleSection = useCallback((sectionId) => {
@@ -124,7 +118,7 @@ export default function ParentDetailModal({ parentDNA, onClose }) {
   }, [])
 
   // Strategy Card Component with fixes
-  const StrategyCard = ({ strategy, strategyId, category, isDismissed = false }) => {
+  const StrategyCard = useCallback(({ strategy, strategyId, category, isDismissed = false }) => {
     const isStarred = starredStrategies.has(strategyId)
     const isTried = triedStrategies.has(strategyId)
     const hasNote = personalNotes[strategyId]?.trim()
@@ -262,6 +256,17 @@ export default function ParentDetailModal({ parentDNA, onClose }) {
         )}
       </div>
     )
+  }, [starredStrategies, triedStrategies, personalNotes, hoveredButton, toggleStar, toggleTried, toggleDismiss, updateNote, handleMouseEnter, handleMouseLeave])
+
+  // NOW WE CAN DO EARLY RETURNS AFTER ALL HOOKS ARE CALLED
+  if (!parentDNA?.details) {
+    console.warn('ParentDetailModal: parentDNA or parentDNA.details is missing')
+    return null
+  }
+
+  if (!enhancedType) {
+    console.warn(`ParentDetailModal: enhancedType not found for type: ${parentDNA.type}`)
+    return null
   }
 
   return (
@@ -552,7 +557,7 @@ export default function ParentDetailModal({ parentDNA, onClose }) {
                   lineHeight: '1.4',
                   margin: 0
                 }}>
-                  Self-awareness is a superpower. Click what you're curious about - there's no pressure to explore everything. This is your personal mirror to dip into when you need insight.
+                  Self-awareness is a superpower. Click what you&apos;re curious about - there&apos;s no pressure to explore everything. This is your personal mirror to dip into when you need insight.
                 </p>
               </div>
             
@@ -672,7 +677,7 @@ export default function ParentDetailModal({ parentDNA, onClose }) {
                         margin: 0,
                         fontStyle: 'italic'
                       }}>
-                        {enhancedType.psychologicalCore?.stressResponse || enhancedType.psychologyDeepDive?.underStress || 'Understanding how you respond under pressure helps you recognize when to step back and recalibrate.'}
+                        {enhancedType.psychologicalCore?.stressResponse || enhancedType.psychologyDeepDive?.underStress ||                         'Understanding how you respond under pressure helps you recognize when to step back and recalibrate.'}
                       </p>
                     </div>
                   )}
@@ -702,7 +707,7 @@ export default function ParentDetailModal({ parentDNA, onClose }) {
                           Your Natural Strengths
                         </div>
                         <div style={{ fontSize: '11px', color: luxTheme.textSecondary }}>
-                          Click to see what you're naturally good at
+                          Click to see what you&apos;re naturally good at
                         </div>
                       </div>
                     </div>
@@ -769,14 +774,14 @@ export default function ParentDetailModal({ parentDNA, onClose }) {
                   color: '#15803D',
                   marginBottom: '4px'
                 }}>
-                  Interactive strategies you can try, save, and personalize. Use what works, dismiss what doesn't.
+                  Interactive strategies you can try, save, and personalize. Use what works, dismiss what doesn&apos;t.
                 </p>
                 <p style={{
                   fontSize: '11px',
                   color: '#10B981',
                   fontStyle: 'italic'
                 }}>
-                  ⭐ Star what resonates • ✅ Track what you've tried • ✖️ Dismiss what doesn't fit
+                  ⭐ Star what resonates • ✅ Track what you&apos;ve tried • ✖️ Dismiss what doesn&apos;t fit
                 </p>
               </div>
 
@@ -1008,7 +1013,7 @@ export default function ParentDetailModal({ parentDNA, onClose }) {
                   color: '#EA580C',
                   marginBottom: '4px'
                 }}>
-                  Your personal support library - dip in when you need it. No need to read everything, just explore what's relevant right now.
+                  Your personal support library - dip in when you need it. No need to read everything, just explore what&apos;s relevant right now.
                 </p>
                 <p style={{
                   fontSize: '11px',
@@ -1117,7 +1122,7 @@ export default function ParentDetailModal({ parentDNA, onClose }) {
                                   lineHeight: '1.3',
                                   borderLeft: '3px solid #10B981'
                                 }}>
-                                  "{phrase}"
+                                  &quot;{phrase}&quot;
                                 </div>
                               ))}
                             </div>
@@ -1143,7 +1148,7 @@ export default function ParentDetailModal({ parentDNA, onClose }) {
                                   lineHeight: '1.3',
                                   borderLeft: '3px solid #EF4444'
                                 }}>
-                                  "{phrase}"
+                                  &quot;{phrase}&quot;
                                 </div>
                               ))}
                             </div>
@@ -1279,7 +1284,7 @@ export default function ParentDetailModal({ parentDNA, onClose }) {
                                   lineHeight: '1.3',
                                   borderLeft: '3px solid #10B981'
                                 }}>
-                                  "{phrase}"
+                                  &quot;{phrase}&quot;
                                 </div>
                               ))}
                             </div>
@@ -1305,7 +1310,7 @@ export default function ParentDetailModal({ parentDNA, onClose }) {
                                   lineHeight: '1.3',
                                   borderLeft: '3px solid #EF4444'
                                 }}>
-                                  "{phrase}"
+                                  &quot;{phrase}&quot;
                                 </div>
                               ))}
                             </div>
@@ -1343,7 +1348,7 @@ export default function ParentDetailModal({ parentDNA, onClose }) {
                           Book Choice Struggles
                         </div>
                         <div style={{ fontSize: '11px', color: luxTheme.textSecondary }}>
-                          When they can't decide what to read
+                          When they can&apos;t decide what to read
                         </div>
                       </div>
                     </div>
@@ -1572,7 +1577,7 @@ export default function ParentDetailModal({ parentDNA, onClose }) {
                   color: luxTheme.textPrimary,
                   margin: '0 0 8px 0'
                 }}>
-                  You're Doing Better Than You Think
+                  You&apos;re Doing Better Than You Think
                 </h3>
                 <p style={{
                   fontSize: '13px',
