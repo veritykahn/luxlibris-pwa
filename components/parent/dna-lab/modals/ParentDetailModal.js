@@ -117,14 +117,14 @@ export default function ParentDetailModal({ parentDNA, onClose }) {
     setHoveredButton(null)
   }, [])
 
-  // Strategy Card Component with fixes
-  const StrategyCard = useCallback(({ strategy, strategyId, category, isDismissed = false }) => {
+  // Strategy Card Component - moved to regular function (not useCallback)
+  const StrategyCard = ({ strategy, strategyId, category, isDismissed = false }) => {
     const isStarred = starredStrategies.has(strategyId)
     const isTried = triedStrategies.has(strategyId)
     const hasNote = personalNotes[strategyId]?.trim()
 
     // Memoized styles to avoid recreation on each render
-    const cardStyle = useMemo(() => ({
+    const cardStyle = {
       backgroundColor: isStarred ? `${luxTheme.accent}20` : luxTheme.surface,
       borderRadius: '12px',
       padding: '16px',
@@ -133,9 +133,9 @@ export default function ParentDetailModal({ parentDNA, onClose }) {
       opacity: isDismissed ? 0.6 : 1,
       marginBottom: '12px',
       transition: 'all 0.2s ease'
-    }), [isStarred, isDismissed])
+    }
 
-    const getButtonStyle = useCallback((buttonType, isActive) => {
+    const getButtonStyle = (buttonType, isActive) => {
       const baseStyle = {
         backgroundColor: 'transparent',
         border: 'none',
@@ -170,7 +170,7 @@ export default function ParentDetailModal({ parentDNA, onClose }) {
       }
 
       return baseStyle
-    }, [strategyId, isDismissed, hoveredButton])
+    }
 
     return (
       <div style={cardStyle}>
@@ -256,7 +256,7 @@ export default function ParentDetailModal({ parentDNA, onClose }) {
         )}
       </div>
     )
-  }, [starredStrategies, triedStrategies, personalNotes, hoveredButton, toggleStar, toggleTried, toggleDismiss, updateNote, handleMouseEnter, handleMouseLeave])
+  }
 
   // NOW WE CAN DO EARLY RETURNS AFTER ALL HOOKS ARE CALLED
   if (!parentDNA?.details) {
@@ -646,7 +646,7 @@ export default function ParentDetailModal({ parentDNA, onClose }) {
                       <span style={{ fontSize: '24px' }}>😰</span>
                       <div style={{ textAlign: 'left' }}>
                         <div style={{ fontSize: '14px', fontWeight: '600', color: luxTheme.textPrimary }}>
-                          When You're Under Pressure
+                          When You&apos;re Under Pressure
                         </div>
                         <div style={{ fontSize: '11px', color: luxTheme.textSecondary }}>
                           Understanding your stress patterns

@@ -1,4 +1,4 @@
-// components/parent/dna-lab/modals/ChildDetailModal.js - WITH EXPANDABLE SECTIONS
+// components/parent/dna-lab/modals/ChildDetailModal.js - FIXED VERSION
 import { useState, useCallback } from 'react'
 import { luxTheme } from '../../../../utils/theme'
 import { getCompatibilityInsights, getParentGuidanceForChild } from '../../../../utils/compatibilityInsights'
@@ -25,8 +25,8 @@ export default function ChildDetailModal({ student, parentDNA, onClose }) {
     })
   }, [])
 
-  // Expandable Section Component
-  const ExpandableSection = useCallback(({ 
+  // Expandable Section Component - Now a regular function component
+  const ExpandableSection = ({ 
     id, 
     title, 
     icon, 
@@ -131,7 +131,7 @@ export default function ChildDetailModal({ student, parentDNA, onClose }) {
         )}
       </div>
     )
-  }, [toggleSection])
+  }
 
   if (!student || !student.readingDNA || !parentDNA) return null
 
