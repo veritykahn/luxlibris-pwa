@@ -694,7 +694,7 @@ export default function ParentDnaLabDashboard() {
               fontFamily: 'Didot, serif',
               margin: '0 0 8px 0'
             }}>
-              Welcome to Your Family's Reading DNA Lab!
+              Welcome to Your Family&apos;s Reading DNA Lab!
             </h2>
             
             <p style={{
@@ -702,7 +702,7 @@ export default function ParentDnaLabDashboard() {
               margin: '0 0 12px 0',
               opacity: 0.9
             }}>
-              Discover your unique reading personality and unlock powerful insights about your children's learning styles
+              Discover your unique reading personality and unlock powerful insights about your children&apos;s learning styles
             </p>
           </div>
 
@@ -732,7 +732,7 @@ export default function ParentDnaLabDashboard() {
                 marginBottom: '20px',
                 lineHeight: '1.5'
               }}>
-                Take our science-inspired assessment to understand your parenting style and get personalized strategies for supporting your children's reading journey.
+                Take our science-inspired assessment to understand your parenting style and get personalized strategies for supporting your children&apos;s reading journey.
               </p>
               
               <div style={{
@@ -901,7 +901,7 @@ export default function ParentDnaLabDashboard() {
               alignItems: 'center',
               gap: '8px'
             }}>
-              <span>👨‍👩‍👧‍👦</span> Your Children's Reading DNA
+              <span>👨‍👩‍👧‍👦</span> Your Children&apos;s Reading DNA
             </h3>
             
             {linkedStudents.length > 0 ? (
@@ -1223,7 +1223,7 @@ export default function ParentDnaLabDashboard() {
                   lineHeight: '1.5'
                 }}>
                   This Reading DNA assessment is inspired by decades of research on motivation, parenting styles, and reading development. 
-                  However, it's not a rigorously tested diagnostic tool or scientific assessment. Think of it as a thoughtful framework 
+                  However, it&apos;s not a rigorously tested diagnostic tool or scientific assessment. Think of it as a thoughtful framework 
                   based on research insights, designed to spark curiosity and conversation.
                 </p>
               </div>
@@ -1268,7 +1268,7 @@ export default function ParentDnaLabDashboard() {
                 }}>
                   <li>A diagnostic assessment or psychological test</li>
                   <li>A definitive categorization of your parenting</li>
-                  <li>A judgment about "right" or "wrong" approaches</li>
+                  <li>A judgment about &quot;right&quot; or &quot;wrong&quot; approaches</li>
                   <li>A replacement for professional guidance when needed</li>
                   <li>A one-size-fits-all prescription</li>
                 </ul>
@@ -1288,7 +1288,7 @@ export default function ParentDnaLabDashboard() {
                   fontWeight: '600'
                 }}>
                   🌟 Remember: You know your child best! Use these insights as a starting point for exploration, 
-                  not as rigid rules. Every family's reading journey is unique and beautiful.
+                  not as rigid rules. Every family&apos;s reading journey is unique and beautiful.
                 </p>
               </div>
               
@@ -1309,7 +1309,7 @@ export default function ParentDnaLabDashboard() {
                   WebkitTapHighlightColor: 'transparent'
                 }}
               >
-                Got it! Let's explore
+                Got it! Let&apos;s explore
               </button>
             </div>
           </div>

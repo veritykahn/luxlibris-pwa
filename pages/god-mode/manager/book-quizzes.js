@@ -675,7 +675,7 @@ export default function BookQuizzesManager() {
                 </h3>
                 <p style={{ color: '#c4b5fd', marginBottom: '2rem' }}>
                   Archive book quizzes from a previous academic year. 
-                  This marks them as "archived" but keeps them in the database.
+                  This marks them as &quot;archived&quot; but keeps them in the database.
                 </p>
                 
                 <div style={{
@@ -716,7 +716,7 @@ export default function BookQuizzesManager() {
                   ➕ Add Single Book Quiz
                 </h3>
                 <p style={{ color: '#c4b5fd', marginBottom: '2rem' }}>
-                  Add a quiz for a specific book using the book's ID.
+                  Add a quiz for a specific book using the book&apos;s ID.
                 </p>
                 
                 <div style={{ 
@@ -794,7 +794,7 @@ export default function BookQuizzesManager() {
                   marginBottom: '2rem'
                 }}>
                   <strong style={{ color: '#3b82f6' }}>📝 Note:</strong>
-                  <span style={{ color: '#93c5fd' }}> You'll need to add the quiz questions manually in Firebase after creation.</span>
+                  <span style={{ color: '#93c5fd' }}> You&apos;ll need to add the quiz questions manually in Firebase after creation.</span>
                 </div>
                 
                 <button

@@ -653,7 +653,7 @@ export default function BooksManager() {
                   marginBottom: '2rem'
                 }}>
                   <strong style={{ color: '#10b981' }}>✅ Academic Year System:</strong>
-                  <span style={{ color: '#a7f3d0' }}> Books will be added with academicYear: "2025-26" and status: "active"</span>
+                  <span style={{ color: '#a7f3d0' }}> Books will be added with academicYear: &quot;2025-26&quot; and status: &quot;active&quot;</span>
                 </div>
                 
                 <button
@@ -684,7 +684,7 @@ export default function BooksManager() {
                 </h3>
                 <p style={{ color: '#c4b5fd', marginBottom: '2rem' }}>
                   Archive nominees from a previous academic year. 
-                  This marks them as "archived" status but keeps them in the database.
+                  This marks them as &quot;archived&quot; status but keeps them in the database.
                 </p>
                 
                 <div style={{
@@ -858,7 +858,7 @@ export default function BooksManager() {
                     📚 What This Setup Does:
                   </h4>
                   <ul style={{ color: '#a7f3d0', lineHeight: '1.6', margin: 0, paddingLeft: '1.5rem' }}>
-                    <li><strong>Adds Status Field:</strong> Sets all existing books to "active"</li>
+                    <li><strong>Adds Status Field:</strong> Sets all existing books to &quot;active&quot;</li>
                     <li><strong>Enables Archiving:</strong> Allows books to be archived in future years</li>
                     <li><strong>Preserves Existing Data:</strong> No existing fields are modified</li>
                     <li><strong>Academic Year Already Set:</strong> Skips books that already have status</li>
