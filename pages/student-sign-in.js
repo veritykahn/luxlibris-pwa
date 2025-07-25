@@ -1,4 +1,4 @@
-// pages/student-sign-in.js - FIXED: No manual redirects, wait for AuthContext
+// pages/student-sign-in.js - SIMPLIFIED: No manual redirects, wait for AuthContext
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
@@ -6,13 +6,10 @@ import Head from 'next/head';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, updateDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
-import { useAuth } from '../contexts/AuthContext';
 
 export default function StudentSignIn() {
   const router = useRouter();
-  const { userProfile, getDashboardUrl } = useAuth(); // Add AuthContext
   const [loading, setLoading] = useState(false);
-  const [waitingForProfile, setWaitingForProfile] = useState(false); // NEW STATE
   const [error, setError] = useState('');
   const [isNewAccount, setIsNewAccount] = useState(false);
   const [formData, setFormData] = useState({
@@ -35,27 +32,6 @@ export default function StudentSignIn() {
       setIsNewAccount(true);
     }
   }, [router.query]);
-
-  // FIXED: Wait for userProfile to load, then redirect
-  useEffect(() => {
-    if (waitingForProfile && userProfile) {
-      console.log('✅ Student profile loaded, redirecting...');
-      const dashboardUrl = getDashboardUrl();
-      router.push(dashboardUrl);
-    }
-  }, [waitingForProfile, userProfile, getDashboardUrl, router]);
-
-  // FIXED: Safety timeout if profile takes too long
-  useEffect(() => {
-    if (waitingForProfile) {
-      const timeout = setTimeout(() => {
-        console.warn('⚠️ Profile loading timeout, redirecting to fallback');
-        router.push('/student-dashboard');
-      }, 8000); // 8 second timeout
-
-      return () => clearTimeout(timeout);
-    }
-  }, [waitingForProfile, router]);
 
   // Find student record by username and teacher code
   const findStudentByUsernameAndTeacherCode = async (username, teacherCode) => {
@@ -208,107 +184,24 @@ export default function StudentSignIn() {
         return;
       }
 
-      // FIXED: Step 5: After successful authentication, wait for profile
-      console.log('🎉 Sign-in completed successfully! Waiting for profile to load...');
-      setLoading(false);
-      setWaitingForProfile(true);
-      // REMOVED: router.push('/student-dashboard');
+      // 🔧 SIMPLIFIED: Just redirect - AuthContext will handle profile loading
+      console.log('🎉 Sign-in completed successfully! Redirecting to dashboard...');
+      
+      // Small delay to ensure database write completes, then redirect
+      setTimeout(() => {
+        router.push('/student-dashboard');
+      }, 1000);
 
     } catch (error) {
       console.error('❌ Unexpected sign-in error:', error);
       setError('An unexpected error occurred. Please try again or contact your teacher.');
       setLoading(false);
-      setWaitingForProfile(false); // Reset waiting state on error
     }
   };
 
   const handleBack = () => {
     router.push('/role-selector');
   };
-
-  // FIXED: Show loading state while waiting for profile
-  if (waitingForProfile) {
-    return (
-      <>
-        <Head>
-          <title>Loading Account - Lux Libris</title>
-          <meta name="description" content="Loading your student dashboard" />
-          <link rel="icon" href="/images/lux_libris_logo.png" />
-          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        </Head>
-
-        <div style={{
-          minHeight: '100vh',
-          background: 'linear-gradient(135deg, #FFFCF5 0%, #ADD4EA 50%, #C3E0DE 100%)',
-          fontFamily: 'system-ui, -apple-system, sans-serif',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '1rem'
-        }}>
-          <div style={{
-            maxWidth: '28rem',
-            width: '100%',
-            background: 'white',
-            borderRadius: '1.5rem',
-            padding: 'clamp(1.5rem, 5vw, 2.5rem)',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-            textAlign: 'center'
-          }}>
-            <div style={{
-              width: '4rem',
-              height: '4rem',
-              background: 'linear-gradient(135deg, #ADD4EA, #C3E0DE)',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 1.5rem',
-              fontSize: '1.75rem'
-            }}>
-              ⏳
-            </div>
-            
-            <h1 style={{
-              fontSize: 'clamp(1.25rem, 5vw, 1.5rem)',
-              fontWeight: 'bold',
-              color: '#223848',
-              margin: '0 0 1rem 0',
-              fontFamily: 'Georgia, serif'
-            }}>
-              Loading Your Reading Journey...
-            </h1>
-            
-            <p style={{
-              color: '#6b7280',
-              fontSize: 'clamp(0.875rem, 3vw, 1rem)',
-              margin: '0 0 2rem 0',
-              lineHeight: '1.4'
-            }}>
-              Setting up your personalized dashboard
-            </p>
-
-            <div style={{
-              width: '3rem',
-              height: '3rem',
-              border: '4px solid #e5e7eb',
-              borderTop: '4px solid #ADD4EA',
-              borderRadius: '50%',
-              animation: 'spin 1s linear infinite',
-              margin: '0 auto'
-            }}></div>
-          </div>
-        </div>
-
-        <style jsx>{`
-          @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-          }
-        `}</style>
-      </>
-    );
-  }
 
   return (
     <>

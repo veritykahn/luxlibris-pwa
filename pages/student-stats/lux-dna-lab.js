@@ -15,6 +15,13 @@ export default function LuxDnaLab() {
   const [studentData, setStudentData] = useState(null);
   const [currentTheme, setCurrentTheme] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // STEP 2: ADDED THESE NEW STATE VARIABLES
+  const [readingDnaQuestions, setReadingDnaQuestions] = useState([]);
+  const [readingDnaTypes, setReadingDnaTypes] = useState({});
+  const [studentFriendlyModifiers, setStudentFriendlyModifiers] = useState({});
+  const [assessmentLoading, setAssessmentLoading] = useState(true);
+  
   const [quizzes, setQuizzes] = useState([]);
   const [nomineeQuizzes, setNomineeQuizzes] = useState([]);
   const [masterNominees, setMasterNominees] = useState([]);
@@ -45,8 +52,10 @@ export default function LuxDnaLab() {
   const [showNavMenu, setShowNavMenu] = useState(false);
   const [showStatsDropdown, setShowStatsDropdown] = useState(false);
   const [showReadingDnaInfoModal, setShowReadingDnaInfoModal] = useState(false);
-const [showLearningStyleModal, setShowLearningStyleModal] = useState(false);    // ← ADD THIS
-const [isUnlockCelebrating, setIsUnlockCelebrating] = useState(false);           // ← ADD THIS
+  const [showLearningStyleModal, setShowLearningStyleModal] = useState(false);
+  const [isUnlockCelebrating, setIsUnlockCelebrating] = useState(false);
+  const [isSaintResultsExpanded, setIsSaintResultsExpanded] = useState(false);
+const [isNomineeResultsExpanded, setIsNomineeResultsExpanded] = useState(false);
 
   // Theme definitions (consistent with all other pages)
   const themes = useMemo(() => ({
@@ -132,936 +141,73 @@ const [isUnlockCelebrating, setIsUnlockCelebrating] = useState(false);          
     }
   }), []);
 
-  // Student Reading DNA Questions (Research-Inspired & Expanded)
-const readingDnaQuestions = [
-  {
-    id: 'intrinsic_motivation',
-    question: 'What makes reading feel most satisfying to you?',
-    researchBase: 'Inspired by what scientists know about reading motivation',
-    options: [
-      { 
-        id: 'creative_expression', 
-        text: 'When stories inspire me to imagine, draw, or create something new',
-        motivationType: 'creative_explorer'
-      },
-      { 
-        id: 'learning_discovery', 
-        text: 'When I learn fascinating new facts or understand something better',
-        motivationType: 'curious_investigator'
-      },
-      { 
-        id: 'social_sharing', 
-        text: 'When I can share exciting stories with friends or family',
-        motivationType: 'social_connector',
-        modifierHints: ['S']
-      },
-      { 
-        id: 'personal_accomplishment', 
-        text: 'When I finish a book that seemed challenging at first',
-        motivationType: 'challenge_seeker'
-      },
-      { 
-        id: 'independent_choice', 
-        text: 'When I get to pick exactly what I want to read',
-        motivationType: 'freedom_reader'
-      },
-      { 
-  id: 'independent_choice', 
-  text: 'When I get to pick exactly what I want to read',
-  motivationType: 'freedom_reader',
-  modifierHints: ['I'] // ← ADD THIS
-},
-      { 
-        id: 'deep_thinking', 
-        text: 'When it makes me think deeply about life and myself',
-        motivationType: 'reflective_thinker'
-      }
-    ]
-  },
-  {
-    id: 'autonomy_preference',
-    question: 'How do you like to choose what to read?',
-    options: [
-      { 
-        id: 'browse_discover', 
-        text: 'I love browsing and discovering books that catch my interest',
-        motivationType: 'freedom_reader'
-      },
-      { 
-        id: 'topic_driven', 
-        text: 'I pick books about subjects I\'m curious to learn about',
-        motivationType: 'curious_investigator',
-        modifierHints: ['P']
-      },
-      { 
-        id: 'social_recommendations', 
-        text: 'I like getting recommendations from people I trust',
-        motivationType: 'social_connector',
-        modifierHints: ['S']
-      },
-      { 
-        id: 'mood_based', 
-        text: 'I choose based on how I\'m feeling and what seems right',
-        motivationType: 'reflective_thinker'
-      },
-      { 
-  id: 'browse_discover', 
-  text: 'I love browsing and discovering books that catch my interest',
-  motivationType: 'freedom_reader',
-  modifierHints: ['I'] // ← ADD THIS
-},
-      { 
-        id: 'challenge_seeking', 
-        text: 'I look for books that will challenge me and help me grow',
-        motivationType: 'challenge_seeker'
-      },
-      { 
-        id: 'creative_inspiration', 
-        text: 'I choose books that might inspire my own creative projects',
-        motivationType: 'creative_explorer'
-      }
-    ]
-  },
-  {
-    id: 'optimal_challenge',
-    question: 'What makes a book feel "just right" for you?',
-    options: [
-      { 
-        id: 'creative_potential', 
-        text: 'When it gives me lots of ideas for my own creations',
-        motivationType: 'creative_explorer'
-      },
-      { 
-        id: 'independence_choice', 
-        text: 'When I get to read it at my own pace without pressure',
-        motivationType: 'freedom_reader'
-      },
-      { 
-        id: 'discussion_worthy', 
-        text: 'When it\'s something I\'ll want to talk about with others',
-        motivationType: 'social_connector',
-        modifierHints: ['S']
-      },
-      { 
-        id: 'achievable_stretch', 
-        text: 'When it\'s challenging but I know I can conquer it',
-        motivationType: 'challenge_seeker'
-      },
-      { 
-        id: 'learning_opportunity', 
-        text: 'When it teaches me amazing things I really want to know',
-        motivationType: 'curious_investigator',
-        modifierHints: ['P']
-      },
-      { 
-        id: 'meaningful_connection', 
-        text: 'When it connects to my life and makes me think deeply',
-        motivationType: 'reflective_thinker'
-      }
-    ]
-  },
-  {
-    id: 'reading_environment',
-    question: 'Where and when do you read best?',
-    options: [
-      { 
-        id: 'quiet_focus', 
-        text: 'Somewhere quiet where I can really concentrate and learn',
-        motivationType: 'curious_investigator'
-      },
-      { 
-        id: 'flexible_freedom', 
-        text: 'Wherever I want - I like being free to read anywhere',
-        motivationType: 'freedom_reader'
-      },
-      { 
-        id: 'social_proximity', 
-        text: 'Near family or friends, even if we\'re reading different books',
-        motivationType: 'social_connector',
-        modifierHints: ['S']
-      },
-      { 
-        id: 'personal_retreat', 
-        text: 'In my own special reading spot where I can think deeply',
-        motivationType: 'reflective_thinker'
-      },
-      { 
-        id: 'inspiring_spaces', 
-        text: 'In cozy or beautiful places that spark my imagination',
-        motivationType: 'creative_explorer'
-      },
-      { 
-        id: 'achievement_zone', 
-        text: 'Somewhere I can focus on conquering difficult books',
-        motivationType: 'challenge_seeker'
-      }
-    ]
-  },
-  {
-    id: 'meaning_making',
-    question: 'What do you do when you read something really interesting?',
-    options: [
-      { 
-        id: 'create_express', 
-        text: 'I want to create something - art, stories, or projects',
-        motivationType: 'creative_explorer'
-      },
-      { 
-        id: 'research_extend', 
-        text: 'I want to learn even more about that topic',
-        motivationType: 'curious_investigator',
-        modifierHints: ['P']
-      },
-      { 
-        id: 'challenge_harder', 
-        text: 'I want to try reading something even more challenging',
-        motivationType: 'challenge_seeker'
-      },
-      { 
-        id: 'reflect_connect', 
-        text: 'I think about how it connects to my life and experiences',
-        motivationType: 'reflective_thinker'
-      },
-      { 
-        id: 'share_discuss', 
-        text: 'I want to share it with someone and hear their thoughts',
-        motivationType: 'social_connector',
-        modifierHints: ['S']
-      },
-      { 
-        id: 'explore_more', 
-        text: 'I want to find more books like it on my own',
-        motivationType: 'freedom_reader'
-      }
-    ]
-  },
-  {
-    id: 'difficulty_response',
-    question: 'When reading gets challenging, what helps you most?',
-    options: [
-      { 
-        id: 'creative_approach', 
-        text: 'Trying different ways to understand, like drawing or acting it out',
-        motivationType: 'creative_explorer'
-      },
-      { 
-        id: 'own_methods', 
-        text: 'Finding my own way to figure it out without asking for help',
-        motivationType: 'freedom_reader'
-      },
-      { 
-        id: 'collaborative_support', 
-        text: 'Talking it through with someone who can help me understand',
-        motivationType: 'social_connector',
-        modifierHints: ['S']
-      },
-      { 
-        id: 'persistent_effort', 
-        text: 'Sticking with it because I love conquering hard things',
-        motivationType: 'challenge_seeker'
-      },
-      { 
-        id: 'strategic_learning', 
-        text: 'Breaking it down step by step and researching more',
-        motivationType: 'curious_investigator'
-      },
-      { 
-        id: 'thoughtful_reflection', 
-        text: 'Taking time to think deeply about what it means',
-        motivationType: 'reflective_thinker'
-      }
-    ]
-  },
-  {
-    id: 'confusion_response',
-    question: 'How do you feel when you read something and don\'t understand it right away?',
-    options: [
-      {
-        id: 'excited_puzzle',
-        text: 'Excited - it\'s like a fun puzzle to solve!',
-        motivationType: 'challenge_seeker'
-      },
-      {
-        id: 'creative_interpretation',
-        text: 'Curious - I wonder what it could mean and imagine possibilities',
-        motivationType: 'creative_explorer'
-      },
-      {
-        id: 'research_mode',
-        text: 'Motivated to look up more information to understand it',
-        motivationType: 'curious_investigator'
-      },
-      {
-        id: 'need_clarity',
-        text: 'I prefer to ask for help so I can understand it perfectly',
-        motivationType: 'reflective_thinker',
-        modifierHints: ['A', 'S']
-      },
-      {
-  id: 'excited_puzzle',
-  text: 'Excited - it\'s like a fun puzzle to solve!',
-  motivationType: 'challenge_seeker',
-  modifierHints: ['G'] // ← ADD THIS
-},
-{
-  id: 'reread_master',
-  text: 'I keep reading it until it makes complete sense to me',
-  motivationType: 'challenge_seeker',
-  modifierHints: ['A', 'R'] // ← UPDATE THIS
-},
-      {
-        id: 'reread_master',
-        text: 'I keep reading it until it makes complete sense to me',
-        motivationType: 'challenge_seeker',
-        modifierHints: ['A']
-      },
-      {
-        id: 'discuss_understanding',
-        text: 'I like to talk about it with others to figure it out together',
-        motivationType: 'social_connector',
-        modifierHints: ['S']
-      }
-    ]
-  },
-  {
-    id: 'book_completion_pride',
-    question: 'What makes you feel most proud about your reading?',
-    options: [
-      { 
-        id: 'creative_achievement', 
-        text: 'When I create something inspired by what I read',
-        motivationType: 'creative_explorer'
-      },
-      { 
-        id: 'any_completion', 
-        text: 'When I finish any book I\'ve chosen, no matter how long',
-        motivationType: 'freedom_reader',
-        modifierHints: ['E']
-      },
-      { 
-        id: 'connection_building', 
-        text: 'When reading helps me connect better with other people',
-        motivationType: 'social_connector'
-      },
-      { 
-        id: 'personal_growth', 
-        text: 'When reading helps me understand myself and the world better',
-        motivationType: 'reflective_thinker'
-      },
-      { 
-        id: 'practical_knowledge', 
-        text: 'When I learn something I can actually use in my life',
-        motivationType: 'curious_investigator',
-        modifierHints: ['P']
-      },
-      { 
-        id: 'difficult_conquest', 
-        text: 'When I finish books that seemed really hard at first',
-        motivationType: 'challenge_seeker'
-      }
-    ]
-  },
-  {
-    id: 'reading_confidence',
-    question: 'When do you feel most confident as a reader?',
-    options: [
-      {
-        id: 'solo_discovery',
-        text: 'When I discover amazing books completely on my own',
-        motivationType: 'freedom_reader'
-      },
-      {
-        id: 'creative_flow',
-        text: 'When reading gives me tons of creative ideas',
-        motivationType: 'creative_explorer'
-      },
-      {
-        id: 'shared_experience',
-        text: 'When I\'m reading along with friends or family',
-        motivationType: 'social_connector',
-        modifierHints: ['S']
-      },
-      {
-  id: 'solo_discovery',
-  text: 'When I discover amazing books completely on my own',
-  motivationType: 'freedom_reader',
-  modifierHints: ['I'] // ← ADD THIS
-},
-{
-  id: 'comfortable_level',
-  text: 'When I\'m reading books that feel just right for me',
-  motivationType: 'reflective_thinker',
-  modifierHints: ['E', 'F'] // ← UPDATE THIS
-},
-      {
-        id: 'comfortable_level',
-        text: 'When I\'m reading books that feel just right for me',
-        motivationType: 'reflective_thinker',
-        modifierHints: ['E']
-      },
-      {
-        id: 'expert_feeling',
-        text: 'When I\'m reading about topics I already know something about',
-        motivationType: 'curious_investigator',
-        modifierHints: ['P']
-      },
-      {
-        id: 'conquering_challenges',
-        text: 'When I\'m pushing through something difficult and succeeding',
-        motivationType: 'challenge_seeker'
-      }
-    ]
-  },
-  {
-    id: 'motivation_source',
-    question: 'What gets you most excited about reading?',
-    options: [
-      { 
-        id: 'knowledge_discovery', 
-        text: 'All the incredible things I can learn and understand',
-        motivationType: 'curious_investigator'
-      },
-      { 
-        id: 'complete_freedom', 
-        text: 'Having total freedom to read whatever I want, whenever I want',
-        motivationType: 'freedom_reader'
-      },
-      { 
-        id: 'overcome_challenges', 
-        text: 'Proving I can read anything, no matter how hard it seems',
-        motivationType: 'challenge_seeker'
-      },
-      { 
-        id: 'personal_journey', 
-        text: 'How reading helps me grow and discover who I am',
-        motivationType: 'reflective_thinker'
-      },
-      { 
-        id: 'creative_possibilities', 
-        text: 'All the amazing worlds and ideas I can explore and create from',
-        motivationType: 'creative_explorer'
-      },
-      { 
-        id: 'shared_experiences', 
-        text: 'Being able to share stories and connect with others through books',
-        motivationType: 'social_connector',
-        modifierHints: ['S']
-      }
-    ]
-  },
-  {
-    id: 'reading_identity',
-    question: 'How do you see yourself as a reader?',
-    options: [
-      { 
-        id: 'creative_visionary', 
-        text: 'As someone who uses books to fuel my imagination and creativity',
-        motivationType: 'creative_explorer'
-      },
-      { 
-        id: 'knowledge_seeker', 
-        text: 'As someone who reads to learn and understand the world',
-        motivationType: 'curious_investigator'
-      },
-      { 
-        id: 'community_reader', 
-        text: 'As someone who shares the joy of reading with others',
-        motivationType: 'social_connector',
-        modifierHints: ['S']
-      },
-      { 
-        id: 'challenge_champion', 
-        text: 'As someone who conquers difficult books and grows stronger',
-        motivationType: 'challenge_seeker'
-      },
-      { 
-        id: 'independent_explorer', 
-        text: 'As someone who charts my own reading adventure',
-        motivationType: 'freedom_reader'
-      },
-      { 
-        id: 'thoughtful_philosopher', 
-        text: 'As someone who reads to understand life and myself better',
-        motivationType: 'reflective_thinker'
-      }
-    ]
-  },
-  {
-    id: 'reading_success',
-    question: 'When do you feel most successful as a reader?',
-    options: [
-      { 
-        id: 'creative_output', 
-        text: 'When my reading inspires me to make something amazing',
-        motivationType: 'creative_explorer'
-      },
-      { 
-        id: 'knowledge_application', 
-        text: 'When I can use what I learned to understand something new',
-        motivationType: 'curious_investigator'
-      },
-      { 
-        id: 'social_impact', 
-        text: 'When I help someone else discover a book they love',
-        motivationType: 'social_connector'
-      },
-      { 
-        id: 'challenge_victory', 
-        text: 'When I finish a book that seemed too hard for me',
-        motivationType: 'challenge_seeker'
-      },
-      { 
-        id: 'autonomous_discovery', 
-        text: 'When I find an incredible book completely on my own',
-        motivationType: 'freedom_reader'
-      },
-      { 
-        id: 'personal_insight', 
-        text: 'When reading helps me understand something important about life',
-        motivationType: 'reflective_thinker'
-      }
-    ]
-  },
-  {
-  id: 'reading_environment_focus',
-  question: 'What kind of reading environment helps you focus best?',
-  options: [
-    {
-      id: 'quiet_dedicated',
-      text: 'A quiet, dedicated reading spot with no distractions',
-      motivationType: 'reflective_thinker',
-      modifierHints: ['F', 'R']
-    },
-    {
-      id: 'anywhere_flexible',
-      text: 'I can read anywhere - I don\'t need special conditions',
-      motivationType: 'freedom_reader',
-      modifierHints: ['I']
-    },
-    {
-      id: 'social_nearby',
-      text: 'Where family or friends are nearby, even if busy',
-      motivationType: 'social_connector',
-      modifierHints: ['S']
-    },
-    {
-      id: 'routine_spot',
-      text: 'The same comfortable spot at the same time each day',
-      motivationType: 'reflective_thinker',
-      modifierHints: ['R']
-    },
-    {
-      id: 'inspiring_changing',
-      text: 'Different inspiring places that spark my creativity',
-      motivationType: 'creative_explorer',
-      modifierHints: ['G']
-    },
-    {
-      id: 'practical_setting',
-      text: 'Where I can easily look things up or take notes',
-      motivationType: 'curious_investigator',
-      modifierHints: ['P']
-    }
-  ]
-},
-{
-  id: 'challenge_approach',
-  question: 'How do you feel about trying books that seem difficult?',
-  options: [
-    {
-      id: 'embrace_challenge',
-      text: 'Excited! Difficult books help my brain grow stronger',
-      motivationType: 'challenge_seeker',
-      modifierHints: ['G']
-    },
-    {
-      id: 'need_confidence',
-      text: 'I prefer books where I know I can succeed',
-      motivationType: 'reflective_thinker',
-      modifierHints: ['E']
-    },
-    {
-      id: 'want_support',
-      text: 'I like trying hard books when someone can help me',
-      motivationType: 'social_connector',
-      modifierHints: ['S']
-    },
-    {
-      id: 'need_perfection',
-      text: 'I want to understand everything perfectly before moving on',
-      motivationType: 'curious_investigator',
-      modifierHints: ['A']
-    },
-    {
-      id: 'choose_own_level',
-      text: 'I like picking my own level of challenge',
-      motivationType: 'freedom_reader',
-      modifierHints: ['I']
-    },
-    {
-      id: 'need_purpose',
-      text: 'I\'ll try hard books if they\'re about something I care about',
-      motivationType: 'creative_explorer',
-      modifierHints: ['P']
-    }
-  ]
-},
-{
-  id: 'reading_routine',
-  question: 'What helps you read consistently?',
-  options: [
-    {
-      id: 'same_time_place',
-      text: 'Reading at the same time and place every day',
-      motivationType: 'reflective_thinker',
-      modifierHints: ['R']
-    },
-    {
-      id: 'complete_freedom',
-      text: 'Having total freedom to read when I feel like it',
-      motivationType: 'freedom_reader',
-      modifierHints: ['I']
-    },
-    {
-      id: 'reading_together',
-      text: 'When my family or friends read at the same time',
-      motivationType: 'social_connector',
-      modifierHints: ['S', 'R']
-    },
-    {
-      id: 'achievable_goals',
-      text: 'Setting small, achievable reading goals I can meet',
-      motivationType: 'challenge_seeker',
-      modifierHints: ['E']
-    },
-    {
-      id: 'interesting_books',
-      text: 'Having books about topics that fascinate me',
-      motivationType: 'curious_investigator',
-      modifierHints: ['P']
-    },
-    {
-      id: 'quiet_focused_time',
-      text: 'Having quiet, focused time without interruptions',
-      motivationType: 'creative_explorer',
-      modifierHints: ['F']
-    }
-  ]
-}
-];
+  // STEP 3: ADDED THIS NEW FUNCTION
+  const loadReadingDnaAssessment = useCallback(async () => {
+  try {
+    setAssessmentLoading(true);
+    console.log('🧬 Loading Reading DNA assessment from Firebase...');
+    
+    // Fetch questions
+    const questionsRef = collection(db, 'reading-dna-questions');
+    const questionsSnapshot = await getDocs(questionsRef);
+    const questions = [];
+    questionsSnapshot.forEach(doc => {
+      questions.push({ id: doc.id, ...doc.data() });
+    });
+    
+    // Fetch types
+    const typesRef = collection(db, 'reading-dna-types');
+    const typesSnapshot = await getDocs(typesRef);
+    const types = {};
+    typesSnapshot.forEach(doc => {
+      types[doc.id] = doc.data();
+    });
+    
+    // Fetch modifiers
+    // Fetch modifiers
+const modifiersRef = collection(db, 'reading-dna-modifiers');
+const modifiersSnapshot = await getDocs(modifiersRef);
+const studentModifiers = {};
 
-  // Student Reading DNA Types (Research-Inspired)
-  const readingDnaTypes = {
-    creative_explorer: {
-      name: 'Creative Explorer',
-      emoji: '🎨',
-      description: 'Reading sparks your imagination and inspires you to create amazing things! You love books that give you ideas for art, stories, and creative projects.',
-      color: '#FF6B9D',
-      researchNote: 'Scientists have found that when reading inspires creativity, it makes people want to read more!',
-      intrinsicMotivators: ['Creative inspiration', 'Imaginative freedom', 'Artistic expression'],
-      perfectBooks: ['Fantasy with rich worlds', 'Books with beautiful illustrations', 'Stories that inspire making things'],
-      supportStrategies: [
-        'Keep art supplies, journals, or building materials near your reading space',
-        'Try responding to books through drawing, writing, or making things',
-        'Look for books that inspire you to create projects'
-      ]
-    },
-    curious_investigator: {
-      name: 'Curious Investigator', 
-      emoji: '🔬',
-      description: 'You love learning fascinating facts and understanding how the world works! Reading is your tool for becoming an expert on things you care about.',
-      color: '#4ECDC4',
-      researchNote: 'Scientists have found that when reading satisfies curiosity, people become lifelong learners!',
-      intrinsicMotivators: ['Learning and discovery', 'Building expertise', 'Satisfying curiosity'],
-      perfectBooks: ['Non-fiction on your interests', 'Science and nature books', 'Biographies of people you admire'],
-      supportStrategies: [
-        'Follow up interesting books with more books on the same topic',
-        'Keep a learning journal about cool facts you discover',
-        'Share your expertise by teaching others what you\'ve learned'
-      ]
-    },
-    social_connector: {
-      name: 'Social Connector',
-      emoji: '🦋', 
-      description: 'Reading is more fun when you can share it with others! You love discussing books and connecting with friends and family through stories.',
-      color: '#95E1D3',
-      researchNote: 'Scientists have found that sharing reading experiences makes books more meaningful and memorable!',
-      intrinsicMotivators: ['Social connection', 'Shared experiences', 'Building relationships through books'],
-      perfectBooks: ['Stories about friendship and relationships', 'Books others in your community are reading', 'Stories with strong emotional connections'],
-      supportStrategies: [
-        'Find reading buddies or join book clubs with friends',
-        'Share your favorite books with family and friends',
-        'Talk about characters and stories with people you care about'
-      ]
-    },
-    challenge_seeker: {
-      name: 'Challenge Seeker',
-      emoji: '🏔️',
-      description: 'You love the feeling of conquering a difficult book! Challenges make reading exciting, and you feel proud when you accomplish reading goals.',
-      color: '#D4A574',
-      researchNote: 'Scientists have found that the right level of challenge keeps reading exciting and helps people grow!',
-      intrinsicMotivators: ['Overcoming challenges', 'Feeling capable and strong', 'Personal achievement'],
-      perfectBooks: ['Series that grow in complexity', 'Books slightly above your current level', 'Stories about characters overcoming obstacles'],
-      supportStrategies: [
-        'Set your own reading goals and challenges that feel exciting',
-        'Celebrate your effort and persistence, not just finishing',
-        'Look for books that stretch you without being overwhelming'
-      ]
-    },
-    freedom_reader: {
-      name: 'Freedom Reader',
-      emoji: '🕊️',
-      description: 'You read best when you have the freedom to choose what, when, and how to read! You love having control over your reading journey.',
-      color: '#AED6F1',
-      researchNote: 'Scientists have found that having choice in reading makes people more motivated and engaged!',
-      intrinsicMotivators: ['Personal choice and control', 'Independent exploration', 'Self-direction'],
-      perfectBooks: ['Wide variety of options to choose from', 'Books you discover on your own', 'Stories that match your current interests and moods'],
-      supportStrategies: [
-        'Choose your own books from lots of good options',
-        'Read at your own pace and in your own way',
-        'Trust your instincts about what you want to read'
-      ]
-    },
-    reflective_thinker: {
-      name: 'Reflective Thinker',
-      emoji: '🌙',
-      description: 'You love thinking deeply about books and connecting them to your life! Reading helps you understand yourself and the world around you.',
-      color: '#4A5568',
-      researchNote: 'Scientists have found that when reading connects to personal meaning, it becomes more powerful and memorable!',
-      intrinsicMotivators: ['Personal connections', 'Deep understanding', 'Finding meaning and purpose'],
-      perfectBooks: ['Books with deep themes and meaning', 'Stories that connect to your life experiences', 'Books that make you think about big questions'],
-      supportStrategies: [
-        'Give yourself time to think about what you read',
-        'Keep a reading journal for your thoughts and connections',
-        'Look for books that connect to your life and experiences'
-      ]
-    }
-  };
+modifiersSnapshot.forEach(doc => {
+  const fullId = doc.id; // e.g., "student_S"
+  const modifierData = doc.data();
+  
+  // Extract just the letter code (S, P, I, etc.) from IDs like "student_S"
+  const modifierCode = fullId.includes('student_') 
+    ? fullId.replace('student_', '') 
+    : fullId;
+  
+  // Store it with just the letter code as the key
+  studentModifiers[modifierCode] = modifierData;
+  
+  console.log('📝 Modifier loaded:', fullId, '→', modifierCode, modifierData);
+});
 
-  // Modifier Strategies for Educators/Parents
-const modifierStrategies = {
-  A: {
-    name: 'Achieving',
-    description: 'High standards and perfectionism',
-    researchBase: 'Growth mindset research shows perfectionism can limit learning',
-    indicators: ['Wants to understand everything perfectly', 'Gets frustrated with confusion', 'Avoids books they might not excel at'],
-    strategies: [
-      'Emphasize reading for joy and growth, not just achievement',
-      'Model that confusion is part of learning and shows brain growth',
-      'Celebrate effort, strategies, and persistence over perfection',
-      'Choose "safe challenge" books with built-in supports'
-    ]
-  },
-  E: {
-    name: 'Emerging',
-    description: 'Building confidence and competence',
-    researchBase: 'Self-efficacy research shows confidence drives engagement',
-    indicators: ['Feels proud completing any book', 'Needs encouragement to try new genres', 'Prefers familiar authors/series'],
-    strategies: [
-      'Choose high-interest books at comfortable reading level',
-      'Celebrate all reading victories, big and small',
-      'Use audiobooks paired with text to build confidence',
-      'Create predictable reading successes with series and familiar authors'
-    ]
-  },
-  S: {
-    name: 'Supported',
-    description: 'Thrives with guidance and community',
-    researchBase: 'Scaffolding research shows guided practice improves outcomes',
-    indicators: ['Prefers shared reading experiences', 'Likes discussing books immediately', 'More confident when not reading alone'],
-    strategies: [
-      'Create reading buddy systems or family reading time',
-      'Use read-alouds and shared reading experiences',
-      'Encourage immediate discussion after reading',
-      'Provide gentle guidance in book selection'
-    ]
-  },
-  P: {
-    name: 'Practical',
-    description: 'Purpose-driven and relevance-focused',
-    researchBase: 'Relevance research shows connection to interests increases motivation',
-    indicators: ['Prefers reading connected to real interests', 'Asks "Why do I need to read this?"', 'Loves learning useful information'],
-    strategies: [
-      'Connect all reading to student\'s hobbies and interests',
-      'Use informational texts and biographies of people they admire',
-      'Show clear real-world applications of reading skills',
-      'Allow choice in topic-driven reading projects'
-    ]
-  },
-  I: {
-    name: 'Independent',
-    description: 'Self-directed and autonomous',
-    researchBase: 'Self-determination theory shows autonomy increases intrinsic motivation',
-    indicators: ['Prefers choosing own books', 'Likes reading at own pace', 'Resists reading assignments or suggestions'],
-    strategies: [
-      'Provide many options and let them choose freely',
-      'Avoid micromanaging their reading process',
-      'Trust their instincts about what they want to read',
-      'Create reading goals together rather than imposing them'
-    ]
-  },
-  F: {
-    name: 'Focus-Needs',
-    description: 'Benefits from minimal distractions',
-    researchBase: 'Attention research shows some children need quieter environments to process text',
-    indicators: ['Gets distracted easily while reading', 'Reads better in quiet spaces', 'Struggles with comprehension in busy environments'],
-    strategies: [
-      'Create a dedicated, quiet reading space',
-      'Use shorter reading sessions to match attention span',
-      'Remove visual and auditory distractions during reading time',
-      'Try noise-canceling headphones or soft background music'
-    ]
-  },
-  G: {
-    name: 'Growth-Oriented',
-    description: 'Embraces challenge and learns from mistakes',
-    researchBase: 'Growth mindset research shows embracing difficulty leads to greater achievement',
-    indicators: ['Excited by challenging books', 'Views confusion as interesting', 'Learns from reading mistakes'],
-    strategies: [
-      'Provide appropriately challenging books that stretch skills',
-      'Celebrate mistakes as learning opportunities',
-      'Model thinking through difficult parts of books',
-      'Use phrases like "You haven\'t understood this YET"'
-    ]
-  },
-  R: {
-    name: 'Routine-Loving',
-    description: 'Thrives with structure and predictability',
-    researchBase: 'Executive function research shows routine supports learning for many children',
-    indicators: ['Reads better at same time/place daily', 'Likes knowing what to expect', 'Struggles with reading when routine is disrupted'],
-    strategies: [
-      'Establish consistent daily reading time and place',
-      'Create predictable reading rituals and routines',
-      'Use visual schedules or reading calendars',
-      'Prepare for changes to routine in advance'
-    ]
+console.log('🔍 All loaded modifiers:', studentModifiers);
+    
+    setReadingDnaQuestions(questions);
+    setReadingDnaTypes(types);
+    setStudentFriendlyModifiers(studentModifiers);
+    
+    console.log(`✅ Loaded ${questions.length} questions, ${Object.keys(types).length} types, ${Object.keys(studentModifiers).length} modifiers`);
+    
+  } catch (error) {
+    console.error('❌ Error loading Reading DNA assessment:', error);
+    // Fallback to empty data
+    setReadingDnaQuestions([]);
+    setReadingDnaTypes({});
+    setStudentFriendlyModifiers({});
+  } finally {
+    setAssessmentLoading(false);
   }
-};
+}, []);
 
-const studentFriendlyModifiers = {
-  S: {
-    name: 'Social Learner',
-    emoji: '👥',
-    description: 'You learn best when you can share ideas with others! Reading becomes more meaningful when you have people to discuss books with.',
-    studentInsights: [
-      'You make reading better for everyone around you',
-      'Your questions and thoughts help other people understand too',
-      'You turn reading into a community experience'
-    ],
-    studentTips: [
-      'Find reading buddies or join book clubs',
-      'Talk about books with family and friends right after reading',
-      'Choose books you can discuss with people you care about'
-    ]
-  },
-  A: {
-    name: 'Thoughtful Achiever',
-    emoji: '🎯',
-    description: 'You care about really understanding what you read. You like to make sure things make sense before moving on.',
-    studentInsights: [
-      'Taking time to understand deeply shows you\'re a careful, smart reader',
-      'Your attention to detail helps you catch things others might miss',
-      'You have high standards because you care about doing your best'
-    ],
-    studentTips: [
-      'Don\'t worry if you need to reread parts - that shows you care about understanding',
-      'Ask questions when things don\'t make sense - that helps everyone learn',
-      'Remember that confusion means your brain is working hard to grow'
-    ]
-  },
-  E: {
-    name: 'Confident Builder',
-    emoji: '🌱',
-    description: 'You grow stronger by celebrating every success, big or small. Each book you finish makes you a more confident reader.',
-    studentInsights: [
-      'You understand that every reader grows at their own pace',
-      'You know that finishing any book is an achievement worth celebrating',
-      'You build confidence by choosing books that feel just right'
-    ],
-    studentTips: [
-      'Celebrate every book you finish, no matter how long it took',
-      'Choose books that interest you and feel comfortable',
-      'Remember that becoming a great reader takes time and practice'
-    ]
-  },
-  P: {
-    name: 'Purpose-Driven Learner',
-    emoji: '🎪',
-    description: 'You love learning things you can actually use and connect to your interests. Reading feels most exciting when it teaches you about things you care about.',
-    studentInsights: [
-      'You see the real-world value in what you learn from books',
-      'You make connections between reading and your hobbies and interests',
-      'You ask great questions like "How can I use this?" and "Why does this matter?"'
-    ],
-    studentTips: [
-      'Look for books about your hobbies, interests, and future goals',
-      'Read biographies of people you admire',
-      'Connect what you read to real situations in your life'
-    ]
-  },
-  I: {
-    name: 'Self-Directed Explorer',
-    emoji: '🗺️',
-    description: 'You learn best when you have freedom to choose and explore on your own. You trust your instincts about what you want to read.',
-    studentInsights: [
-      'You have great instincts about what books will interest you',
-      'You read best when you have control over your reading journey',
-      'You enjoy discovering books and authors on your own'
-    ],
-    studentTips: [
-      'Trust yourself to choose books that appeal to you',
-      'Read at your own pace without pressure from others',
-      'Explore different genres and authors that catch your interest'
-    ]
-  },
-  F: {
-    name: 'Focused Thinker',
-    emoji: '🧘',
-    description: 'You think most clearly in calm, quiet spaces without distractions. Your brain works best when you can really focus.',
-    studentInsights: [
-      'You know what kind of environment helps you concentrate best',
-      'You understand that your brain needs quiet to process complex ideas',
-      'You\'re good at creating the right conditions for learning'
-    ],
-    studentTips: [
-      'Find a quiet, comfortable spot for your reading time',
-      'It\'s okay to ask for less noise or fewer distractions when reading',
-      'Take breaks when you feel overwhelmed or distracted'
-    ]
-  },
-  G: {
-    name: 'Challenge Embracer',
-    emoji: '💪',
-    description: 'You know that confusion and mistakes are just your brain growing stronger. You\'re excited by books that stretch your thinking.',
-    studentInsights: [
-      'You see difficult books as opportunities to grow',
-      'You understand that struggle means learning is happening',
-      'You bounce back from confusion because you know it\'s temporary'
-    ],
-    studentTips: [
-      'Choose books that challenge you but don\'t overwhelm you',
-      'When something is confusing, remember your brain is growing',
-      'Celebrate the effort you put in, not just the final result'
-    ]
-  },
-  R: {
-    name: 'Steady Learner',
-    emoji: '⭐',
-    description: 'You thrive with predictable routines and knowing what to expect. Structure helps you feel confident and ready to learn.',
-    studentInsights: [
-      'You know that routines help you be your best self',
-      'You understand that consistency leads to growth',
-      'You appreciate when things are organized and predictable'
-    ],
-    studentTips: [
-      'Create a regular reading time and place that works for you',
-      'Use reading calendars or charts to track your progress',
-      'Let others know when changes to routine might affect your reading'
-    ]
-  }
-};
-
-  // UPDATED: Navigation menu items with phase-aware locking
+  // STEP 4: ADDED THIS NEW useEffect
+  useEffect(() => {
+    loadReadingDnaAssessment();
+  }, [loadReadingDnaAssessment]);
+// UPDATED: Navigation menu items with phase-aware locking
   const navMenuItems = useMemo(() => [
     { name: 'Dashboard', path: '/student-dashboard', icon: '⌂' },
     { 
@@ -1120,144 +266,159 @@ const studentFriendlyModifiers = {
     'Virtue Vignettes': { bg: '#CD5C5C', text: '#FFFFFF', border: '#8B1A1A', modalText: '#FFFFFF' }
   }), []);
 
-  // Calculate Reading DNA type from answers
-const calculateReadingDnaType = useCallback((responses) => {
-  const motivationCounts = {};
-  const modifierCounts = { A: 0, E: 0, S: 0, P: 0, I: 0, F: 0, G: 0, R: 0 };
-  
-  // Count motivation type occurrences and modifier hints
-  Object.entries(responses).forEach(([questionIndex, answerIndex]) => {
-    const questionIdx = parseInt(questionIndex);
-    const answerIdx = parseInt(answerIndex);
-    
-    const question = readingDnaQuestions[questionIdx];
-    const answer = question?.options[answerIdx];
-    
-    if (answer?.motivationType) {
-      motivationCounts[answer.motivationType] = (motivationCounts[answer.motivationType] || 0) + 1;
+  // STEP 5: UPDATED calculateReadingDnaType function to use Firebase data
+  const calculateReadingDnaType = useCallback((responses) => {
+    if (readingDnaQuestions.length === 0) {
+      console.warn('⚠️ No Reading DNA questions loaded from Firebase');
+      return null;
     }
+
+    const motivationCounts = {};
+    const modifierCounts = { A: 0, E: 0, S: 0, P: 0, I: 0, F: 0, G: 0, R: 0 };
     
-    // Count modifier hints
-    if (answer?.modifierHints) {
-      answer.modifierHints.forEach(modifier => {
-        modifierCounts[modifier]++;
-      });
+    // Count motivation type occurrences and modifier hints
+    Object.entries(responses).forEach(([questionIndex, answerIndex]) => {
+      const questionIdx = parseInt(questionIndex);
+      const answerIdx = parseInt(answerIndex);
+      
+      const question = readingDnaQuestions[questionIdx]; // NOW USES FIREBASE DATA
+      const answer = question?.options[answerIdx];
+      
+      if (answer?.motivationType) {
+        motivationCounts[answer.motivationType] = (motivationCounts[answer.motivationType] || 0) + 1;
+      }
+      
+      // Count modifier hints
+      if (answer?.modifierHints) {
+        answer.modifierHints.forEach(modifier => {
+          modifierCounts[modifier]++;
+        });
+      }
+    });
+
+    console.log('🧮 Reading DNA motivation counts:', motivationCounts);
+    console.log('🔍 Modifier counts:', modifierCounts);
+
+    // Ensure we have at least one result, provide fallback
+    if (Object.keys(motivationCounts).length === 0) {
+      console.warn('⚠️ No motivation types counted, using fallback');
+      return {
+        type: 'curious_investigator',
+        details: readingDnaTypes['curious_investigator'], // NOW USES FIREBASE DATA
+        motivationCounts: { curious_investigator: 1 },
+        modifiers: ['I'],
+        modifierDetails: [{ name: 'Independent', description: 'Self-directed learner' }],
+        fullCode: 'curious_investigator-I',
+        responses: responses
+      };
     }
-  });
 
-  console.log('🧮 Reading DNA motivation counts:', motivationCounts);
-  console.log('🔍 Modifier counts:', modifierCounts);
+    // Find the highest scoring motivation type
+    const bestType = Object.entries(motivationCounts).reduce((a, b) => 
+      motivationCounts[a[0]] > motivationCounts[b[0]] ? a : b
+    )[0];
 
-  // Ensure we have at least one result, provide fallback
-  if (Object.keys(motivationCounts).length === 0) {
-    console.warn('⚠️ No motivation types counted, using fallback');
+    // Enhanced modifier detection
+    const allModifiers = Object.entries(modifierCounts)
+      .filter(([modifier, count]) => count > 0)
+      .sort((a, b) => b[1] - a[1]);
+
+    let significantModifiers;
+    
+    if (allModifiers.length === 0) {
+      significantModifiers = ['I'];
+    } else if (allModifiers.length === 1) {
+      significantModifiers = [allModifiers[0][0]];
+    } else {
+      const highestScore = allModifiers[0][1];
+      const secondHighestScore = allModifiers[1]?.[1] || 0;
+      
+      if (highestScore > secondHighestScore) {
+        significantModifiers = allModifiers.slice(0, 2).map(([modifier]) => modifier);
+      } else {
+        significantModifiers = allModifiers
+          .filter(([modifier, count]) => count === highestScore)
+          .slice(0, 3)
+          .map(([modifier]) => modifier);
+      }
+    }
+
+    console.log('✅ Reading DNA result:', bestType, readingDnaTypes[bestType]?.name);
+    console.log('🏷️ Significant modifiers:', significantModifiers);
+
     return {
-      type: 'curious_investigator',
-      details: readingDnaTypes['curious_investigator'],
-      motivationCounts: { curious_investigator: 1 },
-      modifiers: ['I'], // Default to Independent
-      modifierDetails: [modifierStrategies['I']],
-      fullCode: 'curious_investigator-I',
-      responses: responses
+      type: bestType,
+      details: readingDnaTypes[bestType], // NOW USES FIREBASE DATA
+      motivationCounts,
+      modifiers: significantModifiers,
+      modifierDetails: significantModifiers.map(mod => {
+  const modifierData = studentFriendlyModifiers[mod];
+  console.log('🔍 Looking for modifier:', mod, modifierData);
+  
+  if (modifierData) {
+    return {
+      code: mod,
+      name: modifierData.name,
+      emoji: modifierData.emoji,
+      description: modifierData.description,
+      studentInsights: modifierData.studentInsights,
+      studentTips: modifierData.studentTips
     };
   }
-
-  // Find the highest scoring motivation type
-  const bestType = Object.entries(motivationCounts).reduce((a, b) => 
-    motivationCounts[a[0]] > motivationCounts[b[0]] ? a : b
-  )[0];
-
-  // Enhanced modifier detection - ensures every student gets modifiers
-  const allModifiers = Object.entries(modifierCounts)
-    .filter(([modifier, count]) => count > 0)
-    .sort((a, b) => b[1] - a[1]);
-
-  let significantModifiers;
   
-  if (allModifiers.length === 0) {
-    // Fallback: assign Independent if no modifiers detected
-    significantModifiers = ['I'];
-  } else if (allModifiers.length === 1) {
-    // Only one modifier detected, use it
-    significantModifiers = [allModifiers[0][0]];
-  } else {
-    // Multiple modifiers: use top 1-2 based on scores
-    const highestScore = allModifiers[0][1];
-    const secondHighestScore = allModifiers[1]?.[1] || 0;
-    
-    if (highestScore > secondHighestScore) {
-      // Clear winner, use top 1-2
-      significantModifiers = allModifiers.slice(0, 2).map(([modifier]) => modifier);
-    } else {
-      // Tie for highest, include all tied for highest
-      significantModifiers = allModifiers
-        .filter(([modifier, count]) => count === highestScore)
-        .slice(0, 3) // Max 3 to keep manageable
-        .map(([modifier]) => modifier);
-    }
-  }
-
-  console.log('✅ Reading DNA result:', bestType, readingDnaTypes[bestType]?.name);
-  console.log('🏷️ Significant modifiers:', significantModifiers);
-
-  return {
-    type: bestType,
-    details: readingDnaTypes[bestType],
-    motivationCounts,
-    modifiers: significantModifiers,
-    modifierDetails: significantModifiers.map(mod => modifierStrategies[mod]).filter(Boolean),
-    fullCode: significantModifiers.length > 0 ? `${bestType}-${significantModifiers.join('')}` : bestType,
-    responses: responses
-  };
-}, []);
-
+  return null;
+}).filter(Boolean),
+      fullCode: significantModifiers.length > 0 ? `${bestType}-${significantModifiers.join('')}` : bestType,
+      responses: responses
+    };
+  }, [readingDnaQuestions, readingDnaTypes, studentFriendlyModifiers]); // UPDATED DEPENDENCIES
 // Helper function to get combined support strategies
-const getCombinedSupportStrategies = (baseType, modifiers) => {
-  const baseStrategies = readingDnaTypes[baseType]?.supportStrategies || [];
-  const modifierStrats = modifiers.flatMap(mod => 
-    modifierStrategies[mod]?.strategies || []
-  );
-  
-  return [...baseStrategies, ...modifierStrats];
-};
-
-// Check if learning style is unlocked
-const isLearningStyleUnlocked = () => {
-  // Auto-unlock if student already has Reading DNA results (grandfathering)
-  if (studentData?.readingDNA) {
-    return true;
-  }
-  // Otherwise check explicit unlock
-  return !!(studentData?.learningStyleUnlocked);
-};
-
-// Unlock Reading DNA assessment function (for parent app)
-const unlockReadingDnaForStudent = async (studentId, entityId, schoolId) => {
-  try {
-    await updateStudentDataEntities(studentId, entityId, schoolId, {
-      learningStyleUnlocked: true,
-      learningStyleUnlockedAt: new Date()
-    });
+  const getCombinedSupportStrategies = (baseType, modifiers) => {
+    const baseStrategies = readingDnaTypes[baseType]?.supportStrategies || [];
+    const modifierStrats = modifiers.flatMap(mod => 
+      modifierStrategies[mod]?.strategies || []
+    );
     
-    console.log('✅ Learning style unlocked for student');
-    return { success: true };
-  } catch (error) {
-    console.error('❌ Error unlocking learning style:', error);
-    return { success: false, error };
-  }
-};
+    return [...baseStrategies, ...modifierStrats];
+  };
 
-// Show learning style discovery modal
-const showLearningStyleDiscovery = () => {
-  const result = getReadingDnaResult();
-  if (result && isLearningStyleUnlocked()) {
-    setIsUnlockCelebrating(true);
-    setTimeout(() => {
-      setShowLearningStyleModal(true);
-      setIsUnlockCelebrating(false);
-    }, 1500);
-  }
-};
+  // Check if learning style is unlocked
+  const isLearningStyleUnlocked = () => {
+    // Auto-unlock if student already has Reading DNA results (grandfathering)
+    if (studentData?.readingDNA) {
+      return true;
+    }
+    // Otherwise check explicit unlock
+    return !!(studentData?.learningStyleUnlocked);
+  };
+
+  // Unlock Reading DNA assessment function (for parent app)
+  const unlockReadingDnaForStudent = async (studentId, entityId, schoolId) => {
+    try {
+      await updateStudentDataEntities(studentId, entityId, schoolId, {
+        learningStyleUnlocked: true,
+        learningStyleUnlockedAt: new Date()
+      });
+      
+      console.log('✅ Learning style unlocked for student');
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Error unlocking learning style:', error);
+      return { success: false, error };
+    }
+  };
+
+  // Show learning style discovery modal
+  const showLearningStyleDiscovery = () => {
+    const result = getReadingDnaResult();
+    if (result && isLearningStyleUnlocked()) {
+      setIsUnlockCelebrating(true);
+      setTimeout(() => {
+        setShowLearningStyleModal(true);
+        setIsUnlockCelebrating(false);
+      }, 1500);
+    }
+  };
 
   // Load quizzes from Firebase
   const loadQuizzes = useCallback(async () => {
@@ -1408,8 +569,7 @@ const showLearningStyleDiscovery = () => {
       router.push('/role-selector');
     }
   }, [loading, isAuthenticated, user, loadData]);
-
-  // Calculate quiz score with improved tie-breaking and fallback
+// Calculate quiz score with improved tie-breaking and fallback
   const calculateQuizResult = useCallback((quiz, answers) => {
     const scores = {};
     
@@ -1614,8 +774,7 @@ const showLearningStyleDiscovery = () => {
       saveNomineeQuizResult(currentNomineeQuiz.id, result);
     }
   };
-
-  // Save quiz result to student profile
+// Save quiz result to student profile
   const saveQuizResult = async (quizId, result) => {
     try {
       console.log('💾 Saving quiz result:', quizId, result?.saint_id);
@@ -1818,7 +977,8 @@ const showLearningStyleDiscovery = () => {
     return phaseData.currentPhase === 'RESULTS';
   };
 
-  if (loading || isLoading || !studentData || !currentTheme) {
+  // STEP 6: UPDATED loading condition
+  if (loading || isLoading || assessmentLoading || !studentData || !currentTheme) {
     return (
       <div style={{
         backgroundColor: '#FFFCF5',
@@ -1837,17 +997,27 @@ const showLearningStyleDiscovery = () => {
             animation: 'spin 1s linear infinite',
             margin: '0 auto 16px'
           }} />
-          <p style={{ color: '#223848', fontSize: '14px' }}>Loading Lux DNA Lab...</p>
+          <p style={{ color: '#223848', fontSize: '14px' }}>
+            Loading Lux DNA Lab...
+            {assessmentLoading && (
+              <>
+                <br />
+                <span style={{ fontSize: '12px', opacity: 0.8 }}>
+                  Fetching assessment questions...
+                </span>
+              </>
+            )}
+          </p>
         </div>
       </div>
     );
   }
 
+  // STEP 7: Current question reference (uses Firebase data)
   const currentQuestion = currentQuiz?.questions[currentQuestionIndex];
   const currentNomineeQuestion = currentNomineeQuiz?.questions[currentQuestionIndex];
   const currentReadingDnaQuestion = readingDnaQuestions[readingDnaCurrentQuestion];
-
-  return (
+return (
     <>
       <Head>
         <title>Lux DNA Lab - Lux Libris</title>
@@ -2135,8 +1305,7 @@ const showLearningStyleDiscovery = () => {
             )}
           </div>
         </div>
-
-        {/* Phase-Specific Alert Banner */}
+{/* Phase-Specific Alert Banner */}
         {getPhaseSpecificMessage() && (
           <div className="phase-alert-banner" style={{
             background: phaseData.currentPhase === 'VOTING' ? 'linear-gradient(135deg, #8b5cf6, #a855f7)' : 
@@ -2472,58 +1641,58 @@ const showLearningStyleDiscovery = () => {
                     </div>
 
                     {isLearningStyleUnlocked() ? (
-  <button
-    onClick={startReadingDnaAssessment}
-    style={{
-      backgroundColor: currentTheme.primary,
-      color: currentTheme.textPrimary,
-      border: 'none',
-      borderRadius: '12px',
-      padding: '10px 16px',
-      fontSize: '13px',
-      fontWeight: '600',
-      cursor: 'pointer',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '6px',
-      margin: '0 auto',
-      touchAction: 'manipulation',
-      WebkitTapHighlightColor: 'transparent'
-    }}
-  >
-    🧬 Take Assessment
-  </button>
-) : (
-  <div style={{
-    textAlign: 'center',
-    padding: '16px',
-    backgroundColor: `${currentTheme.textSecondary}20`,
-    borderRadius: '12px',
-    border: `2px dashed ${currentTheme.textSecondary}60`
-  }}>
-    <div style={{
-      fontSize: '24px',
-      marginBottom: '8px'
-    }}>
-      🔒
-    </div>
-    <div style={{
-      fontSize: '13px',
-      fontWeight: '600',
-      color: currentTheme.textPrimary,
-      marginBottom: '4px'
-    }}>
-      Assessment Locked
-    </div>
-    <div style={{
-      fontSize: '11px',
-      color: currentTheme.textSecondary,
-      lineHeight: '1.4'
-    }}>
-      Ask a parent to unlock your Reading DNA assessment! This special tool helps you understand how you learn best.
-    </div>
-  </div>
-)}
+                      <button
+                        onClick={startReadingDnaAssessment}
+                        style={{
+                          backgroundColor: currentTheme.primary,
+                          color: currentTheme.textPrimary,
+                          border: 'none',
+                          borderRadius: '12px',
+                          padding: '10px 16px',
+                          fontSize: '13px',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          margin: '0 auto',
+                          touchAction: 'manipulation',
+                          WebkitTapHighlightColor: 'transparent'
+                        }}
+                      >
+                        🧬 Take Assessment
+                      </button>
+                    ) : (
+                      <div style={{
+                        textAlign: 'center',
+                        padding: '16px',
+                        backgroundColor: `${currentTheme.textSecondary}20`,
+                        borderRadius: '12px',
+                        border: `2px dashed ${currentTheme.textSecondary}60`
+                      }}>
+                        <div style={{
+                          fontSize: '24px',
+                          marginBottom: '8px'
+                        }}>
+                          🔒
+                        </div>
+                        <div style={{
+                          fontSize: '13px',
+                          fontWeight: '600',
+                          color: currentTheme.textPrimary,
+                          marginBottom: '4px'
+                        }}>
+                          Assessment Locked
+                        </div>
+                        <div style={{
+                          fontSize: '11px',
+                          color: currentTheme.textSecondary,
+                          lineHeight: '1.4'
+                        }}>
+                          Ask a parent to unlock your Reading DNA assessment! This special tool helps you understand how you learn best.
+                        </div>
+                      </div>
+                    )}
 
                     <div style={{
                       fontSize: '11px',
@@ -2537,8 +1706,7 @@ const showLearningStyleDiscovery = () => {
               </div>
             )}
           </div>
-
-          {/* Lux Libris Nominees DNA with Phase Awareness and Collapsible */}
+{/* Lux Libris Nominees DNA with Phase Awareness and Collapsible */}
           <div className="quiz-category-card" style={{
             backgroundColor: currentTheme.surface,
             borderRadius: '16px',
@@ -2857,8 +2025,7 @@ const showLearningStyleDiscovery = () => {
             )}
           </div>
         </div>
-
-        {/* READING DNA ASSESSMENT MODAL */}
+{/* READING DNA ASSESSMENT MODAL */}
         {showReadingDnaModal && currentReadingDnaQuestion && (
           <div style={{
             position: 'fixed',
@@ -3039,568 +2206,589 @@ const showLearningStyleDiscovery = () => {
         )}
 
         {showReadingDnaResult && readingDnaResult && (() => {
-  const dnaType = readingDnaResult.details;
-  const hasModifiers = readingDnaResult.modifiers && readingDnaResult.modifiers.length > 0;
-  const isUnlocked = isLearningStyleUnlocked();
-  
-  return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0,0,0,0.85)',
-      zIndex: 1000,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '20px'
-    }}>
-      <div className="reading-dna-result-modal-content" style={{
-        maxWidth: '380px',
-        width: '100%',
-        maxHeight: '90vh',
-        overflowY: 'auto',
-        position: 'relative',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center'
-      }}>
-        <button
-          onClick={() => setShowReadingDnaResult(false)}
-          style={{
-            position: 'absolute',
-            top: '12px',
-            right: '12px',
-            backgroundColor: 'rgba(0,0,0,0.7)',
-            color: 'white',
-            border: 'none',
-            borderRadius: '50%',
-            width: '36px',
-            height: '36px',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 10,
-            touchAction: 'manipulation',
-            WebkitTapHighlightColor: 'transparent'
-          }}
-        >
-          ✕
-        </button>
-
-        {/* LARGE READING DNA IMAGE */}
-        <div className="reading-dna-result-image-container" style={{
-          width: '280px',
-          height: '340px',
-          marginBottom: '16px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginTop: '40px',
-          position: 'relative'
-        }}>
-          <div style={{
-            position: 'absolute',
-            inset: '20px',
-            background: 'radial-gradient(circle, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 40%, transparent 70%)',
-            borderRadius: '50%',
-            filter: 'blur(8px)',
-            zIndex: 0
-          }} />
-          <img 
-            src={`/reading-dna/${readingDnaResult.type}.png`}
-            alt={dnaType.name}
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'contain',
-              filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.3))',
-              background: 'radial-gradient(circle at center, rgba(255,255,255,0.1) 0%, transparent 70%)',
-              borderRadius: '12px'
-            }}
-            onError={(e) => {
-              e.target.style.display = 'none';
-              e.target.nextSibling.style.display = 'flex';
-            }}
-          />
-          {/* Fallback emoji */}
-          <div style={{
-            width: '100%',
-            height: '100%',
-            display: 'none',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '120px',
-            color: 'rgba(255,255,255,0.8)',
-            filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.3))'
-          }}>
-            {dnaType.emoji}
-          </div>
-        </div>
-
-        {/* RESULT INFO CARD */}
-        <div className="reading-dna-result-info-card" style={{
-          backgroundColor: dnaType.color,
-          borderRadius: '14px',
-          padding: '20px',
-          width: '90%',
-          maxWidth: '340px',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-          textAlign: 'center'
-        }}>
-          {/* Result Header */}
-          <div style={{
-            fontSize: '16px',
-            fontWeight: '600',
-            color: '#FFFFFF',
-            marginBottom: '8px'
-          }}>
-            🎉 Your Reading DNA 🎉
-          </div>
-
-          {/* DNA Type Name */}
-          <h2 style={{
-            fontSize: '20px',
-            fontWeight: '600',
-            color: '#FFFFFF',
-            margin: '0 0 8px 0',
-            fontFamily: 'Didot, "Times New Roman", serif',
-            textShadow: '0 1px 2px rgba(0,0,0,0.2)'
-          }}>
-            You are a {dnaType.name}!
-          </h2>
-
-          {/* Science Note */}
-          <div style={{
-            backgroundColor: 'rgba(255,255,255,0.9)',
-            color: '#2F1B14',
-            padding: '4px 10px',
-            borderRadius: '12px',
-            fontSize: '10px',
-            fontWeight: '600',
-            display: 'inline-block',
-            marginBottom: '12px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
-          }}>
-            Science-Inspired Reading Personality
-          </div>
-
-          {/* Description */}
-          <div style={{
-            fontSize: '13px',
-            color: '#FFFFFF',
-            lineHeight: '1.4',
-            marginBottom: '12px',
-            textAlign: 'center'
-          }}>
-            {dnaType.description}
-          </div>
-
-          {/* Research Note */}
-          <div style={{
-            fontSize: '12px',
-            color: '#FFFFFF',
-            lineHeight: '1.4',
-            textAlign: 'center',
-            fontStyle: 'italic',
-            marginBottom: '16px'
-          }}>
+          const dnaType = readingDnaResult.details;
+          const hasModifiers = readingDnaResult.modifiers && readingDnaResult.modifiers.length > 0;
+          const isUnlocked = isLearningStyleUnlocked();
+          
+          return (
             <div style={{
-              fontWeight: '600',
-              marginBottom: '4px',
-              color: '#FFFFFF'
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0,0,0,0.85)',
+              zIndex: 1000,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '20px'
             }}>
-              ✨ Cool Science Fact:
-            </div>
-            {dnaType.researchNote}
-          </div>
-
-          {/* LEARNING STYLE DETAILS - ALWAYS AVAILABLE AFTER UNLOCK */}
-{hasModifiers && (
-  <div style={{
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: '12px',
-    padding: '12px',
-    marginBottom: '16px',
-    border: '1px solid rgba(255,255,255,0.3)'
-  }}>
-    <div style={{
-      fontSize: '12px',
-      fontWeight: '600',
-      color: '#FFFFFF',
-      marginBottom: '8px'
-    }}>
-      🌟 Your Special Learning Style:
-    </div>
-    <button
-      onClick={() => setShowLearningStyleModal(true)}
-      style={{
-        backgroundColor: 'rgba(255,255,255,0.9)',
-        color: '#2F1B14',
-        border: 'none',
-        borderRadius: '8px',
-        padding: '8px 12px',
-        fontSize: '11px',
-        fontWeight: '600',
-        cursor: 'pointer',
-        touchAction: 'manipulation',
-        WebkitTapHighlightColor: 'transparent'
-      }}
-    >
-      🔍 Discover Your Complete Learning Style
-    </button>
-  </div>
-)}
-
-          {/* Action Buttons */}
-          <div className="reading-dna-result-action-buttons" style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '8px',
-            marginTop: '16px'
-          }}>
-            <button
-              onClick={() => {
-                setShowReadingDnaResult(false);
-                startReadingDnaAssessment();
-              }}
-              style={{
-                backgroundColor: 'rgba(255,255,255,0.2)',
-                color: '#FFFFFF',
-                border: '1px solid rgba(255,255,255,0.3)',
-                borderRadius: '8px',
-                padding: '8px',
-                fontSize: '12px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                touchAction: 'manipulation',
-                WebkitTapHighlightColor: 'transparent'
-              }}
-            >
-              🔄 Retake
-            </button>
-            
-            <button
-              onClick={() => setShowReadingDnaResult(false)}
-              style={{
-                backgroundColor: 'rgba(255,255,255,0.9)',
-                color: '#2F1B14',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '8px',
-                fontSize: '12px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                touchAction: 'manipulation',
-                WebkitTapHighlightColor: 'transparent'
-              }}
-            >
-              ✨ Amazing!
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-})()}
-
-{/* LEARNING STYLE DISCOVERY MODAL */}
-{showLearningStyleModal && readingDnaResult && isLearningStyleUnlocked() && (() => {
-  const dnaType = readingDnaResult.details;
-  const modifiers = readingDnaResult.modifiers || [];
-  
-  return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0,0,0,0.9)',
-      zIndex: 1001,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '20px'
-    }}>
-      <div style={{
-        backgroundColor: currentTheme.surface,
-        borderRadius: '20px',
-        maxWidth: '420px',
-        width: '100%',
-        maxHeight: '85vh',
-        overflowY: 'auto',
-        position: 'relative',
-        boxShadow: '0 20px 40px rgba(0,0,0,0.4)'
-      }}>
-        <button
-          onClick={() => setShowLearningStyleModal(false)}
-          style={{
-            position: 'absolute',
-            top: '12px',
-            right: '12px',
-            backgroundColor: 'rgba(0,0,0,0.7)',
-            color: 'white',
-            border: 'none',
-            borderRadius: '50%',
-            width: '36px',
-            height: '36px',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 10,
-            touchAction: 'manipulation',
-            WebkitTapHighlightColor: 'transparent'
-          }}
-        >
-          ✕
-        </button>
-
-        {/* Header */}
-        <div style={{
-          background: `linear-gradient(135deg, ${currentTheme.primary}, ${currentTheme.secondary})`,
-          borderRadius: '20px 20px 0 0',
-          padding: '24px',
-          textAlign: 'center',
-          color: currentTheme.textPrimary
-        }}>
-          <div style={{
-            fontSize: '24px',
-            marginBottom: '8px'
-          }}>
-            🎉✨🎉
-          </div>
-          <div style={{
-            fontSize: '18px',
-            fontWeight: '600',
-            margin: '0 0 4px 0',
-            fontFamily: 'Didot, "Times New Roman", serif'
-          }}>
-            Special Discovery Unlocked!
-          </div>
-          <div style={{
-            fontSize: '13px',
-            opacity: 0.9
-          }}>
-            Your Complete Learning Style Profile
-          </div>
-        </div>
-
-        {/* Content */}
-        <div style={{ padding: '20px' }}>
-          {/* Main Type */}
-          <div style={{
-            textAlign: 'center',
-            marginBottom: '20px'
-          }}>
-            <div style={{
-              fontSize: '16px',
-              fontWeight: '600',
-              color: currentTheme.textPrimary,
-              marginBottom: '8px'
-            }}>
-              You are a {dnaType.name}! {dnaType.emoji}
-            </div>
-          </div>
-
-          {/* Learning Style Details */}
-          <div style={{
-            fontSize: '14px',
-            fontWeight: '600',
-            color: currentTheme.textPrimary,
-            marginBottom: '12px',
-            textAlign: 'center'
-          }}>
-            🌟 Your Amazing Learning Style:
-          </div>
-
-          {/* Modifier Details */}
-          {modifiers.map((modifier, index) => {
-            const modifierData = studentFriendlyModifiers[modifier];
-            if (!modifierData) return null;
-
-            return (
-              <div key={modifier} style={{
-                backgroundColor: `${currentTheme.primary}15`,
-                borderRadius: '12px',
-                padding: '16px',
-                marginBottom: '12px',
-                border: `1px solid ${currentTheme.primary}30`
+              <div className="reading-dna-result-modal-content" style={{
+                maxWidth: '380px',
+                width: '100%',
+                maxHeight: '90vh',
+                overflowY: 'auto',
+                position: 'relative',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center'
               }}>
-                <div style={{
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: currentTheme.textPrimary,
-                  marginBottom: '8px',
+                <button
+                  onClick={() => {
+  setShowReadingDnaResult(false);
+  setShowMyDnaModal(true);
+}}
+                  style={{
+                    position: 'absolute',
+                    top: '12px',
+                    right: '12px',
+                    backgroundColor: 'rgba(0,0,0,0.7)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '36px',
+                    height: '36px',
+                    fontSize: '16px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 10,
+                    touchAction: 'manipulation',
+                    WebkitTapHighlightColor: 'transparent'
+                  }}
+                >
+                  ✕
+                </button>
+
+                {/* LARGE READING DNA IMAGE */}
+                <div className="reading-dna-result-image-container" style={{
+                  width: '280px',
+                  height: '340px',
+                  marginBottom: '16px',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '8px'
+                  justifyContent: 'center',
+                  marginTop: '40px',
+                  position: 'relative'
                 }}>
-                  <span style={{ fontSize: '16px' }}>{modifierData.emoji}</span>
-                  {modifierData.name}
-                </div>
-                
-                <div style={{
-                  fontSize: '13px',
-                  color: currentTheme.textPrimary,
-                  lineHeight: '1.4',
-                  marginBottom: '12px'
-                }}>
-                  {modifierData.description}
+                  <div style={{
+                    position: 'absolute',
+                    inset: '20px',
+                    background: 'radial-gradient(circle, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 40%, transparent 70%)',
+                    borderRadius: '50%',
+                    filter: 'blur(8px)',
+                    zIndex: 0
+                  }} />
+                  <img 
+                    src={`/reading-dna/${readingDnaResult.type}.png`}
+                    alt={dnaType.name}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'contain',
+                      filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.3))',
+                      background: 'radial-gradient(circle at center, rgba(255,255,255,0.1) 0%, transparent 70%)',
+                      borderRadius: '12px'
+                    }}
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.nextSibling.style.display = 'flex';
+                    }}
+                  />
+                  {/* Fallback emoji */}
+                  <div style={{
+                    width: '100%',
+                    height: '100%',
+                    display: 'none',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '120px',
+                    color: 'rgba(255,255,255,0.8)',
+                    filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.3))'
+                  }}>
+                    {dnaType.emoji}
+                  </div>
                 </div>
 
-                <div style={{
-                  fontSize: '12px',
-                  color: currentTheme.textSecondary,
-                  marginBottom: '8px'
+                {/* RESULT INFO CARD */}
+                <div className="reading-dna-result-info-card" style={{
+                  backgroundColor: dnaType.color,
+                  borderRadius: '14px',
+                  padding: '20px',
+                  width: '90%',
+                  maxWidth: '340px',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                  textAlign: 'center'
                 }}>
-                  ✨ What this means:
-                </div>
-                {modifierData.studentInsights.map((insight, i) => (
-                  <div key={i} style={{
-                    fontSize: '11px',
-                    color: currentTheme.textSecondary,
-                    marginBottom: '4px',
-                    paddingLeft: '12px'
+                  {/* Result Header */}
+                  <div style={{
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: '#FFFFFF',
+                    marginBottom: '8px'
                   }}>
-                    • {insight}
+                    🎉 Your Reading DNA 🎉
                   </div>
-                ))}
 
-                <div style={{
-                  fontSize: '12px',
-                  color: currentTheme.textSecondary,
-                  marginBottom: '8px',
-                  marginTop: '12px'
-                }}>
-                  🚀 Ways to use your learning style:
-                </div>
-                {modifierData.studentTips.map((tip, i) => (
-                  <div key={i} style={{
-                    fontSize: '11px',
-                    color: currentTheme.textSecondary,
-                    marginBottom: '4px',
-                    paddingLeft: '12px'
+                  {/* DNA Type Name */}
+                  <h2 style={{
+                    fontSize: '20px',
+                    fontWeight: '600',
+                    color: '#FFFFFF',
+                    margin: '0 0 8px 0',
+                    fontFamily: 'Didot, "Times New Roman", serif',
+                    textShadow: '0 1px 2px rgba(0,0,0,0.2)'
                   }}>
-                    • {tip}
+                    You are a {dnaType.name}!
+                  </h2>
+
+                  {/* Science Note */}
+                  <div style={{
+                    backgroundColor: 'rgba(255,255,255,0.9)',
+                    color: '#2F1B14',
+                    padding: '4px 10px',
+                    borderRadius: '12px',
+                    fontSize: '10px',
+                    fontWeight: '600',
+                    display: 'inline-block',
+                    marginBottom: '12px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                  }}>
+                    Science-Inspired Reading Personality
                   </div>
-                ))}
+
+                  {/* Description */}
+                  <div style={{
+                    fontSize: '13px',
+                    color: '#FFFFFF',
+                    lineHeight: '1.4',
+                    marginBottom: '12px',
+                    textAlign: 'center'
+                  }}>
+                    {dnaType.description}
+                  </div>
+
+                  {/* Research Note */}
+                  <div style={{
+                    fontSize: '12px',
+                    color: '#FFFFFF',
+                    lineHeight: '1.4',
+                    textAlign: 'center',
+                    fontStyle: 'italic',
+                    marginBottom: '16px'
+                  }}>
+                    <div style={{
+                      fontWeight: '600',
+                      marginBottom: '4px',
+                      color: '#FFFFFF'
+                    }}>
+                      ✨ Cool Science Fact:
+                    </div>
+                    {dnaType.researchNote}
+                  </div>
+
+                  {/* LEARNING STYLE DETAILS - ALWAYS AVAILABLE AFTER UNLOCK */}
+                  {hasModifiers && (
+                    <div style={{
+                      backgroundColor: 'rgba(255,255,255,0.15)',
+                      borderRadius: '12px',
+                      padding: '12px',
+                      marginBottom: '16px',
+                      border: '1px solid rgba(255,255,255,0.3)'
+                    }}>
+                      <div style={{
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        color: '#FFFFFF',
+                        marginBottom: '8px'
+                      }}>
+                        🌟 Your Special Learning Style:
+                      </div>
+                      <button
+                        onClick={() => setShowLearningStyleModal(true)}
+                        style={{
+                          backgroundColor: 'rgba(255,255,255,0.9)',
+                          color: '#2F1B14',
+                          border: 'none',
+                          borderRadius: '8px',
+                          padding: '8px 12px',
+                          fontSize: '11px',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          touchAction: 'manipulation',
+                          WebkitTapHighlightColor: 'transparent'
+                        }}
+                      >
+                        🔍 Discover Your Complete Learning Style
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="reading-dna-result-action-buttons" style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '8px',
+                    marginTop: '16px'
+                  }}>
+                    <button
+                      onClick={() => {
+                        setShowReadingDnaResult(false);
+                        startReadingDnaAssessment();
+                      }}
+                      style={{
+                        backgroundColor: 'rgba(255,255,255,0.2)',
+                        color: '#FFFFFF',
+                        border: '1px solid rgba(255,255,255,0.3)',
+                        borderRadius: '8px',
+                        padding: '8px',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        touchAction: 'manipulation',
+                        WebkitTapHighlightColor: 'transparent'
+                      }}
+                    >
+                      🔄 Retake
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+  setShowReadingDnaResult(false);
+  setShowMyDnaModal(true);
+}}
+                      style={{
+                        backgroundColor: 'rgba(255,255,255,0.9)',
+                        color: '#2F1B14',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '8px',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        touchAction: 'manipulation',
+                        WebkitTapHighlightColor: 'transparent'
+                      }}
+                    >
+                      ✨ Amazing!
+                    </button>
+                  </div>
+                </div>
               </div>
-            );
-          })}
-
-          {/* Footer Message */}
-          <div style={{
-            backgroundColor: `${currentTheme.secondary}20`,
-            borderRadius: '12px',
-            padding: '16px',
-            textAlign: 'center',
-            marginTop: '20px'
-          }}>
-            <div style={{
-              fontSize: '13px',
-              color: currentTheme.textPrimary,
-              lineHeight: '1.4',
-              marginBottom: '8px'
-            }}>
-              💝 This special insight was unlocked by someone who cares about your learning!
             </div>
-            
+          );
+        })()}
+{/* LEARNING STYLE DISCOVERY MODAL */}
+        {showLearningStyleModal && readingDnaResult && isLearningStyleUnlocked() && (() => {
+          const dnaType = readingDnaResult.details;
+          const modifiers = readingDnaResult.modifiers || [];
+          
+          
+          return (
             <div style={{
-              fontSize: '11px',
-              color: currentTheme.textSecondary,
-              fontStyle: 'italic',
-              marginBottom: '8px'
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0,0,0,0.9)',
+              zIndex: 1001,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '20px'
             }}>
-              Remember: This describes how you learn best RIGHT NOW. As you grow and try new things, you might discover even more about yourself!
-            </div>
-            
-            <div style={{
-              fontSize: '12px',
-              color: currentTheme.textPrimary,
-              fontWeight: '600'
-            }}>
-              🌱 Every reader is unique and amazing!
-            </div>
-          </div>
+              <div style={{
+                backgroundColor: currentTheme.surface,
+                borderRadius: '20px',
+                maxWidth: '420px',
+                width: '100%',
+                maxHeight: '85vh',
+                overflowY: 'auto',
+                position: 'relative',
+                boxShadow: '0 20px 40px rgba(0,0,0,0.4)'
+              }}>
+                <button
+                  onClick={() => setShowLearningStyleModal(false)}
+                  style={{
+                    position: 'absolute',
+                    top: '12px',
+                    right: '12px',
+                    backgroundColor: 'rgba(0,0,0,0.7)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '36px',
+                    height: '36px',
+                    fontSize: '16px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 10,
+                    touchAction: 'manipulation',
+                    WebkitTapHighlightColor: 'transparent'
+                  }}
+                >
+                  ✕
+                </button>
 
-          {/* Close Button */}
-          <div style={{ textAlign: 'center', marginTop: '20px' }}>
-            <button
-              onClick={() => setShowLearningStyleModal(false)}
-              style={{
-                backgroundColor: currentTheme.primary,
-                color: currentTheme.textPrimary,
-                border: 'none',
-                borderRadius: '12px',
-                padding: '12px 24px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                touchAction: 'manipulation',
-                WebkitTapHighlightColor: 'transparent'
-              }}
-            >
-              ✨ This is so cool!
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-})()}
+                {/* Header */}
+                <div style={{
+                  background: `linear-gradient(135deg, ${currentTheme.primary}, ${currentTheme.secondary})`,
+                  borderRadius: '20px 20px 0 0',
+                  padding: '24px',
+                  textAlign: 'center',
+                  color: currentTheme.textPrimary
+                }}>
+                  <div style={{
+                    fontSize: '24px',
+                    marginBottom: '8px'
+                  }}>
+                    🎉✨🎉
+                  </div>
+                  <div style={{
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    margin: '0 0 4px 0',
+                    fontFamily: 'Didot, "Times New Roman", serif'
+                  }}>
+                    Special Discovery Unlocked!
+                  </div>
+                  <div style={{
+                    fontSize: '13px',
+                    opacity: 0.9
+                  }}>
+                    Your Complete Learning Style Profile
+                  </div>
+                </div>
 
-        {/* CELEBRATION ANIMATION MODAL */}
-{isUnlockCelebrating && (
-  <div style={{
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.8)',
-    zIndex: 1002,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    animation: 'fadeIn 0.5s ease'
-  }}>
-    <div style={{
-      textAlign: 'center',
-      color: 'white',
-      animation: 'bounceIn 1s ease'
+                {/* Content */}
+                <div style={{ padding: '20px' }}>
+                  {/* Main Type */}
+                  <div style={{
+                    textAlign: 'center',
+                    marginBottom: '20px'
+                  }}>
+                    <div style={{
+                      fontSize: '16px',
+                      fontWeight: '600',
+                      color: currentTheme.textPrimary,
+                      marginBottom: '8px'
+                    }}>
+                      You are a {dnaType.name}! {dnaType.emoji}
+                    </div>
+                  </div>
+
+                  {/* Learning Style Details */}
+                  <div style={{
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: currentTheme.textPrimary,
+                    marginBottom: '12px',
+                    textAlign: 'center'
+                  }}>
+                    🌟 Your Amazing Learning Style:
+                  </div>
+
+                  {/* Modifier Details */}
+{modifiers.map((modifier, index) => {
+  // Check if modifier is a string (like "S") or an object
+  const modifierCode = typeof modifier === 'string' ? modifier : modifier.code;
+  const modifierData = typeof modifier === 'string' 
+    ? studentFriendlyModifiers[modifier] 
+    : readingDnaResult.modifierDetails?.[index];
+    
+  console.log('🎯 Rendering modifier:', modifierCode, modifierData);
+  
+  if (!modifierData || !modifierData.name) return null;
+
+  return (
+    <div key={modifierCode} style={{
+      backgroundColor: `${currentTheme.primary}15`,
+      borderRadius: '12px',
+      padding: '16px',
+      marginBottom: '12px',
+      border: `1px solid ${currentTheme.primary}30`
     }}>
       <div style={{
-        fontSize: '80px',
-        marginBottom: '20px',
-        animation: 'pulse 1s infinite'
-      }}>
-        🎉✨🔓✨🎉
-      </div>
-      <div style={{
-        fontSize: '24px',
+        fontSize: '14px',
         fontWeight: '600',
+        color: currentTheme.textPrimary,
+        marginBottom: '8px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px'
+      }}>
+        <span style={{ fontSize: '16px' }}>{modifierData.emoji}</span>
+        {modifierData.name}
+      </div>
+      
+      <div style={{
+        fontSize: '13px',
+        color: currentTheme.textPrimary,
+        lineHeight: '1.4',
         marginBottom: '12px'
       }}>
-        Special Discovery Unlocked!
+        {modifierData.description}
       </div>
-      <div style={{
-        fontSize: '16px',
-        opacity: 0.9
-      }}>
-        Get ready to learn something amazing about yourself...
-      </div>
+
+      {modifierData.studentInsights && modifierData.studentInsights.length > 0 && (
+        <>
+          <div style={{
+            fontSize: '12px',
+            color: currentTheme.textSecondary,
+            marginBottom: '8px'
+          }}>
+            ✨ What this means:
+          </div>
+          {modifierData.studentInsights.map((insight, i) => (
+            <div key={i} style={{
+              fontSize: '11px',
+              color: currentTheme.textSecondary,
+              marginBottom: '4px',
+              paddingLeft: '12px'
+            }}>
+              • {insight}
+            </div>
+          ))}
+        </>
+      )}
+
+      {modifierData.studentTips && modifierData.studentTips.length > 0 && (
+        <>
+          <div style={{
+            fontSize: '12px',
+            color: currentTheme.textSecondary,
+            marginBottom: '8px',
+            marginTop: '12px'
+          }}>
+            🚀 Ways to use your learning style:
+          </div>
+          {modifierData.studentTips.map((tip, i) => (
+            <div key={i} style={{
+              fontSize: '11px',
+              color: currentTheme.textSecondary,
+              marginBottom: '4px',
+              paddingLeft: '12px'
+            }}>
+              • {tip}
+            </div>
+          ))}
+        </>
+      )}
     </div>
-  </div>
-)}
+  );
+})}
+
+                  {/* Footer Message */}
+                  <div style={{
+                    backgroundColor: `${currentTheme.secondary}20`,
+                    borderRadius: '12px',
+                    padding: '16px',
+                    textAlign: 'center',
+                    marginTop: '20px'
+                  }}>
+                    <div style={{
+                      fontSize: '13px',
+                      color: currentTheme.textPrimary,
+                      lineHeight: '1.4',
+                      marginBottom: '8px'
+                    }}>
+                      💝 This special insight was unlocked by someone who cares about your learning!
+                    </div>
+                    
+                    <div style={{
+                      fontSize: '11px',
+                      color: currentTheme.textSecondary,
+                      fontStyle: 'italic',
+                      marginBottom: '8px'
+                    }}>
+                      Remember: This describes how you learn best RIGHT NOW. As you grow and try new things, you might discover even more about yourself!
+                    </div>
+                    
+                    <div style={{
+                      fontSize: '12px',
+                      color: currentTheme.textPrimary,
+                      fontWeight: '600'
+                    }}>
+                      🌱 Every reader is unique and amazing!
+                    </div>
+                  </div>
+
+                  {/* Close Button */}
+                  <div style={{ textAlign: 'center', marginTop: '20px' }}>
+                    <button
+                      onClick={() => setShowLearningStyleModal(false)}
+                      style={{
+                        backgroundColor: currentTheme.primary,
+                        color: currentTheme.textPrimary,
+                        border: 'none',
+                        borderRadius: '12px',
+                        padding: '12px 24px',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        touchAction: 'manipulation',
+                        WebkitTapHighlightColor: 'transparent'
+                      }}
+                    >
+                      ✨ This is so cool!
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* CELEBRATION ANIMATION MODAL */}
+        {isUnlockCelebrating && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            zIndex: 1002,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            animation: 'fadeIn 0.5s ease'
+          }}>
+            <div style={{
+              textAlign: 'center',
+              color: 'white',
+              animation: 'bounceIn 1s ease'
+            }}>
+              <div style={{
+                fontSize: '80px',
+                marginBottom: '20px',
+                animation: 'pulse 1s infinite'
+              }}>
+                🎉✨🔓✨🎉
+              </div>
+              <div style={{
+                fontSize: '24px',
+                fontWeight: '600',
+                marginBottom: '12px'
+              }}>
+                Special Discovery Unlocked!
+              </div>
+              <div style={{
+                fontSize: '16px',
+                opacity: 0.9
+              }}>
+                Get ready to learn something amazing about yourself...
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* READING DNA INFO MODAL */}
         {showReadingDnaInfoModal && (
@@ -3708,8 +2896,7 @@ const showLearningStyleDiscovery = () => {
             </div>
           </div>
         )}
-
-        {/* QUIZ TAKING MODAL */}
+{/* QUIZ TAKING MODAL */}
         {showQuizModal && currentQuiz && currentQuestion && (
           <div style={{
             position: 'fixed',
@@ -4029,9 +3216,7 @@ const showLearningStyleDiscovery = () => {
               </div>
             </div>
           </div>
-        )}
-
-        {/* QUIZ RESULT MODAL */}
+        )}{/* QUIZ RESULT MODAL */}
         {showQuizResult && quizResult && (() => {
           const seriesColor = seriesColors[quizResult.series] || seriesColors['Pocket Patrons'];
           
@@ -4060,7 +3245,10 @@ const showLearningStyleDiscovery = () => {
                 alignItems: 'center'
               }}>
                 <button
-                  onClick={() => setShowQuizResult(false)}
+                  onClick={() => {
+  setShowQuizResult(false);
+  setShowMyDnaModal(true);  // Return to DNA results
+}}
                   style={{
                     position: 'absolute',
                     top: '12px',
@@ -4243,7 +3431,10 @@ const showLearningStyleDiscovery = () => {
                     </button>
                     
                     <button
-                      onClick={() => setShowQuizResult(false)}
+                      onClick={() => {
+  setShowQuizResult(false);
+  setShowMyDnaModal(true);  // Return to DNA results
+}}
                       style={{
                         backgroundColor: 'rgba(255,255,255,0.9)',
                         color: '#2F1B14',
@@ -4296,7 +3487,10 @@ const showLearningStyleDiscovery = () => {
                 alignItems: 'center'
               }}>
                 <button
-                  onClick={() => setShowNomineeQuizResult(false)}
+                  onClick={() => {
+  setShowNomineeQuizResult(false);
+  setShowMyDnaModal(true);
+}}
                   style={{
                     position: 'absolute',
                     top: '12px',
@@ -4468,7 +3662,10 @@ const showLearningStyleDiscovery = () => {
                     </button>
                     
                     <button
-                      onClick={() => setShowNomineeQuizResult(false)}
+                      onClick={() => {
+  setShowNomineeQuizResult(false);
+  setShowMyDnaModal(true);
+}}
                       style={{
                         backgroundColor: currentTheme.primary,
                         color: currentTheme.textPrimary,
@@ -4490,8 +3687,7 @@ const showLearningStyleDiscovery = () => {
             </div>
           );
         })()}
-
-        {/* MY DNA RESULTS MODAL - UPDATED WITH READING DNA */}
+{/* MY DNA RESULTS MODAL - UPDATED WITH READING DNA */}
         {showMyDnaModal && (
           <div style={{
             position: 'fixed',
@@ -4630,7 +3826,7 @@ const showLearningStyleDiscovery = () => {
                             <div style={{
                               fontSize: '16px',
                               fontWeight: '600',
-                              color: currentTheme.textPrimary,
+                              color: currentTheme.textSecondary,
                               marginBottom: '4px'
                             }}>
                               {getReadingDnaResult()?.details?.name}
@@ -4656,24 +3852,51 @@ const showLearningStyleDiscovery = () => {
                     )}
 
                     {/* Saint Quiz Results */}
-                    {Object.keys(studentData?.quizResults || {}).length > 0 && (
-                      <>
-                        <div style={{
-                          fontSize: '14px',
-                          fontWeight: '600',
-                          color: currentTheme.textPrimary,
-                          marginBottom: '16px',
-                          textAlign: 'center'
-                        }}>
-                          ♔ Your Saint Personality Matches:
-                        </div>
-                        
-                        <div className="dna-results-grid" style={{
-                          display: 'grid',
-                          gap: '8px',
-                          marginBottom: '20px'
-                        }}>
-                          {Object.entries(studentData?.quizResults || {}).map(([quizId, result]) => {
+{Object.keys(studentData?.quizResults || {}).length > 0 && (
+  <>
+    <button
+      onClick={() => setIsSaintResultsExpanded(!isSaintResultsExpanded)}
+      style={{
+        width: '100%',
+        backgroundColor: 'transparent',
+        border: 'none',
+        padding: '0',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '8px',
+        marginBottom: isSaintResultsExpanded ? '16px' : '20px',
+        touchAction: 'manipulation',
+        WebkitTapHighlightColor: 'transparent'
+      }}
+    >
+      <span style={{
+        fontSize: '14px',
+        fontWeight: '600',
+        color: currentTheme.textPrimary,
+        textAlign: 'center'
+      }}>
+        ♔ Your Saint Personality Matches ({Object.keys(studentData?.quizResults || {}).length})
+      </span>
+      <span style={{
+        fontSize: '12px',
+        color: currentTheme.textPrimary,
+        transform: isSaintResultsExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+        transition: 'transform 0.3s ease'
+      }}>
+        ▶
+      </span>
+    </button>
+    
+    {isSaintResultsExpanded && (
+      <div className="dna-results-grid" style={{
+        display: 'grid',
+        gap: '8px',
+        marginBottom: '20px',
+        animation: 'fadeIn 0.3s ease'
+      }}>
+        {Object.entries(studentData?.quizResults || {}).map(([quizId, result]) => {
                             const quiz = quizzes.find(q => q.quiz_id === quizId);
                             if (!quiz) return null;
                             
@@ -4706,7 +3929,8 @@ const showLearningStyleDiscovery = () => {
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                   <div style={{
                                     fontSize: '12px',
-                                    color: currentTheme.textSecondary,
+                                    color: currentTheme.textPrimary,
+opacity: 0.9,
                                     marginBottom: '2px'
                                   }}>
                                     {quiz.title}
@@ -4721,7 +3945,8 @@ const showLearningStyleDiscovery = () => {
                                   </div>
                                   <div style={{
                                     fontSize: '10px',
-                                    color: currentTheme.textSecondary
+                                    color: currentTheme.textPrimary,
+opacity: 0.85
                                   }}>
                                     Completed {result.timesCompleted} time{result.timesCompleted > 1 ? 's' : ''}
                                   </div>
@@ -4730,27 +3955,55 @@ const showLearningStyleDiscovery = () => {
                             );
                           })}
                         </div>
+                        )}
                       </>
                     )}
 
                     {/* Nominee Quiz Results */}
-                    {Object.keys(studentData?.nomineeQuizResults || {}).length > 0 && (
-                      <>
-                        <div style={{
-                          fontSize: '14px',
-                          fontWeight: '600',
-                          color: currentTheme.textPrimary,
-                          marginBottom: '16px',
-                          textAlign: 'center'
-                        }}>
-                          □ Your Book World Matches:
-                        </div>
-                        
-                        <div className="nominee-dna-results-grid" style={{
-                          display: 'grid',
-                          gap: '8px'
-                        }}>
-                          {Object.entries(studentData?.nomineeQuizResults || {}).map(([quizId, result]) => {
+{Object.keys(studentData?.nomineeQuizResults || {}).length > 0 && (
+  <>
+    <button
+      onClick={() => setIsNomineeResultsExpanded(!isNomineeResultsExpanded)}
+      style={{
+        width: '100%',
+        backgroundColor: 'transparent',
+        border: 'none',
+        padding: '0',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '8px',
+        marginBottom: isNomineeResultsExpanded ? '16px' : '0',
+        touchAction: 'manipulation',
+        WebkitTapHighlightColor: 'transparent'
+      }}
+    >
+      <span style={{
+        fontSize: '14px',
+        fontWeight: '600',
+        color: currentTheme.textPrimary,
+        textAlign: 'center'
+      }}>
+        □ Your Book World Matches ({Object.keys(studentData?.nomineeQuizResults || {}).length})
+      </span>
+      <span style={{
+        fontSize: '12px',
+        color: currentTheme.textPrimary,
+        transform: isNomineeResultsExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+        transition: 'transform 0.3s ease'
+      }}>
+        ▶
+      </span>
+    </button>
+    
+    {isNomineeResultsExpanded && (
+      <div className="nominee-dna-results-grid" style={{
+        display: 'grid',
+        gap: '8px',
+        animation: 'fadeIn 0.3s ease'
+      }}>
+        {Object.entries(studentData?.nomineeQuizResults || {}).map(([quizId, result]) => {
                             // Try finding quiz with flexible ID matching
                             let quiz = nomineeQuizzes.find(q => q.id === quizId);
                             if (!quiz) {
@@ -4791,7 +4044,8 @@ const showLearningStyleDiscovery = () => {
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                   <div style={{
                                     fontSize: '12px',
-                                    color: currentTheme.textSecondary,
+                                    color: currentTheme.textPrimary,
+opacity: 0.9,
                                     marginBottom: '2px'
                                   }}>
                                     {quiz.title}
@@ -4806,7 +4060,8 @@ const showLearningStyleDiscovery = () => {
                                   </div>
                                   <div style={{
                                     fontSize: '10px',
-                                    color: currentTheme.textSecondary
+                                    color: currentTheme.textPrimary,
+opacity: 0.85
                                   }}>
                                     Completed {result.timesCompleted} time{result.timesCompleted > 1 ? 's' : ''}
                                   </div>
@@ -4815,6 +4070,7 @@ const showLearningStyleDiscovery = () => {
                             );
                           })}
                         </div>
+                        )}
                       </>
                     )}
                   </div>
@@ -4845,7 +4101,7 @@ const showLearningStyleDiscovery = () => {
               transform: translateY(0); 
             }
           }
-           @keyframes pulse {
+          @keyframes pulse {
             0% { transform: scale(1); }
             50% { transform: scale(1.1); }
             100% { transform: scale(1); }

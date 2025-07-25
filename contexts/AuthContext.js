@@ -1,5 +1,5 @@
-// contexts/AuthContext.js - FIXED sign-out redirects
-import { createContext, useContext, useEffect, useState } from 'react'
+// contexts/AuthContext.js - FIXED: Prevents double sign-out processing
+import { createContext, useContext, useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/router'
 import { auth, db } from '../lib/firebase'
 import { onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth'
@@ -20,13 +20,16 @@ export const AuthProvider = ({ children }) => {
   const [userProfile, setUserProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [initialized, setInitialized] = useState(false)
-  const [signingOut, setSigningOut] = useState(false) // 🔧 NEW: Track sign-out state
+  const [signingOut, setSigningOut] = useState(false)
+  
+  // 🔧 NEW: Add refs to prevent double processing
+  const lastAuthState = useRef(null)
+  const processingAuth = useRef(false)
 
   // Session timeout settings
-  const ADMIN_TIMEOUT = 60 * 60 * 1000 // 60 minutes (1 hour) for admins
-  const STUDENT_TIMEOUT = 7 * 24 * 60 * 60 * 1000 // 7 days for students (effectively no timeout)
+  const ADMIN_TIMEOUT = 60 * 60 * 1000 // 60 minutes for admins
+  const STUDENT_TIMEOUT = 7 * 24 * 60 * 60 * 1000 // 7 days for students
 
-  // Initialize last activity from localStorage or current time
   const initializeLastActivity = () => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('luxlibris_last_activity')
@@ -37,7 +40,6 @@ export const AuthProvider = ({ children }) => {
 
   const [lastActivity, setLastActivity] = useState(initializeLastActivity)
 
-  // Store activity in localStorage whenever it changes
   const updateLastActivity = (timestamp = Date.now()) => {
     setLastActivity(timestamp)
     if (typeof window !== 'undefined') {
@@ -78,21 +80,75 @@ export const AuthProvider = ({ children }) => {
     const lastActivityTime = stored ? parseInt(stored) : lastActivity
     const timeSinceActivity = now - lastActivityTime
     
-    console.log('🕐 Admin session check:', {
-      now: new Date(now).toLocaleTimeString(),
-      lastActivity: new Date(lastActivityTime).toLocaleTimeString(),
-      timeSinceActivity: Math.round(timeSinceActivity / 1000 / 60) + ' minutes',
-      timeout: Math.round(ADMIN_TIMEOUT / 1000 / 60) + ' minutes',
-      isExpired: timeSinceActivity > ADMIN_TIMEOUT
-    })
-    
     return timeSinceActivity > ADMIN_TIMEOUT
   }
 
-  // FIXED: Complete getUserProfile with parents collection
-  const getUserProfile = async (uid) => {
+  // 🔧 NEW: Helper function to detect inconsistent states
+  const checkForInconsistentState = (profile) => {
+    if (typeof window === 'undefined') return false
+    
+    // Check for new account markers
+    const hasNewAccountMarkers = 
+      localStorage.getItem('luxlibris_account_created') === 'true' ||
+      localStorage.getItem('tempParentData') ||
+      localStorage.getItem('parentOnboardingData')
+    
+    if (!hasNewAccountMarkers) return false
+    
+    // For parents: if they just completed onboarding but profile shows incomplete
+    if (profile.accountType === 'parent') {
+      const hasOnboardingTimestamp = profile.onboardingCompletedAt
+      const onboardingIncomplete = profile.onboardingCompleted !== true
+      
+      // If we have timestamp but incomplete flag, it's likely stale read
+      if (hasOnboardingTimestamp && onboardingIncomplete) {
+        console.log('🔍 Detected inconsistent parent state: has timestamp but incomplete flag')
+        return true
+      }
+      
+      // If account created very recently (< 60 seconds) and incomplete
+      if (profile.accountCreated && onboardingIncomplete) {
+        const accountAge = Date.now() - profile.accountCreated.toMillis()
+        if (accountAge < 60000) { // 60 seconds
+          console.log('🔍 Detected fresh parent account with incomplete onboarding')
+          return true
+        }
+      }
+    }
+    
+    // For students: similar logic can be added
+    if (profile.accountType === 'student') {
+      const hasOnboardingTimestamp = profile.accountCreated
+      const onboardingIncomplete = profile.onboardingCompleted !== true
+      
+      if (hasOnboardingTimestamp && onboardingIncomplete) {
+        const accountAge = Date.now() - hasOnboardingTimestamp.toMillis()
+        if (accountAge < 60000) {
+          console.log('🔍 Detected fresh student account with incomplete onboarding')
+          return true
+        }
+      }
+    }
+    
+    return false
+  }
+
+  // 🔧 NEW: Helper to determine if error is worth retrying
+  const isRetriableError = (error) => {
+    return error.code === 'unavailable' || 
+           error.code === 'deadline-exceeded' ||
+           error.message?.includes('timeout') ||
+           error.message?.includes('network') ||
+           error.message?.includes('cancelled')
+  }
+
+  // 🔧 ENHANCED: getUserProfile with retry logic
+  const getUserProfile = async (uid, retryAttempt = 0) => {
+    const maxRetries = 3
+    const baseDelay = 1000 // 1 second
+    
     try {
-      console.log('🔍 Looking for user profile with UID:', uid)
+      console.log(`🔍 Getting user profile (attempt ${retryAttempt + 1}/${maxRetries + 1}) for UID:`, uid)
       
       // FIRST: Check parents collection
       try {
@@ -104,6 +160,25 @@ export const AuthProvider = ({ children }) => {
             id: parentDoc.id,
             ...parentDoc.data()
           }
+          
+          // 🔧 CRITICAL: Check for consistency issues
+          const isInconsistentState = checkForInconsistentState(profile)
+          
+          if (isInconsistentState && retryAttempt < maxRetries) {
+            const delay = baseDelay * (retryAttempt + 1)
+            console.log(`🔄 Inconsistent parent state detected, retrying in ${delay}ms`)
+            
+            await new Promise(resolve => setTimeout(resolve, delay))
+            return await getUserProfile(uid, retryAttempt + 1)
+          }
+          
+          // 🔧 Success: Clean up consistency markers
+          if (typeof window !== 'undefined' && profile.onboardingCompleted === true) {
+            localStorage.removeItem('luxlibris_account_created')
+            localStorage.removeItem('tempParentData')
+            localStorage.removeItem('parentOnboardingData')
+          }
+          
           console.log('✅ Found parent profile')
           return profile
         }
@@ -171,15 +246,30 @@ export const AuthProvider = ({ children }) => {
 
               // Check if student needs grade progression
               if (profile.accountType === 'student') {
-                const { checkGradeProgression } = await import('../lib/firebase')
-                const progressionCheck = await checkGradeProgression(profile)
-                profile.needsGradeUpdate = progressionCheck.needsUpdate
-                profile.suggestedGrade = progressionCheck.suggestedGrade
-                profile.shouldBeAlumni = progressionCheck.shouldBeAlumni
-                
-                if (progressionCheck.needsUpdate) {
-                  console.log('📈 Student needs grade progression:', profile.firstName)
+                try {
+                  const { checkGradeProgression } = await import('../lib/firebase')
+                  const progressionCheck = await checkGradeProgression(profile)
+                  profile.needsGradeUpdate = progressionCheck.needsUpdate
+                  profile.suggestedGrade = progressionCheck.suggestedGrade
+                  profile.shouldBeAlumni = progressionCheck.shouldBeAlumni
+                  
+                  if (progressionCheck.needsUpdate) {
+                    console.log('📈 Student needs grade progression:', profile.firstName)
+                  }
+                } catch (gradeError) {
+                  console.log('Grade progression check failed:', gradeError)
                 }
+              }
+
+              // 🔧 Check for student consistency issues
+              const isInconsistentState = checkForInconsistentState(profile)
+              
+              if (isInconsistentState && retryAttempt < maxRetries) {
+                const delay = baseDelay * (retryAttempt + 1)
+                console.log(`🔄 Inconsistent student state detected, retrying in ${delay}ms`)
+                
+                await new Promise(resolve => setTimeout(resolve, delay))
+                return await getUserProfile(uid, retryAttempt + 1)
               }
 
               console.log('✅ Found student profile in entities structure')
@@ -196,6 +286,15 @@ export const AuthProvider = ({ children }) => {
       
     } catch (error) {
       console.error('❌ Error fetching user profile:', error)
+      
+      // If we have retries left and it's a retriable error, try again
+      if (retryAttempt < maxRetries && isRetriableError(error)) {
+        const delay = baseDelay * (retryAttempt + 1)
+        console.log(`🔄 Retriable error, retrying in ${delay}ms:`, error.message)
+        await new Promise(resolve => setTimeout(resolve, delay))
+        return await getUserProfile(uid, retryAttempt + 1)
+      }
+      
       return null
     }
   }
@@ -310,7 +409,7 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  // FIXED: Get appropriate dashboard URL based on user type
+  // Get appropriate dashboard URL based on user type
   const getDashboardUrl = () => {
     if (!userProfile) {
       console.log('❌ No user profile, redirecting to role selector')
@@ -350,7 +449,7 @@ export const AuthProvider = ({ children }) => {
         case 'parent':
           const parentComplete = userProfile.onboardingCompleted === true
           console.log('👨‍👩‍👧‍👦 Parent onboarding status:', parentComplete)
-          return parentComplete ? '/parent/dashboard' : '/parent/onboarding'  // FIXED: correct paths
+          return parentComplete ? '/parent/dashboard' : '/parent/onboarding'
           
         default:
           console.log('❓ Unknown account type, redirecting to role selector')
@@ -358,7 +457,6 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('❌ Error determining dashboard URL:', error)
-      // On error, send to role selector to be safe
       return '/role-selector'
     }
   }
@@ -392,15 +490,41 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  // Initialize auth state listener with increased timeout
+  // 🔧 ENHANCED: Initialize auth state listener with debouncing
   useEffect(() => {
+    let authTimeout = null;
+    
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        console.log('👤 Firebase user signed in:', firebaseUser.email)
-        setUser(firebaseUser)
+      // 🔧 NEW: Clear any pending timeout
+      if (authTimeout) {
+        clearTimeout(authTimeout);
+        authTimeout = null;
+      }
+      
+      // 🔧 NEW: Debounce rapid auth state changes
+      authTimeout = setTimeout(async () => {
+        // 🔧 NEW: Check if this is actually a new auth state
+        const currentAuthState = firebaseUser ? firebaseUser.uid : null;
         
-        // Give Firebase more time to finish writing data
-        setTimeout(async () => {
+        // Only skip if we're signing out AND it's the same state
+        if (signingOut && currentAuthState === lastAuthState.current) {
+          console.log('🔄 Duplicate auth state during sign out, skipping');
+          return;
+        }
+        
+        // 🔧 NEW: Prevent concurrent processing only during sign out
+        if (processingAuth.current && signingOut) {
+          console.log('⏳ Already processing sign out, skipping');
+          return;
+        }
+        
+        processingAuth.current = true;
+        lastAuthState.current = currentAuthState;
+        
+        if (firebaseUser) {
+          console.log('👤 Firebase user signed in:', firebaseUser.email)
+          setUser(firebaseUser)
+          
           try {
             const profile = await getUserProfile(firebaseUser.uid)
             setUserProfile(profile)
@@ -409,7 +533,8 @@ export const AuthProvider = ({ children }) => {
               console.log('✅ User profile loaded:', {
                 accountType: profile.accountType,
                 email: profile.email,
-                name: profile.firstName || profile.name
+                name: profile.firstName || profile.name,
+                onboardingComplete: profile.onboardingCompleted || profile.schoolSetupCompleted
               })
               
               // Check session expiry immediately after loading profile
@@ -419,6 +544,7 @@ export const AuthProvider = ({ children }) => {
                 if (isSessionExpired()) {
                   console.log('⏰ Admin session expired on page load')
                   await signOut({ redirectTo: '/sign-in?reason=session-expired' })
+                  processingAuth.current = false;
                   return
                 }
               } else {
@@ -436,74 +562,87 @@ export const AuthProvider = ({ children }) => {
             setInitialized(true)
           }
           setLoading(false)
-        }, 2000) // Give it 2 seconds for database writes to complete
-        
-      } else {
-        console.log('👤 User signed out')
-        setUser(null)
-        setUserProfile(null)
-        
-        // Clear activity tracking
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('luxlibris_last_activity')
+          
+        } else {
+          // Only log if this is a new sign out
+          if (lastAuthState.current !== null) {
+            console.log('👤 User signed out');
+          }
+          setUser(null)
+          setUserProfile(null)
+          
+          // Clear activity tracking
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('luxlibris_last_activity')
+          }
+          
+          if (!initialized) {
+            setInitialized(true)
+          }
+          setLoading(false)
         }
         
-        if (!initialized) {
-          setInitialized(true)
-        }
-        setLoading(false)
-      }
+        processingAuth.current = false;
+      }, 50); // 50ms debounce - shorter for better responsiveness
     })
 
-    return () => unsubscribe()
-  }, [initialized])
+    return () => {
+      unsubscribe()
+      if (authTimeout) {
+        clearTimeout(authTimeout);
+      }
+      // Reset refs on unmount
+      lastAuthState.current = null;
+      processingAuth.current = false;
+    }
+  }, [initialized, signingOut]) // 🔧 Added signingOut to dependencies
 
-  // 🔧 UPDATED: Enhanced sign out with proper redirect handling
+  // In AuthContext.js - CLEAN & RELIABLE signOut function
   const signOut = async (options = {}) => {
+    console.log('🚪 Starting sign out...')
+    
     try {
-      setSigningOut(true) // 🔧 NEW: Set signing out state
+      // 1. Set signing out state to prevent other redirects
+      setSigningOut(true)
       
-      await firebaseSignOut(auth)
+      // 2. Clear React state immediately  
       setUser(null)
       setUserProfile(null)
       
-      // Clear localStorage
+      // 3. Clear all localStorage
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('luxlibris_student_profile')
-        localStorage.removeItem('luxlibris_account_created')
-        localStorage.removeItem('luxlibris_onboarding_complete')
-        localStorage.removeItem('luxlibris_last_activity')
-        // Clear teacher onboarding data
-        localStorage.removeItem('teacherProgramSelection')
-        localStorage.removeItem('tempTeacherCodes')
-        // Clear parent data
-        localStorage.removeItem('tempParentData')
-        localStorage.removeItem('parentOnboardingData')
+        localStorage.clear() // 🔧 SIMPLE: Just clear everything
       }
       
-      console.log('🚪 Sign out complete, redirecting to homepage...')
+      // 4. Sign out from Firebase
+      await firebaseSignOut(auth)
       
-      // 🔧 UPDATED: Always redirect to homepage after a brief delay
-      setTimeout(() => {
-        setSigningOut(false)
-        if (options.redirectTo) {
-          window.location.href = options.redirectTo
-        } else {
-          window.location.href = '/' // Always go to homepage
-        }
-      }, 100) // Small delay to ensure state is cleared
+      // 5. 🔧 IMMEDIATE redirect to homepage
+      const homepage = options.redirectTo || '/'
+      console.log('🏠 Redirecting to:', homepage)
+      
+      if (typeof window !== 'undefined') {
+        window.location.replace(homepage) // Most reliable redirect method
+      }
       
     } catch (error) {
-      console.error('Error signing out:', error)
-      setSigningOut(false)
-      throw error
+      console.error('❌ Sign out error:', error)
+      
+      // Even if Firebase fails, still go to homepage
+      if (typeof window !== 'undefined') {
+        console.log('🏠 Force redirect to homepage after error')
+        window.location.replace('/')
+      }
     }
+    
+    // Note: We don't set setSigningOut(false) because we're leaving the page
   }
 
   // Refresh profile function
   const refreshProfile = async () => {
     if (user) {
       try {
+        console.log('🔄 Refreshing user profile...')
         const profile = await getUserProfile(user.uid)
         setUserProfile(profile)
         return profile
@@ -571,7 +710,7 @@ export const AuthProvider = ({ children }) => {
     loading,
     initialized,
     lastActivity,
-    signingOut, // 🔧 NEW: Expose signing out state
+    signingOut,
     
     // Helper functions
     signOut,
@@ -592,7 +731,7 @@ export const AuthProvider = ({ children }) => {
     getUserProfile,
     
     // Computed values
-    isAuthenticated: !!user && !signingOut, // 🔧 UPDATED: Not authenticated while signing out
+    isAuthenticated: !!user && !signingOut,
     isStudent: userProfile?.accountType === 'student',
     isParent: userProfile?.accountType === 'parent',
     isAdmin: userProfile?.accountType === 'admin',
@@ -631,7 +770,6 @@ export const withAuth = (WrappedComponent, allowedAccountTypes = ['student', 'pa
       const checkAuth = async () => {
         if (!loading && initialized) {
           if (!isAuthenticated) {
-            // User not authenticated, redirect to homepage
             router.push('/')
             return
           }
@@ -644,7 +782,6 @@ export const withAuth = (WrappedComponent, allowedAccountTypes = ['student', 'pa
           }
 
           if (userProfile && !allowedAccountTypes.includes(userProfile.accountType)) {
-            // User doesn't have permission for this page
             const dashboardUrl = await getDashboardUrl()
             router.push(dashboardUrl)
             return
@@ -654,7 +791,6 @@ export const withAuth = (WrappedComponent, allowedAccountTypes = ['student', 'pa
           if (userProfile) {
             const completed = await hasCompletedOnboarding()
             if (!completed) {
-              // User needs to complete onboarding
               const dashboardUrl = await getDashboardUrl()
               router.push(dashboardUrl)
               return

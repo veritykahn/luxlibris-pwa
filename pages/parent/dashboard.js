@@ -1,4 +1,4 @@
-// pages/parent/dashboard.js - Updated with Book Nominees and unlocked Settings
+// pages/parent/dashboard.js - Updated with improved navigation
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
@@ -35,14 +35,22 @@ export default function ParentDashboard() {
     textSecondary: '#556B7A'
   }
 
-  // UPDATED: Navigation menu items with Book Nominees and unlocked Settings
+  // UPDATED: Navigation menu items matching healthy habits pattern
   const navMenuItems = useMemo(() => [
     { name: 'Family Dashboard', path: '/parent/dashboard', icon: '⌂', current: true },
+    { name: 'Child Progress', path: '/parent/child-progress', icon: '◐' },
     { name: 'Book Nominees', path: '/parent/nominees', icon: '□' },
     { name: 'Reading Habits', path: '/parent/healthy-habits', icon: '◉' },
-    { name: 'Family DNA Lab', path: '/parent/dna-lab', icon: '🧬' },
-    { name: 'Quiz Unlock Center', path: '/parent/quiz-unlock', icon: '▦' },
-    { name: 'Family Celebrations', path: '/parent/celebrations', icon: '♔' },
+    { name: 'Family Battle', path: '/parent/family-battle', icon: '⚔️' },
+    { name: 'Reading DNA Lab', path: '/parent/dna-lab', icon: '⬢' },
+    { name: 'Settings', path: '/parent/settings', icon: '⚙' }
+  ], [])
+
+  // Bottom navigation items (most important features)
+  const bottomNavItems = useMemo(() => [
+    { name: 'Dashboard', path: '/parent/dashboard', icon: '⌂', current: true },
+    { name: 'Nominees', path: '/parent/nominees', icon: '□' },
+    { name: 'Habits', path: '/parent/healthy-habits', icon: '◉' },
     { name: 'Settings', path: '/parent/settings', icon: '⚙' }
   ], [])
 
@@ -264,21 +272,15 @@ export default function ParentDashboard() {
     }
   }
 
-  // UPDATED: Handle tab navigation with unlocked Settings and Book Nominees
-  const handleTabClick = (tabName) => {
-    if (tabName === 'Family Dashboard') {
-      setShowComingSoon('You\'re already here! ⌂')
-      setTimeout(() => setShowComingSoon(''), 1500)
-    } else if (tabName === 'Settings') {
-      // Navigate to settings - it's unlocked!
-      router.push('/parent/settings')
-    } else if (tabName === 'Book Nominees') {
-      // Navigate to nominees - it's unlocked!
-      router.push('/parent/nominees')
-    } else {
-      setShowComingSoon(`${tabName} is coming soon! 🚧`)
-      setTimeout(() => setShowComingSoon(''), 3000)
-    }
+  // Navigation handler
+  const handleNavigation = (item) => {
+    if (item.current) return
+    
+    setShowNavMenu(false)
+    
+    setTimeout(() => {
+      router.push(item.path)
+    }, 100)
   }
 
   const getTimeBasedGreeting = () => {
@@ -440,7 +442,7 @@ export default function ParentDashboard() {
               ☰
             </button>
 
-            {/* UPDATED Dropdown Menu with Book Nominees and unlocked Settings */}
+            {/* Dropdown Menu */}
             {showNavMenu && (
               <div style={{
                 position: 'absolute',
@@ -461,18 +463,7 @@ export default function ParentDashboard() {
                     onClick={(e) => {
                       e.preventDefault()
                       e.stopPropagation()
-                      setShowNavMenu(false)
-                      
-                      if (item.current) return
-                      
-                      setTimeout(() => {
-                        // Navigate to actual pages for unlocked items
-                        if (item.path === '/parent/settings' || item.path === '/parent/nominees') {
-                          router.push(item.path)
-                        } else {
-                          handleTabClick(item.name)
-                        }
-                      }, 100)
+                      handleNavigation(item)
                     }}
                     style={{
                       width: '100%',
@@ -955,17 +946,83 @@ export default function ParentDashboard() {
             marginBottom: '100px'
           }}>
             <QuickActionButton
-              icon="▦"
-              label="Quiz Center"
-              onClick={() => handleTabClick('Quiz Unlock Center')}
+              icon="◐"
+              label="Child Progress"
+              onClick={() => {
+                setShowComingSoon('🚧 Child Progress is coming soon!')
+                setTimeout(() => setShowComingSoon(''), 3000)
+              }}
               theme={luxTheme}
             />
             <QuickActionButton
-              icon="♔"
-              label="Celebrations"
-              onClick={() => handleTabClick('Family Celebrations')}
+              icon="⚔️"
+              label="Family Battle"
+              onClick={() => {
+                setShowComingSoon('🚧 Family Battle is coming soon!')
+                setTimeout(() => setShowComingSoon(''), 3000)
+              }}
               theme={luxTheme}
             />
+          </div>
+        </div>
+
+        {/* Bottom Navigation Bar */}
+        <div style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          backgroundColor: luxTheme.surface,
+          borderTop: `1px solid ${luxTheme.primary}30`,
+          boxShadow: '0 -4px 20px rgba(0,0,0,0.1)',
+          zIndex: 999
+        }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-around',
+            alignItems: 'center',
+            padding: '8px 0',
+            maxWidth: '500px',
+            margin: '0 auto'
+          }}>
+            {bottomNavItems.map((item) => (
+              <button
+                key={item.path}
+                onClick={() => {
+                  if (!item.current) {
+                    router.push(item.path)
+                  }
+                }}
+                style={{
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '8px 16px',
+                  cursor: item.current ? 'default' : 'pointer',
+                  color: item.current ? luxTheme.primary : luxTheme.textSecondary,
+                  transition: 'all 0.2s ease',
+                  touchAction: 'manipulation',
+                  WebkitTapHighlightColor: 'transparent'
+                }}
+              >
+                <span style={{
+                  fontSize: '20px',
+                  transform: item.current ? 'scale(1.1)' : 'scale(1)',
+                  transition: 'transform 0.2s ease'
+                }}>
+                  {item.icon}
+                </span>
+                <span style={{
+                  fontSize: '10px',
+                  fontWeight: item.current ? '600' : '500'
+                }}>
+                  {item.name}
+                </span>
+              </button>
+            ))}
           </div>
         </div>
 
@@ -973,7 +1030,7 @@ export default function ParentDashboard() {
         {showComingSoon && (
           <div style={{
             position: 'fixed',
-            bottom: '30px',
+            bottom: '90px',
             left: '50%',
             transform: 'translateX(-50%)',
             backgroundColor: luxTheme.primary,

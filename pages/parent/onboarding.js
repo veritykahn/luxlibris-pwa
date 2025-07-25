@@ -1,4 +1,4 @@
-// pages/parent/onboarding.js - Updated with Lux Libris styling and mobile optimization
+// pages/parent/onboarding.js - Updated with direct dashboard redirect
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
@@ -192,7 +192,7 @@ export default function ParentOnboarding() {
       return
     }
 
-    // Final step: Save to Firebase
+    // Final step: Save to Firebase and redirect directly to dashboard
     setLoading(true)
 
     try {
@@ -237,21 +237,20 @@ export default function ParentOnboarding() {
 
       console.log('✅ Parent onboarding completed successfully')
 
-      // Clear localStorage
+      // Set marker for AuthContext consistency handling
       if (typeof window !== 'undefined') {
         localStorage.removeItem('parentOnboardingData')
         localStorage.setItem('luxlibris_account_created', 'true')
       }
 
-      // Move to success step
-      setStep(5)
+      console.log('🎯 Redirecting directly to parent dashboard...')
+      router.push('/parent/dashboard')
 
     } catch (error) {
       console.error('❌ Error completing onboarding:', error)
       setError('Failed to complete setup. Please try again.')
+      setLoading(false)
     }
-
-    setLoading(false)
   }
 
   const handleBack = () => {
@@ -259,10 +258,6 @@ export default function ParentOnboarding() {
       setStep(step - 1)
       setError('')
     }
-  }
-
-  const handleContinueToDashboard = () => {
-    router.push('/parent/sign-in')
   }
 
   if (!onboardingData) {
@@ -330,7 +325,7 @@ export default function ParentOnboarding() {
               margin: '0 auto 1rem',
               fontSize: '1.75rem'
             }}>
-              {step === 5 ? '🎉' : '⌂'}
+              ⌂
             </div>
             <h1 style={{
               fontSize: 'clamp(1.5rem, 5vw, 1.875rem)',
@@ -339,7 +334,7 @@ export default function ParentOnboarding() {
               margin: '0 0 0.5rem 0',
               fontFamily: 'Didot, "Times New Roman", serif'
             }}>
-              {step === 5 ? 'Welcome to Lux Libris!' : 'Family Setup'}
+              Family Setup
             </h1>
             <p style={{
               color: luxTheme.textSecondary,
@@ -347,55 +342,50 @@ export default function ParentOnboarding() {
               margin: 0,
               lineHeight: '1.4'
             }}>
-              {step === 5 
-                ? 'Your family dashboard is ready! Let\'s start your reading journey together.'
-                : 'Let\'s personalize your family reading experience'
-              }
+              Let&apos;s personalize your family reading experience
             </p>
           </div>
 
           {/* Progress Steps */}
-          {step < 5 && (
-            <div style={{
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              marginBottom: '2rem',
-              gap: '0.25rem'
-            }}>
-              {[1, 2, 3, 4].map(stepNum => (
-                <div key={stepNum} style={{
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginBottom: '2rem',
+            gap: '0.25rem'
+          }}>
+            {[1, 2, 3, 4].map(stepNum => (
+              <div key={stepNum} style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.25rem'
+              }}>
+                <div style={{
+                  width: '1.5rem',
+                  height: '1.5rem',
+                  borderRadius: '50%',
+                  background: stepNum <= step 
+                    ? `linear-gradient(135deg, ${luxTheme.primary}, ${luxTheme.secondary})`
+                    : '#e5e7eb',
+                  color: stepNum <= step ? luxTheme.textPrimary : '#9ca3af',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.25rem'
+                  justifyContent: 'center',
+                  fontSize: '0.625rem',
+                  fontWeight: 'bold'
                 }}>
-                  <div style={{
-                    width: '1.5rem',
-                    height: '1.5rem',
-                    borderRadius: '50%',
-                    background: stepNum <= step 
-                      ? `linear-gradient(135deg, ${luxTheme.primary}, ${luxTheme.secondary})`
-                      : '#e5e7eb',
-                    color: stepNum <= step ? luxTheme.textPrimary : '#9ca3af',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '0.625rem',
-                    fontWeight: 'bold'
-                  }}>
-                    {stepNum}
-                  </div>
-                  {stepNum < 4 && (
-                    <div style={{
-                      width: '1rem',
-                      height: '2px',
-                      background: stepNum < step ? luxTheme.primary : '#e5e7eb'
-                    }}></div>
-                  )}
+                  {stepNum}
                 </div>
-              ))}
-            </div>
-          )}
+                {stepNum < 4 && (
+                  <div style={{
+                    width: '1rem',
+                    height: '2px',
+                    background: stepNum < step ? luxTheme.primary : '#e5e7eb'
+                  }}></div>
+                )}
+              </div>
+            ))}
+          </div>
 
           {/* Step Content */}
           <div style={{ marginBottom: '2rem' }}>
@@ -888,70 +878,7 @@ export default function ParentOnboarding() {
                     margin: 0,
                     lineHeight: '1.4'
                   }}>
-                    🚀 <strong>Almost ready!</strong> &apos;Click Complete Setup&apos; to finish creating your family dashboard.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Step 5: Success */}
-            {step === 5 && (
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🎉</div>
-                <h2 style={{
-                  fontSize: 'clamp(1.25rem, 5vw, 1.5rem)',
-                  fontWeight: '600',
-                  color: luxTheme.textPrimary,
-                  marginBottom: '1rem'
-                }}>
-                  Family Setup Complete!
-                </h2>
-
-                <div style={{
-                  background: `${luxTheme.primary}20`,
-                  border: `2px solid ${luxTheme.primary}`,
-                  borderRadius: '0.75rem',
-                  padding: '1.5rem',
-                  marginBottom: '1.5rem'
-                }}>
-                  <h3 style={{
-                    fontSize: 'clamp(0.875rem, 4vw, 1rem)',
-                    fontWeight: '600',
-                    color: luxTheme.textPrimary,
-                    margin: '0 0 1rem 0'
-                  }}>
-                    Your {familyData.familyName} is ready!
-                  </h3>
-                  <div style={{ fontSize: 'clamp(0.75rem, 3vw, 0.875rem)', color: luxTheme.textPrimary, lineHeight: '1.6' }}>
-                    <p style={{ margin: '0 0 0.5rem 0' }}>
-                      ✅ Family dashboard created
-                    </p>
-                    <p style={{ margin: '0 0 0.5rem 0' }}>
-                      ✅ Reading goals set
-                    </p>
-                    <p style={{ margin: '0 0 0.5rem 0' }}>
-                      ✅ Connected to {onboardingData?.linkedStudents?.length || 0} student{(onboardingData?.linkedStudents?.length || 0) !== 1 ? 's' : ''}
-                    </p>
-                    <p style={{ margin: 0 }}>
-                      ✅ Notifications configured
-                    </p>
-                  </div>
-                </div>
-
-                <div style={{
-                  background: `rgba(173, 212, 234, 0.1)`,
-                  border: `1px solid rgba(173, 212, 234, 0.3)`,
-                  borderRadius: '0.5rem',
-                  padding: '1rem',
-                  marginBottom: '1.5rem'
-                }}>
-                  <p style={{
-                    color: luxTheme.textPrimary,
-                    fontSize: 'clamp(0.75rem, 3vw, 0.875rem)',
-                    margin: 0,
-                    lineHeight: '1.4'
-                  }}>
-                    🏆 <strong>Ready to start:</strong> Track progress, approve quiz codes, and compete in family reading battles!
+                    🚀 <strong>Almost ready!</strong> Click &apos;Complete Setup&apos; to finish and access your family dashboard.
                   </p>
                 </div>
               </div>
@@ -983,108 +910,83 @@ export default function ParentOnboarding() {
             gap: '1rem',
             flexWrap: 'wrap'
           }}>
-            {step < 5 ? (
-              <>
-                {step > 1 && (
-                  <button
-                    onClick={handleBack}
-                    disabled={loading}
-                    style={{
-                      flex: 1,
-                      padding: '0.875rem 1.5rem',
-                      background: '#f3f4f6',
-                      color: '#374151',
-                      border: 'none',
-                      borderRadius: '0.75rem',
-                      fontSize: 'clamp(0.875rem, 3.5vw, 1rem)',
-                      fontWeight: '600',
-                      cursor: loading ? 'not-allowed' : 'pointer',
-                      opacity: loading ? 0.5 : 1,
-                      minHeight: '48px',
-                      minWidth: '100px',
-                      touchAction: 'manipulation'
-                    }}
-                  >
-                    Back
-                  </button>
-                )}
-                <button
-                  onClick={handleNext}
-                  disabled={loading || (step === 1 && !familyData.familyName.trim())}
-                  style={{
-                    flex: step === 1 ? 1 : 2,
-                    padding: '0.875rem 1.5rem',
-                    background: loading || (step === 1 && !familyData.familyName.trim())
-                      ? '#d1d5db' 
-                      : `linear-gradient(135deg, ${luxTheme.primary}, ${luxTheme.secondary})`,
-                    color: luxTheme.textPrimary,
-                    border: 'none',
-                    borderRadius: '0.75rem',
-                    fontSize: 'clamp(0.875rem, 3.5vw, 1rem)',
-                    fontWeight: '600',
-                    cursor: (loading || (step === 1 && !familyData.familyName.trim())) ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '0.5rem',
-                    minHeight: '48px',
-                    minWidth: '120px',
-                    touchAction: 'manipulation'
-                  }}
-                >
-                  {loading && (
-                    <div style={{
-                      width: '1rem',
-                      height: '1rem',
-                      border: `2px solid ${luxTheme.textPrimary}`,
-                      borderTop: '2px solid transparent',
-                      borderRadius: '50%',
-                      animation: 'spin 1s linear infinite'
-                    }}></div>
-                  )}
-                  {step === 4 ? 'Complete Setup' : 'Continue'}
-                </button>
-              </>
-            ) : (
+            {step > 1 && (
               <button
-                onClick={handleContinueToDashboard}
+                onClick={handleBack}
+                disabled={loading}
                 style={{
-                  width: '100%',
-                  padding: '1rem 1.5rem',
-                  background: `linear-gradient(135deg, ${luxTheme.primary}, ${luxTheme.secondary})`,
-                  color: luxTheme.textPrimary,
+                  flex: 1,
+                  padding: '0.875rem 1.5rem',
+                  background: '#f3f4f6',
+                  color: '#374151',
                   border: 'none',
                   borderRadius: '0.75rem',
                   fontSize: 'clamp(0.875rem, 3.5vw, 1rem)',
                   fontWeight: '600',
-                  cursor: 'pointer',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  opacity: loading ? 0.5 : 1,
                   minHeight: '48px',
+                  minWidth: '100px',
                   touchAction: 'manipulation'
                 }}
               >
-                Continue to Sign In 🚀
+                Back
               </button>
             )}
+            <button
+              onClick={handleNext}
+              disabled={loading || (step === 1 && !familyData.familyName.trim())}
+              style={{
+                flex: step === 1 ? 1 : 2,
+                padding: '0.875rem 1.5rem',
+                background: loading || (step === 1 && !familyData.familyName.trim())
+                  ? '#d1d5db' 
+                  : `linear-gradient(135deg, ${luxTheme.primary}, ${luxTheme.secondary})`,
+                color: luxTheme.textPrimary,
+                border: 'none',
+                borderRadius: '0.75rem',
+                fontSize: 'clamp(0.875rem, 3.5vw, 1rem)',
+                fontWeight: '600',
+                cursor: (loading || (step === 1 && !familyData.familyName.trim())) ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                minHeight: '48px',
+                minWidth: '120px',
+                touchAction: 'manipulation'
+              }}
+            >
+              {loading && (
+                <div style={{
+                  width: '1rem',
+                  height: '1rem',
+                  border: `2px solid ${luxTheme.textPrimary}`,
+                  borderTop: '2px solid transparent',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite'
+                }}></div>
+              )}
+              {step === 4 ? 'Complete Setup' : 'Continue'}
+            </button>
           </div>
 
           {/* Help Text */}
-          {step < 5 && (
-            <div style={{
-              textAlign: 'center',
-              marginTop: '1.5rem',
-              paddingTop: '1.5rem',
-              borderTop: `1px solid ${luxTheme.primary}20`
+          <div style={{
+            textAlign: 'center',
+            marginTop: '1.5rem',
+            paddingTop: '1.5rem',
+            borderTop: `1px solid ${luxTheme.primary}20`
+          }}>
+            <p style={{
+              fontSize: 'clamp(0.625rem, 2.5vw, 0.75rem)',
+              color: luxTheme.textSecondary,
+              margin: 0,
+              lineHeight: '1.4'
             }}>
-              <p style={{
-                fontSize: 'clamp(0.625rem, 2.5vw, 0.75rem)',
-                color: luxTheme.textSecondary,
-                margin: 0,
-                lineHeight: '1.4'
-              }}>
-                Setting up your family for reading success together.
-              </p>
-            </div>
-          )}
+              Setting up your family for reading success together.
+            </p>
+          </div>
         </div>
       </div>
 
