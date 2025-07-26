@@ -183,8 +183,7 @@ export default function TeacherSetupChoice() {
               <div>
                 <strong style={{ color: '#223848' }}>Choose Reading Program if:</strong>
                 <ul style={{ marginTop: '0.5rem', paddingLeft: '1.2rem' }}>
-                  <li>You're setting up for your whole school</li>
-                  <li>Multiple teachers will participate</li>
+                  <li>You&apos;re setting up for your whole school</li>
                   <li>You want school-wide book selections</li>
                   <li>You need achievement tracking</li>
                 </ul>
@@ -192,10 +191,8 @@ export default function TeacherSetupChoice() {
               <div>
                 <strong style={{ color: '#223848' }}>Choose Classroom Management if:</strong>
                 <ul style={{ marginTop: '0.5rem', paddingLeft: '1.2rem' }}>
-                  <li>You're managing just your classroom</li>
-                  <li>You want assignment-based reading</li>
+                  <li>You&apos;re managing just your classroom</li>
                   <li>You need discussion tools</li>
-                  <li>You prefer individual control</li>
                 </ul>
               </div>
             </div>
