@@ -329,7 +329,7 @@ export default function RoleSelector() {
                 "📈 Reading analytics"
               ]}
               buttonText="Join as Educator"
-              onClick={() => router.push('/admin/school-onboarding')}
+              onClick={() => router.push('/admin/teacher-setup-choice')}
               gradient="from-purple-500 to-pink-500"
               highlight="Teachers & Librarians"
             />
