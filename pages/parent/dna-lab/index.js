@@ -1696,7 +1696,7 @@ export default function ParentDnaLabDashboard() {
                       textTransform: 'uppercase',
                       letterSpacing: '0.5px'
                     }}>
-                      This Week's Discovery
+                      This Week&apos;s Discovery
                     </div>
                     <div style={{
                       fontSize: '14px',
