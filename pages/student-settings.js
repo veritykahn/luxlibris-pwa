@@ -232,66 +232,66 @@ export default function StudentSettings() {
   }, [showNavMenu]);
 
   const loadStudentData = useCallback(async () => {
-  try {
-    // 🔧 CRITICAL FIX: Check signing out state FIRST
-    if (signingOut) {
-      console.log('🚪 Currently signing out, skipping data load');
-      return;
-    }
+    try {
+      // 🔧 CRITICAL FIX: Check signing out state FIRST
+      if (signingOut) {
+        console.log('🚪 Currently signing out, skipping data load');
+        return;
+      }
 
-    if (!user?.uid) {
+      if (!user?.uid) {
+        // ✅ FIXED: Don't redirect during sign-out process
+        if (!signingOut) {
+          router.push('/student-account-creation');
+        }
+        return;
+      }
+
+      console.log('🔍 Loading student data for UID:', user.uid);
+      
+      const realStudentData = await getStudentDataEntities(user.uid);
+      if (!realStudentData) {
+        console.error('❌ Student data not found');
+        // ✅ FIXED: Don't redirect during sign-out process
+        if (!signingOut) {
+          router.push('/student-account-creation');
+        }
+        return;
+      }
+
+      console.log('✅ Loaded student data:', realStudentData);
+      
+      setStudentData(realStudentData);
+      setCurrentTheme(themes[realStudentData.selectedTheme] || themes.classic_lux);
+      setSelectedThemePreview(realStudentData.selectedTheme || 'classic_lux');
+      setNewGoal(realStudentData.personalGoal || 20);
+      setParentInviteCode(realStudentData.parentInviteCode || '');
+      setTimerDuration(realStudentData.readingSettings?.defaultTimerDuration || 20);
+      
+      if (realStudentData.entityId && realStudentData.schoolId) {
+        try {
+          const schoolNominees = await getSchoolNomineesEntities(
+            realStudentData.entityId, 
+            realStudentData.schoolId
+          );
+          const availableBooks = Math.min(schoolNominees.length || 100, 100);
+          setMaxNominees(availableBooks);
+          console.log(`📚 School has ${schoolNominees.length} nominees, reading goal capped at ${availableBooks}`);
+        } catch (error) {
+          console.warn('⚠️ Could not load nominees for reading goal cap:', error);
+          setMaxNominees(100);
+        }
+      }
+      
+    } catch (error) {
+      console.error('❌ Error loading student data:', error);
       // ✅ FIXED: Don't redirect during sign-out process
       if (!signingOut) {
         router.push('/student-account-creation');
       }
-      return;
     }
-
-    console.log('🔍 Loading student data for UID:', user.uid);
-    
-    const realStudentData = await getStudentDataEntities(user.uid);
-    if (!realStudentData) {
-      console.error('❌ Student data not found');
-      // ✅ FIXED: Don't redirect during sign-out process
-      if (!signingOut) {
-        router.push('/student-account-creation');
-      }
-      return;
-    }
-
-    console.log('✅ Loaded student data:', realStudentData);
-    
-    setStudentData(realStudentData);
-    setCurrentTheme(themes[realStudentData.selectedTheme] || themes.classic_lux);
-    setSelectedThemePreview(realStudentData.selectedTheme || 'classic_lux');
-    setNewGoal(realStudentData.personalGoal || 20);
-    setParentInviteCode(realStudentData.parentInviteCode || '');
-    setTimerDuration(realStudentData.readingSettings?.defaultTimerDuration || 20);
-    
-    if (realStudentData.entityId && realStudentData.schoolId) {
-      try {
-        const schoolNominees = await getSchoolNomineesEntities(
-          realStudentData.entityId, 
-          realStudentData.schoolId
-        );
-        const availableBooks = Math.min(schoolNominees.length || 100, 100);
-        setMaxNominees(availableBooks);
-        console.log(`📚 School has ${schoolNominees.length} nominees, reading goal capped at ${availableBooks}`);
-      } catch (error) {
-        console.warn('⚠️ Could not load nominees for reading goal cap:', error);
-        setMaxNominees(100);
-      }
-    }
-    
-  } catch (error) {
-    console.error('❌ Error loading student data:', error);
-    // ✅ FIXED: Don't redirect during sign-out process
-    if (!signingOut) {
-      router.push('/student-account-creation');
-    }
-  }
-  setIsLoading(false);
-}, [user, router, signingOut]); // ✅ FIXED: Add signingOut to dependencies
+    setIsLoading(false);
+  }, [user, router, signingOut]); // ✅ FIXED: Add signingOut to dependencies
 
   useEffect(() => {
     loadStudentData();
@@ -424,13 +424,23 @@ export default function StudentSettings() {
     setIsSaving(false);
   };
 
+  // Updated generateParentInvite function
   const generateParentInvite = async () => {
     setIsSaving(true);
     try {
+      // Check if student already has max parents linked
+      if (studentData.linkedParents && studentData.linkedParents.length >= 2) {
+        setShowSuccess('👨‍👩‍👧‍👦 Your family is complete with 2 parents!');
+        setTimeout(() => setShowSuccess(''), 3000);
+        setIsSaving(false);
+        return;
+      }
+      
       const inviteCode = await createParentInviteCode(
         studentData.id,
         studentData.entityId,
         studentData.schoolId,
+        studentData.signInCode || 'TXTEST-DEMO-TEST85-STUDENT', // Use signInCode for new format
         studentData.firstName,
         studentData.lastInitial,
         studentData.grade
@@ -461,15 +471,24 @@ export default function StudentSettings() {
 
   const handleSignOut = async () => {
     try {
-      setIsSaving(true);
-      await signOut({ redirectTo: '/' });
+      console.log('🚪 Student signing out...')
+      setIsSaving(true)
+      
+      // Simple: Just call signOut, AuthContext handles everything
+      await signOut() // Don't even need to pass redirectTo since it defaults to '/'
+      
     } catch (error) {
-      console.error('Error signing out:', error);
-      setShowSuccess('❌ Error signing out. Please try again.');
-      setTimeout(() => setShowSuccess(''), 3000);
-      setIsSaving(false);
+      console.error('❌ Sign out error:', error)
+      
+      // Fallback: If signOut fails, force redirect to homepage
+      if (typeof window !== 'undefined') {
+        console.log('🏠 Force redirect to homepage')
+        window.location.replace('/')
+      }
+      
+      setIsSaving(false)
     }
-  };
+  }
 
   // Phase-aware reading goal message
   const getReadingGoalMessage = () => {
@@ -511,31 +530,31 @@ export default function StudentSettings() {
   const previewTheme = themes[selectedThemePreview] || themes.classic_lux;
 
   if (isLoading || signingOut || !studentData || !currentTheme) {
-  return (
-    <div style={{
-      backgroundColor: '#FFFCF5',
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center'
-    }}>
-      <div style={{ textAlign: 'center' }}>
-        <div style={{
-          width: '40px',
-          height: '40px',
-          border: '3px solid #ADD4EA30',
-          borderTop: '3px solid #ADD4EA',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite',
-          margin: '0 auto 16px'
-        }} />
-        <p style={{ color: '#223848' }}>
-          {signingOut ? 'Signing out...' : 'Loading settings...'}
-        </p>
+    return (
+      <div style={{
+        backgroundColor: '#FFFCF5',
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            width: '40px',
+            height: '40px',
+            border: '3px solid #ADD4EA30',
+            borderTop: '3px solid #ADD4EA',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 16px'
+          }} />
+          <p style={{ color: '#223848' }}>
+            {signingOut ? 'Signing out...' : 'Loading settings...'}
+          </p>
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
   const readingGoalInfo = getReadingGoalMessage();
 
@@ -1317,7 +1336,7 @@ export default function StudentSettings() {
             )}
           </div>
 
-          {/* Parent Invite Section */}
+          {/* Updated Parent Invite Section */}
           <div style={{
             backgroundColor: previewTheme.surface,
             borderRadius: '16px',
@@ -1339,7 +1358,7 @@ export default function StudentSettings() {
               color: previewTheme.textSecondary,
               marginBottom: '16px'
             }}>
-              Let your parents see your reading progress and celebrate your achievements!
+              Let your parents see your reading progress and celebrate your achievements! Up to 2 parents can join your family.
             </p>
 
             {!parentInviteCode ? (
@@ -1386,10 +1405,13 @@ export default function StudentSettings() {
                   justifyContent: 'space-between'
                 }}>
                   <code style={{
-                    fontSize: '18px',
+                    fontSize: '16px',
                     fontWeight: 'bold',
                     color: previewTheme.textPrimary,
-                    fontFamily: 'monospace'
+                    fontFamily: 'monospace',
+                    wordBreak: 'break-all',
+                    flex: 1,
+                    marginRight: '8px'
                   }}>
                     {parentInviteCode}
                   </code>
@@ -1402,7 +1424,8 @@ export default function StudentSettings() {
                       padding: '6px 12px',
                       borderRadius: '6px',
                       fontSize: '12px',
-                      cursor: 'pointer'
+                      cursor: 'pointer',
+                      flexShrink: 0
                     }}
                   >
                     📋 Copy
@@ -1411,10 +1434,29 @@ export default function StudentSettings() {
                 <p style={{
                   fontSize: '12px',
                   color: previewTheme.textSecondary,
-                  margin: 0
+                  margin: '0 0 8px 0'
                 }}>
                   Share this code with your parents so they can create an account and see your progress!
                 </p>
+                {studentData.linkedParents && studentData.linkedParents.length > 0 && (
+                  <div style={{
+                    marginTop: '12px',
+                    paddingTop: '12px',
+                    borderTop: `1px solid ${previewTheme.primary}30`
+                  }}>
+                    <p style={{
+                      fontSize: '12px',
+                      color: previewTheme.primary,
+                      margin: 0,
+                      fontWeight: '600'
+                    }}>
+                      {studentData.linkedParents.length === 1 
+                        ? '✓ 1 parent connected' 
+                        : `✓ ${studentData.linkedParents.length} parents connected`}
+                      {studentData.linkedParents.length < 2 && ' • Room for 1 more!'}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>

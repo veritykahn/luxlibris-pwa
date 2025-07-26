@@ -51,7 +51,7 @@ export default function ParentSettings() {
     if (!authLoading && isAuthenticated && user && userProfile?.accountType === 'parent') {
       loadSettingsData()
     } else if (!authLoading && !isAuthenticated && !signingOut) {
-  router.push('/role-selector')
+  router.push('/')
     } else if (!authLoading && userProfile?.accountType !== 'parent') {
       router.push('/student-dashboard')
     }

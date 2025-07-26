@@ -2,7 +2,118 @@
 // All 6 Parent Types - Psychology + Comprehensive Toolkit Integrated
 
 // PARENT DNA ASSESSMENT QUESTIONS (from dnaTypes.js)
-export const PARENT_DNA_QUESTIONS = [
+  export const PARENT_DNA_QUESTIONS = [
+  // OPENING: Everyday Reading Moments
+  {
+    id: 'child_excitement_response',
+    question: 'Your child bursts in excitedly wanting to tell you everything about their book. You\'re in the middle of something important. What happens?',
+    researchBase: 'Responsiveness and attachment research',
+    options: [
+      {
+        id: 'immediate_engagement',
+        text: 'Drop what you\'re doing - their excitement about reading takes priority over almost everything',
+        traits: ['connection_creating', 'responsive', 'reading_prioritizing']
+      },
+      {
+        id: 'authentic_attention',
+        text: 'Say "I want to hear this! Give me two minutes to finish and then I\'m all yours"',
+        traits: ['authentic_modeling', 'respectful', 'intentional_presence']
+      },
+      {
+        id: 'child_led_timing',
+        text: 'Ask them if they want to tell you now or if they\'d rather wait until you can really focus',
+        traits: ['autonomy_supportive', 'respectful', 'choice_offering']
+      },
+      {
+        id: 'capture_and_schedule',
+        text: 'Listen briefly to capture their enthusiasm, then schedule a time to hear the full story',
+        traits: ['growth_facilitating', 'organized', 'balancing_needs']
+      },
+      {
+        id: 'meaning_focus',
+        text: 'Listen for the most important part of what they want to share and focus there',
+        traits: ['meaning_making', 'attuned', 'depth_seeking']
+      }
+    ]
+  },
+
+  {
+    id: 'library_visit_style',
+    question: 'You\'re at the library with your child. What happens?',
+    researchBase: 'Environmental influence on reading choices and autonomy',
+    options: [
+      {
+        id: 'child_leads_completely',
+        text: 'Follow them around as they explore, letting them choose everything',
+        traits: ['autonomy_supportive', 'child_centered', 'trust_based']
+      },
+      {
+        id: 'strategic_guidance',
+        text: 'Guide them to sections that match their reading level and interests',
+        traits: ['competence_building', 'strategic', 'scaffolding']
+      },
+      {
+        id: 'explore_together',
+        text: 'Make it an adventure, discovering new books and sections together',
+        traits: ['connection_creating', 'shared_experience', 'joyful']
+      },
+      {
+        id: 'teach_selection',
+        text: 'Show them how to evaluate books - checking difficulty, previewing, etc.',
+        traits: ['competence_building', 'skill_teaching', 'metacognitive']
+      },
+      {
+        id: 'model_browsing',
+        text: 'Browse for your own books while they browse for theirs',
+        traits: ['authentic_modeling', 'parallel_activity', 'independence']
+      },
+      {
+        id: 'meaningful_choices',
+        text: 'Ask them what kinds of stories or information they\'re hoping to find today',
+        traits: ['meaning_making', 'intentional', 'reflective']
+      }
+    ]
+  },
+
+  {
+    id: 'bedtime_reading_philosophy',
+    question: 'It\'s bedtime and your child wants "just one more chapter." You\'re tired. What typically happens?',
+    researchBase: 'Boundaries, flexibility, and reading as comfort',
+    options: [
+      {
+        id: 'honor_engagement',
+        text: 'Their engagement with the book is more important than strict bedtime',
+        traits: ['autonomy_supportive', 'flexible', 'engagement_prioritizing']
+      },
+      {
+        id: 'negotiate_compromise',
+        text: 'Negotiate - "Two more pages, then lights out"',
+        traits: ['growth_facilitating', 'balanced', 'boundary_setting']
+      },
+      {
+        id: 'connection_opportunity',
+        text: 'See it as bonus connection time and read together a bit longer',
+        traits: ['connection_creating', 'relationship_prioritizing', 'present']
+      },
+      {
+        id: 'skill_building_moment',
+        text: 'Use it as a lesson in stopping at cliffhangers and anticipation for tomorrow',
+        traits: ['competence_building', 'strategic', 'delayed_gratification']
+      },
+      {
+        id: 'routine_matters',
+        text: 'Maintain the bedtime boundary while validating their excitement',
+        traits: ['growth_facilitating', 'structured', 'consistent']
+      },
+      {
+        id: 'explore_feelings',
+        text: 'Ask what\'s making it so hard to stop and talk about the story',
+        traits: ['meaning_making', 'emotionally_attuned', 'curious']
+      }
+    ]
+  },
+
+  // CHALLENGES & STRUGGLES
   {
     id: 'reading_struggle_response',
     question: 'Your child has been avoiding a book they used to love. When you notice this, what\'s your instinct?',
@@ -37,34 +148,34 @@ export const PARENT_DNA_QUESTIONS = [
   },
 
   {
-    id: 'child_excitement_response',
-    question: 'Your child bursts in excitedly wanting to tell you everything about their book. You\'re in the middle of something important. What happens?',
-    researchBase: 'Responsiveness and attachment research',
+    id: 'homework_reading_approach',
+    question: 'Your child has a reading assignment they\'re not interested in. How do you handle it?',
+    researchBase: 'Extrinsic vs intrinsic motivation in required reading',
     options: [
       {
-        id: 'immediate_engagement',
-        text: 'Drop what you\'re doing - their excitement about reading takes priority over almost everything',
-        traits: ['connection_creating', 'responsive', 'reading_prioritizing']
+        id: 'find_personal_connection',
+        text: 'Help them find something in the book that connects to their interests or life',
+        traits: ['meaning_making', 'connection_creating', 'relevance_focused']
       },
       {
-        id: 'authentic_attention',
-        text: 'Say "I want to hear this! Give me two minutes to finish and then I\'m all yours"',
-        traits: ['authentic_modeling', 'respectful', 'intentional_presence']
+        id: 'acknowledge_and_support',
+        text: 'Acknowledge that not all reading is fun but we sometimes do things we need to do',
+        traits: ['authentic_modeling', 'realistic', 'growth_facilitating']
       },
       {
-        id: 'child_led_timing',
-        text: 'Ask them if they want to tell you now or if they\'d rather wait until you can really focus',
-        traits: ['autonomy_supportive', 'respectful', 'choice_offering']
+        id: 'make_it_game',
+        text: 'Turn it into a challenge or game to make it more engaging',
+        traits: ['competence_building', 'strategic', 'creative_problem_solving']
       },
       {
-        id: 'capture_and_schedule',
-        text: 'Listen briefly to capture their enthusiasm, then schedule a time to hear the full story',
-        traits: ['growth_facilitating', 'organized', 'balancing_needs']
+        id: 'minimal_intervention',
+        text: 'Let them figure out their own way to get through it',
+        traits: ['autonomy_supportive', 'trust_based', 'independence_fostering']
       },
       {
-        id: 'meaning_focus',
-        text: 'Listen for the most important part of what they want to share and focus there',
-        traits: ['meaning_making', 'attuned', 'depth_seeking']
+        id: 'read_together',
+        text: 'Offer to read it with them or take turns reading aloud',
+        traits: ['connection_creating', 'supportive_presence', 'collaborative']
       }
     ]
   },
@@ -107,6 +218,7 @@ export const PARENT_DNA_QUESTIONS = [
     ]
   },
 
+  // BOOK CHOICES & PREFERENCES
   {
     id: 'reading_preference_conflict',
     question: 'Your child only wants to read graphic novels/series books, but you worry they should be reading "real literature." What\'s your inner conflict?',
@@ -145,6 +257,386 @@ export const PARENT_DNA_QUESTIONS = [
     ]
   },
 
+  {
+    id: 'book_gift_philosophy',
+    question: 'You\'re choosing books as gifts for your child. What guides your selection?',
+    researchBase: 'Adult book selection and child autonomy',
+    options: [
+      {
+        id: 'pure_interest',
+        text: 'Only books I know align with their current interests and choices',
+        traits: ['autonomy_supportive', 'child_centered', 'responsive']
+      },
+      {
+        id: 'gentle_stretch',
+        text: 'Books slightly above their current level to encourage growth',
+        traits: ['competence_building', 'strategic', 'growth_oriented']
+      },
+      {
+        id: 'shared_enjoyment',
+        text: 'Books we can enjoy together or that create discussion opportunities',
+        traits: ['connection_creating', 'relationship_building', 'interactive']
+      },
+      {
+        id: 'meaningful_themes',
+        text: 'Books that explore themes relevant to their life or development',
+        traits: ['meaning_making', 'thoughtful', 'developmental']
+      },
+      {
+        id: 'variety_exposure',
+        text: 'A mix of different genres to expose them to various types of reading',
+        traits: ['growth_facilitating', 'expansive', 'exploratory']
+      },
+      {
+        id: 'modeling_choices',
+        text: 'Books similar to what I genuinely enjoy, hoping to share that love',
+        traits: ['authentic_modeling', 'genuine', 'sharing']
+      }
+    ]
+  },
+
+  // SOCIAL & EMOTIONAL MOMENTS
+  {
+    id: 'reading_comparison_response',
+    question: 'Your child says "My friend reads way harder books than me." How do you respond?',
+    researchBase: 'Social comparison and reading identity',
+    options: [
+      {
+        id: 'validate_journey',
+        text: 'Everyone has their own reading journey and timeline - yours is perfect for you',
+        traits: ['growth_facilitating', 'individualized', 'validating']
+      },
+      {
+        id: 'explore_interest',
+        text: 'Are you interested in trying harder books, or are you happy with what you\'re reading?',
+        traits: ['autonomy_supportive', 'choice_focused', 'empowering']
+      },
+      {
+        id: 'reframe_perspective',
+        text: 'What matters is finding books you love, not how hard they are',
+        traits: ['meaning_making', 'value_focused', 'reframing']
+      },
+      {
+        id: 'skill_opportunity',
+        text: 'If you want to read harder books, we can work on some strategies together',
+        traits: ['competence_building', 'supportive', 'goal_oriented']
+      },
+      {
+        id: 'share_experience',
+        text: 'I remember feeling that way - let me tell you what I learned...',
+        traits: ['authentic_modeling', 'empathetic', 'experiential']
+      },
+      {
+        id: 'connection_focus',
+        text: 'Maybe you and your friend can share favorite books with each other',
+        traits: ['connection_creating', 'social_solution', 'positive_reframe']
+      }
+    ]
+  },
+
+  {
+    id: 'reading_confidence_crisis',
+    question: 'Your child says "I\'m just not a good reader." Your heart breaks. What\'s your response?',
+    researchBase: 'Reading identity and self-efficacy',
+    options: [
+      {
+        id: 'redefine_good',
+        text: 'Help them redefine what being a "good reader" means - it\'s not about speed or level',
+        traits: ['meaning_making', 'reframing', 'identity_supportive']
+      },
+      {
+        id: 'skill_inventory',
+        text: 'Point out all the reading skills they have developed and celebrate their progress',
+        traits: ['competence_building', 'affirming', 'concrete']
+      },
+      {
+        id: 'emotional_support',
+        text: 'Focus on understanding their feelings and providing comfort before solutions',
+        traits: ['connection_creating', 'emotionally_present', 'validating']
+      },
+      {
+        id: 'growth_mindset',
+        text: 'You\'re not a good reader YET - let\'s talk about what would help you feel more confident',
+        traits: ['growth_facilitating', 'forward_looking', 'empowering']
+      },
+      {
+        id: 'choice_power',
+        text: 'Maybe you haven\'t found the right books for you yet - what would you like to try?',
+        traits: ['autonomy_supportive', 'possibility_focused', 'choice_emphasizing']
+      },
+      {
+        id: 'share_struggles',
+        text: 'Share your own reading challenges and how you still consider yourself a reader',
+        traits: ['authentic_modeling', 'vulnerable', 'normalizing']
+      }
+    ]
+  },
+
+  {
+    id: 'reading_social_pressure',
+    question: 'Your child feels embarrassed about their reading choices (too easy, too weird, not cool). Your response?',
+    researchBase: 'Reading identity and peer influence',
+    options: [
+      {
+        id: 'validate_choices',
+        text: 'Your reading choices are perfect for you - there\'s no such thing as a wrong book to love',
+        traits: ['autonomy_supportive', 'validating', 'accepting']
+      },
+      {
+        id: 'private_public',
+        text: 'Help them think about having both private reading and books they share with friends',
+        traits: ['competence_building', 'strategic', 'practical']
+      },
+      {
+        id: 'find_community',
+        text: 'Help them find others who share their reading interests',
+        traits: ['connection_creating', 'community_building', 'supportive']
+      },
+      {
+        id: 'explore_meaning',
+        text: 'Talk about why certain books speak to them and why that matters',
+        traits: ['meaning_making', 'deep', 'identity_affirming']
+      },
+      {
+        id: 'confidence_building',
+        text: 'Work on building their confidence to own their unique interests',
+        traits: ['growth_facilitating', 'empowering', 'identity_building']
+      },
+      {
+        id: 'share_quirky',
+        text: 'Share your own "embarrassing" reading pleasures and why you love them',
+        traits: ['authentic_modeling', 'vulnerable', 'relatable']
+      }
+    ]
+  },
+
+  // ENVIRONMENT & ROUTINES
+  {
+    id: 'reading_environment_creation',
+    question: 'You\'re setting up reading spaces and routines in your home. What feels most important to get right?',
+    researchBase: 'Environmental psychology and reading motivation research',
+    options: [
+      {
+        id: 'choice_and_flexibility',
+        text: 'Multiple options and flexibility - different spaces for different moods and reading preferences',
+        traits: ['autonomy_supportive', 'flexible', 'choice_oriented']
+      },
+      {
+        id: 'organized_accessibility',
+        text: 'Well-organized systems where books and materials are easy to find and access',
+        traits: ['competence_building', 'organized', 'accessibility_focused']
+      },
+      {
+        id: 'cozy_connection',
+        text: 'Warm, inviting spaces that feel good and make reading feel like a treat',
+        traits: ['connection_creating', 'comfort_focused', 'positive_associations']
+      },
+      {
+        id: 'meaningful_personalization',
+        text: 'Spaces that reflect their interests and help them see reading as connected to who they are',
+        traits: ['meaning_making', 'identity_supporting', 'personalized']
+      },
+      {
+        id: 'natural_integration',
+        text: 'Reading naturally integrated into daily life rather than set apart in special spaces',
+        traits: ['authentic_modeling', 'natural_integration', 'lifestyle_focused']
+      },
+      {
+        id: 'developmental_responsiveness',
+        text: 'Spaces that can grow and change as the child\'s reading needs and interests develop',
+        traits: ['growth_facilitating', 'adaptive', 'developmental_thinking']
+      }
+    ]
+  },
+
+  {
+    id: 'reading_space_creation',
+    question: 'Your child wants to create their own reading space. How involved do you get?',
+    researchBase: 'Environmental control and ownership',
+    options: [
+      {
+        id: 'full_autonomy',
+        text: 'It\'s their space - they design it however they want',
+        traits: ['autonomy_supportive', 'ownership_granting', 'trusting']
+      },
+      {
+        id: 'collaborative_design',
+        text: 'Work together to create a space that\'s both appealing and functional',
+        traits: ['connection_creating', 'collaborative', 'balanced']
+      },
+      {
+        id: 'gentle_guidance',
+        text: 'Offer suggestions about lighting, comfort, and organization',
+        traits: ['competence_building', 'practical', 'supportive']
+      },
+      {
+        id: 'meaningful_elements',
+        text: 'Help them think about what elements would make reading feel special',
+        traits: ['meaning_making', 'thoughtful', 'intentional']
+      },
+      {
+        id: 'gradual_development',
+        text: 'Start simple and let the space evolve as their reading evolves',
+        traits: ['growth_facilitating', 'evolutionary', 'patient']
+      },
+      {
+        id: 'model_spaces',
+        text: 'Show them your reading spaces and how you\'ve made them work for you',
+        traits: ['authentic_modeling', 'sharing', 'demonstrative']
+      }
+    ]
+  },
+
+  // SKILL DEVELOPMENT
+  {
+    id: 'reading_challenge_support',
+    question: 'Your child is attempting a book that\'s quite challenging for them. They\'re struggling but haven\'t asked for help. What\'s your instinct?',
+    researchBase: 'Zone of proximal development and help-seeking behavior research',
+    options: [
+      {
+        id: 'respect_autonomy',
+        text: 'Let them work through it - they\'ll ask for help if they need it, and the struggle might be valuable',
+        traits: ['autonomy_supportive', 'trust_based', 'struggle_positive']
+      },
+      {
+        id: 'strategic_support',
+        text: 'Offer specific strategies or tools that might help, while letting them maintain ownership',
+        traits: ['competence_building', 'strategic', 'supportive']
+      },
+      {
+        id: 'gentle_connection',
+        text: 'Check in about how it\'s going and let them know you\'re there if they want company',
+        traits: ['connection_creating', 'supportive_presence', 'available']
+      },
+      {
+        id: 'meaning_exploration',
+        text: 'Ask what\'s compelling them about this book - understanding their motivation will help you know how to support',
+        traits: ['meaning_making', 'curious', 'motivation_focused']
+      },
+      {
+        id: 'developmental_assessment',
+        text: 'Observe carefully to assess whether this is productive struggle or overwhelming frustration',
+        traits: ['growth_facilitating', 'observant', 'developmental_thinking']
+      },
+      {
+        id: 'authentic_sharing',
+        text: 'Share your own experiences with challenging books and how you handle difficulty',
+        traits: ['authentic_modeling', 'experiential', 'normalizing']
+      }
+    ]
+  },
+
+  {
+    id: 'reading_mistake_response',
+    question: 'Your child consistently mispronounces a word while reading aloud. What\'s your instinct?',
+    researchBase: 'Error correction and reading confidence',
+    options: [
+      {
+        id: 'gentle_correction',
+        text: 'Gently provide the correct pronunciation when it doesn\'t disrupt the flow',
+        traits: ['competence_building', 'supportive', 'skill_focused']
+      },
+      {
+        id: 'ignore_for_flow',
+        text: 'Let it go - understanding the story matters more than perfect pronunciation',
+        traits: ['meaning_making', 'holistic', 'comprehension_focused']
+      },
+      {
+        id: 'note_for_later',
+        text: 'Make a mental note to work on that word later in a different context',
+        traits: ['growth_facilitating', 'strategic', 'patient']
+      },
+      {
+        id: 'let_them_lead',
+        text: 'Wait to see if they self-correct or ask for help',
+        traits: ['autonomy_supportive', 'patient', 'self_directed']
+      },
+      {
+        id: 'make_it_fun',
+        text: 'Turn it into a playful moment - "That\'s a tricky word! Let\'s figure it out together"',
+        traits: ['connection_creating', 'playful', 'collaborative']
+      }
+    ]
+  },
+
+  // CELEBRATIONS & MOTIVATION
+  {
+    id: 'reading_success_celebration',
+    question: 'Your child just finished a book they\'ve been working on for weeks. How do you naturally want to celebrate this achievement?',
+    researchBase: 'Achievement motivation and celebration research',
+    options: [
+      {
+        id: 'honor_their_choice',
+        text: 'Ask them how they want to celebrate - let them choose what feels meaningful',
+        traits: ['autonomy_supportive', 'child_centered', 'choice_honoring']
+      },
+      {
+        id: 'acknowledge_growth',
+        text: 'Focus on how much they\'ve grown as a reader and what skills they\'ve developed',
+        traits: ['competence_building', 'growth_focused', 'skill_acknowledging']
+      },
+      {
+        id: 'share_excitement',
+        text: 'Share in their excitement and maybe plan a special reading-related activity together',
+        traits: ['connection_creating', 'shared_joy', 'experience_creating']
+      },
+      {
+        id: 'explore_meaning',
+        text: 'Talk about what this book meant to them and how it might have changed their thinking',
+        traits: ['meaning_making', 'reflective', 'depth_seeking']
+      },
+      {
+        id: 'natural_acknowledgment',
+        text: 'Acknowledge it naturally without making a big deal - let the intrinsic satisfaction be the main reward',
+        traits: ['authentic_modeling', 'low_key', 'intrinsic_focus']
+      },
+      {
+        id: 'document_progress',
+        text: 'Help them see this achievement in the context of their overall reading journey and development',
+        traits: ['growth_facilitating', 'perspective_giving', 'developmental_thinking']
+      }
+    ]
+  },
+
+  {
+    id: 'reading_reward_philosophy',
+    question: 'Your thoughts on rewards for reading (sticker charts, prizes, etc.)?',
+    researchBase: 'Intrinsic vs extrinsic motivation',
+    options: [
+      {
+        id: 'intrinsic_only',
+        text: 'Reading is its own reward - external rewards can damage natural motivation',
+        traits: ['autonomy_supportive', 'intrinsic_focus', 'purist']
+      },
+      {
+        id: 'strategic_use',
+        text: 'Rewards can be helpful tools when used strategically and phased out',
+        traits: ['competence_building', 'pragmatic', 'flexible']
+      },
+      {
+        id: 'celebration_focus',
+        text: 'Celebrations and special reading experiences are better than material rewards',
+        traits: ['connection_creating', 'experience_focused', 'meaningful']
+      },
+      {
+        id: 'milestone_marking',
+        text: 'Marking reading milestones helps children see their growth journey',
+        traits: ['growth_facilitating', 'progress_focused', 'visual']
+      },
+      {
+        id: 'child_directed',
+        text: 'Ask the child what would make reading feel more rewarding to them',
+        traits: ['autonomy_supportive', 'collaborative', 'responsive']
+      },
+      {
+        id: 'natural_consequences',
+        text: 'Focus on natural rewards - the joy of story, learning new things, etc.',
+        traits: ['authentic_modeling', 'natural', 'intrinsic_highlighting']
+      }
+    ]
+  },
+
+  // PHILOSOPHY & VALUES
   {
     id: 'reading_motivation_philosophy',
     question: 'When you think about what truly motivates children to become lifelong readers, what feels most important?',
@@ -222,115 +714,39 @@ export const PARENT_DNA_QUESTIONS = [
   },
 
   {
-    id: 'reading_environment_creation',
-    question: 'You\'re setting up reading spaces and routines in your home. What feels most important to get right?',
-    researchBase: 'Environmental psychology and reading motivation research',
+    id: 'future_reader_vision',
+    question: 'When you imagine your child as an adult reader, what matters most to you?',
+    researchBase: 'Long-term reading goals and values',
     options: [
       {
-        id: 'choice_and_flexibility',
-        text: 'Multiple options and flexibility - different spaces for different moods and reading preferences',
-        traits: ['autonomy_supportive', 'flexible', 'choice_oriented']
+        id: 'chooses_freely',
+        text: 'That they feel free to read (or not read) based on their own choices and interests',
+        traits: ['autonomy_supportive', 'freedom_focused', 'respectful']
       },
       {
-        id: 'organized_accessibility',
-        text: 'Well-organized systems where books and materials are easy to find and access',
-        traits: ['competence_building', 'organized', 'accessibility_focused']
+        id: 'skilled_confident',
+        text: 'That they have the skills and confidence to tackle any text they need or want to read',
+        traits: ['competence_building', 'capability_focused', 'empowering']
       },
       {
-        id: 'cozy_connection',
-        text: 'Warm, inviting spaces that feel good and make reading feel like a treat',
-        traits: ['connection_creating', 'comfort_focused', 'positive_associations']
+        id: 'shares_joy',
+        text: 'That reading remains a source of connection and shared joy in their relationships',
+        traits: ['connection_creating', 'relationship_focused', 'community']
       },
       {
-        id: 'meaningful_personalization',
-        text: 'Spaces that reflect their interests and help them see reading as connected to who they are',
-        traits: ['meaning_making', 'identity_supporting', 'personalized']
+        id: 'finds_meaning',
+        text: 'That they use reading to understand themselves and the world more deeply',
+        traits: ['meaning_making', 'wisdom_focused', 'reflective']
       },
       {
-        id: 'natural_integration',
-        text: 'Reading naturally integrated into daily life rather than set apart in special spaces',
-        traits: ['authentic_modeling', 'natural_integration', 'lifestyle_focused']
+        id: 'lifetime_growth',
+        text: 'That they see reading as one tool for continued growth and learning',
+        traits: ['growth_facilitating', 'lifelong_learning', 'adaptive']
       },
       {
-        id: 'developmental_responsiveness',
-        text: 'Spaces that can grow and change as the child\'s reading needs and interests develop',
-        traits: ['growth_facilitating', 'adaptive', 'developmental_thinking']
-      }
-    ]
-  },
-
-  {
-    id: 'reading_challenge_support',
-    question: 'Your child is attempting a book that\'s quite challenging for them. They\'re struggling but haven\'t asked for help. What\'s your instinct?',
-    researchBase: 'Zone of proximal development and help-seeking behavior research',
-    options: [
-      {
-        id: 'respect_autonomy',
-        text: 'Let them work through it - they\'ll ask for help if they need it, and the struggle might be valuable',
-        traits: ['autonomy_supportive', 'trust_based', 'struggle_positive']
-      },
-      {
-        id: 'strategic_support',
-        text: 'Offer specific strategies or tools that might help, while letting them maintain ownership',
-        traits: ['competence_building', 'strategic', 'supportive']
-      },
-      {
-        id: 'gentle_connection',
-        text: 'Check in about how it\'s going and let them know you\'re there if they want company',
-        traits: ['connection_creating', 'supportive_presence', 'available']
-      },
-      {
-        id: 'meaning_exploration',
-        text: 'Ask what\'s compelling them about this book - understanding their motivation will help you know how to support',
-        traits: ['meaning_making', 'curious', 'motivation_focused']
-      },
-      {
-        id: 'developmental_assessment',
-        text: 'Observe carefully to assess whether this is productive struggle or overwhelming frustration',
-        traits: ['growth_facilitating', 'observant', 'developmental_thinking']
-      },
-      {
-        id: 'authentic_sharing',
-        text: 'Share your own experiences with challenging books and how you handle difficulty',
-        traits: ['authentic_modeling', 'experiential', 'normalizing']
-      }
-    ]
-  },
-
-  {
-    id: 'reading_success_celebration',
-    question: 'Your child just finished a book they\'ve been working on for weeks. How do you naturally want to celebrate this achievement?',
-    researchBase: 'Achievement motivation and celebration research',
-    options: [
-      {
-        id: 'honor_their_choice',
-        text: 'Ask them how they want to celebrate - let them choose what feels meaningful',
-        traits: ['autonomy_supportive', 'child_centered', 'choice_honoring']
-      },
-      {
-        id: 'acknowledge_growth',
-        text: 'Focus on how much they\'ve grown as a reader and what skills they\'ve developed',
-        traits: ['competence_building', 'growth_focused', 'skill_acknowledging']
-      },
-      {
-        id: 'share_excitement',
-        text: 'Share in their excitement and maybe plan a special reading-related activity together',
-        traits: ['connection_creating', 'shared_joy', 'experience_creating']
-      },
-      {
-        id: 'explore_meaning',
-        text: 'Talk about what this book meant to them and how it might have changed their thinking',
-        traits: ['meaning_making', 'reflective', 'depth_seeking']
-      },
-      {
-        id: 'natural_acknowledgment',
-        text: 'Acknowledge it naturally without making a big deal - let the intrinsic satisfaction be the main reward',
-        traits: ['authentic_modeling', 'low_key', 'intrinsic_focus']
-      },
-      {
-        id: 'document_progress',
-        text: 'Help them see this achievement in the context of their overall reading journey and development',
-        traits: ['growth_facilitating', 'perspective_giving', 'developmental_thinking']
+        id: 'authentic_relationship',
+        text: 'That they have an honest, authentic relationship with reading - whatever that looks like',
+        traits: ['authentic_modeling', 'accepting', 'genuine']
       }
     ]
   }
@@ -472,7 +888,34 @@ export const INTEGRATED_PARENT_DNA_TYPES = {
           "Separate school requirements from home reading joy",
           "Remember that saying no to reading might be saying yes to autonomy"
         ]
-      }
+      },
+      bookChoiceStruggles: {
+  yourPhilosophy: "Choice is sacred, but overwhelm is real—provide structure that enhances rather than limits autonomy",
+  practicalTips: [
+    "Offer 2-3 pre-selected options instead of unlimited choice when they seem overwhelmed",
+    "Let them browse freely but have backup options ready for decision fatigue",
+    "Honor their 'weird' choices—series books, graphic novels, books 'below' their level all have value",
+    "Create themed choice sets: 'Want something funny, adventurous, or mysterious today?'"
+  ]
+},
+readingHabitBuilding: {
+  yourApproach: "Trust their natural rhythms while providing gentle environmental support",
+  practicalStrategies: [
+    "Make reading materials easily accessible throughout your home",
+    "Model your own reading choices and natural reading rhythms",
+    "Ask what time of day feels best for them to read",
+    "Create cozy reading spots they can customize and claim as their own"
+  ]
+},
+differentLearningSpeeds: {
+  yourPhilosophy: "Every child's timeline is perfect for them—comparison kills natural motivation",
+  approaches: [
+    "Focus on their unique interests and discoveries rather than benchmarks",
+    "Trust that children who feel supported develop at their own optimal pace",
+    "Provide rich experiences at their natural level without pushing advancement",
+    "Celebrate their specific growth rather than comparing to others"
+  ]
+}
     },
     
     seasonalSupport: {
@@ -491,7 +934,23 @@ export const INTEGRATED_PARENT_DNA_TYPES = {
           "Provide access to beach reads, comics, audiobooks for car trips",
           "Let reading happen naturally around summer activities rather than requiring it"
         ]
-      }
+      },
+      holidays: {
+  challenge: "Managing gift-giving and family reading traditions while honoring their autonomy",
+  strategies: [
+    "Ask what kinds of books they're hoping to discover",
+    "Create gift experiences around their book interests rather than imposing your choices",
+    "Honor family reading traditions while allowing them to participate in their own way"
+  ]
+},
+spring: {
+  challenge: "Supporting natural energy shifts and outdoor interests",
+  strategies: [
+    "Follow their lead if they want more outdoor time and less reading",
+    "Provide portable reading options for outdoor spaces",
+    "Trust that reading motivation naturally ebbs and flows with seasons"
+  ]
+}
     },
     
     reflectionPrompts: [
@@ -636,7 +1095,34 @@ export const INTEGRATED_PARENT_DNA_TYPES = {
           "Balance instruction with pure enjoyment",
           "Let some reading happen without any teaching agenda"
         ]
-      }
+      },
+      bookChoiceStruggles: {
+  yourPhilosophy: "Guide choice toward books that provide appropriate challenge while honoring interests",
+  practicalTips: [
+    "Help them identify the 'just right' challenge level—not too easy, not too hard",
+    "Teach them to do the 'five finger test' or other self-assessment strategies",
+    "Connect their interests to books at their skill level",
+    "Gradually introduce slightly more challenging books within their areas of passion"
+  ]
+},
+readingHabitBuilding: {
+  yourApproach: "Create structured success experiences that build momentum and confidence",
+  practicalStrategies: [
+    "Start with very achievable goals and gradually increase expectations",
+    "Track visible progress—books completed, pages read, new words learned",
+    "Create predictable reading routines that set children up for success",
+    "Pair skill practice with enjoyable reading experiences"
+  ]
+},
+differentLearningSpeeds: {
+  yourPhilosophy: "Meet each child where they are and build systematically from there",
+  approaches: [
+    "Assess current skill levels honestly without judgment",
+    "Provide intensive support for foundational skills that may be missing",
+    "Celebrate incremental progress even if it seems small",
+    "Adjust expectations to match individual learning needs and timelines"
+  ]
+}
     },
     
     seasonalSupport: {
@@ -655,7 +1141,23 @@ export const INTEGRATED_PARENT_DNA_TYPES = {
           "Use library programs and reading challenges to provide structure",
           "Focus on high-interest books that keep skills active"
         ]
-      }
+      },
+      holidays: {
+  challenge: "Maintaining skill development during breaks while allowing for rest",
+  strategies: [
+    "Choose engaging books that maintain skills without feeling like work",
+    "Use holiday themes to make skill practice feel more like play",
+    "Balance structured reading time with recreational reading"
+  ]
+},
+spring: {
+  challenge: "Sustaining momentum and addressing any skill gaps before year-end",
+  strategies: [
+    "Assess progress toward yearly goals and adjust support as needed",
+    "Increase challenge gradually as skills strengthen",
+    "Use outdoor reading opportunities to maintain engagement"
+  ]
+}
     },
     
     reflectionPrompts: [
@@ -800,7 +1302,34 @@ export const INTEGRATED_PARENT_DNA_TYPES = {
           "Separate your enthusiasm from expectations about their response",
           "Remember that independent reading is also valuable and doesn\'t reflect on your relationship"
         ]
-      }
+      },
+      bookChoiceStruggles: {
+  yourPhilosophy: "Help them find books that create opportunities for meaningful connection and discussion",
+  practicalTips: [
+    "Suggest books that you can enjoy together or discuss meaningfully",
+    "Ask what kinds of characters or situations they're interested in",
+    "Share books that connect to your family's experiences or values",
+    "Let them choose from options that you're also excited to talk about"
+  ]
+},
+readingHabitBuilding: {
+  yourApproach: "Create consistent connected reading experiences that children look forward to",
+  practicalStrategies: [
+    "Establish regular reading times that feel like special together time",
+    "Create reading rituals that include connection—discussion, sharing, or parallel reading",
+    "Make reading a family activity where everyone participates in their own way",
+    "Use reading as a way to connect throughout the day—sharing quotes, funny parts, or interesting discoveries"
+  ]
+},
+differentLearningSpeeds: {
+  yourPhilosophy: "Every child can participate in reading culture in their own way and timeline",
+  approaches: [
+    "Create inclusive reading experiences where different levels can participate together",
+    "Use audiobooks, pictures, and discussion to include children at various skill levels",
+    "Celebrate each child's unique contributions to family reading culture",
+    "Focus on connection and enjoyment rather than comparing reading levels"
+  ]
+}
     },
     
     seasonalSupport: {
@@ -819,7 +1348,23 @@ export const INTEGRATED_PARENT_DNA_TYPES = {
           "Create summer reading traditions—beach books, camping stories, travel reading",
           "Use vacation time for extended reading discussions and sharing"
         ]
-      }
+      },
+      holidays: {
+  challenge: "Creating meaningful reading traditions while managing busy family schedules",
+  strategies: [
+    "Establish holiday reading traditions—special books, reading locations, or discussion times",
+    "Give books as gifts that create opportunities for shared experience",
+    "Use holiday themes to spark reading discussions and connections to family values"
+  ]
+},
+spring: {
+  challenge: "Maintaining reading connection as outdoor activities compete for time",
+  strategies: [
+    "Take reading outside—picnic reading, park reading, outdoor story time",
+    "Connect reading to spring interests—gardening books, nature guides, outdoor adventure stories",
+    "Use longer daylight hours for evening reading and discussion time"
+  ]
+}
     },
     
     reflectionPrompts: [
@@ -964,7 +1509,34 @@ export const INTEGRATED_PARENT_DNA_TYPES = {
           "Let some reading happen without any discussion or analysis",
           "Remember that entertainment and escape are also valid reasons to read"
         ]
-      }
+      },
+      bookChoiceStruggles: {
+  yourPhilosophy: "Guide them toward books that offer meaningful content while honoring their interests and developmental level",
+  practicalTips: [
+    "Help them find books that explore themes they're naturally curious about",
+    "Connect their interests to books with meaningful content",
+    "Introduce books that deal with situations they're currently facing",
+    "Balance heavy, meaningful books with lighter fare that still offers some depth"
+  ]
+},
+readingHabitBuilding: {
+  yourApproach: "Create reading experiences that naturally invite reflection and personal connection",
+  practicalStrategies: [
+    "Establish regular discussion times that feel like conversations rather than interrogations",
+    "Keep a family reading journal where insights and connections can be shared",
+    "Create traditions around books that deal with important themes or life transitions",
+    "Model your own meaning-making by sharing insights from your reading"
+  ]
+},
+differentLearningSpeeds: {
+  yourPhilosophy: "Meaning-making happens at every level and in different ways for each child",
+  approaches: [
+    "Meet children where they are developmentally in their capacity for meaning-making",
+    "Use pictures, movies, and discussion to make complex themes accessible",
+    "Celebrate simple emotional responses as valid meaning-making",
+    "Provide books with meaningful content at appropriate skill levels"
+  ]
+}
     },
     
     seasonalSupport: {
@@ -983,7 +1555,23 @@ export const INTEGRATED_PARENT_DNA_TYPES = {
           "Use travel and new experiences as springboards for discussing books about adventure or discovery",
           "Create relaxed discussion opportunities around meaningful summer reading"
         ]
-      }
+      },
+      holidays: {
+  challenge: "Using seasonal themes to explore meaningful questions about family, tradition, and values",
+  strategies: [
+    "Choose holiday books that explore meaningful themes about family, giving, or tradition",
+    "Use seasonal transitions to discuss books about change, growth, or cycles",
+    "Connect holiday experiences to books about similar themes or values"
+  ]
+},
+spring: {
+  challenge: "Using themes of growth, renewal, and change for deeper reading connections",
+  strategies: [
+    "Choose books that explore themes of growth, change, or new beginnings",
+    "Connect spring observations to books about nature, cycles, or transformation",
+    "Use longer daylight hours for extended discussions about meaningful books"
+  ]
+}
     },
     
     reflectionPrompts: [
@@ -1128,7 +1716,34 @@ export const INTEGRATED_PARENT_DNA_TYPES = {
           "Balance your assessment with their self-advocacy",
           "Remember that motivation can sometimes overcome developmental limitations"
         ]
-      }
+      },
+      bookChoiceStruggles: {
+  yourPhilosophy: "Guide choice toward books that provide appropriate developmental challenge while honoring interests",
+  practicalTips: [
+    "Help them identify books that are 'just right'—not too easy, not too hard",
+    "Gradually introduce slightly more challenging books within their interest areas",
+    "Teach them self-assessment strategies for choosing appropriate books",
+    "Balance comfort reading with gentle stretch reading"
+  ]
+},
+readingHabitBuilding: {
+  yourApproach: "Build habits gradually with systems that support rather than pressure natural development",
+  practicalStrategies: [
+    "Start with very small, achievable reading goals and gradually increase",
+    "Create predictable routines that support reading development",
+    "Track progress in ways that make growth visible over time",
+    "Adjust expectations based on individual capacity and life circumstances"
+  ]
+},
+differentLearningSpeeds: {
+  yourPhilosophy: "Every child has their own optimal learning pace and pathway",
+  approaches: [
+    "Assess individual starting points without judgment or comparison",
+    "Provide intensive support for areas of need while building on strengths",
+    "Celebrate progress relative to individual starting point",
+    "Adjust timelines and expectations to match individual learning profiles"
+  ]
+}
     },
     
     seasonalSupport: {
@@ -1147,7 +1762,23 @@ export const INTEGRATED_PARENT_DNA_TYPES = {
           "Use library programs and reading challenges to provide gentle structure",
           "Balance skill maintenance with recreational reading and play"
         ]
-      }
+      },
+      holidays: {
+  challenge: "Maintaining developmental momentum during schedule disruptions",
+  strategies: [
+    "Adjust expectations for holiday schedules while maintaining gentle progress",
+    "Use holiday themes to continue development in engaging ways",
+    "Balance rest with gentle skill maintenance"
+  ]
+},
+spring: {
+  challenge: "Building momentum for end-of-year goals while respecting natural energy cycles",
+  strategies: [
+    "Assess progress toward yearly goals and adjust plans realistically",
+    "Use spring energy to tackle slightly more challenging books or skills",
+    "Prepare gradually for summer reading to prevent skill loss"
+  ]
+}
     },
     
     reflectionPrompts: [
@@ -1292,7 +1923,34 @@ export const INTEGRATED_PARENT_DNA_TYPES = {
           "Continue demonstrating reading value without requiring their participation",
           "Remember that authentic modeling works over time, not immediately"
         ]
-      }
+      },
+      bookChoiceStruggles: {
+  yourPhilosophy: "Model thoughtful book selection while letting them develop their own taste",
+  practicalTips: [
+    "Let them see your book selection process—browsing, reading reviews, asking for recommendations",
+    "Share why you choose certain books without implying they should make the same choices",
+    "Model how you abandon books that don't capture your interest",
+    "Show appreciation for different types of reading—fiction, nonfiction, easy reads, challenging books"
+  ]
+},
+readingHabitBuilding: {
+  yourApproach: "Model natural reading rhythms and show how reading fits into real life",
+  practicalStrategies: [
+    "Read at various times and in various places, showing reading as a flexible life practice",
+    "Let them see how you make time for reading in your real schedule",
+    "Model reading for different purposes—learning, relaxation, problem-solving, entertainment",
+    "Show how you integrate reading with other life activities and interests"
+  ]
+},
+differentLearningSpeeds: {
+  yourPhilosophy: "Model how different types of reading and different paces all have value",
+  approaches: [
+    "Let them see you read books at various levels and complexity",
+    "Model how you adjust your reading approach based on material and purpose",
+    "Show appreciation for all types of reading—quick reads, challenging books, re-reading favorites",
+    "Demonstrate that being a reader doesn't mean reading at any particular level or speed"
+  ]
+}
     },
     
     seasonalSupport: {
@@ -1311,7 +1969,23 @@ export const INTEGRATED_PARENT_DNA_TYPES = {
           "Let them see you choose books that complement summer experiences",
           "Show how reading can be part of summer relaxation and enjoyment"
         ]
-      }
+      },
+      holidays: {
+  challenge: "Modeling how reading enriches celebrations and traditions",
+  strategies: [
+    "Let them see you choose books related to holiday themes or travel",
+    "Model how reading can be part of holiday relaxation and enjoyment",
+    "Share books as gifts in ways that reflect genuine enthusiasm rather than obligation"
+  ]
+},
+spring: {
+  challenge: "Showing how reading adapts to seasonal energy and outdoor time",
+  strategies: [
+    "Model reading outdoors and in different seasonal settings",
+    "Let them see you choose books that match spring energy—lighter reads, garden books, travel planning",
+    "Show how reading complements rather than competes with outdoor activities"
+  ]
+}
     },
     
     reflectionPrompts: [

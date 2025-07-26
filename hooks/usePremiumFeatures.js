@@ -15,6 +15,7 @@ export const usePremiumFeatures = () => {
     features: {
       healthyHabits: false,
       familyBattle: false,
+      dnaLab: false, // ADD THIS LINE
       advancedAnalytics: false,
       customGoals: false
     }
@@ -70,6 +71,7 @@ export const usePremiumFeatures = () => {
         const features = {
           healthyHabits: isPremium,
           familyBattle: isPremium,
+          dnaLab: isPremium, // ADD THIS LINE
           advancedAnalytics: isPremium,
           customGoals: isPremium
         }

@@ -1,4 +1,4 @@
-// pages/parent/dashboard.js - Updated with improved navigation
+// pages/parent/dashboard.js - Updated with two parents support
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
@@ -17,6 +17,10 @@ export default function ParentDashboard() {
   const [pendingQuizApprovals, setPendingQuizApprovals] = useState([])
   const [recentAchievements, setRecentAchievements] = useState([])
   const [showComingSoon, setShowComingSoon] = useState('')
+  
+  // Add these state declarations after other state
+  const [familyParents, setFamilyParents] = useState([])
+  const [parentReadingData, setParentReadingData] = useState({})
   
   // Navigation menu state
   const [showNavMenu, setShowNavMenu] = useState(false)
@@ -89,6 +93,7 @@ export default function ParentDashboard() {
     }
   }, [showNavMenu])
 
+  // Update loadFamilyDashboardData to load all parents in family
   const loadFamilyDashboardData = async () => {
     try {
       console.log('🏠 Loading family dashboard data...')
@@ -104,20 +109,36 @@ export default function ParentDashboard() {
       const parentData = parentDoc.data()
       console.log('✅ Parent data loaded:', parentData.firstName)
 
-      // Load family profile
-      const familyRef = doc(db, 'families', user.uid)
-      const familyDoc = await getDoc(familyRef)
+      // Load family profile - check both old and new patterns
+      let familyDoc = null
+      let familyId = parentData.familyId || user.uid
+      
+      // Try new familyId first, then fall back to user.uid
+      if (parentData.familyId) {
+        const familyRef = doc(db, 'families', parentData.familyId)
+        familyDoc = await getDoc(familyRef)
+      }
+      
+      if (!familyDoc || !familyDoc.exists()) {
+        const familyRef = doc(db, 'families', user.uid)
+        familyDoc = await getDoc(familyRef)
+        familyId = user.uid
+      }
       
       if (familyDoc.exists()) {
-        setFamilyData(familyDoc.data())
-        console.log('✅ Family data loaded:', familyDoc.data().familyName)
+        const familyData = familyDoc.data()
+        setFamilyData(familyData)
+        console.log('✅ Family data loaded:', familyData.familyName)
+        
+        // Load all parents in the family
+        await loadFamilyParents(familyData, familyId)
       }
 
       // Load linked students data
       await loadLinkedStudentsData(parentData.linkedStudents || [])
       
-      // Load family battle data
-      await loadFamilyBattleData()
+      // Load family battle data with parent-specific tracking
+      await loadFamilyBattleData(familyId)
       
       // Load pending quiz approvals
       await loadPendingQuizApprovals(parentData.linkedStudents || [])
@@ -131,6 +152,34 @@ export default function ParentDashboard() {
     }
     
     setLoading(false)
+  }
+
+  // New function to load all parents in the family
+  const loadFamilyParents = async (familyData, familyId) => {
+    try {
+      const parents = []
+      const parentIds = familyData.parents || [familyId] // Fall back to familyId if no parents array
+      
+      for (const parentId of parentIds) {
+        const parentRef = doc(db, 'parents', parentId)
+        const parentDoc = await getDoc(parentRef)
+        
+        if (parentDoc.exists()) {
+          const parentData = parentDoc.data()
+          parents.push({
+            id: parentId,
+            ...parentData,
+            isCurrentUser: parentId === user.uid
+          })
+        }
+      }
+      
+      setFamilyParents(parents)
+      console.log('✅ Family parents loaded:', parents.length)
+      
+    } catch (error) {
+      console.error('❌ Error loading family parents:', error)
+    }
   }
 
   const loadLinkedStudentsData = async (linkedStudentIds) => {
@@ -175,22 +224,41 @@ export default function ParentDashboard() {
     }
   }
 
-  const loadFamilyBattleData = async () => {
+  // Update loadFamilyBattleData to track parent reading separately
+  const loadFamilyBattleData = async (familyId) => {
     try {
       // Calculate family reading minutes for this week
       const today = new Date()
       const startOfWeek = new Date(today.setDate(today.getDate() - today.getDay()))
       const weekStr = startOfWeek.toISOString().split('T')[0]
       
-      // This would aggregate from all family members' reading sessions
-      // For now, using mock data
+      // Load reading data for each parent
+      const parentMinutesMap = {}
+      let totalParentMinutes = 0
+      
+      // For now, using mock data - in real app would query reading sessions
+      if (familyParents.length > 0) {
+        familyParents.forEach((parent, index) => {
+          const minutes = index === 0 ? 45 : 25 // Mock data
+          parentMinutesMap[parent.id] = {
+            name: parent.firstName,
+            minutes: minutes,
+            sessions: index === 0 ? 3 : 2
+          }
+          totalParentMinutes += minutes
+        })
+      }
+      
+      setParentReadingData(parentMinutesMap)
+      
       setFamilyBattleData({
         weeklyGoal: 300, // minutes
-        parentMinutes: 45,
+        parentMinutes: totalParentMinutes,
         childrenMinutes: 156,
-        totalMinutes: 201,
+        totalMinutes: totalParentMinutes + 156,
         weekStarting: weekStr,
-        streakDays: 3
+        streakDays: 3,
+        parentBreakdown: parentMinutesMap
       })
       
     } catch (error) {
@@ -533,7 +601,7 @@ export default function ParentDashboard() {
               {getMotivationalMessage()}
             </p>
 
-            {/* Family Reading Battle Progress */}
+            {/* Updated Family Battle Progress to show parent breakdown */}
             {familyBattleData && (
               <div style={{
                 background: 'rgba(255,255,255,0.2)',
@@ -541,7 +609,12 @@ export default function ParentDashboard() {
                 padding: '12px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '12px'
+                gap: '12px',
+                cursor: 'pointer'
+              }}
+              onClick={() => {
+                setShowComingSoon('🏆 Detailed family battle view coming soon!')
+                setTimeout(() => setShowComingSoon(''), 3000)
               }}>
                 <span style={{ fontSize: '20px' }}>🏆</span>
                 <div style={{ flex: 1 }}>
@@ -565,6 +638,16 @@ export default function ParentDashboard() {
                       transition: 'width 1s ease'
                     }} />
                   </div>
+                  {/* Show parent vs kids breakdown */}
+                  {familyParents.length > 0 && (
+                    <div style={{
+                      fontSize: 'clamp(10px, 3vw, 12px)',
+                      marginTop: '4px',
+                      opacity: 0.9
+                    }}>
+                      Parents: {familyBattleData.parentMinutes}min • Kids: {familyBattleData.childrenMinutes}min
+                    </div>
+                  )}
                 </div>
                 <div style={{
                   fontSize: 'clamp(10px, 3vw, 12px)',
@@ -577,7 +660,7 @@ export default function ParentDashboard() {
             )}
           </div>
 
-          {/* Your Reading Family Card */}
+          {/* Updated Your Reading Family Card */}
           <div style={{
             backgroundColor: luxTheme.surface,
             borderRadius: '16px',
@@ -598,166 +681,242 @@ export default function ParentDashboard() {
               👨‍👩‍👧‍👦 Your Reading Family
             </h3>
             
-            {linkedStudents.length > 0 ? (
+            {(linkedStudents.length > 0 || familyParents.length > 0) ? (
               <div style={{ display: 'grid', gap: '12px' }}>
-                {linkedStudents.map((student, index) => (
-                  <div 
-                    key={student.id}
-                    style={{
-                      backgroundColor: `${luxTheme.primary}10`,
-                      borderRadius: '12px',
-                      padding: '16px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      border: `1px solid ${luxTheme.primary}30`,
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease'
-                    }}
-                    onClick={() => setExpandedChild(expandedChild === student.id ? null : student.id)}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = `${luxTheme.primary}20`
-                      e.currentTarget.style.transform = 'translateY(-2px)'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = `${luxTheme.primary}10`
-                      e.currentTarget.style.transform = 'translateY(0)'
-                    }}
-                  >
-                    <div style={{
-                      width: '48px',
-                      height: '48px',
-                      borderRadius: '50%',
-                      background: `linear-gradient(135deg, ${luxTheme.primary}, ${luxTheme.secondary})`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: luxTheme.textPrimary,
-                      fontSize: '18px',
-                      fontWeight: 'bold',
-                      flexShrink: 0
-                    }}>
-                      {student.firstName?.charAt(0) || '?'}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{
-                        fontSize: 'clamp(14px, 4vw, 16px)',
-                        fontWeight: '600',
-                        color: luxTheme.textPrimary,
-                        marginBottom: '4px'
-                      }}>
-                        {student.firstName} {student.lastInitial}.
-                      </div>
-                      <div style={{
-                        fontSize: 'clamp(10px, 3vw, 12px)',
-                        color: luxTheme.textSecondary,
-                        display: 'flex',
-                        gap: '12px',
-                        flexWrap: 'wrap'
-                      }}>
-                        <span>Grade {student.grade}</span>
-                        <span>•</span>
-                        <span style={{ wordBreak: 'break-word' }}>{student.schoolName}</span>
-                      </div>
-                    </div>
-                    <div style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: '4px',
-                      flexShrink: 0
-                    }}>
-                      <div style={{
-                        fontSize: 'clamp(18px, 5vw, 20px)',
-                        fontWeight: 'bold',
-                        color: luxTheme.primary
-                      }}>
-                        {student.booksSubmittedThisYear || 0}
-                      </div>
-                      <div style={{
-                        fontSize: 'clamp(8px, 2.5vw, 10px)',
-                        color: luxTheme.textSecondary,
-                        textAlign: 'center'
-                      }}>
-                        books
-                      </div>
-                    </div>
-                    <div style={{
-                      fontSize: '16px',
-                      color: luxTheme.textSecondary,
-                      transform: expandedChild === student.id ? 'rotate(90deg)' : 'rotate(0deg)',
-                      transition: 'transform 0.2s ease',
-                      flexShrink: 0
-                    }}>
-                      ▶
-                    </div>
-                  </div>
-                ))}
                 
-                {/* Parent Reading Row */}
-                <div style={{
-                  backgroundColor: `${luxTheme.secondary}15`,
-                  borderRadius: '12px',
-                  padding: '16px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  border: `1px solid ${luxTheme.secondary}40`
-                }}>
-                  <div style={{
-                    width: '48px',
-                    height: '48px',
-                    borderRadius: '50%',
-                    background: `linear-gradient(135deg, ${luxTheme.secondary}, ${luxTheme.primary})`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: luxTheme.textPrimary,
-                    fontSize: '18px',
-                    fontWeight: 'bold',
-                    flexShrink: 0
-                  }}>
-                    {userProfile.firstName?.charAt(0) || 'P'}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                {/* Children Section */}
+                {linkedStudents.length > 0 && (
+                  <>
                     <div style={{
-                      fontSize: 'clamp(14px, 4vw, 16px)',
+                      fontSize: 'clamp(12px, 3vw, 14px)',
                       fontWeight: '600',
-                      color: luxTheme.textPrimary,
+                      color: luxTheme.textSecondary,
+                      marginTop: '8px',
                       marginBottom: '4px'
                     }}>
-                      {userProfile.firstName} (Parent)
+                      Children ({linkedStudents.length})
                     </div>
+                    
+                    {linkedStudents.map((student, index) => (
+                      <div 
+                        key={student.id}
+                        style={{
+                          backgroundColor: `${luxTheme.primary}10`,
+                          borderRadius: '12px',
+                          padding: '16px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px',
+                          border: `1px solid ${luxTheme.primary}30`,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease'
+                        }}
+                        onClick={() => setExpandedChild(expandedChild === student.id ? null : student.id)}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = `${luxTheme.primary}20`
+                          e.currentTarget.style.transform = 'translateY(-2px)'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = `${luxTheme.primary}10`
+                          e.currentTarget.style.transform = 'translateY(0)'
+                        }}
+                      >
+                        <div style={{
+                          width: '48px',
+                          height: '48px',
+                          borderRadius: '50%',
+                          background: `linear-gradient(135deg, ${luxTheme.primary}, ${luxTheme.secondary})`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: luxTheme.textPrimary,
+                          fontSize: '18px',
+                          fontWeight: 'bold',
+                          flexShrink: 0
+                        }}>
+                          {student.firstName?.charAt(0) || '?'}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{
+                            fontSize: 'clamp(14px, 4vw, 16px)',
+                            fontWeight: '600',
+                            color: luxTheme.textPrimary,
+                            marginBottom: '4px'
+                          }}>
+                            {student.firstName} {student.lastInitial}.
+                          </div>
+                          <div style={{
+                            fontSize: 'clamp(10px, 3vw, 12px)',
+                            color: luxTheme.textSecondary,
+                            display: 'flex',
+                            gap: '12px',
+                            flexWrap: 'wrap'
+                          }}>
+                            <span>Grade {student.grade}</span>
+                            <span>•</span>
+                            <span style={{ wordBreak: 'break-word' }}>{student.schoolName}</span>
+                          </div>
+                        </div>
+                        <div style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: '4px',
+                          flexShrink: 0
+                        }}>
+                          <div style={{
+                            fontSize: 'clamp(18px, 5vw, 20px)',
+                            fontWeight: 'bold',
+                            color: luxTheme.primary
+                          }}>
+                            {student.booksSubmittedThisYear || 0}
+                          </div>
+                          <div style={{
+                            fontSize: 'clamp(8px, 2.5vw, 10px)',
+                            color: luxTheme.textSecondary,
+                            textAlign: 'center'
+                          }}>
+                            books
+                          </div>
+                        </div>
+                        <div style={{
+                          fontSize: '16px',
+                          color: luxTheme.textSecondary,
+                          transform: expandedChild === student.id ? 'rotate(90deg)' : 'rotate(0deg)',
+                          transition: 'transform 0.2s ease',
+                          flexShrink: 0
+                        }}>
+                          ▶
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+                
+                {/* Parents Section */}
+                {familyParents.length > 0 && (
+                  <>
                     <div style={{
-                      fontSize: 'clamp(10px, 3vw, 12px)',
-                      color: luxTheme.textSecondary
-                    }}>
-                      Leading by example
-                    </div>
-                  </div>
-                  <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '4px',
-                    flexShrink: 0
-                  }}>
-                    <div style={{
-                      fontSize: 'clamp(18px, 5vw, 20px)',
-                      fontWeight: 'bold',
-                      color: luxTheme.secondary
-                    }}>
-                      {Math.floor((familyBattleData?.parentMinutes || 0) / 20)} {/* Rough books estimate */}
-                    </div>
-                    <div style={{
-                      fontSize: 'clamp(8px, 2.5vw, 10px)',
+                      fontSize: 'clamp(12px, 3vw, 14px)',
+                      fontWeight: '600',
                       color: luxTheme.textSecondary,
-                      textAlign: 'center'
+                      marginTop: '8px',
+                      marginBottom: '4px'
                     }}>
-                      books
+                      Parents ({familyParents.length})
                     </div>
-                  </div>
-                </div>
+                    
+                    {familyParents.map((parent, index) => (
+                      <div 
+                        key={parent.id}
+                        style={{
+                          backgroundColor: parent.isCurrentUser 
+                            ? `${luxTheme.secondary}25` 
+                            : `${luxTheme.secondary}15`,
+                          borderRadius: '12px',
+                          padding: '16px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px',
+                          border: parent.isCurrentUser 
+                            ? `2px solid ${luxTheme.secondary}` 
+                            : `1px solid ${luxTheme.secondary}40`
+                        }}
+                      >
+                        <div style={{
+                          width: '48px',
+                          height: '48px',
+                          borderRadius: '50%',
+                          background: `linear-gradient(135deg, ${luxTheme.secondary}, ${luxTheme.primary})`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: luxTheme.textPrimary,
+                          fontSize: '18px',
+                          fontWeight: 'bold',
+                          flexShrink: 0
+                        }}>
+                          {parent.firstName?.charAt(0) || 'P'}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{
+                            fontSize: 'clamp(14px, 4vw, 16px)',
+                            fontWeight: '600',
+                            color: luxTheme.textPrimary,
+                            marginBottom: '4px'
+                          }}>
+                            {parent.firstName} {parent.lastName}
+                            {parent.isCurrentUser && ' (You)'}
+                          </div>
+                          <div style={{
+                            fontSize: 'clamp(10px, 3vw, 12px)',
+                            color: luxTheme.textSecondary
+                          }}>
+                            {parent.isCurrentUser ? 'Leading by example' : 'Reading together'}
+                          </div>
+                        </div>
+                        <div style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: '4px',
+                          flexShrink: 0
+                        }}>
+                          <div style={{
+                            fontSize: 'clamp(18px, 5vw, 20px)',
+                            fontWeight: 'bold',
+                            color: luxTheme.secondary
+                          }}>
+                            {familyBattleData?.parentBreakdown?.[parent.id]?.minutes || 0}
+                          </div>
+                          <div style={{
+                            fontSize: 'clamp(8px, 2.5vw, 10px)',
+                            color: luxTheme.textSecondary,
+                            textAlign: 'center'
+                          }}>
+                            min/week
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {/* Add Second Parent Button - only show if less than 2 parents */}
+                    {familyParents.length < 2 && (
+                      <button
+                        onClick={() => {
+                          setShowComingSoon('📧 Share an invite code with your partner to add them to the family!')
+                          setTimeout(() => setShowComingSoon(''), 4000)
+                        }}
+                        style={{
+                          backgroundColor: 'transparent',
+                          border: `2px dashed ${luxTheme.secondary}60`,
+                          borderRadius: '12px',
+                          padding: '16px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '8px',
+                          cursor: 'pointer',
+                          fontSize: 'clamp(12px, 3.5vw, 14px)',
+                          color: luxTheme.textSecondary,
+                          fontWeight: '600',
+                          transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = luxTheme.secondary
+                          e.currentTarget.style.backgroundColor = `${luxTheme.secondary}10`
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = `${luxTheme.secondary}60`
+                          e.currentTarget.style.backgroundColor = 'transparent'
+                        }}
+                      >
+                        <span style={{ fontSize: '20px' }}>➕</span>
+                        Add Second Parent
+                      </button>
+                    )}
+                  </>
+                )}
               </div>
             ) : (
               <div style={{
@@ -766,7 +925,7 @@ export default function ParentDashboard() {
                 color: luxTheme.textSecondary
               }}>
                 <div style={{ fontSize: '48px', marginBottom: '16px' }}>👨‍👩‍👧‍👦</div>
-                <p>No children linked yet. Check your account setup!</p>
+                <p>No family members linked yet. Check your account setup!</p>
               </div>
             )}
           </div>

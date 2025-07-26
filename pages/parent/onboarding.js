@@ -1,10 +1,10 @@
-// pages/parent/onboarding.js - Updated with direct dashboard redirect
+// pages/parent/onboarding.js - Updated for Two-Parent Family System
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
 import { doc, updateDoc, setDoc } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
-import { createParentAccount, linkParentToStudent } from '../../lib/parentLinking'
+import { createParentAccount, linkParentToStudent, createFamily, joinExistingFamily, checkExistingFamily } from '../../lib/parentLinking'
 
 export default function ParentOnboarding() {
   const router = useRouter()
@@ -12,6 +12,7 @@ export default function ParentOnboarding() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [onboardingData, setOnboardingData] = useState(null)
+  const [existingFamilyInfo, setExistingFamilyInfo] = useState(null)
   const [familyData, setFamilyData] = useState({
     familyName: '',
     readingGoals: {
@@ -73,18 +74,30 @@ export default function ParentOnboarding() {
 
             console.log('✅ Parent account created:', parentId)
 
-            // Link to each student
+            // Link to each student and check for existing families
             const successfulLinks = []
             const failedLinks = []
+            let existingFamily = null
             
             for (const inviteCode of data.validInviteCodes) {
               try {
                 console.log('🔗 Linking to student with code:', inviteCode)
                 const linkResult = await linkParentToStudent(parentId, inviteCode)
+                
                 successfulLinks.push({
                   inviteCode,
                   student: linkResult
                 })
+                
+                // Check if this student revealed an existing family
+                if (!linkResult.isNewFamily && linkResult.familyId) {
+                  existingFamily = {
+                    familyId: linkResult.familyId,
+                    familyName: linkResult.familyName,
+                    isSecondParent: true
+                  }
+                }
+                
                 console.log('✅ Successfully linked to:', linkResult.studentName)
               } catch (linkError) {
                 console.error('❌ Failed to link to code:', inviteCode, linkError)
@@ -100,16 +113,26 @@ export default function ParentOnboarding() {
               parentId,
               linkedStudents: successfulLinks,
               failedLinks,
-              parentInfo: data.parentInfo
+              parentInfo: data.parentInfo,
+              existingFamily
             }
             
             setOnboardingData(onboardingData)
             
-            // Pre-populate family name
-            setFamilyData(prev => ({
-              ...prev,
-              familyName: `${data.parentInfo.firstName} Family`
-            }))
+            // Handle family name based on existing family or new family
+            if (existingFamily) {
+              setExistingFamilyInfo(existingFamily)
+              setFamilyData(prev => ({
+                ...prev,
+                familyName: existingFamily.familyName
+              }))
+            } else {
+              // Use parent's LAST name for new family
+              setFamilyData(prev => ({
+                ...prev,
+                familyName: `The ${data.parentInfo.lastName} Family`
+              }))
+            }
             
             // Clean up temp data
             localStorage.removeItem('tempParentData')
@@ -132,11 +155,18 @@ export default function ParentOnboarding() {
           if (stored) {
             const data = JSON.parse(stored)
             setOnboardingData(data)
-            // Pre-populate family name
-            if (data.parentInfo) {
+            
+            // Set family name appropriately
+            if (data.existingFamily) {
+              setExistingFamilyInfo(data.existingFamily)
               setFamilyData(prev => ({
                 ...prev,
-                familyName: `${data.parentInfo.firstName} Family`
+                familyName: data.existingFamily.familyName
+              }))
+            } else if (data.parentInfo) {
+              setFamilyData(prev => ({
+                ...prev,
+                familyName: `The ${data.parentInfo.lastName} Family`
               }))
             }
           } else {
@@ -213,27 +243,46 @@ export default function ParentOnboarding() {
         parentProfile: familyData.parentProfile
       })
 
-      // Create family profile document
-      const familyRef = doc(db, 'families', onboardingData.parentId)
-      await setDoc(familyRef, {
-        parentId: onboardingData.parentId,
-        familyName: familyData.familyName,
-        linkedStudents: onboardingData.linkedStudents.map(link => ({
-          studentId: link.student.studentId,
-          studentName: link.student.studentName,
+      // Handle family creation or joining
+      let finalFamilyId = null
+      
+      if (existingFamilyInfo && existingFamilyInfo.familyId) {
+        // Joining existing family - family document already updated during linking
+        finalFamilyId = existingFamilyInfo.familyId
+        console.log('✅ Joined existing family:', existingFamilyInfo.familyName)
+      } else {
+        // Create new family
+        const allLinkedStudents = onboardingData.linkedStudents.map(link => ({
+          id: link.student.studentId,
+          firstName: link.student.studentName.split(' ')[0],
+          lastInitial: link.student.studentName.split(' ')[1],
           schoolName: link.student.schoolName,
           entityId: link.student.entityId,
-          schoolId: link.student.schoolId
-        })),
-        readingGoals: familyData.readingGoals,
-        familyBattleSettings: {
-          enabled: familyData.readingGoals.competitionMode,
-          weeklyGoal: familyData.readingGoals.familyWeekly,
-          currentWeekPoints: { parent: 0, children: 0 }
-        },
-        createdAt: new Date(),
-        lastUpdated: new Date()
-      })
+          schoolId: link.student.schoolId,
+          grade: link.student.grade
+        }))
+        
+        finalFamilyId = await createFamily(
+          onboardingData.parentId,
+          onboardingData.parentInfo.lastName,
+          allLinkedStudents
+        )
+        
+        console.log('✅ Created new family:', familyData.familyName)
+      }
+
+      // If joining existing family, update preferences for the family
+      if (existingFamilyInfo) {
+        const familyRef = doc(db, 'families', finalFamilyId)
+        await updateDoc(familyRef, {
+          // Merge reading goals (keep higher values)
+          'readingGoals.familyWeekly': Math.max(
+            familyData.readingGoals.familyWeekly,
+            150 // default if not set
+          ),
+          lastUpdated: new Date()
+        })
+      }
 
       console.log('✅ Parent onboarding completed successfully')
 
@@ -334,7 +383,7 @@ export default function ParentOnboarding() {
               margin: '0 0 0.5rem 0',
               fontFamily: 'Didot, "Times New Roman", serif'
             }}>
-              Family Setup
+              {existingFamilyInfo ? 'Join Your Family' : 'Family Setup'}
             </h1>
             <p style={{
               color: luxTheme.textSecondary,
@@ -342,7 +391,10 @@ export default function ParentOnboarding() {
               margin: 0,
               lineHeight: '1.4'
             }}>
-              Let&apos;s personalize your family reading experience
+              {existingFamilyInfo 
+                ? `Welcome to ${existingFamilyInfo.familyName}!`
+                : 'Let\'s personalize your family reading experience'
+              }
             </p>
           </div>
 
@@ -400,7 +452,7 @@ export default function ParentOnboarding() {
                   marginBottom: '1rem',
                   textAlign: 'center'
                 }}>
-                  What should we call your family?
+                  {existingFamilyInfo ? 'Your Family' : 'What should we call your family?'}
                 </h2>
 
                 <div style={{ marginBottom: '1.5rem' }}>
@@ -411,7 +463,7 @@ export default function ParentOnboarding() {
                     color: luxTheme.textSecondary,
                     marginBottom: '0.5rem'
                   }}>
-                    Family Name *
+                    Family Name {existingFamilyInfo ? '(already set)' : '*'}
                   </label>
                   <input
                     type="text"
@@ -421,6 +473,7 @@ export default function ParentOnboarding() {
                       familyName: e.target.value 
                     }))}
                     placeholder="The Smith Family"
+                    disabled={existingFamilyInfo}
                     style={{
                       width: '100%',
                       padding: '0.875rem',
@@ -431,10 +484,12 @@ export default function ParentOnboarding() {
                       outline: 'none',
                       textAlign: 'center',
                       fontWeight: '600',
-                      minHeight: '48px'
+                      minHeight: '48px',
+                      backgroundColor: existingFamilyInfo ? `${luxTheme.primary}10` : luxTheme.surface,
+                      cursor: existingFamilyInfo ? 'not-allowed' : 'text'
                     }}
-                    onFocus={(e) => e.target.style.borderColor = luxTheme.primary}
-                    onBlur={(e) => e.target.style.borderColor = `${luxTheme.primary}40`}
+                    onFocus={(e) => !existingFamilyInfo && (e.target.style.borderColor = luxTheme.primary)}
+                    onBlur={(e) => !existingFamilyInfo && (e.target.style.borderColor = `${luxTheme.primary}40`)}
                   />
                 </div>
 
@@ -471,21 +526,39 @@ export default function ParentOnboarding() {
                   </div>
                 )}
 
-                <div style={{
-                  background: `rgba(173, 212, 234, 0.1)`,
-                  border: `1px solid rgba(173, 212, 234, 0.3)`,
-                  borderRadius: '0.5rem',
-                  padding: '1rem'
-                }}>
-                  <p style={{
-                    color: luxTheme.textPrimary,
-                    fontSize: 'clamp(0.75rem, 3vw, 0.875rem)',
-                    margin: 0,
-                    lineHeight: '1.4'
+                {existingFamilyInfo ? (
+                  <div style={{
+                    background: '#fef3cd',
+                    border: '1px solid #f59e0b',
+                    borderRadius: '0.5rem',
+                    padding: '1rem'
                   }}>
-                    🏆 <strong>Family Reading Battles:</strong> You&apos;ll compete in friendly reading challenges with your children to motivate everyone!
-                  </p>
-                </div>
+                    <p style={{
+                      color: '#92400e',
+                      fontSize: 'clamp(0.75rem, 3vw, 0.875rem)',
+                      margin: 0,
+                      lineHeight: '1.4'
+                    }}>
+                      🎉 <strong>Welcome!</strong> You&apos;re joining as the second parent in this family. You&apos;ll have full access to view progress and unlock quizzes!
+                    </p>
+                  </div>
+                ) : (
+                  <div style={{
+                    background: `rgba(173, 212, 234, 0.1)`,
+                    border: `1px solid rgba(173, 212, 234, 0.3)`,
+                    borderRadius: '0.5rem',
+                    padding: '1rem'
+                  }}>
+                    <p style={{
+                      color: luxTheme.textPrimary,
+                      fontSize: 'clamp(0.75rem, 3vw, 0.875rem)',
+                      margin: 0,
+                      lineHeight: '1.4'
+                    }}>
+                      🏆 <strong>Family Reading Battles:</strong> You&apos;ll compete in friendly reading challenges with your children to motivate everyone!
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -499,7 +572,7 @@ export default function ParentOnboarding() {
                   marginBottom: '1rem',
                   textAlign: 'center'
                 }}>
-                  Set your family reading goals
+                  Set your {existingFamilyInfo ? 'personal' : 'family'} reading goals
                 </h2>
 
                 <div style={{ display: 'grid', gap: '1.5rem', marginBottom: '1.5rem' }}>
@@ -548,50 +621,52 @@ export default function ParentOnboarding() {
                     </div>
                   </div>
 
-                  <div>
-                    <label style={{
-                      display: 'block',
-                      fontSize: 'clamp(0.75rem, 3vw, 0.875rem)',
-                      fontWeight: '600',
-                      color: luxTheme.textSecondary,
-                      marginBottom: '0.5rem'
-                    }}>
-                      Family Weekly Goal
-                    </label>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <input
-                        type="range"
-                        min="60"
-                        max="420"
-                        step="30"
-                        value={familyData.readingGoals.familyWeekly}
-                        onChange={(e) => setFamilyData(prev => ({
-                          ...prev,
-                          readingGoals: {
-                            ...prev.readingGoals,
-                            familyWeekly: parseInt(e.target.value)
-                          }
-                        }))}
-                        style={{
-                          flex: 1,
-                          height: '8px',
-                          background: `${luxTheme.primary}40`,
-                          borderRadius: '4px',
-                          outline: 'none',
-                          accentColor: luxTheme.primary
-                        }}
-                      />
-                      <div style={{
-                        minWidth: '80px',
-                        textAlign: 'center',
-                        fontSize: 'clamp(0.875rem, 3.5vw, 1rem)',
+                  {!existingFamilyInfo && (
+                    <div>
+                      <label style={{
+                        display: 'block',
+                        fontSize: 'clamp(0.75rem, 3vw, 0.875rem)',
                         fontWeight: '600',
-                        color: luxTheme.textPrimary
+                        color: luxTheme.textSecondary,
+                        marginBottom: '0.5rem'
                       }}>
-                        {familyData.readingGoals.familyWeekly} min/week
+                        Family Weekly Goal
+                      </label>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <input
+                          type="range"
+                          min="60"
+                          max="420"
+                          step="30"
+                          value={familyData.readingGoals.familyWeekly}
+                          onChange={(e) => setFamilyData(prev => ({
+                            ...prev,
+                            readingGoals: {
+                              ...prev.readingGoals,
+                              familyWeekly: parseInt(e.target.value)
+                            }
+                          }))}
+                          style={{
+                            flex: 1,
+                            height: '8px',
+                            background: `${luxTheme.primary}40`,
+                            borderRadius: '4px',
+                            outline: 'none',
+                            accentColor: luxTheme.primary
+                          }}
+                        />
+                        <div style={{
+                          minWidth: '80px',
+                          textAlign: 'center',
+                          fontSize: 'clamp(0.875rem, 3.5vw, 1rem)',
+                          fontWeight: '600',
+                          color: luxTheme.textPrimary
+                        }}>
+                          {familyData.readingGoals.familyWeekly} min/week
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
 
                   <div>
                     <label style={{
@@ -621,7 +696,7 @@ export default function ParentOnboarding() {
                         fontWeight: '600',
                         color: luxTheme.textSecondary
                       }}>
-                        Enable Family Reading Battles 🏆
+                        {existingFamilyInfo ? 'Join' : 'Enable'} Family Reading Battles 🏆
                       </span>
                     </label>
                     <p style={{
@@ -935,11 +1010,11 @@ export default function ParentOnboarding() {
             )}
             <button
               onClick={handleNext}
-              disabled={loading || (step === 1 && !familyData.familyName.trim())}
+              disabled={loading || (step === 1 && !existingFamilyInfo && !familyData.familyName.trim())}
               style={{
                 flex: step === 1 ? 1 : 2,
                 padding: '0.875rem 1.5rem',
-                background: loading || (step === 1 && !familyData.familyName.trim())
+                background: loading || (step === 1 && !existingFamilyInfo && !familyData.familyName.trim())
                   ? '#d1d5db' 
                   : `linear-gradient(135deg, ${luxTheme.primary}, ${luxTheme.secondary})`,
                 color: luxTheme.textPrimary,
@@ -947,7 +1022,7 @@ export default function ParentOnboarding() {
                 borderRadius: '0.75rem',
                 fontSize: 'clamp(0.875rem, 3.5vw, 1rem)',
                 fontWeight: '600',
-                cursor: (loading || (step === 1 && !familyData.familyName.trim())) ? 'not-allowed' : 'pointer',
+                cursor: (loading || (step === 1 && !existingFamilyInfo && !familyData.familyName.trim())) ? 'not-allowed' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -984,7 +1059,10 @@ export default function ParentOnboarding() {
               margin: 0,
               lineHeight: '1.4'
             }}>
-              Setting up your family for reading success together.
+              {existingFamilyInfo 
+                ? 'Joining an existing family reading journey.'
+                : 'Setting up your family for reading success together.'
+              }
             </p>
           </div>
         </div>
