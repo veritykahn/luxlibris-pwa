@@ -126,14 +126,14 @@ export default function Contact() {
           <div className="max-w-6xl mx-auto px-6 text-center">
             <h2 className="text-5xl md:text-6xl font-bold text-slate-800 mb-6"
                 style={{fontFamily: 'Didot, Georgia, serif', letterSpacing: '0.02em'}}>
-              We're Here
+              We&apos;re Here
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-500 to-blue-600">
                 {" "}to Help
               </span>
             </h2>
             <p className="text-xl text-slate-600 max-w-3xl mx-auto mb-12 leading-relaxed">
               Whether you need technical support, want to learn more about bringing 
-              Lux Libris to your school, or have partnership ideas, we'd love to hear from you.
+              Lux Libris to your school, or have partnership ideas, we&apos;d love to hear from you.
             </p>
           </div>
         </section>
@@ -323,7 +323,7 @@ export default function Contact() {
               Schedule a Personalized Demo
             </h3>
             <p className="text-lg text-slate-600 mb-8 max-w-2xl mx-auto">
-              See Lux Libris in action with a guided walkthrough tailored to your school's needs. 
+              See Lux Libris in action with a guided walkthrough tailored to your school&apos;s needs. 
               Our team will show you exactly how the platform can transform your reading program.
             </p>
             
@@ -345,7 +345,7 @@ export default function Contact() {
                     Monday - Friday: 9:00 AM - 4:00 PM EST
                   </p>
                   <p className="text-sm text-slate-500 mb-4">
-                    We'll work around your school schedule!
+                    We&apos;ll work around your school schedule!
                   </p>
                   <a 
                     href="https://calendly.com/luxlibris-demo"

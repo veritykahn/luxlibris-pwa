@@ -327,7 +327,7 @@ export default function Luxlings() {
                 Sample Collection
               </h3>
               <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-                Here's a sneak peek at some of the saints you can collect!
+                Here&apos;s a sneak peek at some of the saints you can collect!
               </p>
             </div>
 

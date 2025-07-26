@@ -557,7 +557,7 @@ export default function FamilyDynamics() {
               margin: '0',
               opacity: 0.9
             }}>
-              Understanding how your {parentDnaType?.name} style connects with each child's reading personality
+              Understanding how your {parentDnaType?.name} style connects with each child&apos;s reading personality
             </p>
           </div>
 
@@ -832,7 +832,7 @@ export default function FamilyDynamics() {
                                 fontWeight: '500',
                                 fontStyle: 'italic'
                               }}>
-                                "{compatibility.realityCheck.honeymoonPhase}"
+                                &quot;{compatibility.realityCheck.honeymoonPhase}&quot;
                               </p>
                             </div>
                           )}
@@ -1055,7 +1055,7 @@ export default function FamilyDynamics() {
                 lineHeight: '1.5',
                 marginBottom: '20px'
               }}>
-                Once your children complete their Reading DNA assessments, you'll be able to explore 
+                Once your children complete their Reading DNA assessments, you&apos;ll be able to explore 
                 your unique parent-child dynamics and get personalized relationship insights here.
               </p>
               <button
@@ -1071,7 +1071,7 @@ export default function FamilyDynamics() {
                   cursor: 'pointer'
                 }}
               >
-                Check Children's Status
+                Check Children&apos;s Status
               </button>
             </div>
           )}

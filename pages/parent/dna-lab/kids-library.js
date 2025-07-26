@@ -272,7 +272,7 @@ export default function KidsLibrary() {
             animation: 'spin 1s linear infinite',
             margin: '0 auto 16px'
           }} />
-          <p style={{ color: luxTheme.textPrimary }}>Loading Kids' Library...</p>
+          <p style={{ color: luxTheme.textPrimary }}>Loading Kids&apos; Library...</p>
         </div>
       </div>
     );
@@ -293,7 +293,7 @@ export default function KidsLibrary() {
   return (
     <>
       <Head>
-        <title>My Kids' Library - Reading DNA Lab</title>
+        <title>My Kids&apos; Library - Reading DNA Lab</title>
         <meta name="description" content="Understand your children's reading personalities and get personalized support strategies" />
         <link rel="icon" href="/images/lux_libris_logo.png" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
@@ -366,7 +366,7 @@ export default function KidsLibrary() {
               }}
             >
               <span style={{ fontSize: '18px' }}>👨‍👩‍👧‍👦</span>
-              <span style={{ fontFamily: 'Didot, "Times New Roman", serif' }}>My Kids' Library</span>
+              <span style={{ fontFamily: 'Didot, "Times New Roman", serif' }}>My Kids&apos; Library</span>
               <span style={{ 
                 fontSize: '12px', 
                 transform: showDnaDropdown ? 'rotate(180deg)' : 'rotate(0deg)', 
@@ -660,7 +660,7 @@ export default function KidsLibrary() {
                         transition: 'all 0.2s ease'
                       }}
                     >
-                      👦 {selectedChild.firstName}'s View
+                      👦 {selectedChild.firstName}&apos;s View
                     </button>
                   </div>
 
@@ -900,7 +900,7 @@ export default function KidsLibrary() {
                               margin: 0,
                               textAlign: 'left'
                             }}>
-                              🌈 {selectedChild.firstName}'s Learning Style Traits
+                              🌈 {selectedChild.firstName}&apos;s Learning Style Traits
                             </h3>
                             <span style={{
                               fontSize: '20px',
@@ -1113,14 +1113,14 @@ export default function KidsLibrary() {
                         color: luxTheme.textPrimary,
                         marginBottom: '8px'
                       }}>
-                        {selectedChild.firstName} hasn't completed their Reading DNA yet
+                        {selectedChild.firstName} hasn&apos;t completed their Reading DNA yet
                       </h3>
                       <p style={{
                         fontSize: '14px',
                         color: luxTheme.textSecondary,
                         lineHeight: '1.5'
                       }}>
-                        Once they complete the assessment, you'll see their reading personality type, 
+                        Once they complete the assessment, you&apos;ll see their reading personality type, 
                         learning style traits, and personalized support strategies here.
                       </p>
                     </div>
@@ -1151,7 +1151,7 @@ export default function KidsLibrary() {
                 color: luxTheme.textSecondary,
                 lineHeight: '1.5'
               }}>
-                Link your children's accounts to see their reading personalities and get personalized support strategies.
+                Link your children&apos;s accounts to see their reading personalities and get personalized support strategies.
               </p>
               <button
                 onClick={() => router.push('/parent/settings')}

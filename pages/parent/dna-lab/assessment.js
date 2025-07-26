@@ -672,7 +672,7 @@ export default function ParentDnaAssessment() {
                     gap: '6px'
                   }}>
                     <span style={{ fontSize: '14px' }}>✨</span>
-                    It's a Match!
+                    It&apos;s a Match!
                     <span style={{ fontSize: '14px' }}>✨</span>
                   </div>
                   

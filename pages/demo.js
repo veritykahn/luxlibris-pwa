@@ -325,7 +325,7 @@ export default function Demo() {
                       </h3>
                       <p className="text-slate-600 mb-4">
                         See how the Rodriguez family uses the parent app to support their 
-                        children's reading journey and build family reading culture.
+                        children&apos;s reading journey and build family reading culture.
                       </p>
                       <ul className="space-y-2">
                         <VideoHighlight text="Multi-child tracking" />

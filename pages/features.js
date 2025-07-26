@@ -428,7 +428,7 @@ export default function Features() {
                     <div>
                       <div className="text-3xl mb-3">⚡</div>
                       <h5 className="font-semibold text-slate-800 mb-2">Quick Setup</h5>
-                      <p className="text-sm text-slate-600">5-minute onboarding with your school's teacher code</p>
+                      <p className="text-sm text-slate-600">5-minute onboarding with your school&apos;s teacher code</p>
                     </div>
                     <div>
                       <div className="text-3xl mb-3">🎓</div>
@@ -453,7 +453,7 @@ export default function Features() {
                     Parent App Features
                   </h3>
                   <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-                    Free tools to support your child's reading journey and build family reading culture
+                    Free tools to support your child&apos;s reading journey and build family reading culture
                   </p>
                 </div>
 
@@ -734,7 +734,7 @@ export default function Features() {
                 Feature Comparison
               </h3>
               <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-                See what's included for each user type
+                See what&apos;s included for each user type
               </p>
             </div>
 

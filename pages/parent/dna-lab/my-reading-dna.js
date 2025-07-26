@@ -1078,7 +1078,7 @@ export default function MyReadingDna() {
                 alignItems: 'center',
                 gap: '8px'
               }}>
-                <span>💭</span> This Week's Reflection Questions
+                <span>💭</span> This Week&apos;s Reflection Questions
               </div>
               <div style={{
                 display: 'grid',
@@ -1150,7 +1150,7 @@ export default function MyReadingDna() {
                 }}
               >
                 <span>↻</span>
-                <span>Been a while? Consider retaking the assessment to see how you've grown</span>
+                <span>Been a while? Consider retaking the assessment to see how you&apos;ve grown</span>
               </button>
             </div>
           )}

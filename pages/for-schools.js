@@ -112,7 +112,7 @@ export default function ForSchools() {
                 </span>
               </h2>
               <p className="text-xl text-slate-600 max-w-3xl mx-auto mb-8 leading-relaxed">
-                Join the reading revolution that's transforming Catholic education. 
+                Join the reading revolution that&apos;s transforming Catholic education. 
                 Two powerful programs, one unified platform that connects students, 
                 teachers, parents, and administrators.
               </p>
@@ -246,7 +246,7 @@ export default function ForSchools() {
                 Flexible for Any Structure
               </h2>
               <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-                Whether you're a diocese managing 50 schools or a single institution, 
+                Whether you&apos;re a diocese managing 50 schools or a single institution, 
                 Lux Libris scales to meet your needs with powerful administrative tools.
               </p>
             </div>
