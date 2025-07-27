@@ -730,7 +730,7 @@ export default function ReflectionGrowth() {
                   alignItems: 'center',
                   gap: '8px'
                 }}>
-                  <span>💭</span> This Week's Reflection Questions
+                  <span>💭</span> This Week&apos;s Reflection Questions
                 </h3>
                 
                 <div style={{ display: 'grid', gap: '12px' }}>
@@ -1378,7 +1378,7 @@ function JournalEntry({ entry, isExpanded, onToggle, onDelete, theme }) {
               marginBottom: '8px',
               opacity: 0.8
             }}>
-              "{entry.prompt}"
+              &quot;{entry.prompt}&quot;
             </div>
           )}
           <div style={{
