@@ -550,8 +550,8 @@ export default function RoleSelector() {
                     fontFamily: 'Avenir'
                   }}>
 <li>Tap the <strong>Share</strong> button (<img src="/images/ios-share-icon.png" alt="share icon" style={{display: 'inline-block', height: '24px', width: 'auto', verticalAlign: 'middle', margin: '0 2px', backgroundColor: 'rgba(59, 130, 246, 0.1)', padding: '2px 4px', borderRadius: '4px'}} />) at the bottom of Safari</li>                    
-<li>Scroll down and tap <strong>"Add to Home Screen"</strong></li>
-                    <li>Tap <strong>"Add"</strong> to install the app</li>
+<li>Scroll down and tap <strong>&quot;Add to Home Screen&quot;</strong></li>
+                    <li>Tap <strong>&quot;Add&quot;</strong> to install the app</li>
                   </ol>
                 </div>
 
@@ -586,7 +586,7 @@ export default function RoleSelector() {
                     fontFamily: 'Avenir'
                   }}>
                     <li>Tap the <strong>menu</strong> button (⋮) in Chrome</li>
-                    <li>Look for <strong>"Install app"</strong> or <strong>"Add to Home Screen"</strong></li>
+                    <li>Look for <strong>&quot;Install app&quot;</strong> or <strong>&quot;Add to Home Screen&quot;</strong></li>
                     <li>Tap to confirm installation</li>
                   </ol>
                 </div>
@@ -622,7 +622,7 @@ export default function RoleSelector() {
                     fontFamily: 'Avenir'
                   }}>
                     <li>Look for the <strong>install icon</strong> (⊕) in the address bar</li>
-                    <li>Or use browser menu → <strong>"Install Lux Libris"</strong></li>
+                    <li>Or use browser menu → <strong>&quot;Install Lux Libris&quot;</strong></li>
                     <li>Follow the prompts to install</li>
                   </ol>
                 </div>
