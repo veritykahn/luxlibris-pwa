@@ -117,7 +117,6 @@ export default function TeacherSetupChoice() {
               features={[
                 "📚 Curate book nominees for the year",
                 "🏆 Set up achievement tiers & rewards", 
-                "👥 Multiple teachers can join",
                 "📊 School-wide progress tracking",
                 "🎯 Academic year management",
                 "🔗 Parent connection support"
@@ -135,12 +134,11 @@ export default function TeacherSetupChoice() {
               title="Teacher Classroom Management"
               description="Manage your individual classroom's reading activities, assignments, and student interactions"
               features={[
-                "📖 Assign specific books to students",
-                "✍️ Create reading assignments", 
+                "📖 Track the reading habits of your class",
                 "💬 Discussion forums & activities",
                 "📈 Individual student analytics",
-                "🗓️ Reading calendars & schedules",
-                "📋 Assessment tools"
+                "🏆 Classroom reading activities",
+                "🔗 Parent connection support"
               ]}
               buttonText="Set Up Classroom"
               onClick={() => {}} // No action for now
@@ -192,7 +190,8 @@ export default function TeacherSetupChoice() {
                 <strong style={{ color: '#223848' }}>Choose Classroom Management if:</strong>
                 <ul style={{ marginTop: '0.5rem', paddingLeft: '1.2rem' }}>
                   <li>You&apos;re managing just your classroom</li>
-                  <li>You need discussion tools</li>
+                  <li>You want to track students&apos; reading habits</li>
+                  <li>You need analystics for parent meetings</li>
                 </ul>
               </div>
             </div>

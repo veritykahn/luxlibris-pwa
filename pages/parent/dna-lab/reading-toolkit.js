@@ -47,7 +47,7 @@ export default function ReadingToolkit() {
     { name: 'Dashboard', path: '/parent/dna-lab', icon: '🏠', description: 'Command center' },
     { name: 'My Reading DNA', path: '/parent/dna-lab/my-reading-dna', icon: '🧬', description: 'Your profile' },
     { name: 'My Reading Toolkit', path: '/parent/dna-lab/reading-toolkit', icon: '🧰', description: 'Strategies', current: true },
-    { name: "My Kids' Library", path: '/parent/dna-lab/kids-library', icon: '👨‍👩‍👧‍👦', description: 'Child profiles' },
+    { name: "My Kids&apos; Library", path: '/parent/dna-lab/kids-library', icon: '👨‍👩‍👧‍👦', description: 'Child profiles' },
     { name: 'Family Dynamics', path: '/parent/dna-lab/family-dynamics', icon: '🤝', description: 'Compatibility' },
     { name: 'Science Center', path: '/parent/dna-lab/science-center', icon: '🧪', description: 'Research' },
     { name: 'Reflection & Growth', path: '/parent/dna-lab/reflection-growth', icon: '🌱', description: 'Track journey' }
@@ -290,7 +290,7 @@ export default function ReadingToolkit() {
                 scenarioId: key,
                 id: `emergency-${key}`,
                 strategyId: `${key}-dontSay-${index}`,
-                title: `${key.replace(/([A-Z])/g, ' $1').trim()} - DON'T Say`,
+                title: `${key.replace(/([A-Z])/g, ' $1').trim()} - DON&apos;T Say`,
                 content: `"${script}"`,
                 matchScore
               });
@@ -815,7 +815,7 @@ export default function ReadingToolkit() {
             </button>
           </div>
 
-          {/* Tab Navigation - Reordered */}
+          {/* Tab Navigation - Mobile Optimized */}
           <div style={{
             display: 'flex',
             backgroundColor: luxTheme.surface,
@@ -824,11 +824,14 @@ export default function ReadingToolkit() {
             marginBottom: '20px',
             boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
             gap: '4px',
-            overflowX: 'auto'
+            overflowX: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none'
           }}>
             {[
-              { id: 'daily', label: 'Daily Strategies', icon: '📖' },
-              { id: 'seasonal', label: 'Seasonal Strategies', icon: '🗓️' },
+              { id: 'daily', label: 'Daily', icon: '📖' },
+              { id: 'seasonal', label: 'Seasonal', icon: '🗓️' },
               { id: 'emergency', label: 'Emergency', icon: '🚨' },
               { id: 'strategies', label: 'My Strategies', icon: '⭐' }
             ].map((tab) => (
@@ -836,44 +839,43 @@ export default function ReadingToolkit() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 style={{
-                  flex: 1,
-                  minWidth: '80px',
-                  padding: '10px 8px',
+                  minWidth: 'max-content',
+                  padding: '12px 16px',
                   borderRadius: '12px',
                   border: 'none',
                   backgroundColor: activeTab === tab.id ? luxTheme.primary : 'transparent',
                   color: activeTab === tab.id ? luxTheme.textPrimary : luxTheme.textSecondary,
-                  fontSize: '12px',
+                  fontSize: '14px',
                   fontWeight: '600',
                   cursor: 'pointer',
                   display: 'flex',
-                  flexDirection: 'column',
+                  flexDirection: 'row',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '4px',
+                  gap: '6px',
                   transition: 'all 0.2s ease',
                   touchAction: 'manipulation',
                   WebkitTapHighlightColor: 'transparent',
-                  position: 'relative'
+                  position: 'relative',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0
                 }}
               >
-                <span style={{ fontSize: '16px' }}>{tab.icon}</span>
-                <span style={{ whiteSpace: 'nowrap' }}>{tab.label}</span>
+                <span style={{ fontSize: '18px' }}>{tab.icon}</span>
+                <span>{tab.label}</span>
                 {tab.id === 'strategies' && starredStrategies.size > 0 && (
                   <span style={{
                     backgroundColor: parentDnaType.color || luxTheme.secondary,
                     color: 'white',
-                    borderRadius: '8px',
-                    padding: '1px 4px',
-                    fontSize: '9px',
-                    minWidth: '14px',
-                    height: '14px',
+                    borderRadius: '10px',
+                    padding: '2px 6px',
+                    fontSize: '11px',
+                    minWidth: '18px',
+                    height: '18px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    position: 'absolute',
-                    top: '6px',
-                    right: '6px'
+                    fontWeight: 'bold'
                   }}>
                     {starredStrategies.size}
                   </span>
@@ -1009,7 +1011,7 @@ export default function ReadingToolkit() {
                   <span style={{ fontSize: '24px' }}>🔍</span>
                   <input
                     type="text"
-                    placeholder="Try: 'My child won't read anymore' or 'reading battles'"
+                    placeholder="Try: &apos;My child won&apos;t read anymore&apos; or &apos;reading battles&apos;"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     style={{
@@ -1142,6 +1144,11 @@ export default function ReadingToolkit() {
             -moz-osx-font-smoothing: grayscale;
             -webkit-overflow-scrolling: touch;
             scroll-behavior: smooth;
+          }
+          
+          /* Hide scrollbar for Chrome, Safari and Opera */
+          div::-webkit-scrollbar {
+            display: none;
           }
         `}</style>
       </div>

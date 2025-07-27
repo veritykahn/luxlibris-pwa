@@ -309,7 +309,9 @@ export default function StudentAccountCreation() {
                       textAlign: 'center',
                       fontWeight: 'bold',
                       letterSpacing: '0.05em',
-                      fontFamily: 'monospace'
+                      fontFamily: 'monospace',
+                      color: '#223848',           // Add dark text color
+  backgroundColor: '#ffffff'  // Add white background
                     }}
                     onFocus={(e) => e.target.style.borderColor = '#ADD4EA'}
                     onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}

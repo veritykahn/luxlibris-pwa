@@ -321,7 +321,9 @@ export default function ParentAccountCreation() {
                           fontSize: 'clamp(0.875rem, 3.5vw, 1rem)',
                           boxSizing: 'border-box',
                           outline: 'none',
-                          minHeight: '48px'
+                          minHeight: '48px',
+                          color: luxTheme.textPrimary,    // Add this
+  backgroundColor: luxTheme.surface // Add this
                         }}
                         onFocus={(e) => e.target.style.borderColor = luxTheme.primary}
                         onBlur={(e) => e.target.style.borderColor = `${luxTheme.primary}40`}

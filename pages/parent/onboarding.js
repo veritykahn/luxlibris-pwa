@@ -486,6 +486,7 @@ export default function ParentOnboarding() {
                       fontWeight: '600',
                       minHeight: '48px',
                       backgroundColor: existingFamilyInfo ? `${luxTheme.primary}10` : luxTheme.surface,
+                      color: luxTheme.textPrimary,  // Add this line
                       cursor: existingFamilyInfo ? 'not-allowed' : 'text'
                     }}
                     onFocus={(e) => !existingFamilyInfo && (e.target.style.borderColor = luxTheme.primary)}
@@ -811,6 +812,7 @@ export default function ParentOnboarding() {
                         borderRadius: '0.75rem',
                         fontSize: 'clamp(0.75rem, 3vw, 0.875rem)',
                         backgroundColor: luxTheme.surface,
+                        color: luxTheme.textPrimary,  // Add this line
                         outline: 'none',
                         minHeight: '48px'
                       }}
@@ -850,6 +852,7 @@ export default function ParentOnboarding() {
                         borderRadius: '0.75rem',
                         fontSize: 'clamp(0.75rem, 3vw, 0.875rem)',
                         backgroundColor: luxTheme.surface,
+                        color: luxTheme.textPrimary,  // Add this line
                         outline: 'none',
                         minHeight: '48px'
                       }}

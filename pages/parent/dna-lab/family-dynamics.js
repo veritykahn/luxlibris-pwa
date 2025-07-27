@@ -257,6 +257,14 @@ export default function FamilyDynamics() {
     );
   }
 
+  // Helper function to get mobile-friendly circle size
+  const getCircleSize = () => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 480 ? '70px' : '100px';
+    }
+    return '100px';
+  };
+
   return (
     <>
       <Head>
@@ -667,74 +675,75 @@ export default function FamilyDynamics() {
                           boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                           border: `2px solid ${childType?.color || luxTheme.primary}30`
                         }}>
-                          {/* Parent-Child Visual */}
-                          <div style={{
+                          {/* Parent-Child Visual - Fixed for Mobile */}
+                          <div className="parent-child-visual" style={{
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            gap: '40px',
+                            gap: '20px',
                             marginBottom: '32px',
-                            padding: '20px'
+                            padding: '10px',
+                            flexWrap: 'wrap'
                           }}>
                             <div style={{ textAlign: 'center' }}>
-                              <div style={{
-                                width: '100px',
-                                height: '100px',
+                              <div className="circle-parent" style={{
+                                width: '80px',
+                                height: '80px',
                                 borderRadius: '50%',
                                 backgroundColor: parentDnaType?.color || luxTheme.primary,
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                fontSize: '48px',
+                                fontSize: '36px',
                                 boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
                                 border: '3px solid white'
                               }}>
                                 {parentDnaType?.emoji || '🌟'}
                               </div>
                               <div style={{
-                                fontSize: '16px',
+                                fontSize: '14px',
                                 fontWeight: '600',
                                 color: luxTheme.textPrimary,
-                                marginTop: '12px'
+                                marginTop: '8px'
                               }}>
                                 You
                               </div>
                               <div style={{
-                                fontSize: '13px',
+                                fontSize: '12px',
                                 color: luxTheme.textSecondary
                               }}>
                                 {parentDnaType?.name}
                               </div>
                             </div>
                             
-                            <div style={{
+                            <div className="connector-dots" style={{
                               display: 'flex',
                               alignItems: 'center',
-                              gap: '8px',
+                              gap: '6px',
                               color: luxTheme.textSecondary
                             }}>
                               <div style={{
-                                width: '30px',
+                                width: '20px',
                                 height: '2px',
                                 backgroundColor: luxTheme.primary,
                                 opacity: 0.3
                               }} />
                               <div style={{
-                                width: '8px',
-                                height: '8px',
+                                width: '6px',
+                                height: '6px',
                                 borderRadius: '50%',
                                 backgroundColor: luxTheme.primary,
                                 animation: 'pulse 2s ease-in-out infinite'
                               }} />
                               <div style={{
-                                width: '8px',
-                                height: '8px',
+                                width: '6px',
+                                height: '6px',
                                 borderRadius: '50%',
                                 backgroundColor: luxTheme.secondary,
                                 animation: 'pulse 2s ease-in-out infinite 0.5s'
                               }} />
                               <div style={{
-                                width: '30px',
+                                width: '20px',
                                 height: '2px',
                                 backgroundColor: luxTheme.secondary,
                                 opacity: 0.3
@@ -742,30 +751,30 @@ export default function FamilyDynamics() {
                             </div>
                             
                             <div style={{ textAlign: 'center' }}>
-                              <div style={{
-                                width: '100px',
-                                height: '100px',
+                              <div className="circle-child" style={{
+                                width: '80px',
+                                height: '80px',
                                 borderRadius: '50%',
                                 backgroundColor: childType?.color || luxTheme.secondary,
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                fontSize: '48px',
+                                fontSize: '36px',
                                 boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
                                 border: '3px solid white'
                               }}>
                                 {childType?.emoji || '📚'}
                               </div>
                               <div style={{
-                                fontSize: '16px',
+                                fontSize: '14px',
                                 fontWeight: '600',
                                 color: luxTheme.textPrimary,
-                                marginTop: '12px'
+                                marginTop: '8px'
                               }}>
                                 {selectedChild.firstName}
                               </div>
                               <div style={{
-                                fontSize: '13px',
+                                fontSize: '12px',
                                 color: luxTheme.textSecondary
                               }}>
                                 {childType?.name}
@@ -845,7 +854,7 @@ export default function FamilyDynamics() {
                             <CompatibilitySection
                               title="The Honest Truth"
                               emoji="💭"
-                              description="Where tensions might arise (and that's okay!)"
+                              description="Where tensions might arise (and that&apos;s okay!)"
                               isExpanded={expandedSections['realityCheck']}
                               onToggle={() => toggleSection('realityCheck')}
                               theme={luxTheme}
@@ -1113,6 +1122,23 @@ export default function FamilyDynamics() {
             -moz-osx-font-smoothing: grayscale;
             -webkit-overflow-scrolling: touch;
             scroll-behavior: smooth;
+          }
+          
+          @media (max-width: 480px) {
+            .parent-child-visual {
+              flex-direction: column !important;
+              gap: 20px !important;
+            }
+            
+            .circle-parent, .circle-child {
+              width: 70px !important;
+              height: 70px !important;
+              font-size: 28px !important;
+            }
+            
+            .connector-dots {
+              transform: rotate(90deg);
+            }
           }
         `}</style>
       </div>

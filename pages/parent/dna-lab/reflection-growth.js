@@ -27,6 +27,7 @@ export default function ReflectionGrowth() {
   const [entryContent, setEntryContent] = useState('');
   const [selectedPrompt, setSelectedPrompt] = useState(null);
   const [expandedEntries, setExpandedEntries] = useState({});
+  const [isMobile, setIsMobile] = useState(false);
   
   // Lux Libris Classic Theme
   const luxTheme = {
@@ -38,6 +39,18 @@ export default function ReflectionGrowth() {
     textPrimary: '#223848',
     textSecondary: '#556B7A'
   };
+
+  // Check if mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // DNA Lab navigation options
   const dnaNavOptions = useMemo(() => [
@@ -643,16 +656,20 @@ export default function ReflectionGrowth() {
             </p>
           </div>
 
-          {/* Tab Navigation */}
+          {/* Tab Navigation - Fixed for Mobile */}
           <div style={{
             backgroundColor: luxTheme.surface,
             borderRadius: '16px',
-            padding: '8px',
+            padding: isMobile ? '4px' : '8px',
             marginBottom: '20px',
             boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
             border: `2px solid ${luxTheme.primary}30`,
             display: 'flex',
-            gap: '8px'
+            gap: isMobile ? '4px' : '8px',
+            overflowX: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none'
           }}>
             <TabButton
               active={activeTab === 'reflect'}
@@ -661,6 +678,7 @@ export default function ReflectionGrowth() {
               label="Reflect"
               theme={luxTheme}
               color={parentDnaType?.color}
+              isMobile={isMobile}
             />
             <TabButton
               active={activeTab === 'journal'}
@@ -669,6 +687,7 @@ export default function ReflectionGrowth() {
               label="Journal"
               theme={luxTheme}
               color={parentDnaType?.color}
+              isMobile={isMobile}
             />
             <TabButton
               active={activeTab === 'goals'}
@@ -677,6 +696,7 @@ export default function ReflectionGrowth() {
               label="Goals"
               theme={luxTheme}
               color={parentDnaType?.color}
+              isMobile={isMobile}
             />
             <TabButton
               active={activeTab === 'wins'}
@@ -685,6 +705,7 @@ export default function ReflectionGrowth() {
               label="Wins"
               theme={luxTheme}
               color={parentDnaType?.color}
+              isMobile={isMobile}
             />
           </div>
 
@@ -709,7 +730,7 @@ export default function ReflectionGrowth() {
                   alignItems: 'center',
                   gap: '8px'
                 }}>
-                  <span>💭</span> This Week&apos;s Reflection Questions
+                  <span>💭</span> This Week's Reflection Questions
                 </h3>
                 
                 <div style={{ display: 'grid', gap: '12px' }}>
@@ -1226,35 +1247,42 @@ export default function ReflectionGrowth() {
             -webkit-overflow-scrolling: touch;
             scroll-behavior: smooth;
           }
+          
+          /* Hide scrollbar for tab navigation */
+          div::-webkit-scrollbar {
+            display: none;
+          }
         `}</style>
       </div>
     </>
   );
 }
 
-// Tab Button Component
-function TabButton({ active, onClick, emoji, label, theme, color }) {
+// Tab Button Component - Updated for Mobile
+function TabButton({ active, onClick, emoji, label, theme, color, isMobile }) {
   return (
     <button
       onClick={onClick}
       style={{
-        flex: 1,
+        flex: isMobile ? '0 0 auto' : 1,
+        minWidth: isMobile ? '80px' : 'auto',
         backgroundColor: active ? color || theme.primary : 'transparent',
         color: active ? 'white' : theme.textSecondary,
         border: 'none',
         borderRadius: '8px',
-        padding: '10px',
-        fontSize: '14px',
+        padding: isMobile ? '8px 12px' : '10px',
+        fontSize: isMobile ? '12px' : '14px',
         fontWeight: '600',
         cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: '6px',
-        transition: 'all 0.2s ease'
+        gap: isMobile ? '4px' : '6px',
+        transition: 'all 0.2s ease',
+        whiteSpace: 'nowrap'
       }}
     >
-      <span style={{ fontSize: '16px' }}>{emoji}</span>
+      <span style={{ fontSize: isMobile ? '14px' : '16px' }}>{emoji}</span>
       <span>{label}</span>
     </button>
   );
@@ -1350,7 +1378,7 @@ function JournalEntry({ entry, isExpanded, onToggle, onDelete, theme }) {
               marginBottom: '8px',
               opacity: 0.8
             }}>
-              &quot;{entry.prompt}&quot;
+              "{entry.prompt}"
             </div>
           )}
           <div style={{
