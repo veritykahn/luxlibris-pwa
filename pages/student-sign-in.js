@@ -345,7 +345,7 @@ export default function StudentSignIn() {
                 Teacher Code
               </label>
               <input
-                type="password"
+                type="text"
                 value={formData.teacherCode}
                 onChange={(e) => setFormData(prev => ({ 
                   ...prev, 

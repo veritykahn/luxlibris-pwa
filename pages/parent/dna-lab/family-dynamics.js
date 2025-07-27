@@ -680,10 +680,9 @@ export default function FamilyDynamics() {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            gap: '20px',
+                            gap: '15px',
                             marginBottom: '32px',
-                            padding: '10px',
-                            flexWrap: 'wrap'
+                            padding: '10px'
                           }}>
                             <div style={{ textAlign: 'center' }}>
                               <div className="circle-parent" style={{
@@ -700,7 +699,7 @@ export default function FamilyDynamics() {
                               }}>
                                 {parentDnaType?.emoji || '🌟'}
                               </div>
-                              <div style={{
+                              <div className="circle-label" style={{
                                 fontSize: '14px',
                                 fontWeight: '600',
                                 color: luxTheme.textPrimary,
@@ -708,7 +707,7 @@ export default function FamilyDynamics() {
                               }}>
                                 You
                               </div>
-                              <div style={{
+                              <div className="circle-sublabel" style={{
                                 fontSize: '12px',
                                 color: luxTheme.textSecondary
                               }}>
@@ -719,31 +718,34 @@ export default function FamilyDynamics() {
                             <div className="connector-dots" style={{
                               display: 'flex',
                               alignItems: 'center',
-                              gap: '6px',
-                              color: luxTheme.textSecondary
+                              gap: '4px',
+                              color: luxTheme.textSecondary,
+                              flexShrink: 0
                             }}>
-                              <div style={{
-                                width: '20px',
+                              <div className="connector-line" style={{
+                                width: '15px',
                                 height: '2px',
                                 backgroundColor: luxTheme.primary,
                                 opacity: 0.3
                               }} />
                               <div style={{
-                                width: '6px',
-                                height: '6px',
+                                width: '5px',
+                                height: '5px',
                                 borderRadius: '50%',
                                 backgroundColor: luxTheme.primary,
-                                animation: 'pulse 2s ease-in-out infinite'
+                                animation: 'pulse 2s ease-in-out infinite',
+                                flexShrink: 0
                               }} />
                               <div style={{
-                                width: '6px',
-                                height: '6px',
+                                width: '5px',
+                                height: '5px',
                                 borderRadius: '50%',
                                 backgroundColor: luxTheme.secondary,
-                                animation: 'pulse 2s ease-in-out infinite 0.5s'
+                                animation: 'pulse 2s ease-in-out infinite 0.5s',
+                                flexShrink: 0
                               }} />
-                              <div style={{
-                                width: '20px',
+                              <div className="connector-line" style={{
+                                width: '15px',
                                 height: '2px',
                                 backgroundColor: luxTheme.secondary,
                                 opacity: 0.3
@@ -765,7 +767,7 @@ export default function FamilyDynamics() {
                               }}>
                                 {childType?.emoji || '📚'}
                               </div>
-                              <div style={{
+                              <div className="circle-label" style={{
                                 fontSize: '14px',
                                 fontWeight: '600',
                                 color: luxTheme.textPrimary,
@@ -773,7 +775,7 @@ export default function FamilyDynamics() {
                               }}>
                                 {selectedChild.firstName}
                               </div>
-                              <div style={{
+                              <div className="circle-sublabel" style={{
                                 fontSize: '12px',
                                 color: luxTheme.textSecondary
                               }}>
@@ -1126,18 +1128,29 @@ export default function FamilyDynamics() {
           
           @media (max-width: 480px) {
             .parent-child-visual {
-              flex-direction: column !important;
-              gap: 20px !important;
+              gap: 10px !important;
             }
             
             .circle-parent, .circle-child {
-              width: 70px !important;
-              height: 70px !important;
-              font-size: 28px !important;
+              width: 60px !important;
+              height: 60px !important;
+              font-size: 24px !important;
+            }
+            
+            .circle-label {
+              font-size: 12px !important;
+            }
+            
+            .circle-sublabel {
+              font-size: 10px !important;
             }
             
             .connector-dots {
-              transform: rotate(90deg);
+              gap: 3px !important;
+            }
+            
+            .connector-line {
+              width: 10px !important;
             }
           }
         `}</style>

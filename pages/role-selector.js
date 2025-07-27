@@ -1,4 +1,4 @@
-// pages/role-selector.js - SIMPLIFIED: No smart redirects, just simple routing
+// pages/role-selector.js - With bottom sheet install modal
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
@@ -9,6 +9,7 @@ export default function RoleSelector() {
   const [showInstallButton, setShowInstallButton] = useState(false)
   const [isInstalled, setIsInstalled] = useState(false)
   const [canInstall, setCanInstall] = useState(false)
+  const [showInstallModal, setShowInstallModal] = useState(false)
 
   useEffect(() => {
     // Check if already installed (standalone mode)
@@ -40,6 +41,7 @@ export default function RoleSelector() {
       console.log('PWA was installed')
       setIsInstalled(true)
       setShowInstallButton(false)
+      setShowInstallModal(false)
       setDeferredPrompt(null)
     }
 
@@ -53,39 +55,36 @@ export default function RoleSelector() {
   }, [])
 
   const handleInstallClick = async () => {
-    if (!deferredPrompt) {
-      // Scroll to install instructions
-      document.getElementById('install-instructions').scrollIntoView({ 
-        behavior: 'smooth' 
-      })
-      return
-    }
+    if (deferredPrompt) {
+      try {
+        // Show the native install prompt
+        deferredPrompt.prompt()
 
-    try {
-      // Show the install prompt
-      deferredPrompt.prompt()
+        // Wait for the user to respond to the prompt
+        const { outcome } = await deferredPrompt.userChoice
 
-      // Wait for the user to respond to the prompt
-      const { outcome } = await deferredPrompt.userChoice
+        if (outcome === 'accepted') {
+          console.log('User accepted the install prompt')
+        } else {
+          console.log('User dismissed the install prompt')
+        }
 
-      if (outcome === 'accepted') {
-        console.log('User accepted the install prompt')
-      } else {
-        console.log('User dismissed the install prompt')
+        // Clear the deferredPrompt
+        setDeferredPrompt(null)
+        setShowInstallButton(false)
+      } catch (error) {
+        console.error('Error during installation:', error)
+        // Fallback to showing instructions
+        setShowInstallModal(true)
       }
-
-      // Clear the deferredPrompt
-      setDeferredPrompt(null)
-      setShowInstallButton(false)
-    } catch (error) {
-      console.error('Error during installation:', error)
+    } else {
+      // No native prompt available, show instruction modal
+      setShowInstallModal(true)
     }
   }
 
-  const scrollToInstallInstructions = () => {
-    document.getElementById('install-instructions').scrollIntoView({ 
-      behavior: 'smooth' 
-    })
+  const closeInstallModal = () => {
+    setShowInstallModal(false)
   }
 
   return (
@@ -170,7 +169,7 @@ export default function RoleSelector() {
             {/* PROMINENT INSTALL APP BANNER */}
             {!isInstalled && (
               <div 
-                onClick={scrollToInstallInstructions}
+                onClick={handleInstallClick}
                 style={{
                   background: 'linear-gradient(135deg, #10b981, #34d399)',
                   color: 'white',
@@ -213,7 +212,7 @@ export default function RoleSelector() {
                       fontSize: 'clamp(0.9rem, 2.5vw, 1rem)',
                       opacity: 0.9
                     }}>
-                      Get the best reading experience with faster loading & offline access
+                      Get the best reading experience with faster loading & native app experience
                     </p>
                   </div>
                   <div style={{
@@ -316,7 +315,7 @@ export default function RoleSelector() {
               highlight="Basic access FREE with school!"
             />
 
-            {/* Educators Card - ALWAYS goes to onboarding */}
+            {/* Educators Card */}
             <RoleCard
               icon="👩‍🏫"
               title="Educators"
@@ -419,168 +418,248 @@ export default function RoleSelector() {
               Independent family plans will be available after the pilot phase
             </p>
           </div>
-
-          {/* REST OF THE COMPONENT SAME AS BEFORE... */}
-          {/* INSTALL INSTRUCTIONS SECTION */}
-          <div id="install-instructions" style={{
-            padding: '2rem',
-            background: 'rgba(255, 255, 255, 0.9)',
-            borderRadius: '1rem',
-            border: '1px solid rgba(195, 224, 222, 0.4)',
-            maxWidth: '60rem',
-            margin: '0 auto',
-            boxShadow: '0 4px 10px rgba(0, 0, 0, 0.05)'
-          }}>
-            <h3 style={{
-              fontSize: 'clamp(1.25rem, 3vw, 1.5rem)',
-              fontWeight: '300',
-              color: '#223848',
-              marginBottom: '1rem',
-              fontFamily: 'Didot, Georgia, serif',
-              letterSpacing: '1.2px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.5rem'
-            }}>
-              📱 Install Lux Libris as an App
-            </h3>
-            
-            {isInstalled ? (
-              <div style={{
-                background: 'linear-gradient(135deg, #10b981, #34d399)',
-                color: 'white',
-                padding: '1rem',
-                borderRadius: '0.5rem',
-                marginBottom: '1rem',
-                textAlign: 'center'
-              }}>
-                <p style={{
-                  margin: 0,
-                  fontSize: 'clamp(0.875rem, 2.5vw, 1rem)',
-                  fontWeight: '600',
-                  fontFamily: 'Avenir'
-                }}>
-                  🎉 Excellent! Lux Libris is installed as an app on your device!
-                </p>
-              </div>
-            ) : showInstallButton ? (
-              <div style={{
-                background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
-                color: 'white',
-                padding: '1rem',
-                borderRadius: '0.5rem',
-                marginBottom: '1rem',
-                textAlign: 'center'
-              }}>
-                <p style={{
-                  margin: '0 0 0.75rem 0',
-                  fontSize: 'clamp(0.875rem, 2.5vw, 1rem)',
-                  fontWeight: '600',
-                  fontFamily: 'Avenir'
-                }}>
-                  ✨ Your device supports app installation!
-                </p>
-                <button
-                  onClick={handleInstallClick}
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.2)',
-                    color: 'white',
-                    border: '2px solid white',
-                    borderRadius: '0.5rem',
-                    padding: '0.75rem 1.5rem',
-                    fontSize: '1rem',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    minHeight: '44px',
-                    fontFamily: 'Avenir',
-                    letterSpacing: '1.2px'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.background = 'white'
-                    e.target.style.color = '#3b82f6'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.background = 'rgba(255, 255, 255, 0.2)'
-                    e.target.style.color = 'white'
-                  }}
-                >
-                  🚀 Install App Now
-                </button>
-              </div>
-            ) : null}
-            
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-              gap: '1.5rem',
-              textAlign: 'left'
-            }}>
-              <div style={{
-                background: 'rgba(173, 212, 234, 0.1)',
-                padding: '1rem',
-                borderRadius: '0.5rem',
-                border: '1px solid rgba(173, 212, 234, 0.3)'
-              }}>
-                <strong style={{ color: '#223848', fontSize: '1.1rem', fontFamily: 'Avenir' }}>📱 iPhone/iPad:</strong>
-                <br />
-                <span style={{ fontSize: '0.875rem', color: '#6b7280', lineHeight: '1.4', fontFamily: 'Avenir' }}>
-                  1. Tap the Share button (square with arrow up)<br />
-                  2. Scroll down and tap &quot;Add to Home Screen&quot;<br />
-                  3. Tap &quot;Add&quot; to install
-                </span>
-              </div>
-              <div style={{
-                background: 'rgba(161, 229, 219, 0.1)',
-                padding: '1rem',
-                borderRadius: '0.5rem',
-                border: '1px solid rgba(161, 229, 219, 0.3)'
-              }}>
-                <strong style={{ color: '#223848', fontSize: '1.1rem', fontFamily: 'Avenir' }}>🤖 Android:</strong>
-                <br />
-                <span style={{ fontSize: '0.875rem', color: '#6b7280', lineHeight: '1.4', fontFamily: 'Avenir' }}>
-                  1. Tap the browser menu (3 dots)<br />
-                  2. Look for &quot;Install app&quot; or &quot;Add to Home Screen&quot;<br />
-                  3. Confirm installation
-                </span>
-              </div>
-              <div style={{
-                background: 'rgba(195, 224, 222, 0.1)',
-                padding: '1rem',
-                borderRadius: '0.5rem',
-                border: '1px solid rgba(195, 224, 222, 0.3)'
-              }}>
-                <strong style={{ color: '#223848', fontSize: '1.1rem', fontFamily: 'Avenir' }}>💻 Desktop:</strong>
-                <br />
-                <span style={{ fontSize: '0.875rem', color: '#6b7280', lineHeight: '1.4', fontFamily: 'Avenir' }}>
-                  1. Look for install icon in address bar<br />
-                  2. Or use browser menu &quot;Install Lux Libris&quot;<br />
-                  3. Follow the prompts to install
-                </span>
-              </div>
-            </div>
-
-            <div style={{
-              marginTop: '1.5rem',
-              padding: '1rem',
-              background: 'rgba(34, 56, 72, 0.05)',
-              borderRadius: '0.5rem',
-              textAlign: 'center'
-            }}>
-              <p style={{
-                color: '#223848',
-                fontSize: '0.9rem',
-                margin: 0,
-                fontWeight: '500',
-                fontFamily: 'Avenir'
-              }}>
-                💡 <strong>Why install?</strong> Faster loading • Offline access • Push notifications • Native app experience
-              </p>
-            </div>
-          </div>
         </div>
+
+        {/* Install Modal/Bottom Sheet */}
+        {showInstallModal && (
+          <>
+            {/* Backdrop */}
+            <div 
+              onClick={closeInstallModal}
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'rgba(0, 0, 0, 0.5)',
+                zIndex: 9998,
+                backdropFilter: 'blur(4px)'
+              }}
+            />
+            
+            {/* Bottom Sheet Modal */}
+            <div style={{
+              position: 'fixed',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              background: 'white',
+              borderTopLeftRadius: '1.5rem',
+              borderTopRightRadius: '1.5rem',
+              padding: '1.5rem',
+              zIndex: 9999,
+              maxHeight: '85vh',
+              overflowY: 'auto',
+              boxShadow: '0 -10px 40px rgba(0, 0, 0, 0.2)',
+              animation: 'slideUp 0.3s ease-out'
+            }}>
+              {/* Handle bar */}
+              <div style={{
+                width: '40px',
+                height: '4px',
+                background: '#d1d5db',
+                borderRadius: '2px',
+                margin: '0 auto 1.5rem auto'
+              }} />
+
+              {/* Close button */}
+              <button
+                onClick={closeInstallModal}
+                style={{
+                  position: 'absolute',
+                  top: '1rem',
+                  right: '1rem',
+                  background: 'rgba(107, 114, 128, 0.1)',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '32px',
+                  height: '32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  fontSize: '18px',
+                  color: '#6b7280',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.background = 'rgba(107, 114, 128, 0.2)'
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = 'rgba(107, 114, 128, 0.1)'
+                }}
+              >
+                ×
+              </button>
+
+              <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📱</div>
+                <h3 style={{
+                  fontSize: 'clamp(1.25rem, 4vw, 1.5rem)',
+                  fontWeight: '600',
+                  color: '#223848',
+                  marginBottom: '0.5rem',
+                  fontFamily: 'Avenir'
+                }}>
+                  Install Lux Libris
+                </h3>
+                <p style={{
+                  color: '#6b7280',
+                  fontSize: 'clamp(0.9rem, 3vw, 1rem)',
+                  fontFamily: 'Avenir'
+                }}>
+                  Follow the instructions for your device to install the app
+                </p>
+              </div>
+
+              {/* Install Instructions */}
+              <div style={{
+                display: 'grid',
+                gap: '1rem',
+                marginBottom: '1.5rem'
+              }}>
+                {/* iPhone/iPad Instructions */}
+                <div style={{
+                  background: 'rgba(59, 130, 246, 0.05)',
+                  padding: '1.25rem',
+                  borderRadius: '0.75rem',
+                  border: '1px solid rgba(59, 130, 246, 0.1)'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    marginBottom: '0.75rem'
+                  }}>
+                    <div style={{ fontSize: '1.5rem' }}>📱</div>
+                    <strong style={{
+                      color: '#223848',
+                      fontSize: '1.1rem',
+                      fontFamily: 'Avenir'
+                    }}>
+                      iPhone / iPad (Safari)
+                    </strong>
+                  </div>
+                  <ol style={{
+                    margin: 0,
+                    paddingLeft: '1.25rem',
+                    fontSize: '0.9rem',
+                    color: '#6b7280',
+                    lineHeight: '1.6',
+                    fontFamily: 'Avenir'
+                  }}>
+<li>Tap the <strong>Share</strong> button (<img src="/images/ios-share-icon.png" alt="share icon" style={{display: 'inline-block', height: '24px', width: 'auto', verticalAlign: 'middle', margin: '0 2px', backgroundColor: 'rgba(59, 130, 246, 0.1)', padding: '2px 4px', borderRadius: '4px'}} />) at the bottom of Safari</li>                    
+<li>Scroll down and tap <strong>"Add to Home Screen"</strong></li>
+                    <li>Tap <strong>"Add"</strong> to install the app</li>
+                  </ol>
+                </div>
+
+                {/* Android Instructions */}
+                <div style={{
+                  background: 'rgba(34, 197, 94, 0.05)',
+                  padding: '1.25rem',
+                  borderRadius: '0.75rem',
+                  border: '1px solid rgba(34, 197, 94, 0.1)'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    marginBottom: '0.75rem'
+                  }}>
+                    <div style={{ fontSize: '1.5rem' }}>🤖</div>
+                    <strong style={{
+                      color: '#223848',
+                      fontSize: '1.1rem',
+                      fontFamily: 'Avenir'
+                    }}>
+                      Android (Chrome)
+                    </strong>
+                  </div>
+                  <ol style={{
+                    margin: 0,
+                    paddingLeft: '1.25rem',
+                    fontSize: '0.9rem',
+                    color: '#6b7280',
+                    lineHeight: '1.6',
+                    fontFamily: 'Avenir'
+                  }}>
+                    <li>Tap the <strong>menu</strong> button (⋮) in Chrome</li>
+                    <li>Look for <strong>"Install app"</strong> or <strong>"Add to Home Screen"</strong></li>
+                    <li>Tap to confirm installation</li>
+                  </ol>
+                </div>
+
+                {/* Desktop Instructions */}
+                <div style={{
+                  background: 'rgba(168, 85, 247, 0.05)',
+                  padding: '1.25rem',
+                  borderRadius: '0.75rem',
+                  border: '1px solid rgba(168, 85, 247, 0.1)'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    marginBottom: '0.75rem'
+                  }}>
+                    <div style={{ fontSize: '1.5rem' }}>💻</div>
+                    <strong style={{
+                      color: '#223848',
+                      fontSize: '1.1rem',
+                      fontFamily: 'Avenir'
+                    }}>
+                      Desktop (Chrome/Edge)
+                    </strong>
+                  </div>
+                  <ol style={{
+                    margin: 0,
+                    paddingLeft: '1.25rem',
+                    fontSize: '0.9rem',
+                    color: '#6b7280',
+                    lineHeight: '1.6',
+                    fontFamily: 'Avenir'
+                  }}>
+                    <li>Look for the <strong>install icon</strong> (⊕) in the address bar</li>
+                    <li>Or use browser menu → <strong>"Install Lux Libris"</strong></li>
+                    <li>Follow the prompts to install</li>
+                  </ol>
+                </div>
+              </div>
+
+              {/* Benefits */}
+              <div style={{
+                background: 'rgba(34, 56, 72, 0.03)',
+                padding: '1rem',
+                borderRadius: '0.75rem',
+                textAlign: 'center'
+              }}>
+                <p style={{
+                  color: '#223848',
+                  fontSize: '0.9rem',
+                  margin: 0,
+                  fontWeight: '500',
+                  fontFamily: 'Avenir'
+                }}>
+                  💡 <strong>Benefits:</strong> Faster loading • Push notifications • Native app experience
+                </p>
+              </div>
+            </div>
+          </>
+        )}
       </div>
+
+      <style jsx>{`
+        @keyframes slideUp {
+          from {
+            transform: translateY(100%);
+          }
+          to {
+            transform: translateY(0);
+          }
+        }
+      `}</style>
     </>
   )
 }
