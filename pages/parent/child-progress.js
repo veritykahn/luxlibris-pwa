@@ -1277,7 +1277,7 @@ const handleApproveUnlock = async (studentId, unlockType, bookId = null) => {
               color: luxTheme.textSecondary,
               marginBottom: '24px'
             }}>
-              Link your children's accounts to track their reading progress.
+              Link your children&apos;s accounts to track their reading progress.
             </p>
             <button
               onClick={() => router.push('/parent/dashboard')}
