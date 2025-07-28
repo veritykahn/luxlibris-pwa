@@ -2234,7 +2234,7 @@ export default function StudentStatsMain() {
                         color: currentTheme.textPrimary,
                         marginBottom: '12px'
                       }}>
-                        You've successfully completed this week's reading challenge and earned the {currentWeekBadge.name} badge!
+                        You&apos;ve successfully completed this week&apos;s reading challenge and earned the {currentWeekBadge.name} badge!
                       </div>
                       <div style={{
                         fontSize: '16px',

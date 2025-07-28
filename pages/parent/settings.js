@@ -691,7 +691,7 @@ export default function ParentSettings() {
                       opacity: 0.9,
                       lineHeight: '1.4'
                     }}>
-                      You're part of our pilot program - all premium features are free during the trial period!
+                      You&apos;re part of our pilot program - all premium features are free during the trial period!
                     </p>
                   </div>
                   <div style={{
@@ -2193,7 +2193,7 @@ export default function ParentSettings() {
                   margin: 0,
                   lineHeight: '1.5'
                 }}>
-                  Enter the invite code from your child's Lux Libris app
+                  Enter the invite code from your child&apos;s Lux Libris app
                 </p>
               </div>
 
@@ -2284,7 +2284,7 @@ export default function ParentSettings() {
                   margin: '8px 0 0 0',
                   lineHeight: '1.4'
                 }}>
-                  Find this code in your child's app: Settings → "Invite Parents" • Press Enter to submit
+                  Find this code in your child&apos;s app: Settings → &quot;Invite Parents&quot; • Press Enter to submit
                 </p>
               </div>
 
@@ -2353,7 +2353,7 @@ export default function ParentSettings() {
                     <strong>1.</strong> Have your child open the Lux Libris app
                   </p>
                   <p style={{ margin: '0 0 8px 0' }}>
-                    <strong>2.</strong> Go to Settings → "Invite Parents"
+                    <strong>2.</strong> Go to Settings → &quot;Invite Parents&quot;
                   </p>
                   <p style={{ margin: '0' }}>
                     <strong>3.</strong> Copy the invite code and enter it above

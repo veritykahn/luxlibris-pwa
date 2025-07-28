@@ -74,7 +74,7 @@ function CelebrationAnimation({ milestone, isVisible, onComplete }) {
           color: '#999',
           fontStyle: 'italic'
         }}>
-          "Don't break the chain!"
+          &quot;Don&apos;t break the chain!&quot;
         </div>
       </div>
     </div>
@@ -1340,7 +1340,7 @@ export default function ParentFamilyBattle() {
                   color: luxTheme.textPrimary,
                   marginBottom: '8px'
                 }}>
-                  "Don't Break the Chain!"
+                  &quot;Don&apos;t Break the Chain!&quot;
                 </div>
                 <div style={{
                   fontSize: '12px',
