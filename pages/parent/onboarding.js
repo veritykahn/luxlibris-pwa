@@ -1,4 +1,4 @@
-// pages/parent/onboarding.js - Updated for Two-Parent Family System
+// pages/parent/onboarding.js - Updated with Premium Features Step 5
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
@@ -182,7 +182,7 @@ export default function ParentOnboarding() {
 
   const genreOptions = [
     'Fiction', 'Non-Fiction', 'Mystery', 'Romance', 'Sci-Fi', 'Fantasy', 
-    'Biography', 'History', 'Self-Help', 'Parenting', 'Business', 'Spirituality',
+    'Biography', 'History', 'Self-Help', 'Parenting', 'Business', 'Religion',
     'Cooking', 'Travel', 'Health & Fitness', 'Poetry'
   ]
 
@@ -217,7 +217,7 @@ export default function ParentOnboarding() {
   const handleNext = async () => {
     setError('')
     
-    if (step < 4) {
+    if (step < 5) {
       setStep(step + 1)
       return
     }
@@ -406,7 +406,7 @@ export default function ParentOnboarding() {
             marginBottom: '2rem',
             gap: '0.25rem'
           }}>
-            {[1, 2, 3, 4].map(stepNum => (
+            {[1, 2, 3, 4, 5].map(stepNum => (
               <div key={stepNum} style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -428,9 +428,9 @@ export default function ParentOnboarding() {
                 }}>
                   {stepNum}
                 </div>
-                {stepNum < 4 && (
+                {stepNum < 5 && (
                   <div style={{
-                    width: '1rem',
+                    width: '0.75rem',
                     height: '2px',
                     background: stepNum < step ? luxTheme.primary : '#e5e7eb'
                   }}></div>
@@ -486,7 +486,7 @@ export default function ParentOnboarding() {
                       fontWeight: '600',
                       minHeight: '48px',
                       backgroundColor: existingFamilyInfo ? `${luxTheme.primary}10` : luxTheme.surface,
-                      color: luxTheme.textPrimary,  // Add this line
+                      color: luxTheme.textPrimary,
                       cursor: existingFamilyInfo ? 'not-allowed' : 'text'
                     }}
                     onFocus={(e) => !existingFamilyInfo && (e.target.style.borderColor = luxTheme.primary)}
@@ -812,7 +812,7 @@ export default function ParentOnboarding() {
                         borderRadius: '0.75rem',
                         fontSize: 'clamp(0.75rem, 3vw, 0.875rem)',
                         backgroundColor: luxTheme.surface,
-                        color: luxTheme.textPrimary,  // Add this line
+                        color: luxTheme.textPrimary,
                         outline: 'none',
                         minHeight: '48px'
                       }}
@@ -852,7 +852,7 @@ export default function ParentOnboarding() {
                         borderRadius: '0.75rem',
                         fontSize: 'clamp(0.75rem, 3vw, 0.875rem)',
                         backgroundColor: luxTheme.surface,
-                        color: luxTheme.textPrimary,  // Add this line
+                        color: luxTheme.textPrimary,
                         outline: 'none',
                         minHeight: '48px'
                       }}
@@ -956,7 +956,285 @@ export default function ParentOnboarding() {
                     margin: 0,
                     lineHeight: '1.4'
                   }}>
-                    🚀 <strong>Almost ready!</strong> Click &apos;Complete Setup&apos; to finish and access your family dashboard.
+                    🚀 <strong>Almost ready!</strong> Next, discover our premium features that make family reading even more engaging!
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Step 5: Premium Features */}
+            {step === 5 && (
+              <div>
+                <h2 style={{
+                  fontSize: 'clamp(1.125rem, 4vw, 1.25rem)',
+                  fontWeight: '600',
+                  color: luxTheme.textPrimary,
+                  marginBottom: '1rem',
+                  textAlign: 'center'
+                }}>
+                  Unlock Premium Features
+                </h2>
+
+                {/* Pilot Banner */}
+                <div style={{
+                  background: `linear-gradient(135deg, #10B981, #059669)`,
+                  borderRadius: '1rem',
+                  padding: '1.25rem',
+                  marginBottom: '1.5rem',
+                  color: 'white',
+                  textAlign: 'center'
+                }}>
+                  <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🎉</div>
+                  <h3 style={{
+                    fontSize: 'clamp(0.875rem, 4vw, 1rem)',
+                    fontWeight: 'bold',
+                    margin: '0 0 0.5rem 0'
+                  }}>
+                    Currently FREE for Pilot Users!
+                  </h3>
+                  <p style={{
+                    fontSize: 'clamp(0.75rem, 3vw, 0.875rem)',
+                    margin: 0,
+                    opacity: 0.9,
+                    lineHeight: '1.4'
+                  }}>
+                    All premium features are unlocked during our pilot program. After the pilot, premium access will be $10/year.
+                  </p>
+                </div>
+
+                {/* Premium Features Grid */}
+                <div style={{ display: 'grid', gap: '1rem', marginBottom: '1.5rem' }}>
+                  
+                  {/* Healthy Habits Timer */}
+                  <div style={{
+                    backgroundColor: `${luxTheme.primary}15`,
+                    border: `2px solid ${luxTheme.primary}40`,
+                    borderRadius: '1rem',
+                    padding: '1.25rem',
+                    position: 'relative'
+                  }}>
+                    <div style={{
+                      position: 'absolute',
+                      top: '0.75rem',
+                      right: '0.75rem',
+                      backgroundColor: '#10B981',
+                      color: 'white',
+                      padding: '0.25rem 0.5rem',
+                      borderRadius: '0.5rem',
+                      fontSize: 'clamp(0.625rem, 2.5vw, 0.75rem)',
+                      fontWeight: '600'
+                    }}>
+                      UNLOCKED
+                    </div>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                      marginBottom: '0.75rem'
+                    }}>
+                      <div style={{
+                        width: '3rem',
+                        height: '3rem',
+                        borderRadius: '50%',
+                        background: `linear-gradient(135deg, ${luxTheme.primary}, ${luxTheme.secondary})`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '1.25rem'
+                      }}>
+                        ⏱️
+                      </div>
+                      <div>
+                        <h4 style={{
+                          fontSize: 'clamp(0.875rem, 3.5vw, 1rem)',
+                          fontWeight: '600',
+                          color: luxTheme.textPrimary,
+                          margin: '0 0 0.25rem 0'
+                        }}>
+                          Healthy Habits Timer
+                        </h4>
+                        <p style={{
+                          fontSize: 'clamp(0.75rem, 3vw, 0.875rem)',
+                          color: luxTheme.textSecondary,
+                          margin: 0,
+                          lineHeight: '1.3'
+                        }}>
+                          Track your personal reading time and lead by example for your children
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Family Battles */}
+                  <div style={{
+                    backgroundColor: `${luxTheme.secondary}15`,
+                    border: `2px solid ${luxTheme.secondary}40`,
+                    borderRadius: '1rem',
+                    padding: '1.25rem',
+                    position: 'relative'
+                  }}>
+                    <div style={{
+                      position: 'absolute',
+                      top: '0.75rem',
+                      right: '0.75rem',
+                      backgroundColor: '#10B981',
+                      color: 'white',
+                      padding: '0.25rem 0.5rem',
+                      borderRadius: '0.5rem',
+                      fontSize: 'clamp(0.625rem, 2.5vw, 0.75rem)',
+                      fontWeight: '600'
+                    }}>
+                      UNLOCKED
+                    </div>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                      marginBottom: '0.75rem'
+                    }}>
+                      <div style={{
+                        width: '3rem',
+                        height: '3rem',
+                        borderRadius: '50%',
+                        background: `linear-gradient(135deg, ${luxTheme.secondary}, ${luxTheme.accent})`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '1.25rem'
+                      }}>
+                        ⚔️
+                      </div>
+                      <div>
+                        <h4 style={{
+                          fontSize: 'clamp(0.875rem, 3.5vw, 1rem)',
+                          fontWeight: '600',
+                          color: luxTheme.textPrimary,
+                          margin: '0 0 0.25rem 0'
+                        }}>
+                          Family Battles
+                        </h4>
+                        <p style={{
+                          fontSize: 'clamp(0.75rem, 3vw, 0.875rem)',
+                          color: luxTheme.textSecondary,
+                          margin: 0,
+                          lineHeight: '1.3'
+                        }}>
+                          Compete in weekly reading challenges and motivate your whole family
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Reading DNA Lab */}
+                  <div style={{
+                    backgroundColor: `${luxTheme.accent}15`,
+                    border: `2px solid ${luxTheme.accent}40`,
+                    borderRadius: '1rem',
+                    padding: '1.25rem',
+                    position: 'relative'
+                  }}>
+                    <div style={{
+                      position: 'absolute',
+                      top: '0.75rem',
+                      right: '0.75rem',
+                      backgroundColor: '#10B981',
+                      color: 'white',
+                      padding: '0.25rem 0.5rem',
+                      borderRadius: '0.5rem',
+                      fontSize: 'clamp(0.625rem, 2.5vw, 0.75rem)',
+                      fontWeight: '600'
+                    }}>
+                      UNLOCKED
+                    </div>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                      marginBottom: '0.75rem'
+                    }}>
+                      <div style={{
+                        width: '3rem',
+                        height: '3rem',
+                        borderRadius: '50%',
+                        background: `linear-gradient(135deg, ${luxTheme.accent}, ${luxTheme.primary})`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '1.25rem'
+                      }}>
+                        ⬢
+                      </div>
+                      <div>
+                        <h4 style={{
+                          fontSize: 'clamp(0.875rem, 3.5vw, 1rem)',
+                          fontWeight: '600',
+                          color: luxTheme.textPrimary,
+                          margin: '0 0 0.25rem 0'
+                        }}>
+                          Reading DNA Lab
+                        </h4>
+                        <p style={{
+                          fontSize: 'clamp(0.75rem, 3vw, 0.875rem)',
+                          color: luxTheme.textSecondary,
+                          margin: 0,
+                          lineHeight: '1.3'
+                        }}>
+                          Deep analytics and insights into your family&apos;s reading patterns and growth
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Future Pricing Info */}
+                <div style={{
+                  background: `${luxTheme.primary}10`,
+                  border: `1px solid ${luxTheme.primary}30`,
+                  borderRadius: '0.75rem',
+                  padding: '1rem',
+                  marginBottom: '1.5rem'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    marginBottom: '0.5rem'
+                  }}>
+                    <span style={{ fontSize: '1rem' }}>💰</span>
+                    <h4 style={{
+                      fontSize: 'clamp(0.875rem, 3.5vw, 1rem)',
+                      fontWeight: '600',
+                      color: luxTheme.textPrimary,
+                      margin: 0
+                    }}>
+                      After Pilot: $10/year
+                    </h4>
+                  </div>
+                  <p style={{
+                    fontSize: 'clamp(0.75rem, 3vw, 0.875rem)',
+                    color: luxTheme.textSecondary,
+                    margin: 0,
+                    lineHeight: '1.4'
+                  }}>
+                    When the pilot ends, premium features will be available for just $10/year. You can always upgrade later in your Settings.
+                  </p>
+                </div>
+
+                {/* Final CTA */}
+                <div style={{
+                  background: '#f0f9ff',
+                  border: '1px solid #0ea5e9',
+                  borderRadius: '0.75rem',
+                  padding: '1rem',
+                  textAlign: 'center'
+                }}>
+                  <p style={{
+                    color: '#0369a1',
+                    fontSize: 'clamp(0.75rem, 3vw, 0.875rem)',
+                    margin: 0,
+                    lineHeight: '1.4'
+                  }}>
+                    🚀 <strong>Ready to start!</strong> Click &apos;Complete Setup&apos; to access your family dashboard with all premium features unlocked!
                   </p>
                 </div>
               </div>
@@ -1045,7 +1323,7 @@ export default function ParentOnboarding() {
                   animation: 'spin 1s linear infinite'
                 }}></div>
               )}
-              {step === 4 ? 'Complete Setup' : 'Continue'}
+              {step === 5 ? 'Complete Setup' : 'Continue'}
             </button>
           </div>
 
@@ -1062,9 +1340,11 @@ export default function ParentOnboarding() {
               margin: 0,
               lineHeight: '1.4'
             }}>
-              {existingFamilyInfo 
-                ? 'Joining an existing family reading journey.'
-                : 'Setting up your family for reading success together.'
+              {step === 5 ? 
+                'Premium features can also be managed later in Settings.' :
+                existingFamilyInfo ? 
+                  'Joining an existing family reading journey.' :
+                  'Setting up your family for reading success together.'
               }
             </p>
           </div>

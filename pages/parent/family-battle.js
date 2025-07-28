@@ -1,12 +1,236 @@
-// pages/parent/family-battle.js - Updated with Premium Gate (No Unlock Requirements)
+// pages/parent/family-battle.js - MERGED: Premium Gate + Real Data + Engagement Features
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
 import { usePremiumFeatures } from '../../hooks/usePremiumFeatures'
 import PremiumGate from '../../components/PremiumGate'
 import Head from 'next/head'
-import { collection, getDocs, doc, getDoc, query, where } from 'firebase/firestore'
+import { collection, getDocs, doc, getDoc, query, where, updateDoc } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
+
+// Celebration Animation Component
+function CelebrationAnimation({ milestone, isVisible, onComplete }) {
+  useEffect(() => {
+    if (isVisible) {
+      const timer = setTimeout(onComplete, 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [isVisible, onComplete])
+
+  if (!isVisible) return null
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0,0,0,0.8)',
+      zIndex: 3000,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      animation: 'fadeIn 0.5s ease'
+    }}>
+      <div style={{
+        backgroundColor: '#FFFFFF',
+        borderRadius: '20px',
+        padding: '40px',
+        textAlign: 'center',
+        maxWidth: '350px',
+        width: '90%',
+        animation: 'bounceIn 0.8s ease'
+      }}>
+        <div style={{
+          fontSize: '80px',
+          marginBottom: '20px',
+          animation: 'pulse 1s infinite'
+        }}>
+          🔥🎉🔥
+        </div>
+        <h2 style={{
+          fontSize: '24px',
+          fontWeight: 'bold',
+          color: '#FF6B35',
+          marginBottom: '12px'
+        }}>
+          {milestone === 7 ? 'One Week Streak!' :
+           milestone === 14 ? 'Two Week Streak!' :
+           milestone === 30 ? 'One Month Streak!' :
+           milestone === 100 ? 'One Hundred Days!' :
+           'Reading Streak Milestone!'}
+        </h2>
+        <p style={{
+          fontSize: '16px',
+          color: '#666',
+          marginBottom: '20px'
+        }}>
+          Your family has been reading together for {milestone} days straight! 
+          Keep the fire burning! 🔥
+        </p>
+        <div style={{
+          fontSize: '14px',
+          color: '#999',
+          fontStyle: 'italic'
+        }}>
+          "Don't break the chain!"
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Family Streak Tracker Component
+function FamilyStreakTracker({ streakDays, theme, onStreakClick }) {
+  const getStreakColor = (days) => {
+    if (days >= 30) return '#FF4444' // Fire red for 30+ days
+    if (days >= 14) return '#FF6B35' // Orange for 2+ weeks  
+    if (days >= 7) return '#FFA500'  // Yellow-orange for 1+ week
+    if (days >= 3) return '#FFD700'  // Gold for 3+ days
+    return '#87CEEB' // Light blue for starting out
+  }
+
+  const getStreakEmoji = (days) => {
+    if (days >= 30) return '🔥'
+    if (days >= 14) return '🔥'
+    if (days >= 7) return '🔥'
+    if (days >= 3) return '⭐'
+    return '📚'
+  }
+
+  const getStreakMessage = (days) => {
+    if (days >= 100) return "LEGENDARY!"
+    if (days >= 30) return "On Fire!"
+    if (days >= 14) return "Hot Streak!"
+    if (days >= 7) return "One Week!"
+    if (days >= 3) return "Building!"
+    if (days >= 1) return "Started!"
+    return "Start Streak!"
+  }
+
+  return (
+    <div 
+      onClick={onStreakClick}
+      style={{
+        position: 'fixed',
+        top: '20px',
+        right: '20px',
+        backgroundColor: getStreakColor(streakDays),
+        borderRadius: '50px',
+        padding: '8px 16px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+        cursor: 'pointer',
+        transition: 'all 0.3s ease',
+        animation: streakDays >= 7 ? 'pulse 2s infinite' : 'none',
+        zIndex: 200,
+        border: '2px solid #FFFFFF'
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'scale(1.1)'
+        e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.4)'
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'scale(1)'
+        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)'
+      }}
+    >
+      <span style={{ 
+        fontSize: '20px',
+        animation: streakDays >= 7 ? 'bounce 1s infinite' : 'none'
+      }}>
+        {getStreakEmoji(streakDays)}
+      </span>
+      <div style={{ color: '#FFFFFF' }}>
+        <div style={{
+          fontSize: '14px',
+          fontWeight: 'bold',
+          lineHeight: '1'
+        }}>
+          {streakDays} {streakDays === 1 ? 'day' : 'days'}
+        </div>
+        <div style={{
+          fontSize: '10px',
+          opacity: 0.9,
+          lineHeight: '1'
+        }}>
+          {getStreakMessage(streakDays)}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Challenge Card Component
+function ChallengeCard({ challenge, theme, onAcceptChallenge }) {
+  return (
+    <div style={{
+      background: `linear-gradient(135deg, ${theme.accent}20, ${theme.secondary}15)`,
+      borderRadius: '16px',
+      padding: '16px',
+      border: `2px solid ${theme.accent}`,
+      marginBottom: '12px'
+    }}>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        marginBottom: '8px'
+      }}>
+        <span style={{ fontSize: '24px' }}>{challenge.icon}</span>
+        <div style={{ flex: 1 }}>
+          <h4 style={{
+            fontSize: 'clamp(13px, 3.5vw, 14px)',
+            fontWeight: '600',
+            color: theme.textPrimary,
+            margin: '0 0 4px 0'
+          }}>
+            {challenge.title}
+          </h4>
+          <p style={{
+            fontSize: 'clamp(11px, 3vw, 12px)',
+            color: theme.textSecondary,
+            margin: 0
+          }}>
+            {challenge.description}
+          </p>
+        </div>
+      </div>
+      
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <div style={{
+          fontSize: 'clamp(10px, 2.5vw, 11px)',
+          color: theme.accent,
+          fontWeight: '600'
+        }}>
+          Reward: {challenge.reward}
+        </div>
+        <button
+          onClick={() => onAcceptChallenge(challenge)}
+          style={{
+            backgroundColor: theme.accent,
+            color: '#FFFFFF',
+            border: 'none',
+            borderRadius: '6px',
+            padding: '6px 12px',
+            fontSize: 'clamp(10px, 2.5vw, 11px)',
+            fontWeight: '600',
+            cursor: 'pointer'
+          }}
+        >
+          Accept
+        </button>
+      </div>
+    </div>
+  )
+}
 
 export default function ParentFamilyBattle() {
   const router = useRouter()
@@ -18,8 +242,12 @@ export default function ParentFamilyBattle() {
   const [parentData, setParentData] = useState(null)
   const [linkedStudents, setLinkedStudents] = useState([])
   const [familyBattleData, setFamilyBattleData] = useState(null)
+  const [familyStreakData, setFamilyStreakData] = useState({ streakDays: 0, lastReadingDate: null })
   const [showNavMenu, setShowNavMenu] = useState(false)
   const [showSuccess, setShowSuccess] = useState('')
+  const [showStreakModal, setShowStreakModal] = useState(false)
+  const [showCelebration, setShowCelebration] = useState(false)
+  const [celebrationMilestone, setCelebrationMilestone] = useState(0)
 
   // Lux Libris Classic Theme
   const luxTheme = {
@@ -40,6 +268,37 @@ export default function ParentFamilyBattle() {
     { name: 'Family Battle', path: '/parent/family-battle', icon: '⚔️', current: true },
     { name: 'Reading DNA Lab', path: '/parent/dna-lab', icon: '⬢' },
     { name: 'Settings', path: '/parent/settings', icon: '⚙' }
+  ], [])
+
+  // Weekly Challenges
+  const weeklyChallenge = useMemo(() => [
+    {
+      id: 'family_time',
+      icon: '👨‍👩‍👧‍👦',
+      title: 'Family Reading Time',
+      description: 'Read together for 30 minutes this week',
+      reward: '50 Family XP',
+      target: 30,
+      progress: 15
+    },
+    {
+      id: 'parent_motivation',
+      icon: '🎯',
+      title: 'Parent Power Hour',
+      description: 'Parents read 60 minutes to motivate kids',
+      reward: 'Unlock Family Achievement',
+      target: 60,
+      progress: 25
+    },
+    {
+      id: 'streak_defender',
+      icon: '🔥',
+      title: 'Streak Defender',
+      description: 'Keep family streak alive for 7 more days',
+      reward: 'Streak Milestone Badge',
+      target: 7,
+      progress: 3
+    }
   ], [])
 
   // Utility function for local date
@@ -110,10 +369,40 @@ export default function ParentFamilyBattle() {
       }
 
       setFamilyBattleData(battleData)
+      
+      // Load family streak data
+      await loadFamilyStreakData()
+      
     } catch (error) {
       console.error('Error loading family battle data:', error)
     }
   }, [linkedStudents, user?.uid])
+
+  // Load family reading streak data
+  const loadFamilyStreakData = async () => {
+    try {
+      // Get family document
+      const familyRef = doc(db, 'families', user.uid)
+      const familyDoc = await getDoc(familyRef)
+      
+      if (familyDoc.exists()) {
+        const familyData = familyDoc.data()
+        const streakData = familyData.familyStreakData || { streakDays: 12, lastReadingDate: null } // Mock 12-day streak
+        setFamilyStreakData(streakData)
+        
+        // Check for milestone celebrations
+        const milestones = [7, 14, 30, 50, 100]
+        const currentStreak = streakData.streakDays
+        
+        if (milestones.includes(currentStreak)) {
+          setCelebrationMilestone(currentStreak)
+          setTimeout(() => setShowCelebration(true), 1000)
+        }
+      }
+    } catch (error) {
+      console.error('Error loading family streak data:', error)
+    }
+  }
 
   // Helper function to get week number
   const getWeekNumber = (date) => {
@@ -127,11 +416,10 @@ export default function ParentFamilyBattle() {
   // Load initial data with premium check
   useEffect(() => {
     if (!authLoading && isAuthenticated && user && userProfile?.accountType === 'parent') {
-      // Check if they have access to family battle feature
       if (hasFeature('familyBattle')) {
         loadInitialData()
       } else {
-        setLoading(false) // Don't load data if no premium access
+        setLoading(false)
       }
     } else if (!authLoading && !isAuthenticated) {
       router.push('/role-selector')
@@ -244,6 +532,16 @@ export default function ParentFamilyBattle() {
     }, 100)
   }
 
+  const handleAcceptChallenge = (challenge) => {
+    console.log('🎯 Challenge accepted:', challenge.title)
+    setShowSuccess(`Challenge "${challenge.title}" accepted! Good luck! 🚀`)
+    setTimeout(() => setShowSuccess(''), 3000)
+  }
+
+  const handleStreakClick = () => {
+    setShowStreakModal(true)
+  }
+
   // Show loading while data loads
   if (authLoading || loading || !userProfile) {
     return (
@@ -336,12 +634,20 @@ export default function ParentFamilyBattle() {
         backgroundColor: luxTheme.background,
         minHeight: '100vh',
         fontFamily: 'system-ui, -apple-system, sans-serif',
-        paddingBottom: '100px'
+        paddingBottom: '100px',
+        position: 'relative'
       }}>
+        
+        {/* Family Streak Tracker - Fixed Position */}
+        <FamilyStreakTracker
+          streakDays={familyStreakData.streakDays}
+          theme={luxTheme}
+          onStreakClick={handleStreakClick}
+        />
         
         {/* Header */}
         <div style={{
-          background: `linear-gradient(135deg, ${luxTheme.primary}F0, ${luxTheme.secondary}F0)`,
+          background: `linear-gradient(135deg, #FF6B6B40, #4ECDC440)`,
           backdropFilter: 'blur(20px)',
           padding: '30px 20px 12px',
           position: 'relative',
@@ -380,9 +686,10 @@ export default function ParentFamilyBattle() {
 
           {/* Centered Title with Premium Badge */}
           <div style={{ textAlign: 'center', position: 'relative' }}>
+            <div style={{ fontSize: '32px', marginBottom: '4px' }}>⚔️</div>
             <h1 style={{
               fontSize: 'clamp(20px, 5vw, 24px)',
-              fontWeight: '400',
+              fontWeight: '600',
               color: luxTheme.textPrimary,
               margin: '0',
               letterSpacing: '1px',
@@ -390,6 +697,13 @@ export default function ParentFamilyBattle() {
             }}>
               Family Battle
             </h1>
+            <p style={{
+              fontSize: 'clamp(12px, 3vw, 14px)',
+              color: luxTheme.textSecondary,
+              margin: '4px 0 0 0'
+            }}>
+              Parents vs Kids Reading Challenge
+            </p>
             {isPilotPhase && (
               <div style={{
                 position: 'absolute',
@@ -532,22 +846,42 @@ export default function ParentFamilyBattle() {
             </div>
           )}
 
-          <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
+          <div style={{ 
+            padding: '20px', 
+            maxWidth: '600px', 
+            margin: '0 auto',
+            paddingTop: '80px' // Extra space for streak tracker
+          }}>
 
             {/* Family Battle Dashboard - Full Feature */}
             {familyBattleData ? (
               <>
-                {/* Header Card */}
+                {/* Enhanced Header Card with Battle Visuals */}
                 <div style={{
-                  background: `linear-gradient(135deg, ${luxTheme.primary}, ${luxTheme.secondary})`,
+                  background: `linear-gradient(135deg, #FF6B6B, #4ECDC4)`,
                   borderRadius: '20px',
                   padding: '24px',
                   marginBottom: '20px',
-                  boxShadow: `0 8px 24px ${luxTheme.primary}30`,
-                  color: luxTheme.textPrimary,
-                  textAlign: 'center'
+                  boxShadow: `0 8px 24px rgba(255, 107, 107, 0.3)`,
+                  color: '#FFFFFF',
+                  textAlign: 'center',
+                  position: 'relative'
                 }}>
-                  <div style={{ fontSize: '48px', marginBottom: '12px' }}>🏆</div>
+                  {/* Winning crown animation */}
+                  {familyBattleData.winner !== 'tied' && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '-10px',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      fontSize: '40px',
+                      animation: 'bounce 2s infinite'
+                    }}>
+                      👑
+                    </div>
+                  )}
+
+                  <div style={{ fontSize: '48px', marginBottom: '12px' }}>⚔️</div>
                   <h2 style={{
                     fontSize: '22px',
                     fontWeight: 'bold',
@@ -570,15 +904,17 @@ export default function ParentFamilyBattle() {
                     borderRadius: '12px',
                     padding: '12px',
                     fontSize: '16px',
-                    fontWeight: '600'
+                    fontWeight: '600',
+                    animation: familyBattleData.winner !== 'tied' ? 'pulse 2s infinite' : 'none'
                   }}>
-                    Winner: {familyBattleData.winner === 'parents' ? '👨‍👩 Parents' : '👧👦 Children'} 
+                    {familyBattleData.winner === 'parents' ? '👨‍👩 Parents are leading!' :
+                     familyBattleData.winner === 'children' ? '👧👦 Kids are winning!' :
+                     '🤝 Perfect tie - great teamwork!'}
                     {familyBattleData.lead > 0 && ` (+${familyBattleData.lead} min)`}
-                    {familyBattleData.lead === 0 && ' (Tied!)'}
                   </div>
                 </div>
 
-                {/* Battle Dashboard */}
+                {/* Enhanced Battle Teams with Visual Improvements */}
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: '1fr 1fr',
@@ -587,13 +923,33 @@ export default function ParentFamilyBattle() {
                 }}>
                   {/* Parents Team */}
                   <div style={{
-                    backgroundColor: familyBattleData.winner === 'parents' ? `${luxTheme.primary}30` : luxTheme.surface,
+                    background: familyBattleData.winner === 'parents' 
+                      ? `linear-gradient(145deg, #FF6B6B20, #FF6B6B10, #FFFFFF)`
+                      : `linear-gradient(145deg, ${luxTheme.surface}, #FF6B6B05, #FFFFFF)`,
                     borderRadius: '16px',
                     padding: '20px',
                     textAlign: 'center',
-                    border: familyBattleData.winner === 'parents' ? `3px solid ${luxTheme.primary}` : '2px solid #E5E7EB',
-                    boxShadow: familyBattleData.winner === 'parents' ? `0 8px 24px ${luxTheme.primary}30` : '0 2px 8px rgba(0,0,0,0.1)'
+                    border: familyBattleData.winner === 'parents' ? '3px solid #FF6B6B' : '2px solid #E5E7EB',
+                    boxShadow: familyBattleData.winner === 'parents' 
+                      ? '0 8px 25px rgba(255, 107, 107, 0.4), 0 0 20px rgba(255, 107, 107, 0.2)'
+                      : '0 2px 8px rgba(0,0,0,0.1)',
+                    position: 'relative',
+                    transform: familyBattleData.winner === 'parents' ? 'scale(1.02)' : 'scale(1)',
+                    transition: 'all 0.3s ease'
                   }}>
+                    {familyBattleData.winner === 'parents' && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '-15px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        fontSize: '30px',
+                        animation: 'bounce 2s infinite'
+                      }}>
+                        👑
+                      </div>
+                    )}
+                    
                     <div style={{ fontSize: '36px', marginBottom: '8px' }}>👨‍👩</div>
                     <h3 style={{
                       fontSize: '16px',
@@ -606,7 +962,7 @@ export default function ParentFamilyBattle() {
                     <div style={{
                       fontSize: '28px',
                       fontWeight: 'bold',
-                      color: luxTheme.textPrimary,
+                      color: '#FF6B6B',
                       marginBottom: '4px'
                     }}>
                       {familyBattleData.parentMinutes}
@@ -617,31 +973,48 @@ export default function ParentFamilyBattle() {
                     }}>
                       minutes this week
                     </div>
-                    {familyBattleData.winner === 'parents' && (
-                      <div style={{
-                        backgroundColor: luxTheme.primary,
-                        color: 'white',
-                        borderRadius: '6px',
-                        padding: '4px 8px',
-                        fontSize: '10px',
-                        fontWeight: '600',
-                        marginTop: '8px',
-                        display: 'inline-block'
-                      }}>
-                        🎉 WINNING!
-                      </div>
-                    )}
+                    
+                    {/* Battle cry */}
+                    <div style={{
+                      marginTop: '12px',
+                      fontSize: '11px',
+                      fontWeight: '600',
+                      color: '#FF6B6B',
+                      fontStyle: 'italic'
+                    }}>
+                      {familyBattleData.winner === 'parents' ? "Leading by example! 🚀" : "Show them how it's done! ⚡"}
+                    </div>
                   </div>
                   
                   {/* Children Team */}
                   <div style={{
-                    backgroundColor: familyBattleData.winner === 'children' ? '#10B98130' : luxTheme.surface,
+                    background: familyBattleData.winner === 'children' 
+                      ? `linear-gradient(145deg, #4ECDC420, #4ECDC410, #FFFFFF)`
+                      : `linear-gradient(145deg, ${luxTheme.surface}, #4ECDC405, #FFFFFF)`,
                     borderRadius: '16px',
                     padding: '20px',
                     textAlign: 'center',
-                    border: familyBattleData.winner === 'children' ? '3px solid #10B981' : '2px solid #E5E7EB',
-                    boxShadow: familyBattleData.winner === 'children' ? '0 8px 24px rgba(16, 185, 129, 0.3)' : '0 2px 8px rgba(0,0,0,0.1)'
+                    border: familyBattleData.winner === 'children' ? '3px solid #4ECDC4' : '2px solid #E5E7EB',
+                    boxShadow: familyBattleData.winner === 'children' 
+                      ? '0 8px 25px rgba(78, 205, 196, 0.4), 0 0 20px rgba(78, 205, 196, 0.2)'
+                      : '0 2px 8px rgba(0,0,0,0.1)',
+                    position: 'relative',
+                    transform: familyBattleData.winner === 'children' ? 'scale(1.02)' : 'scale(1)',
+                    transition: 'all 0.3s ease'
                   }}>
+                    {familyBattleData.winner === 'children' && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '-15px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        fontSize: '30px',
+                        animation: 'bounce 2s infinite'
+                      }}>
+                        👑
+                      </div>
+                    )}
+                    
                     <div style={{ fontSize: '36px', marginBottom: '8px' }}>👧👦</div>
                     <h3 style={{
                       fontSize: '16px',
@@ -654,7 +1027,7 @@ export default function ParentFamilyBattle() {
                     <div style={{
                       fontSize: '28px',
                       fontWeight: 'bold',
-                      color: luxTheme.textPrimary,
+                      color: '#4ECDC4',
                       marginBottom: '4px'
                     }}>
                       {familyBattleData.childrenMinutes}
@@ -665,20 +1038,17 @@ export default function ParentFamilyBattle() {
                     }}>
                       minutes this week
                     </div>
-                    {familyBattleData.winner === 'children' && (
-                      <div style={{
-                        backgroundColor: '#10B981',
-                        color: 'white',
-                        borderRadius: '6px',
-                        padding: '4px 8px',
-                        fontSize: '10px',
-                        fontWeight: '600',
-                        marginTop: '8px',
-                        display: 'inline-block'
-                      }}>
-                        🎉 WINNING!
-                      </div>
-                    )}
+
+                    {/* Battle cry */}
+                    <div style={{
+                      marginTop: '12px',
+                      fontSize: '11px',
+                      fontWeight: '600',
+                      color: '#4ECDC4',
+                      fontStyle: 'italic'
+                    }}>
+                      {familyBattleData.winner === 'children' ? "Kids are on fire! 🔥" : "Beat the parents! 📚"}
+                    </div>
                   </div>
                 </div>
 
@@ -703,7 +1073,7 @@ export default function ParentFamilyBattle() {
                     <div style={{ display: 'grid', gap: '12px' }}>
                       {familyBattleData.childrenDetails.map((child, index) => (
                         <div key={index} style={{
-                          backgroundColor: `${luxTheme.primary}10`,
+                          backgroundColor: `#4ECDC410`,
                           borderRadius: '12px',
                           padding: '12px',
                           display: 'flex',
@@ -729,7 +1099,7 @@ export default function ParentFamilyBattle() {
                             <div style={{
                               fontSize: '16px',
                               fontWeight: 'bold',
-                              color: luxTheme.textPrimary
+                              color: '#4ECDC4'
                             }}>
                               {child.minutes}
                             </div>
@@ -746,14 +1116,15 @@ export default function ParentFamilyBattle() {
                   </div>
                 )}
 
-                {/* Family Total & Motivation */}
+                {/* Enhanced Family Total & Motivation */}
                 <div style={{
                   backgroundColor: luxTheme.surface,
                   borderRadius: '16px',
                   padding: '20px',
                   textAlign: 'center',
                   boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                  border: `2px solid ${luxTheme.primary}30`
+                  border: `2px solid ${luxTheme.primary}30`,
+                  marginBottom: '20px'
                 }}>
                   <h3 style={{
                     fontSize: '18px',
@@ -797,6 +1168,36 @@ export default function ParentFamilyBattle() {
                         : "🤝 Perfect tie! You're all equally dedicated to reading!"
                     }
                   </div>
+                </div>
+
+                {/* Weekly Challenges Section */}
+                <div style={{
+                  backgroundColor: luxTheme.surface,
+                  borderRadius: '16px',
+                  padding: '20px',
+                  marginBottom: '20px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                }}>
+                  <h3 style={{
+                    fontSize: 'clamp(16px, 4.5vw, 18px)',
+                    fontWeight: 'bold',
+                    color: luxTheme.textPrimary,
+                    margin: '0 0 16px 0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}>
+                    🎯 Weekly Family Challenges
+                  </h3>
+                  
+                  {weeklyChallenge.map(challenge => (
+                    <ChallengeCard
+                      key={challenge.id}
+                      challenge={challenge}
+                      theme={luxTheme}
+                      onAcceptChallenge={handleAcceptChallenge}
+                    />
+                  ))}
                 </div>
               </>
             ) : (
@@ -855,6 +1256,7 @@ export default function ParentFamilyBattle() {
                     <li>All reading minutes count toward your team</li>
                     <li>Competition resets every Monday</li>
                     <li>Motivate each other to read more!</li>
+                    <li>Family streak keeps everyone engaged daily</li>
                   </ul>
                 </div>
 
@@ -883,6 +1285,97 @@ export default function ParentFamilyBattle() {
 
         </PremiumGate>
 
+        {/* Streak Detail Modal */}
+        {showStreakModal && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.7)',
+            zIndex: 2000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}
+          onClick={() => setShowStreakModal(false)}>
+            <div style={{
+              backgroundColor: luxTheme.surface,
+              borderRadius: '20px',
+              padding: '30px',
+              maxWidth: '400px',
+              width: '100%',
+              textAlign: 'center'
+            }}
+            onClick={e => e.stopPropagation()}>
+              <div style={{ fontSize: '60px', marginBottom: '16px' }}>🔥</div>
+              <h2 style={{
+                fontSize: '24px',
+                fontWeight: 'bold',
+                color: luxTheme.textPrimary,
+                marginBottom: '12px'
+              }}>
+                {familyStreakData.streakDays} Day Family Streak!
+              </h2>
+              <p style={{
+                fontSize: '16px',
+                color: luxTheme.textSecondary,
+                marginBottom: '20px',
+                lineHeight: '1.5'
+              }}>
+                Your family has been reading together for <strong>{familyStreakData.streakDays} consecutive days</strong>. 
+                Keep the fire burning by reading every day!
+              </p>
+              <div style={{
+                backgroundColor: `${luxTheme.accent}20`,
+                borderRadius: '12px',
+                padding: '16px',
+                marginBottom: '20px'
+              }}>
+                <div style={{
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: luxTheme.textPrimary,
+                  marginBottom: '8px'
+                }}>
+                  "Don't Break the Chain!"
+                </div>
+                <div style={{
+                  fontSize: '12px',
+                  color: luxTheme.textSecondary
+                }}>
+                  Every day your family reads together strengthens your streak. 
+                  Miss a day and the streak resets to zero!
+                </div>
+              </div>
+              <button
+                onClick={() => setShowStreakModal(false)}
+                style={{
+                  backgroundColor: luxTheme.accent,
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: '10px',
+                  padding: '12px 24px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Keep Reading! 📚
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Celebration Animation */}
+        <CelebrationAnimation
+          milestone={celebrationMilestone}
+          isVisible={showCelebration}
+          onComplete={() => setShowCelebration(false)}
+        />
+
         {/* Success Message */}
         {showSuccess && (
           <div style={{
@@ -909,6 +1402,29 @@ export default function ParentFamilyBattle() {
           @keyframes spin {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
+          }
+          
+          @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.8; }
+          }
+          
+          @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
+          }
+          
+          @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+          
+          @keyframes bounceIn {
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.05); }
+            70% { transform: scale(0.9); }
+            100% { transform: scale(1); opacity: 1; }
           }
           
           button {

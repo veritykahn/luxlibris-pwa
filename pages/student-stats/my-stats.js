@@ -1,4 +1,4 @@
-// pages/student-stats/my-stats.js - Updated with Phase Awareness and Enhanced Bragging Rights
+// pages/student-stats/my-stats.js - Updated with Enhanced Leaderboard System and Parent Permissions
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
@@ -8,7 +8,7 @@ import { getStudentDataEntities, updateStudentDataEntities } from '../../lib/fir
 import { collection, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import Head from 'next/head';
-import { getGradeLeaderboard } from '../../lib/leaderboard-system';
+import { getSchoolLeaderboard, getDioceseLeaderboard, getGlobalLeaderboard } from '../../lib/leaderboard-system';
 import { calculateReadingPersonality } from '../../lib/reading-personality';
 import { getCurrentWeekBadge, getBadgeProgress, getEarnedBadges, getLevelProgress, BADGE_CALENDAR } from '../../lib/badge-system';
 import EnhancedBraggingRightsModal from '../../components/EnhancedBraggingRightsModal';
@@ -24,19 +24,27 @@ export default function MyStats() {
   const [showStatsDropdown, setShowStatsDropdown] = useState(false);
   const [showBraggingRights, setShowBraggingRights] = useState(false);
   const [showSuccess, setShowSuccess] = useState(''); // NEW: Success message state
+  const [isSaving, setIsSaving] = useState(false);
   
   // Enhanced features for personal deep dive
   const [badgeProgress, setBadgeProgress] = useState(null);
   const [earnedBadges, setEarnedBadges] = useState([]);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [leaderboardUnlocked, setLeaderboardUnlocked] = useState(false);
-  const [parentCode, setParentCode] = useState('');
-  const [showParentCodeInput, setShowParentCodeInput] = useState(false);
-  const [leaderboardData, setLeaderboardData] = useState([]);
-  const [isLoadingLeaderboard, setIsLoadingLeaderboard] = useState(false);
   const [readingPersonality, setReadingPersonality] = useState(null);
   const [levelProgress, setLevelProgress] = useState(null);
   const [currentWeekBadge, setCurrentWeekBadge] = useState(null);
+  
+  // Enhanced leaderboard states
+  const [activeLeaderboardTab, setActiveLeaderboardTab] = useState('school');
+  const [schoolLeaderboardData, setSchoolLeaderboardData] = useState([]);
+  const [dioceseLeaderboardData, setDioceseLeaderboardData] = useState([]);
+  const [globalLeaderboardData, setGlobalLeaderboardData] = useState([]);
+  const [isLoadingLeaderboard, setIsLoadingLeaderboard] = useState(false);
+  
+  // Parent permission states (like quiz system)
+  const [showParentPermissionLeaderboard, setShowParentPermissionLeaderboard] = useState(false);
+  const [parentCodeLeaderboard, setParentCodeLeaderboard] = useState('');
   
   // Badge Modal
   const [showBadgeModal, setShowBadgeModal] = useState(false);
@@ -52,6 +60,11 @@ export default function MyStats() {
   const [realWorldAchievements, setRealWorldAchievements] = useState([]);
   const [medalAchievements, setMedalAchievements] = useState([]);
   const [expandedAchievements, setExpandedAchievements] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+
+  // Badge notification system
+  const [showBadgeNotification, setShowBadgeNotification] = useState(false);
+  const [badgeNotificationData, setBadgeNotificationData] = useState(null);
 
   // Theme definitions (consistent with original)
   const themes = useMemo(() => ({
@@ -144,7 +157,8 @@ export default function MyStats() {
       textSecondary: '#AAAAAA'
     }
   }), []);
-// UPDATED: Navigation menu items with phase-aware locking
+
+  // UPDATED: Navigation menu items with phase-aware locking
   const navMenuItems = useMemo(() => [
     { name: 'Dashboard', path: '/student-dashboard', icon: '⌂' },
     { 
@@ -194,6 +208,212 @@ export default function MyStats() {
     setShowBirdFactModal(true);
   };
 
+  // Enhanced badge notification function
+  const sendBadgeNotification = useCallback((badgeName, xpEarned) => {
+    // Browser notification
+    if (notificationsEnabled && Notification.permission === 'granted') {
+      try {
+        new Notification('🏆 New Badge Unlocked!', {
+          body: `You've earned ${badgeName}! +${xpEarned} XP gained!`,
+          icon: '/images/lux_libris_logo.png',
+          badge: '/images/lux_libris_logo.png',
+          tag: 'badge-unlock',
+          requireInteraction: false,
+          silent: false
+        });
+      } catch (error) {
+        console.log('Badge notification failed:', error);
+      }
+    }
+    
+    // In-app notification
+    setBadgeNotificationData({
+      name: badgeName,
+      xp: xpEarned
+    });
+    setShowBadgeNotification(true);
+    
+    // Auto-hide after 4 seconds
+    setTimeout(() => {
+      setShowBadgeNotification(false);
+    }, 4000);
+  }, [notificationsEnabled]);
+
+  // Vibration and sound for badge unlock
+  const badgeUnlockFeedback = useCallback(() => {
+    // Vibration
+    try {
+      if ('vibrate' in navigator) {
+        navigator.vibrate([300, 100, 300, 100, 500]);
+      }
+    } catch (err) {
+      console.log('Vibration not supported');
+    }
+    
+    // Sound
+    try {
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const createTone = (frequency, startTime, duration) => {
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        oscillator.frequency.value = frequency;
+        gainNode.gain.setValueAtTime(0, startTime);
+        gainNode.gain.linearRampToValueAtTime(0.4, startTime + 0.1);
+        gainNode.gain.linearRampToValueAtTime(0, startTime + duration);
+        oscillator.start(startTime);
+        oscillator.stop(startTime + duration);
+      };
+      
+      // Badge unlock melody
+      createTone(523, audioContext.currentTime, 0.3); // C
+      createTone(659, audioContext.currentTime + 0.2, 0.3); // E
+      createTone(784, audioContext.currentTime + 0.4, 0.5); // G
+    } catch (err) {
+      console.log('Audio notification not supported');
+    }
+  }, []);
+
+  // UPDATED: Load leaderboard data based on active tab
+  const loadLeaderboardData = useCallback(async () => {
+    if (!studentData || !leaderboardUnlocked) return;
+    
+    setIsLoadingLeaderboard(true);
+    try {
+      if (activeLeaderboardTab === 'school') {
+        const rankings = await getSchoolLeaderboard(studentData);
+        setSchoolLeaderboardData(rankings);
+      } else if (activeLeaderboardTab === 'diocese') {
+        const rankings = await getDioceseLeaderboard(studentData);
+        setDioceseLeaderboardData(rankings);
+      } else if (activeLeaderboardTab === 'global') {
+        const rankings = await getGlobalLeaderboard();
+        setGlobalLeaderboardData(rankings);
+      }
+    } catch (error) {
+      console.error('Error loading leaderboard:', error);
+      // Set empty data for the current tab
+      if (activeLeaderboardTab === 'school') setSchoolLeaderboardData([]);
+      if (activeLeaderboardTab === 'diocese') setDioceseLeaderboardData([]);
+      if (activeLeaderboardTab === 'global') setGlobalLeaderboardData([]);
+    }
+    setIsLoadingLeaderboard(false);
+  }, [studentData, leaderboardUnlocked, activeLeaderboardTab]);
+
+  // NEW: Handle leaderboard parent code submission
+  const handleLeaderboardParentCodeSubmit = async () => {
+    if (!studentData) {
+      setShowSuccess('❌ No student data found.');
+      setTimeout(() => setShowSuccess(''), 3000);
+      return;
+    }
+    
+    setIsSaving(true);
+    
+    try {
+      const requiredParentCode = studentData.parentQuizCode || '';
+      
+      if (!parentCodeLeaderboard.trim()) {
+        setShowSuccess('❌ Please enter parent code.');
+        setTimeout(() => setShowSuccess(''), 3000);
+        setIsSaving(false);
+        return;
+      }
+      
+      if (parentCodeLeaderboard.trim() !== requiredParentCode) {
+        setShowSuccess('❌ Incorrect parent code. Please try again.');
+        setTimeout(() => setShowSuccess(''), 3000);
+        setIsSaving(false);
+        return;
+      }
+
+      // Unlock leaderboard
+      await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
+        leaderboardUnlocked: true,
+        leaderboardUnlockedDate: new Date()
+      });
+      
+      setLeaderboardUnlocked(true);
+      setShowParentPermissionLeaderboard(false);
+      setParentCodeLeaderboard('');
+      
+      // Load leaderboard data immediately
+      const rankings = await getSchoolLeaderboard(studentData);
+      setSchoolLeaderboardData(rankings);
+      
+      // Show success notification
+      if (notificationsEnabled && Notification.permission === 'granted') {
+        new Notification('🏆 Leaderboard Unlocked!', {
+          body: 'You can now see XP rankings!',
+          icon: '/images/lux_libris_logo.png'
+        });
+      }
+      
+      setShowSuccess('🏆 Leaderboard unlocked!');
+      setTimeout(() => setShowSuccess(''), 3000);
+      
+    } catch (error) {
+      console.error('Error unlocking leaderboard:', error);
+      setShowSuccess('❌ Error unlocking leaderboard. Please try again.');
+      setTimeout(() => setShowSuccess(''), 3000);
+    }
+    
+    setIsSaving(false);
+  };
+
+  // NEW: Handle leaderboard access request to parent
+  const handleRequestLeaderboardAccess = async () => {
+    if (!studentData) return;
+    
+    setIsSaving(true);
+    try {
+      // Update student record to show request pending
+      await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
+        leaderboardUnlockRequested: true,
+        leaderboardUnlockRequestedAt: new Date(),
+        leaderboardUnlockRequestType: 'leaderboard_access'
+      });
+      
+      // Update local state immediately
+      setStudentData(prev => ({
+        ...prev,
+        leaderboardUnlockRequested: true,
+        leaderboardUnlockRequestedAt: new Date(),
+        leaderboardUnlockRequestType: 'leaderboard_access'
+      }));
+      
+      // TODO: Add to parent's families collection pending requests
+      // This will be implemented when parent app is ready
+      
+      setShowParentPermissionLeaderboard(false);
+      setShowSuccess('📧 Leaderboard access request sent to parent!');
+      setTimeout(() => setShowSuccess(''), 4000);
+      
+    } catch (error) {
+      console.error('❌ Error sending leaderboard request:', error);
+      setShowSuccess('❌ Error sending request. Please try again.');
+      setTimeout(() => setShowSuccess(''), 3000);
+    }
+    
+    setIsSaving(false);
+  };
+
+  // UPDATED: Handle leaderboard unlock (now opens parent permission modal)
+  const handleLeaderboardUnlock = async () => {
+    if (!studentData) return;
+    
+    // Check if already requested and pending
+    if (studentData.leaderboardUnlockRequested && !studentData.leaderboardUnlocked) {
+      setShowSuccess('⏳ Request already sent to parent. Waiting for approval...');
+      setTimeout(() => setShowSuccess(''), 3000);
+      return;
+    }
+    
+    // Open parent permission modal
+    setShowParentPermissionLeaderboard(true);
+  };
+
   // Close nav menus when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -213,11 +433,12 @@ export default function MyStats() {
         setShowBirdFactModal(false);
         setShowBraggingRights(false);
         setShowLeaderboard(false);
-        setShowSuccess(''); // NEW: Clear success message on escape
+        setShowParentPermissionLeaderboard(false); // NEW: Close parent permission modal
+        setShowSuccess(''); // Clear success message on escape
       }
     };
 
-    if (showNavMenu || showStatsDropdown || showBadgeModal || showBirdFactModal || showBraggingRights || showLeaderboard || showSuccess) {
+    if (showNavMenu || showStatsDropdown || showBadgeModal || showBirdFactModal || showBraggingRights || showLeaderboard || showParentPermissionLeaderboard || showSuccess) {
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('keydown', handleEscape);
     }
@@ -226,7 +447,7 @@ export default function MyStats() {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscape);
     };
-  }, [showNavMenu, showStatsDropdown, showBadgeModal, showBirdFactModal, showBraggingRights, showLeaderboard, showSuccess]);
+  }, [showNavMenu, showStatsDropdown, showBadgeModal, showBirdFactModal, showBraggingRights, showLeaderboard, showParentPermissionLeaderboard, showSuccess]);
 
   // Handle stats navigation
   const handleStatsNavigation = (option) => {
@@ -286,59 +507,12 @@ export default function MyStats() {
     return streakCount;
   }, []);
 
-  // Load real leaderboard data
-  const loadLeaderboardData = useCallback(async () => {
-    if (!studentData || !leaderboardUnlocked) return;
-    
-    setIsLoadingLeaderboard(true);
-    try {
-      const rankings = await getGradeLeaderboard(studentData);
-      setLeaderboardData(rankings);
-    } catch (error) {
-      console.error('Error loading leaderboard:', error);
-      setLeaderboardData([]);
+  // Load leaderboard when unlocked or tab changes
+  useEffect(() => {
+    if (leaderboardUnlocked && studentData && showLeaderboard) {
+      loadLeaderboardData();
     }
-    setIsLoadingLeaderboard(false);
-  }, [studentData, leaderboardUnlocked]);
-
-  // Handle leaderboard unlock
-  const handleLeaderboardUnlock = async () => {
-    try {
-      // Get the teacher's parent quiz code (this is the correct one to check)
-      const teacherParentCode = studentData.parentQuizCode; // This comes from teacher data
-      
-      const validCodes = [
-        'parent123', // Demo code for testing
-        teacherParentCode, // Teacher's actual parent quiz code
-        'lux2025' // Global backup code
-      ].filter(Boolean);
-      
-      console.log('Checking parent code:', parentCode);
-      console.log('Valid codes:', validCodes);
-      
-      if (validCodes.includes(parentCode.toUpperCase()) || validCodes.includes(parentCode.toLowerCase())) {
-        await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
-          leaderboardUnlocked: true,
-          leaderboardUnlockedDate: new Date()
-        });
-        
-        setLeaderboardUnlocked(true);
-        setShowParentCodeInput(false);
-        setParentCode('');
-        
-        // Load leaderboard data immediately
-        const rankings = await getGradeLeaderboard(studentData);
-        setLeaderboardData(rankings);
-        
-        alert('🏆 Leaderboard unlocked! You can now see anonymous grade rankings.');
-      } else {
-        alert(`❌ Incorrect parent code. Please ask your parent for the code. (Valid: ${teacherParentCode})`);
-      }
-    } catch (error) {
-      console.error('Error unlocking leaderboard:', error);
-      alert('❌ Error unlocking leaderboard. Please try again.');
-    }
-  };
+  }, [leaderboardUnlocked, loadLeaderboardData, activeLeaderboardTab, showLeaderboard]);
 
   // Calculate medal achievements (ANONYMOUS - no access to other student data)
   const calculateMedalAchievements = useCallback(async (studentData) => {
@@ -586,12 +760,96 @@ export default function MyStats() {
     }
   }, []);
 
-  // Load leaderboard when unlocked
-  useEffect(() => {
-    if (leaderboardUnlocked && studentData) {
-      loadLeaderboardData();
+  // UPDATED awardBadgeIfComplete function with notifications
+  const awardBadgeIfComplete = async (progress, weekBadge) => {
+    if (!progress || !progress.completed || !weekBadge || !studentData) return false;
+    
+    // Check if badge already earned
+    if (studentData[`badgeEarnedWeek${weekBadge.week}`]) return false;
+    
+    try {
+      // Award the badge!
+      const currentTotalXP = studentData.totalXP || 0;
+      const newTotalXP = currentTotalXP + weekBadge.xp;
+      
+      await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
+        [`badgeEarnedWeek${weekBadge.week}`]: true,
+        lastBadgeEarned: new Date(),
+        totalXP: newTotalXP
+      });
+      
+      // Update local state
+      setStudentData(prev => ({
+        ...prev,
+        [`badgeEarnedWeek${weekBadge.week}`]: true,
+        totalXP: newTotalXP
+      }));
+      
+      // TRIGGER ALL NOTIFICATIONS
+      badgeUnlockFeedback();
+      sendBadgeNotification(weekBadge.name, weekBadge.xp);
+      
+      // Show success message
+      setShowSuccess(`🏆 ${weekBadge.name} badge earned! +${weekBadge.xp} XP!`);
+      setTimeout(() => setShowSuccess(''), 4000);
+      
+      // Reload badge data
+      const badges = getEarnedBadges({...studentData, [`badgeEarnedWeek${weekBadge.week}`]: true});
+      setEarnedBadges(badges);
+      
+      return true;
+    } catch (error) {
+      console.error('Error awarding badge:', error);
+      return false;
     }
-  }, [leaderboardUnlocked, loadLeaderboardData]);
+  };
+
+  // Badge notification popup component
+  const BadgeNotificationPopup = ({ show, badgeData }) => {
+    if (!show || !badgeData) return null;
+    
+    return (
+      <div style={{
+        position: 'fixed',
+        top: '20px',
+        right: '20px',
+        backgroundColor: '#10B981',
+        color: 'white',
+        borderRadius: '16px',
+        padding: '16px 20px',
+        boxShadow: '0 8px 32px rgba(16, 185, 129, 0.4)',
+        zIndex: 10001,
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        maxWidth: '320px',
+        animation: 'slideInRight 0.5s ease-out, fadeOut 0.5s ease-in 3.5s forwards',
+        transform: 'translateX(0)'
+      }}>
+        <div style={{
+          fontSize: '32px',
+          animation: 'bounce 1s infinite'
+        }}>
+          🏆
+        </div>
+        <div>
+          <div style={{
+            fontSize: '14px',
+            fontWeight: '600',
+            marginBottom: '4px'
+          }}>
+            New Badge Unlocked!
+          </div>
+          <div style={{
+            fontSize: '12px',
+            opacity: 0.9
+          }}>
+            {badgeData.name} • +{badgeData.xp} XP
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   // UPDATED: Get phase-specific messaging for the dashboard
   const getPhaseSpecificMessage = () => {
@@ -647,6 +905,11 @@ export default function MyStats() {
       const personality = await calculateReadingPersonality(firebaseStudentData);
       setReadingPersonality(personality);
       
+      // Check notification permission
+      if ('Notification' in window && Notification.permission === 'granted') {
+        setNotificationsEnabled(true);
+      }
+      
     } catch (error) {
       console.error('Error loading stats data:', error);
       router.push('/student-dashboard');
@@ -663,7 +926,8 @@ export default function MyStats() {
       router.push('/role-selector');
     }
   }, [loading, isAuthenticated, user, loadStatsData]);
-if (loading || isLoading || !studentData || !currentTheme) {
+
+  if (loading || isLoading || !studentData || !currentTheme) {
     return (
       <div style={{
         backgroundColor: '#FFFCF5',
@@ -1399,7 +1663,10 @@ if (loading || isLoading || !studentData || !currentTheme) {
                     </button>
                     
                     <button
-                      onClick={() => setShowLeaderboard(true)}
+                      onClick={() => {
+                        setActiveLeaderboardTab('school'); // Reset to school tab
+                        setShowLeaderboard(true);
+                      }}
                       style={{
                         backgroundColor: currentTheme.textPrimary,
                         color: currentTheme.surface,
@@ -1418,7 +1685,7 @@ if (loading || isLoading || !studentData || !currentTheme) {
                         WebkitTapHighlightColor: 'transparent'
                       }}
                     >
-                      📊 Rankings
+                      📊 XP Leaderboard
                     </button>
                   </div>
                 </div>
@@ -1929,103 +2196,52 @@ if (loading || isLoading || !studentData || !currentTheme) {
               </div>
               
               {earnedBadges.length > 0 ? (
-                <div style={{ marginBottom: '16px' }}>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(50px, 1fr))',
+                  gap: '12px',
+                  marginBottom: '16px',
+                  padding: '8px'
+                }}>
                   {earnedBadges.map((badge, index) => (
                     <div
                       key={index}
                       onClick={() => handleBadgeClick(badge)}
                       style={{
-                        backgroundColor: `${currentTheme.primary}15`,
-                        borderRadius: '12px',
-                        padding: '12px',
-                        marginBottom: '8px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
+                        width: '50px',
+                        height: '50px',
                         cursor: 'pointer',
                         transition: 'all 0.2s ease',
-                        border: `2px solid transparent`,
+                        borderRadius: '8px',
+                        padding: '4px',
+                        backgroundColor: 'transparent',
                         touchAction: 'manipulation',
-                        WebkitTapHighlightColor: 'transparent'
+                        WebkitTapHighlightColor: 'transparent',
+                        position: 'relative'
                       }}
                       onMouseEnter={(e) => {
-                        e.target.style.backgroundColor = `${currentTheme.primary}25`;
-                        e.target.style.borderColor = `${currentTheme.primary}60`;
-                        e.target.style.transform = 'translateY(-1px)';
+                        e.target.style.transform = 'scale(1.1)';
+                        e.target.style.backgroundColor = `${currentTheme.primary}20`;
                       }}
                       onMouseLeave={(e) => {
-                        e.target.style.backgroundColor = `${currentTheme.primary}15`;
-                        e.target.style.borderColor = 'transparent';
-                        e.target.style.transform = 'translateY(0)';
+                        e.target.style.transform = 'scale(1)';
+                        e.target.style.backgroundColor = 'transparent';
                       }}
+                      title={`${badge.name} - Click for bird fact!`}
                     >
-                      <div style={{
-                        width: '48px',
-                        height: '48px',
-                        borderRadius: '50%',
-                        backgroundColor: `${currentTheme.primary}30`,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                        padding: '8px',
-                        position: 'relative'
-                      }}>
-                        <img 
-                          src={`/badges/${badge.pngName}`}
-                          alt={badge.name}
-                          style={{
-                            width: '32px',
-                            height: '32px',
-                            objectFit: 'contain'
-                          }}
-                          onError={(e) => {
-                            e.target.src = '/badges/hummingbird.png';
-                          }}
-                        />
-                        {/* Click indicator */}
-                        <div style={{
-                          position: 'absolute',
-                          bottom: '-2px',
-                          right: '-2px',
-                          width: '16px',
-                          height: '16px',
-                          backgroundColor: currentTheme.primary,
-                          borderRadius: '50%',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '8px',
-                          color: 'white',
-                          fontWeight: 'bold'
-                        }}>
-                          ?
-                        </div>
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{
-                          fontSize: '14px',
-                          fontWeight: '600',
-                          color: currentTheme.textPrimary,
-                          marginBottom: '2px'
-                        }}>
-                          {badge.name}
-                        </div>
-                        <div style={{
-                          fontSize: '12px',
-                          color: currentTheme.textSecondary,
-                          marginBottom: '4px'
-                        }}>
-                          {badge.description}
-                        </div>
-                        <div style={{
-                          fontSize: '11px',
-                          color: currentTheme.primary,
-                          fontWeight: '600'
-                        }}>
-                          Week {badge.week} • {badge.xp} XP • Click for bird fact! 🐦
-                        </div>
-                      </div>
+                      <img 
+                        src={`/badges/${badge.pngName}`}
+                        alt={badge.name}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'contain',
+                          pointerEvents: 'none'
+                        }}
+                        onError={(e) => {
+                          e.target.src = '/badges/hummingbird.png';
+                        }}
+                      />
                     </div>
                   ))}
                 </div>
@@ -2115,26 +2331,24 @@ if (loading || isLoading || !studentData || !currentTheme) {
                 ✕
               </button>
 
-              {/* Large Badge Image */}
+              {/* Extra Large Badge Image */}
               <div style={{
-                width: '120px',
-                height: '120px',
-                margin: '0 auto 20px',
-                borderRadius: '50%',
-                backgroundColor: `${currentTheme.primary}20`,
+                width: '220px',
+                height: '220px',
+                margin: '0 auto 24px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                padding: '20px',
-                border: `3px solid ${currentTheme.primary}60`
+                position: 'relative'
               }}>
                 <img 
                   src={`/badges/${selectedBadge.pngName}`}
                   alt={selectedBadge.name}
                   style={{
-                    width: '80px',
-                    height: '80px',
-                    objectFit: 'contain'
+                    width: '220px',
+                    height: '220px',
+                    objectFit: 'contain',
+                    filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.2))'
                   }}
                   onError={(e) => {
                     e.target.src = '/badges/hummingbird.png';
@@ -2217,7 +2431,7 @@ if (loading || isLoading || !studentData || !currentTheme) {
           </div>
         )}
 
-        {/* LEADERBOARD MODAL */}
+        {/* UPDATED LEADERBOARD MODAL WITH TABS AND PARENT PERMISSION */}
         {showLeaderboard && (
           <div style={{
             position: 'fixed',
@@ -2235,7 +2449,6 @@ if (loading || isLoading || !studentData || !currentTheme) {
             <div style={{
               backgroundColor: currentTheme.surface,
               borderRadius: '20px',
-              padding: '24px',
               maxWidth: '380px',
               width: '100%',
               maxHeight: '80vh',
@@ -2245,7 +2458,8 @@ if (loading || isLoading || !studentData || !currentTheme) {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                marginBottom: '20px'
+                padding: '20px 20px 16px',
+                borderBottom: `1px solid ${currentTheme.primary}20`
               }}>
                 <h3 style={{
                   fontSize: '18px',
@@ -2253,7 +2467,7 @@ if (loading || isLoading || !studentData || !currentTheme) {
                   color: currentTheme.textPrimary,
                   margin: 0
                 }}>
-                  📊 Grade {studentData?.grade} Rankings
+                  📊 XP Leaderboard
                 </h3>
                 
                 <button
@@ -2271,7 +2485,7 @@ if (loading || isLoading || !studentData || !currentTheme) {
               </div>
 
               {!leaderboardUnlocked ? (
-                <div style={{ textAlign: 'center' }}>
+                <div style={{ padding: '24px', textAlign: 'center' }}>
                   <div style={{
                     backgroundColor: `${currentTheme.primary}20`,
                     borderRadius: '12px',
@@ -2290,13 +2504,16 @@ if (loading || isLoading || !studentData || !currentTheme) {
                       fontSize: '12px',
                       color: currentTheme.textSecondary
                     }}>
-                      Ask your parent for the unlock code to see anonymous grade rankings
+                      {studentData?.leaderboardUnlockRequested ? 
+                        '⏳ Request sent to parent - waiting for approval...' :
+                        'Ask your parent for permission to see XP leaderboards'
+                      }
                     </div>
                   </div>
                   
-                  {!showParentCodeInput ? (
+                  {!studentData?.leaderboardUnlockRequested && (
                     <button
-                      onClick={() => setShowParentCodeInput(true)}
+                      onClick={handleLeaderboardUnlock}
                       style={{
                         backgroundColor: currentTheme.primary,
                         color: currentTheme.textPrimary,
@@ -2308,188 +2525,253 @@ if (loading || isLoading || !studentData || !currentTheme) {
                         cursor: 'pointer'
                       }}
                     >
-                      🔓 Enter Parent Code
+                      🔓 Request Access
                     </button>
-                  ) : (
-                    <div>
-                      <input
-                        type="text"
-                        value={parentCode}
-                        onChange={(e) => setParentCode(e.target.value)}
-                        placeholder="Enter parent code"
-                        style={{
-                          width: '100%',
-                          padding: '12px',
-                          borderRadius: '12px',
-                          border: `2px solid ${currentTheme.primary}60`,
-                          fontSize: '16px',
-                          marginBottom: '16px',
-                          textAlign: 'center',
-                          backgroundColor: '#FFFFFF',
-                          color: '#000000'
-                        }}
-                      />
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <button
-                          onClick={() => {
-                            setShowParentCodeInput(false);
-                            setParentCode('');
-                          }}
-                          style={{
-                            flex: 1,
-                            backgroundColor: currentTheme.secondary,
-                            color: currentTheme.textPrimary,
-                            border: 'none',
-                            borderRadius: '8px',
-                            padding: '10px',
-                            fontSize: '12px',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={handleLeaderboardUnlock}
-                          style={{
-                            flex: 1,
-                            backgroundColor: currentTheme.primary,
-                            color: currentTheme.textPrimary,
-                            border: 'none',
-                            borderRadius: '8px',
-                            padding: '10px',
-                            fontSize: '12px',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          Unlock
-                        </button>
-                      </div>
-                    </div>
                   )}
                 </div>
               ) : (
                 <>
+                  {/* LEADERBOARD TABS */}
                   <div style={{
-                    backgroundColor: `${currentTheme.primary}20`,
-                    borderRadius: '12px',
-                    padding: '12px',
-                    marginBottom: '16px',
-                    textAlign: 'center'
+                    display: 'flex',
+                    padding: '0 20px',
+                    borderBottom: `1px solid ${currentTheme.primary}20`
                   }}>
-                    <div style={{
-                      fontSize: '12px',
-                      color: currentTheme.textSecondary
-                    }}>
-                      📊 Total XP • All names anonymous • {leaderboardData.length} students
-                    </div>
-                  </div>
-                  
-                  {isLoadingLeaderboard ? (
-                    <div style={{
-                      textAlign: 'center',
-                      padding: '20px'
-                    }}>
-                      <div style={{
-                        width: '30px',
-                        height: '30px',
-                        border: '3px solid #E0E0E0',
-                        borderTop: '3px solid ' + currentTheme.primary,
-                        borderRadius: '50%',
-                        animation: 'spin 1s linear infinite',
-                        margin: '0 auto 12px'
-                      }} />
-                      <div style={{
+                    <button
+                      onClick={() => setActiveLeaderboardTab('school')}
+                      style={{
+                        flex: 1,
+                        padding: '12px 8px',
+                        backgroundColor: 'transparent',
+                        border: 'none',
+                        borderBottom: activeLeaderboardTab === 'school' ? 
+                          `3px solid ${currentTheme.primary}` : '3px solid transparent',
+                        color: activeLeaderboardTab === 'school' ? 
+                          currentTheme.primary : currentTheme.textSecondary,
                         fontSize: '12px',
-                        color: currentTheme.textSecondary
-                      }}>
-                        Loading rankings...
-                      </div>
-                    </div>
-                  ) : leaderboardData.length > 0 ? (
-                    <div style={{ marginBottom: '16px' }}>
-                      {leaderboardData.slice(0, 10).map((student, index) => (
-                        <div
-                          key={index}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            padding: '12px',
-                            backgroundColor: student.isCurrentUser ? `${currentTheme.primary}30` : `${currentTheme.primary}10`,
-                            borderRadius: '12px',
-                            marginBottom: '8px',
-                            border: student.isCurrentUser ? `2px solid ${currentTheme.primary}` : 'none'
-                          }}
-                        >
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      🏫 My School
+                    </button>
+                    
+                    <button
+                      onClick={() => {/* Disabled for now */}}
+                      disabled={true}
+                      style={{
+                        flex: 1,
+                        padding: '12px 8px',
+                        backgroundColor: 'transparent',
+                        border: 'none',
+                        borderBottom: '3px solid transparent',
+                        color: currentTheme.textSecondary,
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        cursor: 'not-allowed',
+                        opacity: 0.5
+                      }}
+                    >
+                      🏛️ Diocese/ISD
+                    </button>
+                    
+                    <button
+                      onClick={() => {/* Disabled for now */}}
+                      disabled={true}
+                      style={{
+                        flex: 1,
+                        padding: '12px 8px',
+                        backgroundColor: 'transparent',
+                        border: 'none',
+                        borderBottom: '3px solid transparent',
+                        color: currentTheme.textSecondary,
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        cursor: 'not-allowed',
+                        opacity: 0.5
+                      }}
+                    >
+                      🌍 Global
+                    </button>
+                  </div>
+
+                  {/* TAB CONTENT */}
+                  <div style={{ padding: '16px 20px' }}>
+                    {activeLeaderboardTab === 'school' && (
+                      <>
+                        <div style={{
+                          backgroundColor: `${currentTheme.primary}20`,
+                          borderRadius: '12px',
+                          padding: '12px',
+                          marginBottom: '16px',
+                          textAlign: 'center'
+                        }}>
                           <div style={{
-                            fontSize: '16px',
-                            fontWeight: 'bold',
-                            color: currentTheme.textPrimary,
-                            minWidth: '30px'
+                            fontSize: '12px',
+                            color: currentTheme.textSecondary
                           }}>
-                            {student.rank === 1 ? '🥇' : student.rank === 2 ? '🥈' : student.rank === 3 ? '🥉' : `#${student.rank}`}
+                            📊 School XP Rankings • All grades • {schoolLeaderboardData.length} students
                           </div>
-                          
-                          <div style={{ flex: 1, marginLeft: '12px' }}>
+                        </div>
+                        
+                        {isLoadingLeaderboard ? (
+                          <div style={{
+                            textAlign: 'center',
+                            padding: '20px'
+                          }}>
+                            <div style={{
+                              width: '30px',
+                              height: '30px',
+                              border: '3px solid #E0E0E0',
+                              borderTop: '3px solid ' + currentTheme.primary,
+                              borderRadius: '50%',
+                              animation: 'spin 1s linear infinite',
+                              margin: '0 auto 12px'
+                            }} />
+                            <div style={{
+                              fontSize: '12px',
+                              color: currentTheme.textSecondary
+                            }}>
+                              Loading rankings...
+                            </div>
+                          </div>
+                        ) : schoolLeaderboardData.length > 0 ? (
+                          <div style={{ marginBottom: '16px' }}>
+                            {schoolLeaderboardData.slice(0, 10).map((student, index) => (
+                              <div
+                                key={index}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  padding: '12px',
+                                  backgroundColor: student.isCurrentUser ? `${currentTheme.primary}30` : `${currentTheme.primary}10`,
+                                  borderRadius: '12px',
+                                  marginBottom: '8px',
+                                  border: student.isCurrentUser ? `2px solid ${currentTheme.primary}` : 'none'
+                                }}
+                              >
+                                <div style={{
+                                  fontSize: '16px',
+                                  fontWeight: 'bold',
+                                  color: currentTheme.textPrimary,
+                                  minWidth: '30px'
+                                }}>
+                                  {student.rank === 1 ? '🥇' : student.rank === 2 ? '🥈' : student.rank === 3 ? '🥉' : `#${student.rank}`}
+                                </div>
+                                
+                                <div style={{ flex: 1, marginLeft: '12px' }}>
+                                  <div style={{
+                                    fontSize: '14px',
+                                    fontWeight: student.isCurrentUser ? '600' : '500',
+                                    color: currentTheme.textPrimary
+                                  }}>
+                                    {student.displayName}
+                                  </div>
+                                  <div style={{
+                                    fontSize: '12px',
+                                    color: currentTheme.textSecondary
+                                  }}>
+                                    {student.totalXP} XP • 🏆 {student.badgesEarned} badges
+                                  </div>
+                                </div>
+                                
+                                {student.isCurrentUser && (
+                                  <div style={{
+                                    fontSize: '12px',
+                                    backgroundColor: currentTheme.primary,
+                                    color: 'white',
+                                    padding: '4px 8px',
+                                    borderRadius: '8px',
+                                    fontWeight: '600'
+                                  }}>
+                                    YOU
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div style={{
+                            textAlign: 'center',
+                            padding: '20px'
+                          }}>
+                            <div style={{ fontSize: '32px', marginBottom: '12px' }}>👥</div>
                             <div style={{
                               fontSize: '14px',
-                              fontWeight: student.isCurrentUser ? '600' : '500',
-                              color: currentTheme.textPrimary
+                              color: currentTheme.textPrimary,
+                              marginBottom: '8px'
                             }}>
-                              {student.displayName}
+                              No other students yet
                             </div>
                             <div style={{
                               fontSize: '12px',
                               color: currentTheme.textSecondary
                             }}>
-                              {student.totalXP} XP • 🏆 {student.badgesEarned} badges
+                              Rankings will appear when more students join your school
                             </div>
                           </div>
-                          
-                          {student.isCurrentUser && (
-                            <div style={{
-                              fontSize: '12px',
-                              backgroundColor: currentTheme.primary,
-                              color: 'white',
-                              padding: '4px 8px',
-                              borderRadius: '8px',
-                              fontWeight: '600'
-                            }}>
-                              YOU
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div style={{
-                      textAlign: 'center',
-                      padding: '20px'
-                    }}>
-                      <div style={{ fontSize: '32px', marginBottom: '12px' }}>👥</div>
+                        )}
+                      </>
+                    )}
+
+                    {activeLeaderboardTab === 'diocese' && (
                       <div style={{
-                        fontSize: '14px',
-                        color: currentTheme.textPrimary,
-                        marginBottom: '8px'
-                      }}>
-                        No classmates yet
-                      </div>
-                      <div style={{
-                        fontSize: '12px',
+                        textAlign: 'center',
+                        padding: '40px 20px',
                         color: currentTheme.textSecondary
                       }}>
-                        Rankings will appear when more students in your grade join
+                        <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.5 }}>🏛️</div>
+                        <div style={{
+                          fontSize: '16px',
+                          fontWeight: '600',
+                          marginBottom: '8px',
+                          color: currentTheme.textPrimary
+                        }}>
+                          Coming Soon!
+                        </div>
+                        <div style={{ fontSize: '14px', lineHeight: '1.4' }}>
+                          Diocese/ISD leaderboards will be available once we expand beyond pilot schools.
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+
+                    {activeLeaderboardTab === 'global' && (
+                      <div style={{
+                        textAlign: 'center',
+                        padding: '40px 20px',
+                        color: currentTheme.textSecondary
+                      }}>
+                        <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.5 }}>🌍</div>
+                        <div style={{
+                          fontSize: '16px',
+                          fontWeight: '600',
+                          marginBottom: '8px',
+                          color: currentTheme.textPrimary
+                        }}>
+                          Coming Soon!
+                        </div>
+                        <div style={{ fontSize: '14px', lineHeight: '1.4' }}>
+                          Global leaderboards will be available once we expand beyond pilot schools.
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   
+                  {/* ACTION BUTTONS */}
                   <div style={{
                     display: 'flex',
                     gap: '12px',
-                    marginTop: '16px'
+                    padding: '16px 20px',
+                    borderTop: `1px solid ${currentTheme.primary}20`
                   }}>
                     <button
-                      onClick={loadLeaderboardData}
-                      disabled={isLoadingLeaderboard}
+                      onClick={() => {
+                        if (activeLeaderboardTab === 'school') {
+                          loadLeaderboardData();
+                        }
+                      }}
+                      disabled={isLoadingLeaderboard || activeLeaderboardTab !== 'school'}
                       style={{
                         flex: 1,
                         backgroundColor: currentTheme.secondary,
@@ -2499,8 +2781,8 @@ if (loading || isLoading || !studentData || !currentTheme) {
                         padding: '10px',
                         fontSize: '12px',
                         fontWeight: '600',
-                        cursor: isLoadingLeaderboard ? 'not-allowed' : 'pointer',
-                        opacity: isLoadingLeaderboard ? 0.7 : 1
+                        cursor: (isLoadingLeaderboard || activeLeaderboardTab !== 'school') ? 'not-allowed' : 'pointer',
+                        opacity: (isLoadingLeaderboard || activeLeaderboardTab !== 'school') ? 0.7 : 1
                       }}
                     >
                       {isLoadingLeaderboard ? '⏳' : '🔄'} Refresh
@@ -2523,17 +2805,228 @@ if (loading || isLoading || !studentData || !currentTheme) {
                       Close
                     </button>
                   </div>
-                  
-                  <div style={{
-                    fontSize: '11px',
-                    color: currentTheme.textSecondary,
-                    textAlign: 'center',
-                    marginTop: '12px'
-                  }}>
-                    Rankings update in real-time • All names anonymous
-                  </div>
                 </>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* PARENT PERMISSION MODAL FOR LEADERBOARD */}
+        {showParentPermissionLeaderboard && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.9)',
+            zIndex: 1002,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}>
+            <div style={{
+              backgroundColor: '#FFFFFF',
+              borderRadius: '20px',
+              maxWidth: '400px',
+              width: '100%',
+              maxHeight: '85vh',
+              overflowY: 'auto',
+              position: 'relative',
+              boxShadow: '0 25px 50px rgba(0,0,0,0.4)'
+            }}>
+              
+              <div style={{
+                background: `linear-gradient(135deg, ${currentTheme.primary}, ${currentTheme.secondary})`,
+                borderRadius: '20px 20px 0 0',
+                padding: '24px',
+                textAlign: 'center',
+                color: 'white'
+              }}>
+                <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏆</div>
+                <h3 style={{
+                  fontSize: '20px',
+                  fontWeight: '600',
+                  margin: '0 0 8px 0',
+                  fontFamily: 'Didot, "Times New Roman", serif'
+                }}>
+                  Parent Permission Required
+                </h3>
+                <p style={{
+                  fontSize: '14px',
+                  opacity: 0.9,
+                  margin: '0',
+                  fontFamily: 'Avenir, system-ui, sans-serif'
+                }}>
+                  To view XP leaderboards
+                </p>
+              </div>
+
+              <div style={{ padding: '24px' }}>
+                
+                <div style={{
+                  marginBottom: '20px',
+                  padding: '20px',
+                  backgroundColor: currentTheme.background,
+                  borderRadius: '16px',
+                  border: `2px solid ${currentTheme.primary}30`
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    marginBottom: '16px'
+                  }}>
+                    <span style={{ fontSize: '24px' }}>⚡</span>
+                    <div>
+                      <h4 style={{
+                        fontSize: '16px',
+                        fontWeight: '600',
+                        color: currentTheme.textPrimary,
+                        margin: '0 0 4px 0',
+                        fontFamily: 'Avenir, system-ui, sans-serif'
+                      }}>
+                        Unlock Now
+                      </h4>
+                      <p style={{
+                        fontSize: '12px',
+                        color: currentTheme.textSecondary,
+                        margin: '0',
+                        fontFamily: 'Avenir, system-ui, sans-serif'
+                      }}>
+                        If your parent is available
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <input
+                    type="text"
+                    value={parentCodeLeaderboard}
+                    onChange={(e) => {
+                      const newCode = e.target.value.toUpperCase();
+                      setParentCodeLeaderboard(newCode);
+                    }}
+                    placeholder="Ask parent to enter access code"
+                    style={{
+                      width: '100%',
+                      padding: '14px',
+                      border: `2px solid ${currentTheme.primary}`,
+                      borderRadius: '12px',
+                      fontSize: '16px',
+                      fontFamily: 'system-ui, -apple-system, sans-serif',
+                      boxSizing: 'border-box',
+                      textAlign: 'center',
+                      fontWeight: '600',
+                      letterSpacing: '0.1em',
+                      color: '#000000',
+                      backgroundColor: '#FFFFFF',
+                      marginBottom: '12px'
+                    }}
+                    maxLength={8}
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="characters"
+                  />
+                  
+                  <button
+                    onClick={handleLeaderboardParentCodeSubmit}
+                    disabled={!parentCodeLeaderboard.trim() || isSaving}
+                    style={{
+                      width: '100%',
+                      backgroundColor: (parentCodeLeaderboard.trim() && !isSaving) ? currentTheme.primary : '#E0E0E0',
+                      color: (parentCodeLeaderboard.trim() && !isSaving) ? 'white' : '#999',
+                      border: 'none',
+                      borderRadius: '12px',
+                      padding: '14px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: (parentCodeLeaderboard.trim() && !isSaving) ? 'pointer' : 'not-allowed',
+                      fontFamily: 'Avenir, system-ui, sans-serif',
+                      opacity: isSaving ? 0.7 : 1,
+                      minHeight: '44px'
+                    }}
+                  >
+                    {isSaving ? '🔄 Unlocking...' : '🚀 Unlock Leaderboards'}
+                  </button>
+                </div>
+
+                <div style={{
+                  marginBottom: '20px',
+                  padding: '20px',
+                  backgroundColor: '#F8F9FA',
+                  borderRadius: '16px',
+                  border: '2px solid #E9ECEF'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    marginBottom: '16px'
+                  }}>
+                    <span style={{ fontSize: '24px' }}>📧</span>
+                    <div>
+                      <h4 style={{
+                        fontSize: '16px',
+                        fontWeight: '600',
+                        color: '#495057',
+                        margin: '0 0 4px 0',
+                        fontFamily: 'Avenir, system-ui, sans-serif'
+                      }}>
+                        Request Later
+                      </h4>
+                      <p style={{
+                        fontSize: '12px',
+                        color: '#6C757D',
+                        margin: '0',
+                        fontFamily: 'Avenir, system-ui, sans-serif'
+                      }}>
+                        If your parent is not available now
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <button
+                    onClick={handleRequestLeaderboardAccess}
+                    disabled={isSaving}
+                    style={{
+                      width: '100%',
+                      backgroundColor: '#6C757D',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '12px',
+                      padding: '14px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      cursor: 'pointer',
+                      fontFamily: 'Avenir, system-ui, sans-serif',
+                      opacity: isSaving ? 0.7 : 1,
+                      minHeight: '44px'
+                    }}
+                  >
+                    {isSaving ? 'Sending...' : '📮 Send Request to Parent'}
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setShowParentPermissionLeaderboard(false);
+                    setParentCodeLeaderboard('');
+                  }}
+                  style={{
+                    width: '100%',
+                    backgroundColor: 'transparent',
+                    color: '#999',
+                    border: 'none',
+                    padding: '16px',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    fontFamily: 'Avenir, system-ui, sans-serif'
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -2549,129 +3042,298 @@ if (loading || isLoading || !studentData || !currentTheme) {
           currentTheme={currentTheme}
         />
 
-        <style jsx>{`
-          @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-          }
-          
-          @keyframes slideInDown {
-            from { 
-              opacity: 0; 
-              transform: translateY(-30px); 
-            }
-            to { 
-              opacity: 1; 
-              transform: translateY(0); 
-            }
-          }
-          
-          @keyframes bounce {
-            0%, 20%, 50%, 80%, 100% {
-              transform: translateY(0);
-            }
-            40% {
-              transform: translateY(-8px);
-            }
-            60% {
-              transform: translateY(-4px);
-            }
-          }
-          
-          @keyframes sparkle {
-            0%, 100% {
-              opacity: 1;
-              transform: scale(1) rotate(0deg);
-            }
-            25% {
-              opacity: 0.7;
-              transform: scale(1.2) rotate(90deg);
-            }
-            50% {
-              opacity: 0.4;
-              transform: scale(0.8) rotate(180deg);
-            }
-            75% {
-              opacity: 0.7;
-              transform: scale(1.1) rotate(270deg);
-            }
-          }
-          
-          @keyframes braggingRightsUnlock {
-            0% {
-              opacity: 0;
-              transform: scale(0.8) translateY(20px);
-              background-color: ${currentTheme.textSecondary}30;
-            }
-            50% {
-              opacity: 0.8;
-              transform: scale(1.1) translateY(-5px);
-            }
-            100% {
-              opacity: 1;
-              transform: scale(1) translateY(0);
-              background-color: ${currentTheme.secondary};
-            }
-          }
-          
-          button {
-            -webkit-tap-highlight-color: transparent;
-            -webkit-user-select: none;
-            user-select: none;
-            -webkit-touch-callout: none;
-            touch-action: manipulation;
-          }
-          
-          * {
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-          }
-          
-          @media screen and (max-width: 480px) {
-            input, textarea, select, button {
-              font-size: 16px !important;
-            }
-          }
-          
-          /* Smooth scrolling for PWA */
-          * {
-            -webkit-overflow-scrolling: touch;
-            scroll-behavior: smooth;
-          }
+        {/* Badge Notification Popup */}
+        <BadgeNotificationPopup 
+          show={showBadgeNotification}
+          badgeData={badgeNotificationData}
+        />
 
-          /* ADDED: Adaptive CSS for tablet/iPad layouts */
-          @media screen and (min-width: 768px) and (max-width: 1024px) {
-            .stats-main-content {
-              max-width: 600px !important;
-              padding: 24px !important;
-            }
-            
-            .phase-alert-banner {
-              margin: 0 24px 20px 24px !important;
-              padding: 16px 20px !important;
-            }
-            
-            .badge-program-section {
-              padding: 28px !important;
-            }
-            
-            .achievements-grid {
-              display: grid !important;
-              grid-template-columns: 1fr 1fr !important;
-              gap: 12px !important;
-            }
-            
-            .stats-card {
-              padding: 24px !important;
-            }
-            
-            .button-group {
-              gap: 16px !important;
-              max-width: 400px !important;
-              margin: 0 auto !important;
-            }
-          }
-        `}</style>
+        <style jsx>{`
+          /* ENHANCED RESPONSIVE CSS FOR MY-STATS PAGE */
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  
+  @keyframes slideInDown {
+    from { 
+      opacity: 0; 
+      transform: translateY(-30px); 
+    }
+    to { 
+      opacity: 1; 
+      transform: translateY(0); 
+    }
+  }
+  
+  @keyframes bounce {
+    0%, 20%, 50%, 80%, 100% {
+      transform: translateY(0);
+    }
+    40% {
+      transform: translateY(-8px);
+    }
+    60% {
+      transform: translateY(-4px);
+    }
+  }
+  
+  @keyframes sparkle {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1) rotate(0deg);
+    }
+    25% {
+      opacity: 0.7;
+      transform: scale(1.2) rotate(90deg);
+    }
+    50% {
+      opacity: 0.4;
+      transform: scale(0.8) rotate(180deg);
+    }
+    75% {
+      opacity: 0.7;
+      transform: scale(1.1) rotate(270deg);
+    }
+  }
+  
+  @keyframes braggingRightsUnlock {
+    0% {
+      opacity: 0;
+      transform: scale(0.8) translateY(20px);
+      background-color: ${currentTheme.textSecondary}30;
+    }
+    50% {
+      opacity: 0.8;
+      transform: scale(1.1) translateY(-5px);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+      background-color: ${currentTheme.secondary};
+    }
+  }
+  
+  @keyframes slideInRight {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  
+  @keyframes fadeOut {
+    from {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateX(100%);
+    }
+  }
+  
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 0.3;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    50% {
+      opacity: 0.6;
+      transform: translate(-50%, -50%) scale(1.1);
+    }
+  }
+  
+  button {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    touch-action: manipulation;
+  }
+  
+  * {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  @media screen and (max-width: 480px) {
+    input, textarea, select, button {
+      font-size: 16px !important;
+    }
+  }
+  
+  /* Smooth scrolling for PWA */
+  * {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+
+  /* DESKTOP RESPONSIVE LAYOUT - MATCHING STATS DASHBOARD */
+  @media screen and (min-width: 768px) {
+    .stats-main-content {
+      max-width: 800px !important; /* Wider for desktop */
+      padding: clamp(24px, 4vw, 40px) !important;
+      margin: 0 auto !important;
+    }
+    
+    .phase-alert-banner {
+      margin: 0 0 24px 0 !important;
+      padding: 20px 24px !important;
+      max-width: 600px !important;
+      margin-left: auto !important;
+      margin-right: auto !important;
+    }
+    
+    /* BADGE PROGRAM SECTION - 2 COLUMN LAYOUT */
+    .badge-program-section {
+      padding: 32px !important;
+      display: grid !important;
+      grid-template-columns: 1fr 1fr !important;
+      gap: 32px !important;
+      align-items: start !important;
+    }
+    
+    .badge-program-section > div:first-child {
+      grid-column: 1 / -1 !important; /* Title spans full width */
+      text-align: center !important;
+      margin-bottom: 0 !important;
+    }
+    
+    /* XP & LEVEL in left column */
+    .badge-program-section > div:nth-child(2) {
+      grid-column: 1 !important;
+    }
+    
+    /* BADGE COLLECTION in right column */
+    .badge-program-section > div:nth-child(3) {
+      grid-column: 2 !important;
+    }
+    
+    /* ACTION BUTTONS span full width */
+    .button-group {
+      grid-column: 1 / -1 !important;
+      display: grid !important;
+      grid-template-columns: repeat(3, 1fr) !important;
+      gap: 20px !important;
+      max-width: 600px !important;
+      margin: 0 auto !important;
+      margin-top: 24px !important;
+    }
+    
+    .button-group button {
+      padding: 16px 20px !important;
+      font-size: 14px !important;
+      min-height: 56px !important;
+    }
+    
+    /* ACHIEVEMENTS SECTION - 2 COLUMN GRID */
+    .achievements-grid {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr !important;
+      gap: 16px !important;
+    }
+    
+    /* STATS CARDS - 2 COLUMN LAYOUT WHERE APPROPRIATE */
+    .stats-card {
+      padding: 28px !important;
+      margin-bottom: 24px !important;
+    }
+    
+    /* READING PERSONALITY - CENTER AND LIMIT WIDTH */
+    .stats-card:has(.reading-personality) {
+      max-width: 500px !important;
+      margin-left: auto !important;
+      margin-right: auto !important;
+    }
+    
+    /* READING HABITS - 2 COLUMN GRID */
+    .stats-card .stats-grid {
+      grid-template-columns: repeat(2, 1fr) !important;
+      gap: 20px !important;
+      max-width: 400px !important;
+      margin: 0 auto !important;
+    }
+    
+    /* SAINTS COLLECTION - CENTER CONTENT */
+    .stats-card:has(.saints-collection) {
+      text-align: center !important;
+      max-width: 500px !important;
+      margin-left: auto !important;
+      margin-right: auto !important;
+    }
+    
+    /* READING QUALITY - CENTER CONTENT */
+    .stats-card:has(.reading-quality) {
+      text-align: center !important;
+      max-width: 400px !important;
+      margin-left: auto !important;
+      margin-right: auto !important;
+    }
+  }
+
+  /* LARGE DESKTOP LAYOUT */
+  @media screen and (min-width: 1024px) {
+    .stats-main-content {
+      max-width: 1000px !important;
+      padding: clamp(32px, 5vw, 48px) !important;
+      display: grid !important;
+      grid-template-columns: 1fr 1fr !important;
+      gap: 32px !important;
+      align-items: start !important;
+    }
+    
+    /* Phase banner spans full width */
+    .phase-alert-banner {
+      grid-column: 1 / -1 !important;
+      max-width: 700px !important;
+      margin: 0 auto 32px auto !important;
+    }
+    
+    /* Badge program section spans full width */
+    .badge-program-section {
+      grid-column: 1 / -1 !important;
+      max-width: 900px !important;
+      margin: 0 auto !important;
+    }
+    
+    /* Other stats cards in 2-column layout */
+    .stats-card:not(.badge-program-section) {
+      margin-bottom: 0 !important;
+    }
+    
+    /* Reading personality spans full width */
+    .stats-card:has(.reading-personality) {
+      grid-column: 1 / -1 !important;
+      max-width: 600px !important;
+      margin: 0 auto !important;
+    }
+  }
+
+  /* ULTRA-WIDE DESKTOP */
+  @media screen and (min-width: 1400px) {
+    .stats-main-content {
+      max-width: 1200px !important;
+      grid-template-columns: 1fr 1fr 1fr !important;
+    }
+    
+    .badge-program-section {
+      grid-column: 1 / -1 !important;
+    }
+    
+    .phase-alert-banner {
+      grid-column: 1 / -1 !important;
+    }
+    
+    .stats-card:has(.reading-personality) {
+      grid-column: 2 / 3 !important;
+      margin: 32px 0 !important;
+    }
+  }
+`}</style>
       </div>
     </>
   );

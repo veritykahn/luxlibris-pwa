@@ -349,118 +349,127 @@ export default function StudentBookshelf() {
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
-// UPDATED: Book state management functions with revision handling
-  const getBookState = (book) => {
-    const now = new Date();
-    
-    // Check if completed
-    if (book.completed && book.status === 'completed') {
-      return 'completed';
-    }
-    
-    // Check for pending states
-    if (book.status === 'pending_approval') {
-      return 'pending_admin_approval';
-    }
-    
-    if (book.status === 'pending_parent_quiz_unlock') {
-      return 'pending_parent_quiz_unlock';
-    }
-    
-    // NEW: Check for revision requested with cooldown
-    if (book.status === 'revision_requested' && book.revisionRequestedAt) {
-      const revisionTime = book.revisionRequestedAt?.toDate ? book.revisionRequestedAt.toDate() : new Date(book.revisionRequestedAt);
-      const cooldownEnd = new Date(revisionTime.getTime() + 24 * 60 * 60 * 1000);
-      if (now < cooldownEnd) {
-        return 'revision_cooldown';
-      } else {
-        // Cooldown expired, student can resubmit
-        return 'revision_ready';
-      }
-    }
-    
-    // Check for failed quiz with cooldown
-    if (book.status === 'quiz_failed' && book.failedAt) {
-      const failedTime = book.failedAt?.toDate ? book.failedAt.toDate() : new Date(book.failedAt);
-      const cooldownEnd = new Date(failedTime.getTime() + 24 * 60 * 60 * 1000);
-      if (now < cooldownEnd) {
-        return 'quiz_cooldown';
-      }
-    }
-    
-    // Check for admin rejection with cooldown
-    if (book.status === 'admin_rejected' && book.rejectedAt) {
-      const rejectedTime = book.rejectedAt?.toDate ? book.rejectedAt.toDate() : new Date(book.rejectedAt);
-      const cooldownEnd = new Date(rejectedTime.getTime() + 24 * 60 * 60 * 1000);
-      if (now < cooldownEnd) {
-        return 'admin_cooldown';
-      }
-    }
-    
-    return 'in_progress';
-  };
 
-  const getBookStateMessage = (book) => {
-    const state = getBookState(book);
-    const now = new Date();
+// UPDATED: Book state management functions with revision handling
+const getBookState = (book) => {
+  const now = new Date();
+  
+  // Check if completed
+  if (book.completed && book.status === 'completed') {
+    return 'completed';
+  }
+  
+  // 🔧 NEW: Check for quiz unlocked by parent
+  if (book.status === 'quiz_unlocked') {
+    return 'quiz_unlocked';
+  }
+  
+  // Check for pending states
+  if (book.status === 'pending_approval') {
+    return 'pending_admin_approval';
+  }
+  
+  if (book.status === 'pending_parent_quiz_unlock') {
+    return 'pending_parent_quiz_unlock';
+  }
+  
+  // NEW: Check for revision requested with cooldown
+  if (book.status === 'revision_requested' && book.revisionRequestedAt) {
+    const revisionTime = book.revisionRequestedAt?.toDate ? book.revisionRequestedAt.toDate() : new Date(book.revisionRequestedAt);
+    const cooldownEnd = new Date(revisionTime.getTime() + 24 * 60 * 60 * 1000);
+    if (now < cooldownEnd) {
+      return 'revision_cooldown';
+    } else {
+      // Cooldown expired, student can resubmit
+      return 'revision_ready';
+    }
+  }
+  
+  // Check for failed quiz with cooldown
+  if (book.status === 'quiz_failed' && book.failedAt) {
+    const failedTime = book.failedAt?.toDate ? book.failedAt.toDate() : new Date(book.failedAt);
+    const cooldownEnd = new Date(failedTime.getTime() + 24 * 60 * 60 * 1000);
+    if (now < cooldownEnd) {
+      return 'quiz_cooldown';
+    }
+  }
+  
+  // Check for admin rejection with cooldown
+  if (book.status === 'admin_rejected' && book.rejectedAt) {
+    const rejectedTime = book.rejectedAt?.toDate ? book.rejectedAt.toDate() : new Date(book.rejectedAt);
+    const cooldownEnd = new Date(rejectedTime.getTime() + 24 * 60 * 60 * 1000);
+    if (now < cooldownEnd) {
+      return 'admin_cooldown';
+    }
+  }
+  
+  return 'in_progress';
+};
+
+const getBookStateMessage = (book) => {
+  const state = getBookState(book);
+  const now = new Date();
+  
+  switch (state) {
+    case 'completed':
+      return { 
+        message: book.teacherNotes 
+          ? `🎉 Approved! ${book.teacherNotes}` 
+          : '🎉 Book completed!', 
+        color: '#4CAF50' 
+      };
     
-    switch (state) {
-      case 'completed':
-        return { 
-          message: book.teacherNotes 
-            ? `🎉 Approved! ${book.teacherNotes}` 
-            : '🎉 Book completed!', 
-          color: '#4CAF50' 
-        };
-      
-      case 'pending_admin_approval':
-        return { message: '⏳ Waiting for teacher approval', color: '#FF9800' };
-      
-      case 'pending_parent_quiz_unlock':
-        return { message: '🔒 Waiting for parent to unlock quiz', color: '#2196F3' };
-      
-      case 'revision_cooldown':
-        if (book.revisionRequestedAt) {
-          const revisionTime = book.revisionRequestedAt?.toDate ? book.revisionRequestedAt.toDate() : new Date(book.revisionRequestedAt);
-          const cooldownEnd = new Date(revisionTime.getTime() + 24 * 60 * 60 * 1000);
-          const hoursLeft = Math.ceil((cooldownEnd - now) / (1000 * 60 * 60));
-          const baseMessage = `📝 Revisions requested - try again in ${hoursLeft} hours`;
-          return { 
-            message: book.teacherNotes ? `${baseMessage}: ${book.teacherNotes}` : baseMessage, 
-            color: '#FF9800' 
-          };
-        }
-        break;
-      
-      case 'revision_ready':
-        const baseMessage = '✏️ Ready to resubmit - revisions requested';
+    case 'quiz_unlocked':
+      return { message: '🎉 Quiz unlocked by parent! Tap "Submit Book" to take quiz now.', color: '#4CAF50' };
+    
+    case 'pending_admin_approval':
+      return { message: '⏳ Waiting for teacher approval', color: '#FF9800' };
+    
+    case 'pending_parent_quiz_unlock':
+      return { message: '🔒 Waiting for parent to unlock quiz', color: '#2196F3' };
+    
+    case 'revision_cooldown':
+      if (book.revisionRequestedAt) {
+        const revisionTime = book.revisionRequestedAt?.toDate ? book.revisionRequestedAt.toDate() : new Date(book.revisionRequestedAt);
+        const cooldownEnd = new Date(revisionTime.getTime() + 24 * 60 * 60 * 1000);
+        const hoursLeft = Math.ceil((cooldownEnd - now) / (1000 * 60 * 60));
+        const baseMessage = `📝 Revisions requested - try again in ${hoursLeft} hours`;
         return { 
           message: book.teacherNotes ? `${baseMessage}: ${book.teacherNotes}` : baseMessage, 
-          color: '#2196F3' 
+          color: '#FF9800' 
         };
-      
-      case 'quiz_cooldown':
-        if (book.failedAt) {
-          const failedTime = book.failedAt?.toDate ? book.failedAt.toDate() : new Date(book.failedAt);
-          const cooldownEnd = new Date(failedTime.getTime() + 24 * 60 * 60 * 1000);
-          const hoursLeft = Math.ceil((cooldownEnd - now) / (1000 * 60 * 60));
-          return { message: `❌ Quiz failed - try again in ${hoursLeft} hours`, color: '#F44336' };
-        }
-        break;
-      
-      case 'admin_cooldown':
-        if (book.rejectedAt) {
-          const rejectedTime = book.rejectedAt?.toDate ? book.rejectedAt.toDate() : new Date(book.rejectedAt);
-          const cooldownEnd = new Date(rejectedTime.getTime() + 24 * 60 * 60 * 1000);
-          const hoursLeft = Math.ceil((cooldownEnd - now) / (1000 * 60 * 60));
-          return { message: `⏳ Resubmit in ${hoursLeft} hours`, color: '#FF5722' };
-        }
-        break;
-      
-      default:
-        return null;
-    }
-  };
+      }
+      break;
+    
+    case 'revision_ready':
+      const baseMessage = '✏️ Ready to resubmit - revisions requested';
+      return { 
+        message: book.teacherNotes ? `${baseMessage}: ${book.teacherNotes}` : baseMessage, 
+        color: '#2196F3' 
+      };
+    
+    case 'quiz_cooldown':
+      if (book.failedAt) {
+        const failedTime = book.failedAt?.toDate ? book.failedAt.toDate() : new Date(book.failedAt);
+        const cooldownEnd = new Date(failedTime.getTime() + 24 * 60 * 60 * 1000);
+        const hoursLeft = Math.ceil((cooldownEnd - now) / (1000 * 60 * 60));
+        return { message: `❌ Quiz failed - try again in ${hoursLeft} hours`, color: '#F44336' };
+      }
+      break;
+    
+    case 'admin_cooldown':
+      if (book.rejectedAt) {
+        const rejectedTime = book.rejectedAt?.toDate ? book.rejectedAt.toDate() : new Date(book.rejectedAt);
+        const cooldownEnd = new Date(rejectedTime.getTime() + 24 * 60 * 60 * 1000);
+        const hoursLeft = Math.ceil((cooldownEnd - now) / (1000 * 60 * 60));
+        return { message: `⏳ Resubmit in ${hoursLeft} hours`, color: '#FF5722' };
+      }
+      break;
+    
+    default:
+      return null;
+  }
+};
 
   const isBookLocked = (book) => {
     const state = getBookState(book);
@@ -477,18 +486,22 @@ export default function StudentBookshelf() {
     return !['completed'].includes(state);
   };
 
-  // NEW: Helper function to determine if Submit Book button should show
-  const shouldShowSubmissionButton = (book) => {
-    const state = getBookState(book);
-    const total = getBookTotal(book);
-    const isAt100Percent = book.currentProgress >= total && total > 0;
-    
-    // Show submit button if:
-    // 1. Book is at 100% but not submitted/completed
-    // 2. Book is in revision_ready state (after cooldown)
-    // 3. Slider is locked at 100%
-    return (isAt100Percent && state === 'in_progress') || state === 'revision_ready' || isSliderLocked;
-  };
+// NEW: Helper function to determine if Submit Book button should show
+const shouldShowSubmissionButton = (book) => {
+  const state = getBookState(book);
+  const total = getBookTotal(book);
+  const isAt100Percent = book.currentProgress >= total && total > 0;
+  
+  // Show submit button if:
+  // 1. Book is at 100% but not submitted/completed
+  // 2. Book is in revision_ready state (after cooldown)
+  // 3. Slider is locked at 100%
+  // 4. 🔧 NEW: Quiz is unlocked by parent
+  return (isAt100Percent && state === 'in_progress') || 
+         state === 'revision_ready' || 
+         isSliderLocked ||
+         state === 'quiz_unlocked';
+};
 
   // NEW: Handle slider release - lock if at 100%
   const handleSliderRelease = () => {
@@ -505,23 +518,29 @@ export default function StudentBookshelf() {
     setIsSliderLocked(false);
   };
 
-  // NEW: Handler for direct submission button (updated for lock state)
-  const handleDirectSubmission = () => {
-    if (!selectedBook) return;
-    
-    const total = getBookTotal(selectedBook);
-    const isAt100Percent = tempProgress >= total && total > 0;
-    const bookState = getBookState(selectedBook);
-    
-    // Allow submission if book is at 100%, in revision_ready state, or slider is locked
-    if (!isAt100Percent && bookState !== 'revision_ready' && !isSliderLocked) {
-      setShowSuccess('📖 Please finish reading the book before submitting');
-      setTimeout(() => setShowSuccess(''), 3000);
-      return;
-    }
-    
-    setShowSubmissionPopup(true);
-  };
+// NEW: Handler for direct submission button (updated for lock state)
+const handleDirectSubmission = () => {
+  if (!selectedBook) return;
+  
+  const total = getBookTotal(selectedBook);
+  const isAt100Percent = tempProgress >= total && total > 0;
+  const bookState = getBookState(selectedBook);
+  
+  // 🔧 NEW: If quiz was unlocked by parent, go straight to quiz
+  if (bookState === 'quiz_unlocked') {
+    handleQuizSubmission();
+    return;
+  }
+  
+  // Allow submission if book is at 100%, in revision_ready state, or slider is locked
+  if (!isAt100Percent && bookState !== 'revision_ready' && !isSliderLocked) {
+    setShowSuccess('📖 Please finish reading the book before submitting');
+    setTimeout(() => setShowSuccess(''), 3000);
+    return;
+  }
+  
+  setShowSubmissionPopup(true);
+};
 
   useEffect(() => {
     if (!loading && isAuthenticated && user) {
@@ -573,76 +592,78 @@ export default function StudentBookshelf() {
     return bookDetails;
   }, [nominees]);
 
-  // 🔔 CHECK FOR STATUS CHANGES AND SEND NOTIFICATIONS - FIXED
-  useEffect(() => {
-    const checkForStatusChanges = () => {
-      if (!studentData || !studentData.bookshelf || !notificationsEnabled) return;
+// 🔔 CHECK FOR STATUS CHANGES AND SEND NOTIFICATIONS - FIXED
+useEffect(() => {
+  const checkForStatusChanges = () => {
+    if (!studentData || !studentData.bookshelf || !notificationsEnabled) return;
 
-      // Get previous bookshelf state from localStorage
-      const previousBookshelfKey = `bookshelf_${studentData.id}`;
-      const previousBookshelfJson = localStorage.getItem(previousBookshelfKey);
-      
-      if (previousBookshelfJson) {
-        try {
-          const previousBookshelf = JSON.parse(previousBookshelfJson);
+    // Get previous bookshelf state from localStorage
+    const previousBookshelfKey = `bookshelf_${studentData.id}`;
+    const previousBookshelfJson = localStorage.getItem(previousBookshelfKey);
+    
+    if (previousBookshelfJson) {
+      try {
+        const previousBookshelf = JSON.parse(previousBookshelfJson);
+        
+        // Check each book for status changes
+        studentData.bookshelf.forEach(currentBook => {
+          const previousBook = previousBookshelf.find(book => book.bookId === currentBook.bookId);
           
-          // Check each book for status changes
-          studentData.bookshelf.forEach(currentBook => {
-            const previousBook = previousBookshelf.find(book => book.bookId === currentBook.bookId);
+          if (previousBook) {
+            // 🔧 FIX: Get book title with better fallback logic
+            let bookTitle = 'Your Book'; // Default fallback
             
-            if (previousBook) {
-              // 🔧 FIX: Get book title with better fallback logic
-              let bookTitle = 'Your Book'; // Default fallback
-              
-              // Try to get book details from nominees
-              const bookDetails = getBookDetails(currentBook.bookId);
-              if (bookDetails?.title) {
-                bookTitle = bookDetails.title;
-              } else {
-                // Fallback: try to get title from the book object itself or stored data
-                bookTitle = currentBook.title || 
-                           currentBook.bookTitle || 
-                           previousBook.title || 
-                           previousBook.bookTitle || 
-                           'Your Book';
-              }
-              
-              console.log(`📚 Checking notifications for: ${bookTitle} (ID: ${currentBook.bookId})`);
-              
-              // Check for teacher approval (pending_approval -> completed)
-              if (previousBook.status === 'pending_approval' && currentBook.status === 'completed') {
-                console.log(`🎉 Sending approval notification for: ${bookTitle}`);
-                sendTeacherApprovalNotification(bookTitle);
-              }
-              
-              // Check for parent quiz unlock (pending_parent_quiz_unlock -> anything else)
-              if (previousBook.status === 'pending_parent_quiz_unlock' && 
-                  currentBook.status !== 'pending_parent_quiz_unlock') {
-                console.log(`🔓 Sending quiz unlock notification for: ${bookTitle}`);
-                sendQuizUnlockNotification(bookTitle);
-              }
-              
-              // Check for revision requests (pending_approval -> revision_requested)
-              if (previousBook.status === 'pending_approval' && currentBook.status === 'revision_requested') {
-                console.log(`📝 Sending revision request notification for: ${bookTitle}`);
-                sendRevisionRequestNotification(bookTitle);
-              }
+            // Try to get book details from nominees
+            const bookDetails = getBookDetails(currentBook.bookId);
+            if (bookDetails?.title) {
+              bookTitle = bookDetails.title;
+            } else {
+              // Fallback: try to get title from the book object itself or stored data
+              bookTitle = currentBook.title || 
+                         currentBook.bookTitle || 
+                         previousBook.title || 
+                         previousBook.bookTitle || 
+                         'Your Book';
             }
-          });
-        } catch (error) {
-          console.log('Error checking status changes:', error);
-        }
+            
+            console.log(`📚 Checking notifications for: ${bookTitle} (ID: ${currentBook.bookId})`);
+            
+            // Check for teacher approval (pending_approval -> completed)
+            if (previousBook.status === 'pending_approval' && currentBook.status === 'completed') {
+              console.log(`🎉 Sending approval notification for: ${bookTitle}`);
+              sendTeacherApprovalNotification(bookTitle);
+            }
+            
+            // 🔧 NEW: Check for parent quiz unlock (pending_parent_quiz_unlock -> quiz_unlocked)
+            if (previousBook.status === 'pending_parent_quiz_unlock' && 
+                currentBook.status === 'quiz_unlocked') {
+              console.log(`🔓 Sending quiz unlock notification for: ${bookTitle}`);
+              sendQuizUnlockNotification(bookTitle);
+              setShowSuccess(`🎉 Quiz unlocked for "${bookTitle}"! Tap the book to take it now.`);
+              setTimeout(() => setShowSuccess(''), 4000);
+            }
+            
+            // Check for revision requests (pending_approval -> revision_requested)
+            if (previousBook.status === 'pending_approval' && currentBook.status === 'revision_requested') {
+              console.log(`📝 Sending revision request notification for: ${bookTitle}`);
+              sendRevisionRequestNotification(bookTitle);
+            }
+          }
+        });
+      } catch (error) {
+        console.log('Error checking status changes:', error);
       }
-
-      // Save current bookshelf state
-      localStorage.setItem(previousBookshelfKey, JSON.stringify(studentData.bookshelf));
-    };
-
-    // Only check for changes if we have nominees loaded (to ensure getBookDetails works)
-    if (nominees.length > 0) {
-      checkForStatusChanges();
     }
-  }, [studentData, nominees, notificationsEnabled, sendTeacherApprovalNotification, sendQuizUnlockNotification, sendRevisionRequestNotification]);
+
+    // Save current bookshelf state
+    localStorage.setItem(previousBookshelfKey, JSON.stringify(studentData.bookshelf));
+  };
+
+  // Only check for changes if we have nominees loaded (to ensure getBookDetails works)
+  if (nominees.length > 0) {
+    checkForStatusChanges();
+  }
+}, [studentData, nominees, notificationsEnabled, sendTeacherApprovalNotification, sendQuizUnlockNotification, sendRevisionRequestNotification, getBookDetails]);
 
   const loadBookshelfData = async () => {
     try {
@@ -1050,12 +1071,110 @@ const deleteBook = async (bookId) => {
     setIsSaving(false);
   };
 
-  const handleQuizSubmission = async () => {
-    if (!selectedBook) return;
+  // FIND this function in paste-2.txt (around line 740-850) and REPLACE it entirely:
+
+const handleQuizSubmission = async () => {
+  if (!selectedBook) return;
+  
+  const bookState = getBookState(selectedBook);
+  
+  // 🔧 NEW: Skip parent permission if already unlocked
+  if (bookState === 'quiz_unlocked') {
+    // Go straight to loading quiz
+    setIsSaving(true);
+    setShowSubmissionPopup(false); // Close submission popup if open
     
-    setShowSubmissionPopup(false);
-    setShowParentPermission(true);
-  };
+    try {
+      // Get current academic year
+      const currentYear = getCurrentAcademicYear();
+      console.log(`🎯 Loading quiz for parent-approved book ${selectedBook.bookId}`);
+
+      // NEW SAFE LINKING: Quiz links to book through ID + academic year + status
+      const quizData = await getQuizByBookId(selectedBook.bookId, currentYear);
+
+      if (!quizData) {
+        console.log('🔄 Quiz not found with academic year linking, trying legacy method...');
+        
+        // FALLBACK: Legacy quiz lookup for backward compatibility
+        const legacyQuizRef = doc(db, 'quizzes', selectedBook.bookId);
+        const legacyQuizDoc = await getDoc(legacyQuizRef);
+        
+        if (!legacyQuizDoc.exists()) {
+          setShowSuccess('❌ Quiz not available for this book yet.');
+          setTimeout(() => setShowSuccess(''), 3000);
+          setIsSaving(false);
+          return;
+        }
+        
+        const legacyQuizData = legacyQuizDoc.data();
+        console.log('📚 Using legacy quiz format');
+        
+        // Process legacy quiz
+        let allQuestions = [];
+        if (legacyQuizData.questions && Array.isArray(legacyQuizData.questions)) {
+          allQuestions = legacyQuizData.questions;
+        }
+
+        if (allQuestions.length === 0) {
+          setShowSuccess('❌ No quiz questions found for this book.');
+          setTimeout(() => setShowSuccess(''), 3000);
+          setIsSaving(false);
+          return;
+        }
+
+        const shuffled = [...allQuestions].sort(() => 0.5 - Math.random());
+        const selectedQuestions = shuffled.slice(0, Math.min(10, allQuestions.length));
+
+        setQuizQuestions(selectedQuestions);
+        setCurrentQuestionIndex(0);
+        setQuizAnswers([]);
+        setTimeRemaining(30 * 60);
+        setTimerActive(false);
+        setShowQuizModal(true);
+        setIsSaving(false);
+        return;
+      }
+
+      // NEW: Process academic year-aware quiz
+      console.log(`✅ Found quiz for book ${selectedBook.bookId} with academic year linking:`, quizData);
+      
+      let allQuestions = [];
+      if (quizData.questions && Array.isArray(quizData.questions)) {
+        allQuestions = quizData.questions;
+      }
+
+      if (allQuestions.length === 0) {
+        setShowSuccess('❌ No quiz questions found for this book.');
+        setTimeout(() => setShowSuccess(''), 3000);
+        setIsSaving(false);
+        return;
+      }
+
+      // Shuffle and select questions
+      const shuffled = [...allQuestions].sort(() => 0.5 - Math.random());
+      const selectedQuestions = shuffled.slice(0, Math.min(10, allQuestions.length));
+
+      setQuizQuestions(selectedQuestions);
+      setCurrentQuestionIndex(0);
+      setQuizAnswers([]);
+      setTimeRemaining(30 * 60);
+      setTimerActive(false);
+      setShowQuizModal(true);
+      setIsSaving(false);
+      
+    } catch (error) {
+      console.error('❌ Error loading quiz:', error);
+      setShowSuccess('❌ Error loading quiz. Please try again.');
+      setTimeout(() => setShowSuccess(''), 3000);
+      setIsSaving(false);
+    }
+    return;
+  }
+  
+  // Original flow for non-unlocked books
+  setShowSubmissionPopup(false);
+  setShowParentPermission(true);
+};
 
   const handleParentCodeSubmit = async () => {
     if (!selectedBook) {
@@ -1272,96 +1391,102 @@ const deleteBook = async (bookId) => {
     }
   };
 
-  const handleQuizComplete = async (answers) => {
-    if (!selectedBook || !quizQuestions.length) return;
+const handleQuizComplete = async (answers) => {
+  if (!selectedBook || !quizQuestions.length) return;
+  
+  setIsSaving(true);
+  setTimerActive(false);
+  
+  try {
+    let correctAnswers = 0;
+    quizQuestions.forEach((question, index) => {
+      if (answers[index] === question.answer) {
+        correctAnswers++;
+      }
+    });
     
-    setIsSaving(true);
-    setTimerActive(false);
+    const passed = correctAnswers >= 7;
     
-    try {
-      let correctAnswers = 0;
-      quizQuestions.forEach((question, index) => {
-        if (answers[index] === question.answer) {
-          correctAnswers++;
+    if (passed) {
+      const updatedBookshelf = studentData.bookshelf.map(book => {
+        if (book.bookId === selectedBook.bookId) {
+          return {
+            ...book,
+            currentProgress: tempProgress,
+            rating: tempRating,
+            notes: tempNotes,
+            completed: true,
+            submissionType: 'quiz',
+            submittedAt: new Date(),
+            status: 'completed', // 🔧 Clear the quiz_unlocked status
+            quizScore: `${correctAnswers}/10`,
+            // 🔧 Clear parent unlock fields
+            parentUnlockedAt: null,
+            parentUnlockedBy: null
+          };
         }
+        return book;
       });
       
-      const passed = correctAnswers >= 7;
+      await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
+        bookshelf: updatedBookshelf,
+        booksSubmittedThisYear: (studentData.booksSubmittedThisYear || 0) + 1,
+        lifetimeBooksSubmitted: (studentData.lifetimeBooksSubmitted || 0) + 1
+      });
       
-      if (passed) {
-        const updatedBookshelf = studentData.bookshelf.map(book => {
-          if (book.bookId === selectedBook.bookId) {
-            return {
-              ...book,
-              currentProgress: tempProgress,
-              rating: tempRating,
-              notes: tempNotes,
-              completed: true,
-              submissionType: 'quiz',
-              submittedAt: new Date(),
-              status: 'completed',
-              quizScore: `${correctAnswers}/10`
-            };
-          }
-          return book;
-        });
-        
-        await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
-          bookshelf: updatedBookshelf,
-          booksSubmittedThisYear: (studentData.booksSubmittedThisYear || 0) + 1,
-          lifetimeBooksSubmitted: (studentData.lifetimeBooksSubmitted || 0) + 1
-        });
-        
-        setStudentData({ 
-          ...studentData, 
-          bookshelf: updatedBookshelf,
-          booksSubmittedThisYear: (studentData.booksSubmittedThisYear || 0) + 1,
-          lifetimeBooksSubmitted: (studentData.lifetimeBooksSubmitted || 0) + 1
-        });
-        
-        setShowQuizModal(false);
-        closeBookModal(); // 🔒 COOLDOWN FIX: Close modal so user sees updated state
-        setShowSuccess(`🎉 Quiz passed! ${correctAnswers}/10 correct. Book completed!`);
-        
-      } else {
-        // Update book with failed status
-        const updatedBookshelf = studentData.bookshelf.map(book => {
-          if (book.bookId === selectedBook.bookId) {
-            return {
-              ...book,
-              status: 'quiz_failed',
-              failedAt: new Date(),
-              lastQuizScore: `${correctAnswers}/10`
-            };
-          }
-          return book;
-        });
-        
-        await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
-          bookshelf: updatedBookshelf
-        });
-        
-        setStudentData({ ...studentData, bookshelf: updatedBookshelf });
-        setShowQuizModal(false);
-        closeBookModal(); // 🔒 COOLDOWN FIX: Close modal so user sees cooldown state
-        setShowSuccess(`❌ Quiz failed. ${correctAnswers}/10 correct. Need 7+ to pass. Try again in 24 hours.`);
-      }
+      setStudentData({ 
+        ...studentData, 
+        bookshelf: updatedBookshelf,
+        booksSubmittedThisYear: (studentData.booksSubmittedThisYear || 0) + 1,
+        lifetimeBooksSubmitted: (studentData.lifetimeBooksSubmitted || 0) + 1
+      });
       
-      setParentCode('');
-      setQuizQuestions([]);
-      setQuizAnswers([]);
-      setCurrentQuestionIndex(0);
+      setShowQuizModal(false);
+      closeBookModal(); // 🔒 COOLDOWN FIX: Close modal so user sees updated state
+      setShowSuccess(`🎉 Quiz passed! ${correctAnswers}/10 correct. Book completed!`);
       
-      setTimeout(() => setShowSuccess(''), 4000);
+    } else {
+      // Update book with failed status, clearing quiz_unlocked
+      const updatedBookshelf = studentData.bookshelf.map(book => {
+        if (book.bookId === selectedBook.bookId) {
+          return {
+            ...book,
+            status: 'quiz_failed', // 🔧 Clear quiz_unlocked status
+            failedAt: new Date(),
+            lastQuizScore: `${correctAnswers}/10`,
+            // 🔧 Clear parent unlock fields since quiz was attempted
+            parentUnlockedAt: null,
+            parentUnlockedBy: null
+          };
+        }
+        return book;
+      });
       
-    } catch (error) {
-      console.error('❌ Error completing quiz:', error);
-      setShowSuccess('❌ Error processing quiz. Please try again.');
-      setTimeout(() => setShowSuccess(''), 3000);
+      await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
+        bookshelf: updatedBookshelf
+      });
+      
+      setStudentData({ ...studentData, bookshelf: updatedBookshelf });
+      setShowQuizModal(false);
+      closeBookModal(); // 🔒 COOLDOWN FIX: Close modal so user sees cooldown state
+      setShowSuccess(`❌ Quiz failed. ${correctAnswers}/10 correct. Need 7+ to pass. Try again in 24 hours.`);
     }
     
-    setIsSaving(false);
-  };
+    setParentCode('');
+    setQuizQuestions([]);
+    setQuizAnswers([]);
+    setCurrentQuestionIndex(0);
+    
+    setTimeout(() => setShowSuccess(''), 4000);
+    
+  } catch (error) {
+    console.error('❌ Error completing quiz:', error);
+    setShowSuccess('❌ Error processing quiz. Please try again.');
+    setTimeout(() => setShowSuccess(''), 3000);
+  }
+  
+  setIsSaving(false);
+};
 
 // Fix textarea height when modal opens with existing content
   useEffect(() => {

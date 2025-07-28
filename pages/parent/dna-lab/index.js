@@ -29,7 +29,7 @@ const dailyWins = {
   Thursday: { emoji: '🎭', task: 'Character voices make it fun', tip: 'Be silly - kids love it!' },
   Friday: { emoji: '🎨', task: 'Draw the story together', tip: 'Stick figures are perfect!' },
   Saturday: { emoji: '❓', task: 'Question time - they ask YOU', tip: 'No wrong questions exist!' },
-  Sunday: { emoji: '👑', task: 'Role reversal - they teach', tip: 'Let them "read" using pictures' }
+  Sunday: { emoji: '👑', task: 'Role reversal - they teach', tip: 'Let them teach you about a topic they love' }
 };
 
 // Reflection prompts for dashboard
