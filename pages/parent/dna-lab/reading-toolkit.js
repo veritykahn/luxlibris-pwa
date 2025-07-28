@@ -47,7 +47,7 @@ export default function ReadingToolkit() {
     { name: 'Dashboard', path: '/parent/dna-lab', icon: '🏠', description: 'Command center' },
     { name: 'My Reading DNA', path: '/parent/dna-lab/my-reading-dna', icon: '🧬', description: 'Your profile' },
     { name: 'My Reading Toolkit', path: '/parent/dna-lab/reading-toolkit', icon: '🧰', description: 'Strategies', current: true },
-    { name: "My Kids&apos; Library", path: '/parent/dna-lab/kids-library', icon: '👨‍👩‍👧‍👦', description: 'Child profiles' },
+    { name: "My Kids' Library", path: '/parent/dna-lab/kids-library', icon: '👨‍👩‍👧‍👦', description: 'Child profiles' },
     { name: 'Family Dynamics', path: '/parent/dna-lab/family-dynamics', icon: '🤝', description: 'Compatibility' },
     { name: 'Science Center', path: '/parent/dna-lab/science-center', icon: '🧪', description: 'Research' },
     { name: 'Reflection & Growth', path: '/parent/dna-lab/reflection-growth', icon: '🌱', description: 'Track journey' }
