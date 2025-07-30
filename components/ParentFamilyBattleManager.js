@@ -147,7 +147,7 @@ function StoneColdjaneAustenHelper({ show, onClose, theme, familyBattleData }) {
           fontStyle: 'italic',
           fontFamily: 'Didot, "Times New Roman", serif'
         }}>
-          "{currentQuote}"
+          &quot;{currentQuote}&quot;
         </div>
       </div>
 

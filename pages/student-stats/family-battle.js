@@ -140,7 +140,7 @@ function StoneColdjaneAustenHelper({ show, battleState, winner, onClose, current
           fontStyle: 'italic',
           fontFamily: 'Didot, "Times New Roman", serif'
         }}>
-          "{currentQuote}"
+          &quot;{currentQuote}&quot;
         </div>
       </div>
       <button

@@ -1364,7 +1364,7 @@ export default function ParentDnaLabDashboard() {
                     lineHeight: '1.5'
                   }}>
                     Enable the Reading DNA assessment for all {linkedStudents.length} of your children. 
-                    They'll discover their unique reading personalities and get personalized insights!
+                    They&apos;ll discover their unique reading personalities and get personalized insights!
                   </p>
                   
                   <button
@@ -2442,7 +2442,7 @@ export default function ParentDnaLabDashboard() {
                   marginBottom: '16px'
                 }}>
                   This Reading DNA assessment is inspired by decades of research on motivation, learning styles, and reading development. 
-                  It's designed as a thoughtful, fun framework to help children understand their unique reading personalities.
+                  It&apos;s designed as a thoughtful, fun framework to help children understand their unique reading personalities.
                 </p>
               </div>
 
@@ -2461,7 +2461,7 @@ export default function ParentDnaLabDashboard() {
                   color: luxTheme.textSecondary,
                   lineHeight: '1.6'
                 }}>
-                  <li>Their unique reading personality type (like "Curious Investigator" or "Creative Explorer")</li>
+                  <li>Their unique reading personality type (like &quot;Curious Investigator&quot; or &quot;Creative Explorer&quot;)</li>
                   <li>Learning style traits that help them understand how they learn best</li>
                   <li>Personalized reading tips and strategies</li>
                   <li>Fun insights about what motivates them to read</li>
@@ -2487,7 +2487,7 @@ export default function ParentDnaLabDashboard() {
                   <li>Encourages self-reflection about reading preferences</li>
                   <li>Builds confidence in their unique learning style</li>
                   <li>Creates fun conversation starters about reading</li>
-                  <li>Helps them understand there's no "wrong" way to be a reader</li>
+                  <li>Helps them understand there's no &quot;wrong&quot; way to be a reader</li>
                 </ul>
               </div>
 
@@ -2527,7 +2527,7 @@ export default function ParentDnaLabDashboard() {
                   lineHeight: '1.5',
                   fontWeight: '600'
                 }}>
-                  🌟 This is a one-time family decision. Once unlocked, all your children can explore their Reading DNA whenever they're curious about their learning style!
+                  🌟 This is a one-time family decision. Once unlocked, all your children can explore their Reading DNA whenever they&apos;re curious about their learning style!
                 </p>
               </div>
               
