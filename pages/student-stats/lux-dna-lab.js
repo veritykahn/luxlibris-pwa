@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePhaseAccess } from '../../hooks/usePhaseAccess';
 import { getStudentDataEntities, updateStudentDataEntities } from '../../lib/firebase';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import Head from 'next/head';
 
@@ -242,7 +242,7 @@ console.log('🔍 All loaded modifiers:', studentModifiers);
     { name: 'Diocese Stats', path: '/student-stats/diocese-stats', icon: '⛪', description: 'Coming soon!', disabled: true },
     { name: 'Global Stats', path: '/student-stats/global-stats', icon: '🌎', description: 'Coming soon!', disabled: true },
     { name: 'Lux DNA Lab', path: '/student-stats/lux-dna-lab', icon: '🧬', description: 'Discover your reading personality', current: true },
-    { name: 'Family Battle', path: '/student-stats/family-battle', icon: '👨‍👩‍👧‍👦', description: 'Coming soon!', disabled: true }
+    { name: 'Family Battle', path: '/student-stats/family-battle', icon: '🥊', description: 'WWE-style reading showdown!', disabled: false }
   ], []);
 
   // Series colors for quiz results (same as saints collection)
@@ -388,7 +388,11 @@ console.log('🔍 All loaded modifiers:', studentModifiers);
     if (studentData?.readingDNA) {
       return true;
     }
-    // Otherwise check explicit unlock
+    // Check family-wide unlock (NEW)
+    if (studentData?.familyReadingDnaUnlocked) {
+      return true;
+    }
+    // Check individual unlock (LEGACY)
     return !!(studentData?.learningStyleUnlocked);
   };
 
@@ -541,6 +545,20 @@ console.log('🔍 All loaded modifiers:', studentModifiers);
       if (!firebaseStudentData) {
         router.push('/student-onboarding');
         return;
+      }
+      
+      // Check for family-wide Reading DNA unlock
+      if (firebaseStudentData.linkedParents?.length > 0) {
+        const parentUid = firebaseStudentData.linkedParents[0];
+        const familyRef = doc(db, 'families', parentUid);
+        const familyDoc = await getDoc(familyRef);
+        if (familyDoc.exists()) {
+          const familyData = familyDoc.data();
+          if (familyData.readingDnaSettings?.unlocked) {
+            // Add family unlock status to student data
+            firebaseStudentData.familyReadingDnaUnlocked = true;
+          }
+        }
       }
       
       setStudentData(firebaseStudentData);
@@ -1666,9 +1684,9 @@ return (
                       <div style={{
                         textAlign: 'center',
                         padding: '16px',
-                        backgroundColor: `${currentTheme.textSecondary}20`,
+                        backgroundColor: `${currentTheme.primary}10`,
                         borderRadius: '12px',
-                        border: `2px dashed ${currentTheme.textSecondary}60`
+                        border: `2px solid ${currentTheme.primary}30`
                       }}>
                         <div style={{
                           fontSize: '24px',
@@ -1682,14 +1700,14 @@ return (
                           color: currentTheme.textPrimary,
                           marginBottom: '4px'
                         }}>
-                          Assessment Locked
+                          Reading DNA Assessment Locked
                         </div>
                         <div style={{
                           fontSize: '11px',
                           color: currentTheme.textSecondary,
                           lineHeight: '1.4'
                         }}>
-                          Ask a parent to unlock your Reading DNA assessment! This special tool helps you understand how you learn best.
+                          Ask your parent to unlock Reading DNA for your family! This fun tool helps you discover your unique reading personality.
                         </div>
                       </div>
                     )}

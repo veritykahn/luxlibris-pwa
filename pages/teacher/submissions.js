@@ -5,7 +5,7 @@ import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
 import { usePhaseAccess } from '../../hooks/usePhaseAccess' // Use the updated hook
 import { db } from '../../lib/firebase'
-import { collection, getDocs, updateDoc, doc, query, where } from 'firebase/firestore'
+import { collection, getDocs, updateDoc, doc, query, where, getDoc } from 'firebase/firestore'
 
 export default function TeacherSubmissions() {
   const router = useRouter()
@@ -218,33 +218,33 @@ export default function TeacherSubmissions() {
     try {
       const studentRef = doc(db, `entities/${selectedSubmission.entityId}/schools/${selectedSubmission.schoolId}/students`, selectedSubmission.studentId)
       
-      // Get current student data
-      const studentDoc = await getDocs(query(collection(db, `entities/${selectedSubmission.entityId}/schools/${selectedSubmission.schoolId}/students`), where('__name__', '==', selectedSubmission.studentId)))
-      
-      if (studentDoc.empty) {
-        throw new Error('Student not found')
-      }
+      // Get current student data using getDoc instead of getDocs
+const studentDocSnapshot = await getDoc(studentRef)
 
-      const studentData = studentDoc.docs[0].data()
+if (!studentDocSnapshot.exists()) {
+  throw new Error('Student not found')
+}
+
+const studentData = studentDocSnapshot.data()
       const updatedBookshelf = studentData.bookshelf.map(book => {
         if (book.bookId === selectedSubmission.bookId && book.status === 'pending_approval') {
           if (actionType === 'approve') {
-            return {
-              ...book,
-              status: 'completed',
-              approvedAt: new Date(),
-              teacherNotes: teacherNotes.trim() || undefined,
-              completed: true
-            }
-          } else if (actionType === 'revise') {
-            return {
-              ...book,
-              status: 'revision_requested',
-              revisionRequestedAt: new Date(),
-              teacherNotes: teacherNotes.trim() || undefined,
-              completed: false
-            }
-          }
+  return {
+    ...book,
+    status: 'completed',
+    approvedAt: new Date(),
+    teacherNotes: teacherNotes.trim(),
+    completed: true
+  }
+} else if (actionType === 'revise') {
+  return {
+    ...book,
+    status: 'revision_requested',
+    revisionRequestedAt: new Date(),
+    teacherNotes: teacherNotes.trim(),
+    completed: false
+  }
+}
         }
         return book
       })
@@ -921,46 +921,66 @@ export default function TeacherSubmissions() {
 
               <div style={{ marginBottom: '1.5rem' }}>
                 <label style={{
-                  display: 'block',
-                  fontSize: '0.875rem',
-                  fontWeight: '600',
-                  color: '#374151',
-                  marginBottom: '0.5rem'
-                }}>
-                  {actionType === 'approve' 
-                    ? 'Feedback for student (optional)'
-                    : 'What needs to be revised? (optional)'
-                  }
-                </label>
+  display: 'block',
+  fontSize: '0.875rem',
+  fontWeight: '600',
+  color: '#374151',
+  marginBottom: '0.5rem'
+}}>
+  {actionType === 'approve' 
+    ? 'Feedback for student (required)' 
+    : 'What needs to be revised? (required)'
+  }
+  <span style={{ color: '#EF4444' }}> *</span>
+</label>
                 <textarea
-                  value={teacherNotes}
-                  onChange={(e) => setTeacherNotes(e.target.value)}
-                  placeholder={actionType === 'approve' 
-                    ? "Great work! Your presentation was engaging..."
-                    : "Please add more details about the main character..."
-                  }
-                  rows={4}
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '0.5rem',
-                    fontSize: '0.875rem',
-                    fontFamily: 'inherit',
-                    boxSizing: 'border-box',
-                    outline: 'none',
-                    resize: 'vertical'
-                  }}
-                  maxLength={500}
-                />
-                <p style={{
-                  fontSize: '0.75rem',
-                  color: '#6b7280',
-                  margin: '0.25rem 0 0 0',
-                  textAlign: 'right'
-                }}>
-                  {teacherNotes.length}/500 characters
-                </p>
+  value={teacherNotes}
+  onChange={(e) => setTeacherNotes(e.target.value)}
+  placeholder={actionType === 'approve' 
+    ? "Great work! Your presentation was engaging..."
+    : "Please add more details about the main character..."
+  }
+  rows={4}
+  style={{
+    width: '100%',
+    padding: '0.75rem',
+    border: teacherNotes.trim().length < 10 ? '2px solid #FCA5A5' : '1px solid #e5e7eb',
+    borderRadius: '0.5rem',
+    fontSize: '0.875rem',
+    fontFamily: 'inherit',
+    boxSizing: 'border-box',
+    outline: 'none',
+    resize: 'vertical',
+    backgroundColor: 'white',
+    color: '#1f2937',
+    lineHeight: '1.5'
+  }}
+  maxLength={500}
+/>
+                <div style={{
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginTop: '0.5rem'
+}}>
+  <p style={{
+    fontSize: '0.75rem',
+    color: teacherNotes.trim().length < 10 ? '#EF4444' : '#6b7280',
+    margin: 0
+  }}>
+    {teacherNotes.trim().length < 10 
+      ? `Need at least ${10 - teacherNotes.trim().length} more characters for meaningful feedback`
+      : 'Great! Your feedback will help the student.'
+    }
+  </p>
+  <p style={{
+    fontSize: '0.75rem',
+    color: '#6b7280',
+    margin: 0
+  }}>
+    {teacherNotes.length}/500
+  </p>
+</div>
               </div>
 
               <div style={{
@@ -983,27 +1003,32 @@ export default function TeacherSubmissions() {
                   Cancel
                 </button>
                 <button
-                  onClick={handleSubmissionAction}
-                  disabled={isProcessing}
-                  style={{
-                    padding: '0.75rem 1.5rem',
-                    backgroundColor: actionType === 'approve' ? '#4CAF50' : '#FF9800',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '0.5rem',
-                    cursor: 'pointer',
-                    fontSize: '0.875rem',
-                    fontWeight: '600',
-                    opacity: isProcessing ? 0.7 : 1
-                  }}
-                >
-                  {isProcessing 
-                    ? 'Processing...' 
-                    : actionType === 'approve' 
-                      ? '✅ Approve' 
-                      : '📝 Request Revisions'
-                  }
-                </button>
+  onClick={handleSubmissionAction}
+  disabled={isProcessing || teacherNotes.trim().length < 10}
+  style={{
+    padding: '0.75rem 1.5rem',
+    backgroundColor: teacherNotes.trim().length < 10 
+      ? '#D1D5DB' 
+      : actionType === 'approve' ? '#4CAF50' : '#FF9800',
+    color: teacherNotes.trim().length < 10 ? '#6B7280' : 'white',
+    border: 'none',
+    borderRadius: '0.5rem',
+    cursor: teacherNotes.trim().length < 10 ? 'not-allowed' : 'pointer',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    opacity: isProcessing ? 0.7 : 1,
+    transition: 'all 0.2s ease'
+  }}
+>
+  {isProcessing 
+    ? 'Processing...' 
+    : teacherNotes.trim().length < 10
+      ? `Need ${10 - teacherNotes.trim().length} more characters`
+      : actionType === 'approve' 
+        ? '✅ Approve with Feedback' 
+        : '📝 Request Revisions'
+  }
+</button>
               </div>
             </div>
           </div>

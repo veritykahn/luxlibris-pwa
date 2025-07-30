@@ -1,4 +1,4 @@
-// contexts/TimerContext.js
+// contexts/TimerContext.js - UPDATED to support both student AND parent healthy habits pages
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 
@@ -52,10 +52,11 @@ export const TimerProvider = ({ children }) => {
     }
   };
 
-  // Track which page we're on
+  // UPDATED: Track which page we're on - now supports BOTH student AND parent pages
   useEffect(() => {
     const handleRouteChange = (url) => {
-      const onHealthyHabits = url === '/student-healthy-habits';
+      // FIXED: Check for BOTH student and parent healthy habits pages
+      const onHealthyHabits = url === '/student-healthy-habits' || url === '/parent/healthy-habits';
       setIsOnHealthyHabitsPage(onHealthyHabits);
       
       // If timer is active and we're leaving the healthy habits page, pause it
@@ -73,8 +74,9 @@ export const TimerProvider = ({ children }) => {
       }
     };
 
-    // Set initial state
-    setIsOnHealthyHabitsPage(router.pathname === '/student-healthy-habits');
+    // FIXED: Set initial state - check for BOTH pages
+    const currentPath = router.pathname;
+    setIsOnHealthyHabitsPage(currentPath === '/student-healthy-habits' || currentPath === '/parent/healthy-habits');
     
     router.events.on('routeChangeComplete', handleRouteChange);
     

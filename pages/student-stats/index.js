@@ -159,22 +159,22 @@ export default function StudentStatsMain() {
     { name: 'Settings', path: '/student-settings', icon: '⚙' }
   ], [hasAccess, phaseData.currentPhase]);
 
-  const statsNavOptions = useMemo(() => [
-    { name: 'Stats Dashboard', path: '/student-stats', icon: '📊', description: 'Fun overview', current: true },
-    { name: 'My Stats', path: '/student-stats/my-stats', icon: '📈', description: 'Personal deep dive' },
-    { name: 'Grade Stats', path: '/student-stats/grade-stats', icon: '🎓', description: 'Compare with classmates' },
-    { name: 'School Stats', path: '/student-stats/school-stats', icon: '🏫', description: 'School-wide progress' },
-    { name: 'Diocese Stats', path: '/student-stats/diocese-stats', icon: '⛪', description: 'Coming soon!', disabled: true },
-    { name: 'Global Stats', path: '/student-stats/global-stats', icon: '🌎', description: 'Coming soon!', disabled: true },
-    { 
-      name: 'Lux DNA Lab', 
-      path: '/student-stats/lux-dna-lab', 
-      icon: '🧬', 
-      description: phaseData.currentPhase === 'RESULTS' ? 'Nominees DNA locked for year' : 'Discover your reading personality',
-      phaseNote: phaseData.currentPhase === 'RESULTS' ? 'Nominees DNA analysis is closed for this academic year' : null
-    },
-    { name: 'Family Battle', path: '/student-stats/family-battle', icon: '👨‍👩‍👧‍👦', description: 'Coming soon!', disabled: true }
-  ], [phaseData.currentPhase]);
+const statsNavOptions = useMemo(() => [
+  { name: 'Stats Dashboard', path: '/student-stats', icon: '📊', description: 'Fun overview', current: true },
+  { name: 'My Stats', path: '/student-stats/my-stats', icon: '📈', description: 'Personal deep dive' },
+  { name: 'Grade Stats', path: '/student-stats/grade-stats', icon: '🎓', description: 'Compare with classmates' },
+  { name: 'School Stats', path: '/student-stats/school-stats', icon: '🏫', description: 'School-wide progress' },
+  { name: 'Diocese Stats', path: '/student-stats/diocese-stats', icon: '⛪', description: 'Coming soon!', disabled: true },
+  { name: 'Global Stats', path: '/student-stats/global-stats', icon: '🌎', description: 'Coming soon!', disabled: true },
+  { 
+    name: 'Lux DNA Lab', 
+    path: '/student-stats/lux-dna-lab', 
+    icon: '🧬', 
+    description: phaseData.currentPhase === 'RESULTS' ? 'Nominees DNA locked for year' : 'Discover your reading personality',
+    phaseNote: phaseData.currentPhase === 'RESULTS' ? 'Nominees DNA analysis is closed for this academic year' : null
+  },
+  { name: 'Family Battle', path: '/student-stats/family-battle', icon: '🥊', description: 'WWE-style reading showdown!', disabled: false }
+], [phaseData.currentPhase]);
 
   // BADGE NOTIFICATION SYSTEM
   const badgeUnlockFeedback = useCallback(() => {

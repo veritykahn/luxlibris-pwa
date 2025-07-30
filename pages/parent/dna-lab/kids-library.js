@@ -30,12 +30,12 @@ export default function KidsLibrary() {
   
   // Hardcoded mapping of reading DNA types to image files
   const readingDnaImages = {
-    'challenge-seeker': 'challenge_seeker.png',
-    'creative-explorer': 'creative_explorer.png',
-    'curious-investigator': 'curious_investigator.png',
-    'freedom-reader': 'freedom_reader.png',
-    'reflective-thinker': 'reflective_thinker.png',
-    'social-connector': 'social_connector.png'
+    'challenge_seeker': 'challenge_seeker.png',
+    'creative_explorer': 'creative_explorer.png',
+    'curious_investigator': 'curious_investigator.png',
+    'freedom_reader': 'freedom_reader.png',
+    'reflective_thinker': 'reflective_thinker.png',
+    'social_connector': 'social_connector.png'
   };
   
   // Lux Libris Classic Theme

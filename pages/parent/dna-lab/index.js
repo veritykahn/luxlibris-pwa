@@ -5,7 +5,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { usePremiumFeatures } from '../../../hooks/usePremiumFeatures';
 import PremiumGate from '../../../components/PremiumGate';
 import Head from 'next/head';
-import { collection, getDocs, doc, getDoc, query, where } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, query, where, updateDoc, setDoc } from 'firebase/firestore';
 import { db } from '../../../lib/firebase';
 import { updateStudentDataEntities } from '../../../lib/firebase';
 import { getCurrentWeekContent, categoryColors, bottomLineMessages } from '../../../lib/weekly-tips-facts';
@@ -148,6 +148,11 @@ export default function ParentDnaLabDashboard() {
   const [childrenDnaData, setChildrenDnaData] = useState({});
   const [childrenDnaTypes, setChildrenDnaTypes] = useState({});
   const [compatibilityData, setCompatibilityData] = useState({});
+  
+  // Family Reading DNA states
+  const [showReadingDnaUnlockModal, setShowReadingDnaUnlockModal] = useState(false);
+  const [familyReadingDnaSettings, setFamilyReadingDnaSettings] = useState(null);
+  const [isUnlockingReadingDna, setIsUnlockingReadingDna] = useState(false);
   
   // Weekly facts/insights
   const [weeklyParentFact, setWeeklyParentFact] = useState(null);
@@ -596,6 +601,53 @@ export default function ParentDnaLabDashboard() {
     }
   }, [getWeeklyScienceFact]);
 
+  // Unlock Reading DNA for family
+  const unlockReadingDnaForFamily = async () => {
+    try {
+      setIsUnlockingReadingDna(true);
+      
+      const familyRef = doc(db, 'families', user.uid);
+      const familyDoc = await getDoc(familyRef);
+      
+      const readingDnaSettings = {
+        unlocked: true,
+        unlockedAt: new Date(),
+        unlockedBy: user.uid,
+        childrenCount: linkedStudents.length
+      };
+      
+      if (familyDoc.exists()) {
+        // Update existing family document
+        await updateDoc(familyRef, {
+          readingDnaSettings: readingDnaSettings,
+          lastUpdated: new Date()
+        });
+      } else {
+        // Create new family document
+        await setDoc(familyRef, {
+          parentUid: user.uid,
+          readingDnaSettings: readingDnaSettings,
+          createdAt: new Date(),
+          lastUpdated: new Date()
+        });
+      }
+      
+      setFamilyReadingDnaSettings(readingDnaSettings);
+      setShowReadingDnaUnlockModal(false);
+      setShowSuccess('✅ Reading DNA unlocked for all your children! They can now discover their reading personalities!');
+      setTimeout(() => setShowSuccess(''), 4000);
+      
+      console.log('✅ Family Reading DNA unlocked for', linkedStudents.length, 'children');
+      
+    } catch (error) {
+      console.error('❌ Error unlocking family Reading DNA:', error);
+      setShowSuccess('❌ Failed to unlock Reading DNA. Please try again.');
+      setTimeout(() => setShowSuccess(''), 3000);
+    } finally {
+      setIsUnlockingReadingDna(false);
+    }
+  };
+
   // Initial data load
   const loadDashboardData = useCallback(async () => {
     if (!user?.uid) return;
@@ -667,6 +719,15 @@ export default function ParentDnaLabDashboard() {
           await loadLinkedStudentsData(data.linkedStudents);
         }
       }
+
+      // Check family Reading DNA settings
+      const familyRef = doc(db, 'families', user.uid);
+      const familyDoc = await getDoc(familyRef);
+
+      if (familyDoc.exists()) {
+        const familyData = familyDoc.data();
+        setFamilyReadingDnaSettings(familyData.readingDnaSettings || null);
+      }
       
       // Load additional data for random facts
       await loadAdditionalData();
@@ -732,10 +793,11 @@ export default function ParentDnaLabDashboard() {
         setShowResearchModal(false);
         setShowBottomLine(false);
         setShowSuccess('');
+        setShowReadingDnaUnlockModal(false);
       }
     };
 
-    if (showDnaDropdown || showNavMenu || showUnlockModal || showResearchModal) {
+    if (showDnaDropdown || showNavMenu || showUnlockModal || showResearchModal || showReadingDnaUnlockModal) {
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('keydown', handleEscape);
     }
@@ -744,7 +806,7 @@ export default function ParentDnaLabDashboard() {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscape);
     };
-  }, [showDnaDropdown, showNavMenu, showUnlockModal, showResearchModal]);
+  }, [showDnaDropdown, showNavMenu, showUnlockModal, showResearchModal, showReadingDnaUnlockModal]);
 
   // Unlock Reading DNA for a child
   const unlockReadingDnaForChild = async () => {
@@ -1257,6 +1319,92 @@ export default function ParentDnaLabDashboard() {
                 }}>
                   You&apos;re part of our pilot - discover your family&apos;s reading personalities free during the trial!
                 </p>
+              </div>
+            )}
+
+            {/* Reading DNA Family Unlock Card */}
+            {linkedStudents.length > 0 && !familyReadingDnaSettings?.unlocked && (
+              <div style={{
+                background: `linear-gradient(135deg, #9C88C4, #B19CD9)`,
+                borderRadius: '16px',
+                padding: '20px',
+                marginBottom: '20px',
+                color: 'white',
+                textAlign: 'center',
+                position: 'relative',
+                overflow: 'hidden'
+              }}>
+                {/* Animated background elements */}
+                <div style={{
+                  position: 'absolute',
+                  top: '-50%',
+                  left: '-50%',
+                  right: '-50%',
+                  bottom: '-50%',
+                  background: `radial-gradient(circle at 30% 40%, rgba(255,255,255,0.1) 0%, transparent 40%),
+                              radial-gradient(circle at 70% 60%, rgba(255,255,255,0.05) 0%, transparent 40%)`,
+                  animation: 'float 8s ease-in-out infinite',
+                  zIndex: 0
+                }} />
+                
+                <div style={{ position: 'relative', zIndex: 1 }}>
+                  <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔓</div>
+                  <h3 style={{
+                    fontSize: '20px',
+                    fontWeight: 'bold',
+                    margin: '0 0 12px 0',
+                    fontFamily: 'Didot, serif'
+                  }}>
+                    Unlock Reading DNA for Your Family
+                  </h3>
+                  <p style={{
+                    fontSize: '14px',
+                    margin: '0 0 16px 0',
+                    opacity: 0.9,
+                    lineHeight: '1.5'
+                  }}>
+                    Enable the Reading DNA assessment for all {linkedStudents.length} of your children. 
+                    They'll discover their unique reading personalities and get personalized insights!
+                  </p>
+                  
+                  <button
+                    onClick={() => setShowReadingDnaUnlockModal(true)}
+                    style={{
+                      backgroundColor: 'rgba(255,255,255,0.2)',
+                      color: 'white',
+                      border: '2px solid rgba(255,255,255,0.5)',
+                      borderRadius: '12px',
+                      padding: '12px 24px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      transition: 'all 0.3s ease',
+                      backdropFilter: 'blur(10px)'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.3)';
+                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.8)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.2)';
+                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.5)';
+                    }}
+                  >
+                    <span>🧬</span>
+                    <span>Unlock for All Children</span>
+                  </button>
+                  
+                  <div style={{
+                    fontSize: '11px',
+                    opacity: 0.8,
+                    marginTop: '12px'
+                  }}>
+                    Research-inspired tool • Safe for children • One-time family decision
+                  </div>
+                </div>
               </div>
             )}
             
@@ -2210,6 +2358,245 @@ export default function ParentDnaLabDashboard() {
         </PremiumGate>
 
         {/* Modals stay outside PremiumGate */}
+        {/* Family Reading DNA Unlock Modal */}
+        {showReadingDnaUnlockModal && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            zIndex: 1001,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}>
+            <div style={{
+              backgroundColor: luxTheme.surface,
+              borderRadius: '20px',
+              maxWidth: '500px',
+              width: '100%',
+              maxHeight: '85vh',
+              overflow: 'auto',
+              padding: '24px',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+              position: 'relative'
+            }}>
+              <button 
+                onClick={() => setShowReadingDnaUnlockModal(false)}
+                disabled={isUnlockingReadingDna}
+                style={{
+                  position: 'absolute',
+                  top: '16px',
+                  right: '16px',
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  fontSize: '20px',
+                  cursor: isUnlockingReadingDna ? 'wait' : 'pointer',
+                  color: luxTheme.textSecondary,
+                  padding: '4px',
+                  opacity: isUnlockingReadingDna ? 0.5 : 1
+                }}
+              >
+                ✕
+              </button>
+
+              <div style={{
+                textAlign: 'center',
+                marginBottom: '24px'
+              }}>
+                <div style={{ fontSize: '48px', marginBottom: '16px' }}>🧬</div>
+                <h3 style={{
+                  margin: 0,
+                  color: luxTheme.textPrimary,
+                  fontSize: '22px',
+                  fontFamily: 'Didot, serif',
+                  marginBottom: '8px'
+                }}>
+                  Unlock Reading DNA for Your Family
+                </h3>
+                <p style={{
+                  fontSize: '14px',
+                  color: luxTheme.textSecondary,
+                  margin: 0
+                }}>
+                  Enable the assessment for all {linkedStudents.length} of your children
+                </p>
+              </div>
+              
+              <div style={{ marginBottom: '20px' }}>
+                <h4 style={{
+                  color: luxTheme.textPrimary,
+                  fontSize: '16px',
+                  margin: '0 0 8px 0'
+                }}>
+                  🔬 Research-Inspired Learning Tool
+                </h4>
+                <p style={{ 
+                  fontSize: '14px', 
+                  color: luxTheme.textSecondary,
+                  margin: 0,
+                  lineHeight: '1.5',
+                  marginBottom: '16px'
+                }}>
+                  This Reading DNA assessment is inspired by decades of research on motivation, learning styles, and reading development. 
+                  It's designed as a thoughtful, fun framework to help children understand their unique reading personalities.
+                </p>
+              </div>
+
+              <div style={{ marginBottom: '20px' }}>
+                <h4 style={{
+                  color: luxTheme.textPrimary,
+                  fontSize: '16px',
+                  margin: '0 0 8px 0'
+                }}>
+                  🌟 What Your Children Will Discover
+                </h4>
+                <ul style={{
+                  margin: 0,
+                  paddingLeft: '20px',
+                  fontSize: '14px',
+                  color: luxTheme.textSecondary,
+                  lineHeight: '1.6'
+                }}>
+                  <li>Their unique reading personality type (like "Curious Investigator" or "Creative Explorer")</li>
+                  <li>Learning style traits that help them understand how they learn best</li>
+                  <li>Personalized reading tips and strategies</li>
+                  <li>Fun insights about what motivates them to read</li>
+                  <li>A sense of pride in their unique reading identity</li>
+                </ul>
+              </div>
+
+              <div style={{ marginBottom: '20px' }}>
+                <h4 style={{
+                  color: luxTheme.textPrimary,
+                  fontSize: '16px',
+                  margin: '0 0 8px 0'
+                }}>
+                  🎯 Perfect for Self-Discovery
+                </h4>
+                <ul style={{
+                  margin: 0,
+                  paddingLeft: '20px',
+                  fontSize: '14px',
+                  color: luxTheme.textSecondary,
+                  lineHeight: '1.6'
+                }}>
+                  <li>Encourages self-reflection about reading preferences</li>
+                  <li>Builds confidence in their unique learning style</li>
+                  <li>Creates fun conversation starters about reading</li>
+                  <li>Helps them understand there's no "wrong" way to be a reader</li>
+                </ul>
+              </div>
+
+              <div style={{ marginBottom: '24px' }}>
+                <h4 style={{
+                  color: luxTheme.textPrimary,
+                  fontSize: '16px',
+                  margin: '0 0 8px 0'
+                }}>
+                  ✅ Safe & Age-Appropriate
+                </h4>
+                <ul style={{
+                  margin: 0,
+                  paddingLeft: '20px',
+                  fontSize: '14px',
+                  color: luxTheme.textSecondary,
+                  lineHeight: '1.6'
+                }}>
+                  <li>Not a diagnostic test - just a fun personality discovery tool</li>
+                  <li>Takes about 3 minutes with child-friendly questions</li>
+                  <li>Results celebrate all reading styles as valuable and unique</li>
+                  <li>Can be retaken anytime as children grow and change</li>
+                </ul>
+              </div>
+
+              <div style={{
+                backgroundColor: `${luxTheme.primary}15`,
+                borderRadius: '12px',
+                padding: '16px',
+                marginBottom: '24px',
+                textAlign: 'center'
+              }}>
+                <p style={{ 
+                  fontSize: '14px', 
+                  color: luxTheme.textPrimary,
+                  margin: 0,
+                  lineHeight: '1.5',
+                  fontWeight: '600'
+                }}>
+                  🌟 This is a one-time family decision. Once unlocked, all your children can explore their Reading DNA whenever they're curious about their learning style!
+                </p>
+              </div>
+              
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 2fr',
+                gap: '12px'
+              }}>
+                <button
+                  onClick={() => setShowReadingDnaUnlockModal(false)}
+                  disabled={isUnlockingReadingDna}
+                  style={{
+                    backgroundColor: 'transparent',
+                    color: luxTheme.textSecondary,
+                    border: `1px solid ${luxTheme.textSecondary}40`,
+                    borderRadius: '12px',
+                    padding: '12px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: isUnlockingReadingDna ? 'wait' : 'pointer',
+                    opacity: isUnlockingReadingDna ? 0.5 : 1
+                  }}
+                >
+                  Cancel
+                </button>
+                
+                <button
+                  onClick={unlockReadingDnaForFamily}
+                  disabled={isUnlockingReadingDna}
+                  style={{
+                    backgroundColor: '#9C88C4',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '12px',
+                    padding: '12px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: isUnlockingReadingDna ? 'wait' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    opacity: isUnlockingReadingDna ? 0.7 : 1
+                  }}
+                >
+                  {isUnlockingReadingDna ? (
+                    <>
+                      <div style={{
+                        width: '16px',
+                        height: '16px',
+                        border: '2px solid rgba(255,255,255,0.3)',
+                        borderTop: '2px solid white',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite'
+                      }} />
+                      <span>Unlocking...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>🔓</span>
+                      <span>Unlock for All {linkedStudents.length} Children</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Unlock Modal with DNA type colors */}
         {showUnlockModal && unlockingChild && (
           <div style={{
@@ -2579,9 +2966,9 @@ export default function ParentDnaLabDashboard() {
           }
           
           @keyframes float {
-            0% { transform: translateY(0px) rotate(0deg); }
-            50% { transform: translateY(-20px) rotate(180deg); }
-            100% { transform: translateY(0px) rotate(360deg); }
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            33% { transform: translateY(-10px) rotate(1deg); }
+            66% { transform: translateY(-5px) rotate(-1deg); }
           }
           
           @keyframes pulse {

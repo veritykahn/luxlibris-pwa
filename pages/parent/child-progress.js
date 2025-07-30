@@ -1,8 +1,9 @@
-// pages/parent/child-progress.js - FIXED: React hooks error + unlock request data mismatch + modal updates + clickable unlocks
+// pages/parent/child-progress.js - UPDATED with hamburger menu + notifications
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
 import { usePhaseAccess } from '../../hooks/usePhaseAccess'
+import useUnlockNotifications from '../../hooks/useUnlockNotifications'
 import Head from 'next/head'
 import { collection, getDocs, doc, getDoc, updateDoc, onSnapshot, query, where } from 'firebase/firestore'
 import { db, getSchoolNomineesEntities, getCurrentAcademicYear } from '../../lib/firebase'
@@ -41,6 +42,11 @@ const extractUnlockRequests = (student) => {
   return unlockRequests;
 };
 
+// Note: Notifications are automatically cleared by the useUnlockNotifications hook when:
+// - leaderboardUnlockRequested changes to false (after approval)
+// - A book's status changes from 'pending_parent_quiz_unlock' to 'quiz_unlocked'
+// This ensures notifications don't persist forever and are removed once handled
+
 // Helper to get book title from nominees if not stored in student data
 const getBookTitle = (bookId, nominees) => {
   const book = nominees.find(nominee => nominee.id === bookId);
@@ -48,7 +54,7 @@ const getBookTitle = (bookId, nominees) => {
 };
 
 // 🔧 FIXED: Child Detail Modal Component - hooks moved to top + real-time updates + expandable books
-function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees, readingStats, onApproveUnlock, initialTab = 'reading' }) {
+function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees, readingStats, onApproveUnlock, initialTab = 'reading', showComingSoon, setShowComingSoon }) {
   // ✅ FIXED: Move all hooks to the top, before any conditional returns
   const [activeTab, setActiveTab] = useState(initialTab)
   const [showAllAvailable, setShowAllAvailable] = useState(false)
@@ -88,6 +94,21 @@ function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees,
   const readingBooks = (child.bookshelf || []).filter(book => book.completed !== true && book.currentProgress > 0)
   const bookshelfBookIds = (child.bookshelf || []).map(book => book.bookId)
   const notReadBooks = nominees.filter(book => !bookshelfBookIds.includes(book.id))
+
+  // Enhanced approval handler with notifications
+  const handleModalApproval = async (studentId, unlockType, bookId = null) => {
+    await onApproveUnlock(studentId, unlockType, bookId)
+    
+    // Show success notification
+    if (unlockType === 'leaderboard') {
+      setShowComingSoon('✅ Leaderboard access approved!')
+    } else if (unlockType === 'quiz') {
+      const bookTitle = getBookTitle(bookId, nominees)
+      setShowComingSoon(`✅ Quiz approved for "${bookTitle}"!`)
+    }
+    
+    setTimeout(() => setShowComingSoon(''), 3000)
+  }
 
   return (
     <div style={{
@@ -462,7 +483,7 @@ function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees,
                         {request.type === 'leaderboard' ? '🏆 Leaderboard Access Request' : '📝 Quiz Unlock Request'}
                       </div>
                       <button
-                        onClick={() => onApproveUnlock(child.id, request.type, request.bookId)}
+                        onClick={() => handleModalApproval(child.id, request.type, request.bookId)}
                         style={{
                           backgroundColor: request.type === 'leaderboard' ? '#F59E0B' : '#2196F3',
                           color: 'white',
@@ -601,13 +622,13 @@ function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees,
 }
 
 // 🆕 FIXED: Child Progress Card Component - clickable pending unlocks
-function ChildProgressCard({ child, theme, childColor, onViewDetails, onApproveUnlock, readingStats, onViewUnlocks }) {
+function ChildProgressCard({ child, theme, childColor, onViewDetails, onApproveUnlock, readingStats, onViewUnlocks, showComingSoon, setShowComingSoon, notifications }) {
   // Calculate progress percentage
   const progressPercentage = Math.round(((child.booksSubmittedThisYear || 0) / (child.personalGoal || 20)) * 100)
   
-  // 🔧 FIXED: Count pending approvals using the actual data structure
-  const unlockRequests = extractUnlockRequests(child);
-  const pendingCount = unlockRequests.length;
+  // Use real-time notification data for this specific child
+  const childNotifications = notifications?.getNotificationsByStudent(child.id) || []
+  const pendingCount = childNotifications.length
 
   return (
     <div style={{
@@ -862,10 +883,19 @@ export default function ChildProgress() {
   const [selectedChild, setSelectedChild] = useState(null)
   const [readingStats, setReadingStats] = useState({})
   const [showBraggingRights, setShowBraggingRights] = useState(false)
-  const [modalInitialTab, setModalInitialTab] = useState('reading') // 🆕 NEW: Track which tab to open
+  const [modalInitialTab, setModalInitialTab] = useState('reading')
+  const [showComingSoon, setShowComingSoon] = useState('')
   
   // Navigation menu state
   const [showNavMenu, setShowNavMenu] = useState(false)
+
+  // 🆕 NEW: Notification integration
+  const {
+    markNotificationsAsSeen,
+    getNotificationsByStudent,
+    totalCount,
+    newCount
+  } = useUnlockNotifications()
 
   // Lux Libris Classic Theme
   const luxTheme = {
@@ -878,15 +908,23 @@ export default function ChildProgress() {
     textSecondary: '#556B7A'
   }
 
-  // Navigation menu items
+  // Navigation menu items with notification badge
   const navMenuItems = useMemo(() => [
     { name: 'Family Dashboard', path: '/parent/dashboard', icon: '⌂' },
-    { name: 'Child Progress', path: '/parent/child-progress', icon: '◐', current: true },
+    { 
+      name: 'Child Progress', 
+      path: '/parent/child-progress', 
+      icon: '◐', 
+      current: true,
+      badge: totalCount > 0 ? totalCount : null,
+      badgeColor: newCount > 0 ? '#F59E0B' : '#6B7280'
+    },
     { name: 'Book Nominees', path: '/parent/nominees', icon: '□' },
     { name: 'Reading Habits', path: '/parent/healthy-habits', icon: '◉' },
     { name: 'Family Battle', path: '/parent/family-battle', icon: '⚔️' },
+    { name: 'Reading DNA Lab', path: '/parent/dna-lab', icon: '⬢' },
     { name: 'Settings', path: '/parent/settings', icon: '⚙' }
-  ], [])
+  ], [totalCount, newCount])
 
   // Generate consistent color for each child
   const getChildColor = (childName, childId) => {
@@ -1068,76 +1106,108 @@ export default function ChildProgress() {
     }
   }
 
-// 🔧 FIXED: handleApproveUnlock function - now properly handles the actual data structure
-const handleApproveUnlock = async (studentId, unlockType, bookId = null) => {
-  try {
-    console.log('🔓 Approving unlock:', unlockType, 'for student:', studentId, 'bookId:', bookId)
+  // Handle viewing unlock requests (mark as seen)
+  const handleViewUnlocks = (child) => {
+    setSelectedChild(child)
+    setModalInitialTab('unlocks')
     
-    const student = linkedStudents.find(s => s.id === studentId)
-    if (!student) return
-    
-    const studentRef = doc(db, `entities/${student.entityId}/schools/${student.schoolId}/students`, studentId)
-    
-    if (unlockType === 'leaderboard') {
-      await updateDoc(studentRef, {
-        leaderboardUnlocked: true,
-        leaderboardUnlockRequested: false,
-        leaderboardUnlockedAt: new Date(),
-        leaderboardUnlockedBy: user.uid
-      })
-      
-      // Update local state
-      setLinkedStudents(prev => prev.map(s => 
-        s.id === studentId 
-          ? { ...s, leaderboardUnlocked: true, leaderboardUnlockRequested: false }
-          : s
-      ))
-      
-    } else if (unlockType === 'quiz' && bookId) {
-      // 🔧 FIXED: Handle quiz unlock by updating the specific book's status in bookshelf
-      const currentStudent = await getDoc(studentRef);
-      const studentData = currentStudent.data();
-      const currentBookshelf = studentData.bookshelf || [];
-      
-      // 🔧 FIXED: Update the specific book's status to 'quiz_unlocked' instead of 'in_progress'
-      const updatedBookshelf = currentBookshelf.map(book => {
-        if (book.bookId === bookId && book.status === 'pending_parent_quiz_unlock') {
-          return {
-            ...book,
-            status: 'quiz_unlocked', // 🔧 FIXED: Special status that student app will detect
-            parentUnlockedAt: new Date(),
-            parentUnlockedBy: user.uid
-          };
-        }
-        return book;
-      });
-      
-      await updateDoc(studentRef, {
-        bookshelf: updatedBookshelf,
-        lastModified: new Date()
-      })
-      
-      // Update local state
-      setLinkedStudents(prev => prev.map(s => 
-        s.id === studentId 
-          ? { 
-              ...s, 
-              bookshelf: s.bookshelf?.map(book => 
-                book.bookId === bookId && book.status === 'pending_parent_quiz_unlock'
-                  ? { ...book, status: 'quiz_unlocked', parentUnlockedAt: new Date() }
-                  : book
-              ) || []
-            }
-          : s
-      ))
+    // Mark notifications as seen when viewing unlocks
+    if (newCount > 0) {
+      markNotificationsAsSeen()
     }
     
-    console.log('✅ Unlock approved successfully')
-    
-  } catch (error) {
-    console.error('❌ Error approving unlock:', error)
+    if (permissions.currentPhase === 'VOTING') {
+      setShowBraggingRights(true)
+    } else {
+      setShowDetailModal(true)
+    }
   }
-}
+
+  // UPDATED: handleApproveUnlock with better notification integration
+  const handleApproveUnlock = async (studentId, unlockType, bookId = null) => {
+    try {
+      console.log('🔓 Approving unlock:', unlockType, 'for student:', studentId, 'bookId:', bookId)
+      
+      const student = linkedStudents.find(s => s.id === studentId)
+      if (!student) return
+      
+      const studentRef = doc(db, `entities/${student.entityId}/schools/${student.schoolId}/students`, studentId)
+      
+      if (unlockType === 'leaderboard') {
+        await updateDoc(studentRef, {
+          leaderboardUnlocked: true,
+          leaderboardUnlockRequested: false,
+          leaderboardUnlockedAt: new Date(),
+          leaderboardUnlockedBy: user.uid
+        })
+        
+        // Update local state
+        setLinkedStudents(prev => prev.map(s => 
+          s.id === studentId 
+            ? { ...s, leaderboardUnlocked: true, leaderboardUnlockRequested: false }
+            : s
+        ))
+        
+        // Show success notification
+        setShowComingSoon('✅ Leaderboard access approved!')
+        setTimeout(() => setShowComingSoon(''), 3000)
+        
+      } else if (unlockType === 'quiz' && bookId) {
+        // Handle quiz unlock by updating the specific book's status in bookshelf
+        const currentStudent = await getDoc(studentRef);
+        const studentData = currentStudent.data();
+        const currentBookshelf = studentData.bookshelf || [];
+        
+        // Update the specific book's status to 'quiz_unlocked'
+        const updatedBookshelf = currentBookshelf.map(book => {
+          if (book.bookId === bookId && book.status === 'pending_parent_quiz_unlock') {
+            return {
+              ...book,
+              status: 'quiz_unlocked',
+              parentUnlockedAt: new Date(),
+              parentUnlockedBy: user.uid
+            };
+          }
+          return book;
+        });
+        
+        await updateDoc(studentRef, {
+          bookshelf: updatedBookshelf,
+          lastModified: new Date()
+        })
+        
+        // Update local state
+        setLinkedStudents(prev => prev.map(s => 
+          s.id === studentId 
+            ? { 
+                ...s, 
+                bookshelf: s.bookshelf?.map(book => 
+                  book.bookId === bookId && book.status === 'pending_parent_quiz_unlock'
+                    ? { ...book, status: 'quiz_unlocked', parentUnlockedAt: new Date() }
+                    : book
+                ) || []
+              }
+            : s
+        ))
+        
+        // Show success notification with book title
+        const bookTitle = getBookTitle(bookId, nominees)
+        setShowComingSoon(`✅ Quiz approved for "${bookTitle}"!`)
+        setTimeout(() => setShowComingSoon(''), 3000)
+      }
+      
+      console.log('✅ Unlock approved successfully')
+      
+      // Notifications are automatically cleared by the useUnlockNotifications hook
+      // when it detects the status change in the database (real-time listeners).
+      // No manual notification clearing needed here.
+      
+    } catch (error) {
+      console.error('❌ Error approving unlock:', error)
+      setShowComingSoon('❌ Failed to approve unlock. Please try again.')
+      setTimeout(() => setShowComingSoon(''), 3000)
+    }
+  }
 
   const goToPrevChild = () => {
     if (currentChildIndex > 0) {
@@ -1155,11 +1225,13 @@ const handleApproveUnlock = async (studentId, unlockType, bookId = null) => {
     }
   }
 
+  // UPDATED: Navigation handler - all pages are now built
   const handleNavigation = (item) => {
     if (item.current) return
     
     setShowNavMenu(false)
     
+    // Navigate to the selected page
     setTimeout(() => {
       router.push(item.path)
     }, 100)
@@ -1170,18 +1242,6 @@ const handleApproveUnlock = async (studentId, unlockType, bookId = null) => {
     setModalInitialTab('reading') // Default to reading tab
     
     // Check if in voting phase - show bragging rights instead
-    if (permissions.currentPhase === 'VOTING') {
-      setShowBraggingRights(true)
-    } else {
-      setShowDetailModal(true)
-    }
-  }
-
-  // 🆕 NEW: Handle clicking unlocks from main card
-  const handleViewUnlocks = (child) => {
-    setSelectedChild(child)
-    setModalInitialTab('unlocks') // Open directly to unlocks tab
-    
     if (permissions.currentPhase === 'VOTING') {
       setShowBraggingRights(true)
     } else {
@@ -1443,7 +1503,8 @@ const handleApproveUnlock = async (studentId, unlockType, bookId = null) => {
                       textAlign: 'left',
                       touchAction: 'manipulation',
                       WebkitTapHighlightColor: 'transparent',
-                      transition: 'background-color 0.2s ease'
+                      transition: 'background-color 0.2s ease',
+                      position: 'relative'
                     }}
                     onMouseEnter={(e) => {
                       if (!item.current) {
@@ -1460,6 +1521,22 @@ const handleApproveUnlock = async (studentId, unlockType, bookId = null) => {
                     <span>{item.name}</span>
                     {item.current && (
                       <span style={{ marginLeft: 'auto', fontSize: '12px', color: luxTheme.primary }}>●</span>
+                    )}
+                    {item.badge && (
+                      <div style={{
+                        position: 'absolute',
+                        right: '16px',
+                        backgroundColor: item.badgeColor,
+                        color: 'white',
+                        borderRadius: '10px',
+                        padding: '2px 6px',
+                        fontSize: '10px',
+                        fontWeight: '600',
+                        minWidth: '20px',
+                        textAlign: 'center'
+                      }}>
+                        {item.badge}
+                      </div>
                     )}
                   </button>
                 ))}
@@ -1577,9 +1654,12 @@ const handleApproveUnlock = async (studentId, unlockType, bookId = null) => {
               theme={luxTheme}
               childColor={childColor}
               onViewDetails={() => handleViewDetails(currentChild)}
-              onViewUnlocks={() => handleViewUnlocks(currentChild)} // 🆕 NEW: Clickable unlocks
+              onViewUnlocks={() => handleViewUnlocks(currentChild)}
               onApproveUnlock={handleApproveUnlock}
               readingStats={currentChildStats}
+              showComingSoon={showComingSoon}
+              setShowComingSoon={setShowComingSoon}
+              notifications={{ getNotificationsByStudent }}
             />
           </div>
 
@@ -1655,7 +1735,7 @@ const handleApproveUnlock = async (studentId, unlockType, bookId = null) => {
           )}
         </div>
 
-        {/* 🆕 FIXED: Child Detail Modal with real-time updates */}
+        {/* 🆕 FIXED: Child Detail Modal with real-time updates + notifications */}
         <ChildDetailModal
           child={modalChild} // Use modalChild for real-time updates
           isOpen={showDetailModal}
@@ -1670,6 +1750,8 @@ const handleApproveUnlock = async (studentId, unlockType, bookId = null) => {
           readingStats={modalChild ? readingStats[modalChild.id] || {} : {}}
           onApproveUnlock={handleApproveUnlock}
           initialTab={modalInitialTab} // 🆕 NEW: Pass initial tab
+          showComingSoon={showComingSoon} // 🆕 NEW: Pass notifications
+          setShowComingSoon={setShowComingSoon} // 🆕 NEW: Pass notifications
         />
 
         {/* Bragging Rights Modal for Voting Phase */}
@@ -1686,6 +1768,28 @@ const handleApproveUnlock = async (studentId, unlockType, bookId = null) => {
             readingPersonality={null}
             currentTheme={luxTheme}
           />
+        )}
+
+        {/* 🆕 NEW: Coming Soon Message */}
+        {showComingSoon && (
+          <div style={{
+            position: 'fixed',
+            bottom: '20px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: luxTheme.primary,
+            color: luxTheme.textPrimary,
+            padding: '12px 24px',
+            borderRadius: '24px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+            zIndex: 1001,
+            fontSize: 'clamp(12px, 3.5vw, 14px)',
+            fontWeight: '600',
+            maxWidth: '90vw',
+            textAlign: 'center'
+          }}>
+            {showComingSoon}
+          </div>
         )}
 
         <style jsx>{`

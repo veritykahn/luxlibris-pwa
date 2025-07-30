@@ -1,10 +1,12 @@
-// pages/parent/dashboard.js - Updated with two parents support
+// pages/parent/dashboard.js - Updated with two parents support and notifications
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
 import Head from 'next/head'
 import { collection, getDocs, doc, getDoc, updateDoc, query, where } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
+import useUnlockNotifications from '../../hooks/useUnlockNotifications'
+import { NotificationToastContainer } from '../../components/NotificationToast'
 
 export default function ParentDashboard() {
   const router = useRouter()
@@ -28,35 +30,103 @@ export default function ParentDashboard() {
   // Family dashboard cards state
   const [expandedChild, setExpandedChild] = useState(null)
 
-  // UPDATED: Lux Libris Classic Theme (same as student dashboard)
-  const luxTheme = {
+  // 🆕 NEW: Real-time unlock notifications
+  const {
+    notifications,
+    toastQueue,
+    markNotificationsAsSeen,
+    removeToast,
+    hasNotifications,
+    hasNewNotifications,
+    totalCount,
+    newCount,
+    loading: notificationsLoading
+  } = useUnlockNotifications()
+
+  // 🆕 NEW: Handle navigation to child progress from notifications
+  const handleNavigateToUnlocks = () => {
+    markNotificationsAsSeen() // Mark as seen when navigating
+    router.push('/parent/child-progress')
+  }
+
+  // Get time-based theme - memoized with hour dependency
+  const timeTheme = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) {
+      return {
+        name: 'morning',
+        gradient: 'linear-gradient(135deg, #FFE5B4, #FFD4A3, #FFC594)',
+        message: 'Good morning! Perfect time for reading together ☀️',
+        overlay: 'rgba(255, 220, 160, 0.1)'
+      };
+    } else if (hour >= 12 && hour < 17) {
+      return {
+        name: 'afternoon',
+        gradient: 'linear-gradient(135deg, #87CEEB, #98D8E8, #ADD8E6)',
+        message: 'Afternoon reading break? 📚',
+        overlay: 'rgba(135, 206, 235, 0.1)'
+      };
+    } else if (hour >= 17 && hour < 20) {
+      return {
+        name: 'evening',
+        gradient: 'linear-gradient(135deg, #FFB347, #FF8C42, #FF6B35)',
+        message: 'Cozy evening reading time 🌅',
+        overlay: 'rgba(255, 140, 66, 0.1)'
+      };
+    } else {
+      return {
+        name: 'night',
+        gradient: 'linear-gradient(135deg, #4B0082, #6A0DAD, #7B68EE)',
+        message: 'Bedtime stories await 🌙',
+        overlay: 'rgba(75, 0, 130, 0.1)'
+      };
+    }
+  }, [Math.floor(new Date().getHours() / 6)]); // Only recalc every 6 hours
+
+  // UPDATED: Lux Libris Classic Theme with time-based adjustments
+  const luxTheme = useMemo(() => ({
     primary: '#ADD4EA',
     secondary: '#C3E0DE',
     accent: '#A1E5DB',
     background: '#FFFCF5',
     surface: '#FFFFFF',
     textPrimary: '#223848',
-    textSecondary: '#556B7A'
-  }
+    textSecondary: '#556B7A',
+    timeOverlay: timeTheme.overlay
+  }), [timeTheme]);
 
-  // UPDATED: Navigation menu items matching healthy habits pattern
+  // UPDATED: Navigation menu items with notification badge
   const navMenuItems = useMemo(() => [
     { name: 'Family Dashboard', path: '/parent/dashboard', icon: '⌂', current: true },
-    { name: 'Child Progress', path: '/parent/child-progress', icon: '◐' },
+    { 
+      name: 'Child Progress', 
+      path: '/parent/child-progress', 
+      icon: '◐',
+      badge: totalCount > 0 ? totalCount : null, // Show total pending count
+      badgeColor: newCount > 0 ? '#F59E0B' : '#6B7280' // Orange for new, gray for total
+    },
     { name: 'Book Nominees', path: '/parent/nominees', icon: '□' },
     { name: 'Reading Habits', path: '/parent/healthy-habits', icon: '◉' },
     { name: 'Family Battle', path: '/parent/family-battle', icon: '⚔️' },
     { name: 'Reading DNA Lab', path: '/parent/dna-lab', icon: '⬢' },
     { name: 'Settings', path: '/parent/settings', icon: '⚙' }
-  ], [])
+  ], [totalCount, newCount])
 
-  // Bottom navigation items (most important features)
+  // UPDATED: Bottom navigation items with notification badge
   const bottomNavItems = useMemo(() => [
     { name: 'Dashboard', path: '/parent/dashboard', icon: '⌂', current: true },
+    { 
+      name: 'Progress', 
+      path: '/parent/child-progress', 
+      icon: '◐',
+      badge: totalCount > 0 ? totalCount : null,
+      badgeColor: newCount > 0 ? '#F59E0B' : '#6B7280'
+    },
     { name: 'Nominees', path: '/parent/nominees', icon: '□' },
     { name: 'Habits', path: '/parent/healthy-habits', icon: '◉' },
-    { name: 'Settings', path: '/parent/settings', icon: '⚙' }
-  ], [])
+    { name: 'Battle', path: '/parent/family-battle', icon: '⚔️' },
+    { name: 'DNA Lab', path: '/parent/dna-lab', icon: '⬢' }
+  ], [totalCount, newCount])
 
   useEffect(() => {
     if (!authLoading && isAuthenticated && user && userProfile?.accountType === 'parent') {
@@ -510,7 +580,7 @@ export default function ParentDashboard() {
               ☰
             </button>
 
-            {/* Dropdown Menu */}
+            {/* UPDATED: Dropdown Menu with notification badges */}
             {showNavMenu && (
               <div style={{
                 position: 'absolute',
@@ -531,6 +601,12 @@ export default function ParentDashboard() {
                     onClick={(e) => {
                       e.preventDefault()
                       e.stopPropagation()
+                      
+                      // Mark notifications as seen when clicking Child Progress
+                      if (item.path === '/parent/child-progress' && hasNewNotifications) {
+                        markNotificationsAsSeen()
+                      }
+                      
                       handleNavigation(item)
                     }}
                     style={{
@@ -547,6 +623,7 @@ export default function ParentDashboard() {
                       color: luxTheme.textPrimary,
                       fontWeight: item.current ? '600' : '500',
                       textAlign: 'left',
+                      position: 'relative',
                       touchAction: 'manipulation',
                       WebkitTapHighlightColor: 'transparent',
                       transition: 'background-color 0.2s ease'
@@ -563,7 +640,27 @@ export default function ParentDashboard() {
                     }}
                   >
                     <span style={{ fontSize: '16px' }}>{item.icon}</span>
-                    <span>{item.name}</span>
+                    <span style={{ flex: 1 }}>{item.name}</span>
+                    
+                    {/* 🆕 NEW: Notification badge */}
+                    {item.badge && (
+                      <div style={{
+                        backgroundColor: item.badgeColor,
+                        color: 'white',
+                        borderRadius: '10px',
+                        minWidth: '18px',
+                        height: '18px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '10px',
+                        fontWeight: 'bold',
+                        marginLeft: '4px'
+                      }}>
+                        {item.badge}
+                      </div>
+                    )}
+                    
                     {item.current && (
                       <span style={{ marginLeft: 'auto', fontSize: '12px', color: luxTheme.primary }}>●</span>
                     )}
@@ -1125,7 +1222,15 @@ export default function ParentDashboard() {
           </div>
         </div>
 
-        {/* Bottom Navigation Bar */}
+        {/* 🆕 NEW: Real-time notification toasts */}
+        <NotificationToastContainer
+          toasts={toastQueue}
+          onRemoveToast={removeToast}
+          onNavigateToUnlocks={handleNavigateToUnlocks}
+          theme={luxTheme}
+        />
+
+        {/* UPDATED: Bottom Navigation Bar with notification badges */}
         <div style={{
           position: 'fixed',
           bottom: 0,
@@ -1149,6 +1254,10 @@ export default function ParentDashboard() {
                 key={item.path}
                 onClick={() => {
                   if (!item.current) {
+                    // Mark notifications as seen when clicking Child Progress
+                    if (item.path === '/parent/child-progress' && hasNewNotifications) {
+                      markNotificationsAsSeen()
+                    }
                     router.push(item.path)
                   }
                 }}
@@ -1163,17 +1272,43 @@ export default function ParentDashboard() {
                   cursor: item.current ? 'default' : 'pointer',
                   color: item.current ? luxTheme.primary : luxTheme.textSecondary,
                   transition: 'all 0.2s ease',
+                  position: 'relative',
                   touchAction: 'manipulation',
                   WebkitTapHighlightColor: 'transparent'
                 }}
               >
-                <span style={{
-                  fontSize: '20px',
-                  transform: item.current ? 'scale(1.1)' : 'scale(1)',
-                  transition: 'transform 0.2s ease'
-                }}>
-                  {item.icon}
-                </span>
+                <div style={{ position: 'relative' }}>
+                  <span style={{
+                    fontSize: '20px',
+                    transform: item.current ? 'scale(1.1)' : 'scale(1)',
+                    transition: 'transform 0.2s ease'
+                  }}>
+                    {item.icon}
+                  </span>
+                  
+                  {/* 🆕 NEW: Notification badge */}
+                  {item.badge && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '-6px',
+                      right: '-6px',
+                      backgroundColor: item.badgeColor,
+                      color: 'white',
+                      borderRadius: '10px',
+                      minWidth: '16px',
+                      height: '16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '9px',
+                      fontWeight: 'bold',
+                      border: '2px solid white'
+                    }}>
+                      {item.badge}
+                    </div>
+                  )}
+                </div>
+                
                 <span style={{
                   fontSize: '10px',
                   fontWeight: item.current ? '600' : '500'
