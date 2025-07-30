@@ -2487,7 +2487,7 @@ export default function ParentDnaLabDashboard() {
                   <li>Encourages self-reflection about reading preferences</li>
                   <li>Builds confidence in their unique learning style</li>
                   <li>Creates fun conversation starters about reading</li>
-                  <li>Helps them understand there's no &quot;wrong&quot; way to be a reader</li>
+                  <li>Helps them understand there&apos;s no &quot;wrong&quot; way to be a reader</li>
                 </ul>
               </div>
 
