@@ -98,8 +98,8 @@ function StoneColdjaneAustenHelper({ show, onClose, theme, familyBattleData }) {
     }}>
       {/* Jane Austen Portrait */}
       <div style={{
-        width: '55px',
-        height: '55px',
+        width: '80px',
+        height: '80px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -109,13 +109,13 @@ function StoneColdjaneAustenHelper({ show, onClose, theme, familyBattleData }) {
           <img 
             src={image}
             alt="Stone Cold Jane Austen"
-            style={{ width: '55px', height: '55px', objectFit: 'contain' }}
+            style={{ width: '80px', height: '80px', objectFit: 'contain' }}
             onError={() => setImageError(true)}
           />
         ) : (
           <div style={{
-            width: '55px',
-            height: '55px',
+            width: '80px',
+            height: '80px',
             backgroundColor: theme.accent,
             borderRadius: '8px',
             display: 'flex',

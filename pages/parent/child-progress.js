@@ -1,4 +1,4 @@
-// pages/parent/child-progress.js - UPDATED with hamburger menu + notifications
+// pages/parent/child-progress.js - UPDATED with real world achievements, better contrast, and expandable sections
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
@@ -53,11 +53,14 @@ const getBookTitle = (bookId, nominees) => {
   return book ? book.title : 'Unknown Book';
 };
 
-// 🔧 FIXED: Child Detail Modal Component - hooks moved to top + real-time updates + expandable books
-function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees, readingStats, onApproveUnlock, initialTab = 'reading', showComingSoon, setShowComingSoon }) {
+// 🔧 FIXED: Child Detail Modal Component - hooks moved to top + real-time updates + expandable books + real world achievements
+function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees, readingStats, onApproveUnlock, initialTab = 'reading', showComingSoon, setShowComingSoon, teacherData }) {
   // ✅ FIXED: Move all hooks to the top, before any conditional returns
   const [activeTab, setActiveTab] = useState(initialTab)
   const [showAllAvailable, setShowAllAvailable] = useState(false)
+  const [showAllCompleted, setShowAllCompleted] = useState(false)
+  const [showAllReading, setShowAllReading] = useState(false)
+  const [realWorldAchievements, setRealWorldAchievements] = useState([])
   
   // ✅ FIXED: Reset tab when modal opens with specific tab
   useEffect(() => {
@@ -65,6 +68,35 @@ function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees,
       setActiveTab(initialTab)
     }
   }, [isOpen, initialTab])
+
+  // Calculate real world achievements when child data changes
+  useEffect(() => {
+    if (child && teacherData && teacherData.achievementTiers) {
+      const calculateRealWorldAchievements = (studentData, achievementTiers) => {
+        const booksThisYear = studentData.booksSubmittedThisYear || 0
+        const allAchievements = []
+        
+        achievementTiers.forEach((tier, index) => {
+          const isEarned = booksThisYear >= tier.books
+          const booksNeeded = isEarned ? 0 : tier.books - booksThisYear
+          
+          allAchievements.push({
+            tier: index + 1,
+            books: tier.books,
+            reward: tier.reward,
+            type: tier.type,
+            earned: isEarned,
+            booksNeeded,
+            earnedDate: isEarned ? (studentData.lastAchievementUpdate || 'This year') : null
+          })
+        })
+        
+        return allAchievements
+      }
+      
+      setRealWorldAchievements(calculateRealWorldAchievements(child, teacherData.achievementTiers))
+    }
+  }, [child, teacherData])
   
   // ✅ FIXED: Move useEffect to top and add dependency on isOpen
   useEffect(() => {
@@ -299,22 +331,46 @@ function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees,
               {/* Book Categories */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 
-                {/* Completed Books */}
+                {/* Completed Books - NOW EXPANDABLE WITH BETTER CONTRAST */}
                 <div>
-                  <h4 style={{
-                    margin: '0 0 8px 0',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: theme.textPrimary,
+                  <div style={{
                     display: 'flex',
+                    justifyContent: 'space-between',
                     alignItems: 'center',
-                    gap: '6px'
+                    marginBottom: '8px'
                   }}>
-                    ✅ Completed ({completedBooks.length})
-                  </h4>
+                    <h4 style={{
+                      margin: '0',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      color: theme.textPrimary,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}>
+                      ✅ Completed ({completedBooks.length})
+                    </h4>
+                    {completedBooks.length > 3 && (
+                      <button
+                        onClick={() => setShowAllCompleted(!showAllCompleted)}
+                        style={{
+                          backgroundColor: 'transparent',
+                          border: `1px solid #4CAF50`,
+                          borderRadius: '6px',
+                          padding: '4px 8px',
+                          fontSize: '10px',
+                          color: '#2E7D32',
+                          cursor: 'pointer',
+                          fontWeight: '600'
+                        }}
+                      >
+                        {showAllCompleted ? 'Show Less' : `Show All ${completedBooks.length}`}
+                      </button>
+                    )}
+                  </div>
                   {completedBooks.length > 0 ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {completedBooks.slice(0, 3).map((book, index) => {
+                      {(showAllCompleted ? completedBooks : completedBooks.slice(0, 3)).map((book, index) => {
                         const bookDetails = nominees.find(n => n.id === book.bookId)
                         return (
                           <div key={index} style={{
@@ -322,18 +378,21 @@ function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees,
                             borderRadius: '8px',
                             padding: '8px',
                             fontSize: '12px',
-                            border: '1px solid #4CAF50'
+                            border: '1px solid #4CAF50',
+                            color: '#1B5E20' // FIXED: Better contrast - dark green text
                           }}>
-                            {bookDetails?.title || 'Unknown Book'}
+                            <div style={{ fontWeight: '600', marginBottom: '2px' }}>
+                              {bookDetails?.title || 'Unknown Book'}
+                            </div>
                             {book.rating > 0 && (
-                              <span style={{ marginLeft: '8px', color: '#4CAF50' }}>
-                                {'⭐'.repeat(book.rating)}
-                              </span>
+                              <div style={{ color: '#2E7D32', fontSize: '11px' }}>
+                                {'⭐'.repeat(book.rating)} ({book.rating}/5 stars)
+                              </div>
                             )}
                           </div>
                         )
                       })}
-                      {completedBooks.length > 3 && (
+                      {!showAllCompleted && completedBooks.length > 3 && (
                         <div style={{ fontSize: '11px', color: theme.textSecondary, textAlign: 'center' }}>
                           +{completedBooks.length - 3} more completed books
                         </div>
@@ -346,22 +405,46 @@ function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees,
                   )}
                 </div>
 
-                {/* Currently Reading */}
+                {/* Currently Reading - NOW EXPANDABLE WITH BETTER CONTRAST */}
                 <div>
-                  <h4 style={{
-                    margin: '0 0 8px 0',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: theme.textPrimary,
+                  <div style={{
                     display: 'flex',
+                    justifyContent: 'space-between',
                     alignItems: 'center',
-                    gap: '6px'
+                    marginBottom: '8px'
                   }}>
-                    📖 Currently Reading ({readingBooks.length})
-                  </h4>
+                    <h4 style={{
+                      margin: '0',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      color: theme.textPrimary,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}>
+                      📖 Currently Reading ({readingBooks.length})
+                    </h4>
+                    {readingBooks.length > 3 && (
+                      <button
+                        onClick={() => setShowAllReading(!showAllReading)}
+                        style={{
+                          backgroundColor: 'transparent',
+                          border: `1px solid #2196F3`,
+                          borderRadius: '6px',
+                          padding: '4px 8px',
+                          fontSize: '10px',
+                          color: '#1565C0',
+                          cursor: 'pointer',
+                          fontWeight: '600'
+                        }}
+                      >
+                        {showAllReading ? 'Show Less' : `Show All ${readingBooks.length}`}
+                      </button>
+                    )}
+                  </div>
                   {readingBooks.length > 0 ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {readingBooks.map((book, index) => {
+                      {(showAllReading ? readingBooks : readingBooks.slice(0, 3)).map((book, index) => {
                         const bookDetails = nominees.find(n => n.id === book.bookId)
                         const total = book.format === 'audiobook' 
                           ? (bookDetails?.totalMinutes || 0)
@@ -374,15 +457,23 @@ function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees,
                             borderRadius: '8px',
                             padding: '8px',
                             fontSize: '12px',
-                            border: '1px solid #2196F3'
+                            border: '1px solid #2196F3',
+                            color: '#0D47A1' // FIXED: Better contrast - dark blue text
                           }}>
-                            <div>{bookDetails?.title || 'Unknown Book'}</div>
-                            <div style={{ marginTop: '4px', fontSize: '10px', color: '#1565C0' }}>
+                            <div style={{ fontWeight: '600', marginBottom: '4px' }}>
+                              {bookDetails?.title || 'Unknown Book'}
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#1565C0' }}>
                               {progress}% complete • {book.currentProgress} {book.format === 'audiobook' ? 'mins' : 'pages'}
                             </div>
                           </div>
                         )
                       })}
+                      {!showAllReading && readingBooks.length > 3 && (
+                        <div style={{ fontSize: '11px', color: theme.textSecondary, textAlign: 'center' }}>
+                          +{readingBooks.length - 3} more books in progress
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div style={{ fontSize: '12px', color: theme.textSecondary, fontStyle: 'italic' }}>
@@ -391,7 +482,7 @@ function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees,
                   )}
                 </div>
 
-                {/* 🆕 FIXED: Available to Read - Now Expandable */}
+                {/* 🆕 FIXED: Available to Read - Better contrast for yellow background */}
                 <div>
                   <div style={{
                     display: 'flex',
@@ -415,11 +506,11 @@ function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees,
                         onClick={() => setShowAllAvailable(!showAllAvailable)}
                         style={{
                           backgroundColor: 'transparent',
-                          border: `1px solid ${childColor}40`,
+                          border: `1px solid #FF9800`,
                           borderRadius: '6px',
                           padding: '4px 8px',
                           fontSize: '10px',
-                          color: childColor,
+                          color: '#E65100',
                           cursor: 'pointer',
                           fontWeight: '600'
                         }}
@@ -436,7 +527,9 @@ function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees,
                           borderRadius: '8px',
                           padding: '8px',
                           fontSize: '12px',
-                          border: '1px solid #FF9800'
+                          border: '1px solid #FF9800',
+                          color: '#BF360C', // FIXED: Even darker orange for better contrast
+                          fontWeight: '600'
                         }}>
                           {book.title}
                         </div>
@@ -519,98 +612,175 @@ function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees,
             </div>
           )}
 
-          {/* Achievements Tab */}
+          {/* Achievements Tab - COMPLETELY REPLACED WITH REAL WORLD ACHIEVEMENTS */}
           {activeTab === 'achievements' && (
             <div>
+              {/* Reading Goal Progress Overview */}
               <div style={{
-                backgroundColor: `${childColor}10`,
+                backgroundColor: `${childColor}15`,
                 borderRadius: '12px',
                 padding: '16px',
-                marginBottom: '16px'
+                marginBottom: '20px',
+                border: `1px solid ${childColor}40`
               }}>
                 <div style={{
                   fontSize: '14px',
                   fontWeight: '600',
                   color: theme.textPrimary,
-                  marginBottom: '12px'
+                  marginBottom: '12px',
+                  textAlign: 'center'
                 }}>
-                  📊 Stats Overview
+                  🎯 Real World Achievement Progress
                 </div>
                 <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  gap: '12px',
-                  fontSize: '12px'
+                  textAlign: 'center',
+                  marginBottom: '12px'
                 }}>
-                  <div>
-                    <span style={{ color: theme.textSecondary }}>Total XP:</span><br/>
-                    <span style={{ fontWeight: 'bold', color: theme.textPrimary }}>
-                      {child.totalXP || 0}
-                    </span>
-                  </div>
-                  <div>
-                    <span style={{ color: theme.textSecondary }}>Saints Unlocked:</span><br/>
-                    <span style={{ fontWeight: 'bold', color: theme.textPrimary }}>
-                      {(child.saintUnlocks || []).length}
-                    </span>
-                  </div>
-                  <div>
-                    <span style={{ color: theme.textSecondary }}>Reading Streak:</span><br/>
-                    <span style={{ fontWeight: 'bold', color: theme.textPrimary }}>
-                      {child.readingStreaks?.current || 0} days
-                    </span>
-                  </div>
-                  <div>
-                    <span style={{ color: theme.textSecondary }}>Lifetime Books:</span><br/>
-                    <span style={{ fontWeight: 'bold', color: theme.textPrimary }}>
-                      {child.lifetimeBooksSubmitted || 0}
-                    </span>
-                  </div>
+                  <span style={{
+                    fontSize: '24px',
+                    fontWeight: 'bold',
+                    color: childColor
+                  }}>
+                    {child.booksSubmittedThisYear || 0}
+                  </span>
+                  <span style={{
+                    fontSize: '14px',
+                    color: theme.textSecondary,
+                    marginLeft: '4px'
+                  }}>
+                    books read this year
+                  </span>
                 </div>
               </div>
 
-              {/* Saints Collection */}
-              {child.saintUnlocks && child.saintUnlocks.length > 0 && (
-                <div>
-                  <div style={{
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: theme.textPrimary,
-                    marginBottom: '12px'
-                  }}>
-                    ♔ Saints Collection
-                  </div>
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
-                    gap: '8px'
-                  }}>
-                    {child.saintUnlocks.slice(0, 6).map((saint, index) => (
-                      <div key={index} style={{
-                        backgroundColor: theme.surface,
-                        borderRadius: '8px',
-                        padding: '8px',
-                        textAlign: 'center',
-                        border: `1px solid ${childColor}40`,
-                        fontSize: '10px'
+              {/* Real World Achievements List */}
+              {realWorldAchievements.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {realWorldAchievements.map((achievement, index) => (
+                    <div key={index} style={{
+                      backgroundColor: achievement.earned ? 
+                        `${childColor}25` : `${theme.primary}10`,
+                      borderRadius: '12px',
+                      padding: '16px',
+                      border: achievement.earned ? 
+                        `2px solid ${childColor}` : `1px dashed ${theme.primary}60`,
+                      position: 'relative'
+                    }}>
+                      {/* Achievement Icon */}
+                      <div style={{
+                        position: 'absolute',
+                        top: '16px',
+                        right: '16px',
+                        fontSize: '24px'
                       }}>
-                        <div style={{ fontSize: '20px', marginBottom: '4px' }}>♔</div>
-                        <div style={{ fontWeight: '600' }}>
-                          {saint.name || `Saint ${index + 1}`}
+                        {achievement.earned ? '🏆' : '🎯'}
+                      </div>
+
+                      {/* Achievement Details */}
+                      <div style={{ paddingRight: '40px' }}>
+                        <div style={{
+                          fontSize: '13px',
+                          fontWeight: '600',
+                          color: theme.textPrimary,
+                          marginBottom: '4px'
+                        }}>
+                          Tier {achievement.tier}: {achievement.reward}
+                        </div>
+                        <div style={{
+                          fontSize: '12px',
+                          color: theme.textSecondary,
+                          marginBottom: '8px'
+                        }}>
+                          Read {achievement.books} books
+                        </div>
+                        
+                        {achievement.earned ? (
+                          <div style={{
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            color: '#4CAF50',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}>
+                            ✅ Earned! 
+                            <span style={{ fontSize: '11px', opacity: 0.8 }}>
+                              ({achievement.earnedDate})
+                            </span>
+                          </div>
+                        ) : (
+                          <div style={{
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            color: '#FF6B35',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}>
+                            📚 Need {achievement.booksNeeded} more book{achievement.booksNeeded !== 1 ? 's' : ''}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {/* Next Achievement Status */}
+                  {(() => {
+                    const earnedAchievements = realWorldAchievements.filter(a => a.earned)
+                    const unearnedAchievements = realWorldAchievements.filter(a => !a.earned)
+                    const nextAchievement = unearnedAchievements.length > 0 
+                      ? unearnedAchievements.reduce((next, current) => 
+                          current.books < next.books ? current : next
+                        )
+                      : null
+
+                    return (
+                      <div style={{
+                        backgroundColor: `${theme.primary}15`,
+                        borderRadius: '12px',
+                        padding: '16px',
+                        textAlign: 'center',
+                        marginTop: '8px'
+                      }}>
+                        <div style={{
+                          fontSize: '12px',
+                          color: theme.textPrimary,
+                          fontWeight: '600'
+                        }}>
+                          {nextAchievement ? (
+                            <>
+                              🎯 Next Goal: <strong>{nextAchievement.booksNeeded} more book{nextAchievement.booksNeeded !== 1 ? 's' : ''}</strong> for <strong>{nextAchievement.reward}</strong>
+                            </>
+                          ) : (
+                            <>
+                              🎉 <strong>All achievements unlocked!</strong> Amazing reader! 🏆
+                            </>
+                          )}
                         </div>
                       </div>
-                    ))}
+                    )
+                  })()}
+                </div>
+              ) : (
+                /* No achievements available */
+                <div style={{
+                  textAlign: 'center',
+                  padding: '40px 20px',
+                  color: theme.textSecondary
+                }}>
+                  <div style={{ fontSize: '48px', marginBottom: '12px' }}>🎯</div>
+                  <div style={{ fontSize: '14px', marginBottom: '8px' }}>
+                    {!teacherData || !teacherData.achievementTiers ? 
+                      'No achievement tiers set up yet' : 
+                      'Loading achievements...'
+                    }
                   </div>
-                  {child.saintUnlocks.length > 6 && (
-                    <div style={{
-                      textAlign: 'center',
-                      marginTop: '8px',
-                      fontSize: '11px',
-                      color: theme.textSecondary
-                    }}>
-                      +{child.saintUnlocks.length - 6} more saints unlocked
-                    </div>
-                  )}
+                  <div style={{ fontSize: '12px' }}>
+                    {!teacherData || !teacherData.achievementTiers ? 
+                      'Teacher will add reading milestones and rewards' :
+                      'Please wait while we load your progress'
+                    }
+                  </div>
                 </div>
               )}
             </div>
@@ -885,6 +1055,7 @@ export default function ChildProgress() {
   const [showBraggingRights, setShowBraggingRights] = useState(false)
   const [modalInitialTab, setModalInitialTab] = useState('reading')
   const [showComingSoon, setShowComingSoon] = useState('')
+  const [teacherData, setTeacherData] = useState(null)
   
   // Navigation menu state
   const [showNavMenu, setShowNavMenu] = useState(false)
@@ -929,9 +1100,9 @@ export default function ChildProgress() {
   // Generate consistent color for each child
   const getChildColor = (childName, childId) => {
     const colors = [
-      '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
-      '#DDA0DD', '#FF7F50', '#87CEEB', '#98D8C8', '#F7DC6F',
-      '#BB8FCE', '#85C1E9', '#82E0AA', '#F8C471', '#F1948A'
+      '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFB000',
+      '#DDA0DD', '#FF7F50', '#87CEEB', '#98D8C8', '#FF9500',
+      '#BB8FCE', '#85C1E9', '#82E0AA', '#FFA726', '#F1948A'
     ]
     
     const str = (childName + childId).toLowerCase()
@@ -1010,8 +1181,17 @@ export default function ChildProgress() {
       const students = await loadLinkedStudentsData(parentData.linkedStudents || [])
       
       if (students.length > 0) {
-        // Load nominees from first student's school
+        // Load teacher data from first student to get achievement tiers
         const firstStudent = students[0]
+        if (firstStudent.currentTeacherId) {
+          const teacherRef = doc(db, `entities/${firstStudent.entityId}/schools/${firstStudent.schoolId}/teachers`, firstStudent.currentTeacherId)
+          const teacherDoc = await getDoc(teacherRef)
+          if (teacherDoc.exists()) {
+            setTeacherData(teacherDoc.data())
+          }
+        }
+        
+        // Load nominees from first student's school
         const allNominees = await getSchoolNomineesEntities(
           firstStudent.entityId,
           firstStudent.schoolId
@@ -1088,12 +1268,74 @@ export default function ChildProgress() {
 
   const loadReadingStats = async (student) => {
     try {
-      // Mock reading stats - in real app would query readingSessions collection
+      // Query actual reading sessions from Firebase
+      const readingSessionsRef = collection(db, `entities/${student.entityId}/schools/${student.schoolId}/students/${student.id}/readingSessions`)
+      const readingSessionsSnapshot = await getDocs(readingSessionsRef)
+      
+      if (readingSessionsSnapshot.empty) {
+        return {
+          averageMinutesPerDay: 0,
+          sessionsThisWeek: 0,
+          totalMinutesThisWeek: 0,
+          longestSession: 0
+        }
+      }
+
+      const sessions = []
+      readingSessionsSnapshot.forEach(doc => {
+        const data = doc.data()
+        sessions.push({
+          id: doc.id,
+          date: data.date,
+          duration: data.duration || 0,
+          completed: data.completed || false,
+          startTime: data.startTime,
+          ...data
+        })
+      })
+
+      // Calculate stats from real data
+      const now = new Date()
+      const sevenDaysAgo = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000))
+      const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000))
+
+      // Filter sessions for different time periods
+      const sessionsThisWeek = sessions.filter(session => {
+        const sessionDate = session.startTime?.toDate() || new Date(session.date)
+        return sessionDate >= sevenDaysAgo
+      })
+
+      const sessionsThisMonth = sessions.filter(session => {
+        const sessionDate = session.startTime?.toDate() || new Date(session.date)
+        return sessionDate >= thirtyDaysAgo
+      })
+
+      // Calculate total minutes this week
+      const totalMinutesThisWeek = sessionsThisWeek.reduce((total, session) => {
+        return total + (session.duration || 0)
+      }, 0)
+
+      // Calculate average minutes per day (based on last 30 days)
+      const totalMinutesThisMonth = sessionsThisMonth.reduce((total, session) => {
+        return total + (session.duration || 0)
+      }, 0)
+      const averageMinutesPerDay = sessionsThisMonth.length > 0 
+        ? Math.round(totalMinutesThisMonth / 30) 
+        : 0
+
+      // Find longest session
+      const longestSession = sessions.reduce((longest, session) => {
+        return Math.max(longest, session.duration || 0)
+      }, 0)
+
       return {
-        averageMinutesPerDay: Math.floor(Math.random() * 30) + 10,
-        sessionsThisWeek: Math.floor(Math.random() * 7) + 1,
-        totalMinutesThisWeek: Math.floor(Math.random() * 200) + 50,
-        longestSession: Math.floor(Math.random() * 60) + 15
+        averageMinutesPerDay,
+        sessionsThisWeek: sessionsThisWeek.length,
+        totalMinutesThisWeek,
+        longestSession,
+        // Additional stats for potential future use
+        totalSessions: sessions.length,
+        totalMinutesAllTime: sessions.reduce((total, session) => total + (session.duration || 0), 0)
       }
     } catch (error) {
       console.error('❌ Error loading reading stats:', error)
@@ -1735,7 +1977,7 @@ export default function ChildProgress() {
           )}
         </div>
 
-        {/* 🆕 FIXED: Child Detail Modal with real-time updates + notifications */}
+        {/* 🆕 FIXED: Child Detail Modal with real-time updates + notifications + real world achievements */}
         <ChildDetailModal
           child={modalChild} // Use modalChild for real-time updates
           isOpen={showDetailModal}
@@ -1752,6 +1994,7 @@ export default function ChildProgress() {
           initialTab={modalInitialTab} // 🆕 NEW: Pass initial tab
           showComingSoon={showComingSoon} // 🆕 NEW: Pass notifications
           setShowComingSoon={setShowComingSoon} // 🆕 NEW: Pass notifications
+          teacherData={teacherData} // 🆕 NEW: Pass teacher data for achievement tiers
         />
 
         {/* Bragging Rights Modal for Voting Phase */}

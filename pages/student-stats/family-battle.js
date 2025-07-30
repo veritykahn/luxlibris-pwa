@@ -93,8 +93,8 @@ function StoneColdjaneAustenHelper({ show, battleState, winner, onClose, current
       backdropFilter: 'blur(10px)'
     }}>
       <div style={{
-        width: '55px',
-        height: '55px',
+        width: '80px',
+        height: '80px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -104,13 +104,13 @@ function StoneColdjaneAustenHelper({ show, battleState, winner, onClose, current
           <img 
             src={image}
             alt="Stone Cold Jane Austen"
-            style={{ width: '55px', height: '55px', objectFit: 'contain' }}
+            style={{ width: '80px', height: '80px', objectFit: 'contain' }}
             onError={() => setImageError(true)}
           />
         ) : (
           <div style={{
-            width: '55px',
-            height: '55px',
+            width: '80px',
+            height: '80px',
             backgroundColor: currentTheme.accent,
             borderRadius: '8px',
             display: 'flex',
@@ -140,7 +140,7 @@ function StoneColdjaneAustenHelper({ show, battleState, winner, onClose, current
           fontStyle: 'italic',
           fontFamily: 'Didot, "Times New Roman", serif'
         }}>
-          &quot;{currentQuote}&quot;
+          "{currentQuote}"
         </div>
       </div>
       <button
