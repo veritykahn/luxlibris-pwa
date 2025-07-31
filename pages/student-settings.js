@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
 import { usePhaseAccess } from '../hooks/usePhaseAccess';
-import { getStudentDataEntities, updateStudentDataEntities, getSchoolNomineesEntities, dbHelpers } from '../lib/firebase';
+import { getStudentDataEntities, updateStudentDataEntities, getSchoolNomineesEntities, dbHelpers, getLinkedParentDetails, getFamilyDetails } from '../lib/firebase';
 import { createParentInviteCode } from '../lib/parentLinking';
 import Head from 'next/head'
 
@@ -115,6 +115,8 @@ export default function StudentSettings() {
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
   const [timerDuration, setTimerDuration] = useState(20);
   const [maxNominees, setMaxNominees] = useState(100);
+  const [linkedParents, setLinkedParents] = useState([]);
+  const [familyInfo, setFamilyInfo] = useState(null);
 
   // Personal Password Management State
   const [showPasswordSection, setShowPasswordSection] = useState(false);
@@ -267,6 +269,17 @@ export default function StudentSettings() {
       setNewGoal(realStudentData.personalGoal || 20);
       setParentInviteCode(realStudentData.parentInviteCode || '');
       setTimerDuration(realStudentData.readingSettings?.defaultTimerDuration || 20);
+      
+      // Load parent information
+      if (realStudentData.linkedParents && realStudentData.linkedParents.length > 0) {
+        const parentDetails = await getLinkedParentDetails(realStudentData.linkedParents);
+        setLinkedParents(parentDetails);
+        
+        if (realStudentData.familyId) {
+          const family = await getFamilyDetails(realStudentData.familyId);
+          setFamilyInfo(family);
+        }
+      }
       
       if (realStudentData.entityId && realStudentData.schoolId) {
         try {
@@ -1351,113 +1364,249 @@ export default function StudentSettings() {
               color: previewTheme.textPrimary,
               marginBottom: '8px'
             }}>
-              👨‍👩‍👧‍👦 Invite Your Parents
+              👨‍👩‍👧‍👦 Family Connection
             </h2>
-            <p style={{
-              fontSize: '14px',
-              color: previewTheme.textSecondary,
-              marginBottom: '16px'
-            }}>
-              Let your parents see your reading progress and celebrate your achievements! Up to 2 parents can join your family.
-            </p>
-
-            {!parentInviteCode ? (
-              <button
-                onClick={generateParentInvite}
-                disabled={isSaving}
-                style={{
-                  backgroundColor: previewTheme.primary,
-                  color: previewTheme.textPrimary,
-                  border: 'none',
-                  padding: '12px 24px',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  opacity: isSaving ? 0.7 : 1
-                }}
-              >
-                {isSaving ? 'Generating...' : '✨ Generate Parent Invite Code'}
-              </button>
+            
+            {linkedParents.length > 0 ? (
+              <>
+                <div style={{
+                  backgroundColor: `${previewTheme.primary}20`,
+                  borderRadius: '12px',
+                  padding: '16px',
+                  marginBottom: '16px'
+                }}>
+                  <p style={{
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: previewTheme.textPrimary,
+                    marginBottom: '12px'
+                  }}>
+                    {familyInfo ? familyInfo.familyName : 'Your Family'}
+                  </p>
+                  
+                  <div style={{
+                    textAlign: 'left',
+                    marginBottom: '12px'
+                  }}>
+                    <p style={{
+                      fontSize: '13px',
+                      color: previewTheme.textSecondary,
+                      marginBottom: '8px',
+                      fontWeight: '600'
+                    }}>
+                      Connected Parents ({linkedParents.length}/2):
+                    </p>
+                    {linkedParents.map((parent, index) => (
+                      <div key={parent.id} style={{
+                        fontSize: '14px',
+                        color: previewTheme.textPrimary,
+                        marginBottom: '4px',
+                        paddingLeft: '16px'
+                      }}>
+                        • {parent.firstName} {parent.lastName}
+                        <span style={{
+                          fontSize: '12px',
+                          color: previewTheme.textSecondary,
+                          marginLeft: '8px'
+                        }}>
+                          ({parent.email})
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {linkedParents.length < 2 && (
+                    <div style={{
+                      borderTop: `1px solid ${previewTheme.primary}40`,
+                      paddingTop: '12px',
+                      marginTop: '12px'
+                    }}>
+                      <p style={{
+                        fontSize: '12px',
+                        color: previewTheme.textSecondary,
+                        marginBottom: '8px'
+                      }}>
+                        Room for {2 - linkedParents.length} more parent{linkedParents.length === 1 ? '' : 's'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+                
+                {linkedParents.length < 2 && (
+                  <>
+                    <p style={{
+                      fontSize: '14px',
+                      color: previewTheme.textSecondary,
+                      marginBottom: '16px'
+                    }}>
+                      Add another parent to your family
+                    </p>
+                    
+                    {!parentInviteCode ? (
+                      <button
+                        onClick={generateParentInvite}
+                        disabled={isSaving}
+                        style={{
+                          backgroundColor: previewTheme.primary,
+                          color: previewTheme.textPrimary,
+                          border: 'none',
+                          padding: '12px 24px',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          opacity: isSaving ? 0.7 : 1
+                        }}
+                      >
+                        {isSaving ? 'Generating...' : '✨ Generate Invite Code'}
+                      </button>
+                    ) : (
+                      <div style={{
+                        backgroundColor: `${previewTheme.secondary}20`,
+                        border: `2px solid ${previewTheme.secondary}50`,
+                        borderRadius: '12px',
+                        padding: '16px'
+                      }}>
+                        <p style={{
+                          fontSize: '14px',
+                          color: previewTheme.textPrimary,
+                          marginBottom: '8px',
+                          fontWeight: '600'
+                        }}>
+                          🎉 Share this code:
+                        </p>
+                        <div style={{
+                          backgroundColor: previewTheme.surface,
+                          border: `1px solid ${previewTheme.primary}`,
+                          borderRadius: '8px',
+                          padding: '12px',
+                          marginBottom: '12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between'
+                        }}>
+                          <code style={{
+                            fontSize: '16px',
+                            fontWeight: 'bold',
+                            color: previewTheme.textPrimary,
+                            fontFamily: 'monospace',
+                            wordBreak: 'break-all',
+                            flex: 1,
+                            marginRight: '8px'
+                          }}>
+                            {parentInviteCode}
+                          </code>
+                          <button
+                            onClick={copyInviteCode}
+                            style={{
+                              backgroundColor: previewTheme.primary,
+                              color: previewTheme.textPrimary,
+                              border: 'none',
+                              padding: '6px 12px',
+                              borderRadius: '6px',
+                              fontSize: '12px',
+                              cursor: 'pointer',
+                              flexShrink: 0
+                            }}
+                          >
+                            📋 Copy
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </>
             ) : (
-              <div style={{
-                backgroundColor: `${previewTheme.primary}20`,
-                border: `2px solid ${previewTheme.primary}50`,
-                borderRadius: '12px',
-                padding: '16px'
-              }}>
+              <>
                 <p style={{
                   fontSize: '14px',
-                  color: previewTheme.textPrimary,
-                  marginBottom: '8px',
-                  fontWeight: '600'
+                  color: previewTheme.textSecondary,
+                  marginBottom: '16px'
                 }}>
-                  🎉 Your Parent Invite Code:
+                  Let your parents see your reading progress and celebrate your achievements! Up to 2 parents can join your family.
                 </p>
-                <div style={{
-                  backgroundColor: previewTheme.surface,
-                  border: `1px solid ${previewTheme.primary}`,
-                  borderRadius: '8px',
-                  padding: '12px',
-                  marginBottom: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between'
-                }}>
-                  <code style={{
-                    fontSize: '16px',
-                    fontWeight: 'bold',
-                    color: previewTheme.textPrimary,
-                    fontFamily: 'monospace',
-                    wordBreak: 'break-all',
-                    flex: 1,
-                    marginRight: '8px'
-                  }}>
-                    {parentInviteCode}
-                  </code>
+
+                {!parentInviteCode ? (
                   <button
-                    onClick={copyInviteCode}
+                    onClick={generateParentInvite}
+                    disabled={isSaving}
                     style={{
                       backgroundColor: previewTheme.primary,
                       color: previewTheme.textPrimary,
                       border: 'none',
-                      padding: '6px 12px',
-                      borderRadius: '6px',
-                      fontSize: '12px',
+                      padding: '12px 24px',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: '600',
                       cursor: 'pointer',
-                      flexShrink: 0
+                      opacity: isSaving ? 0.7 : 1
                     }}
                   >
-                    📋 Copy
+                    {isSaving ? 'Generating...' : '✨ Generate Parent Invite Code'}
                   </button>
-                </div>
-                <p style={{
-                  fontSize: '12px',
-                  color: previewTheme.textSecondary,
-                  margin: '0 0 8px 0'
-                }}>
-                  Share this code with your parents so they can create an account and see your progress!
-                </p>
-                {studentData.linkedParents && studentData.linkedParents.length > 0 && (
+                ) : (
                   <div style={{
-                    marginTop: '12px',
-                    paddingTop: '12px',
-                    borderTop: `1px solid ${previewTheme.primary}30`
+                    backgroundColor: `${previewTheme.primary}20`,
+                    border: `2px solid ${previewTheme.primary}50`,
+                    borderRadius: '12px',
+                    padding: '16px'
                   }}>
                     <p style={{
-                      fontSize: '12px',
-                      color: previewTheme.primary,
-                      margin: 0,
+                      fontSize: '14px',
+                      color: previewTheme.textPrimary,
+                      marginBottom: '8px',
                       fontWeight: '600'
                     }}>
-                      {studentData.linkedParents.length === 1 
-                        ? '✓ 1 parent connected' 
-                        : `✓ ${studentData.linkedParents.length} parents connected`}
-                      {studentData.linkedParents.length < 2 && ' • Room for 1 more!'}
+                      🎉 Your Parent Invite Code:
+                    </p>
+                    <div style={{
+                      backgroundColor: previewTheme.surface,
+                      border: `1px solid ${previewTheme.primary}`,
+                      borderRadius: '8px',
+                      padding: '12px',
+                      marginBottom: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between'
+                    }}>
+                      <code style={{
+                        fontSize: '16px',
+                        fontWeight: 'bold',
+                        color: previewTheme.textPrimary,
+                        fontFamily: 'monospace',
+                        wordBreak: 'break-all',
+                        flex: 1,
+                        marginRight: '8px'
+                      }}>
+                        {parentInviteCode}
+                      </code>
+                      <button
+                        onClick={copyInviteCode}
+                        style={{
+                          backgroundColor: previewTheme.primary,
+                          color: previewTheme.textPrimary,
+                          border: 'none',
+                          padding: '6px 12px',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          cursor: 'pointer',
+                          flexShrink: 0
+                        }}
+                      >
+                        📋 Copy
+                      </button>
+                    </div>
+                    <p style={{
+                      fontSize: '12px',
+                      color: previewTheme.textSecondary,
+                      margin: '0'
+                    }}>
+                      Share this code with your parents so they can create an account and see your progress!
                     </p>
                   </div>
                 )}
-              </div>
+              </>
             )}
           </div>
 

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
 import { usePhaseAccess } from '../hooks/usePhaseAccess';
-import { getStudentDataEntities, getSchoolNomineesEntities, updateStudentDataEntities, getCurrentAcademicYear } from '../lib/firebase';
+import { getStudentDataEntities, getSchoolNomineesEntities, updateStudentDataEntities, getCurrentAcademicYear, getLinkedParentDetails, getFamilyDetails } from '../lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { getQuizByBookId } from '../book-quizzes-manager';
@@ -49,6 +49,8 @@ export default function StudentBookshelf() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [quizAnswers, setQuizAnswers] = useState([]);
   const [parentCode, setParentCode] = useState('');
+  const [linkedParents, setLinkedParents] = useState([]);
+  const [familyInfo, setFamilyInfo] = useState(null);
   
   // Quiz timer states
   const [quizStartTime, setQuizStartTime] = useState(null);
@@ -678,6 +680,17 @@ useEffect(() => {
       const selectedThemeKey = firebaseStudentData.selectedTheme || 'classic_lux';
       const selectedTheme = themes[selectedThemeKey];
       setCurrentTheme(selectedTheme);
+      
+      // Load parent information
+      if (firebaseStudentData.linkedParents && firebaseStudentData.linkedParents.length > 0) {
+        const parentDetails = await getLinkedParentDetails(firebaseStudentData.linkedParents);
+        setLinkedParents(parentDetails);
+        
+        if (firebaseStudentData.familyId) {
+          const family = await getFamilyDetails(firebaseStudentData.familyId);
+          setFamilyInfo(family);
+        }
+      }
       
       if (firebaseStudentData.entityId && firebaseStudentData.schoolId) {
         const allNominees = await getSchoolNomineesEntities(
@@ -3646,7 +3659,7 @@ const handleQuizComplete = async (answers) => {
                         <h4 style={{
                           fontSize: '16px',
                           fontWeight: '600',
-                          color: '#495057',
+                          color: linkedParents.length > 0 ? '#495057' : '#999',
                           margin: '0 0 4px 0',
                           fontFamily: 'Avenir, system-ui, sans-serif'
                         }}>
@@ -3654,34 +3667,83 @@ const handleQuizComplete = async (answers) => {
                         </h4>
                         <p style={{
                           fontSize: '12px',
-                          color: '#6C757D',
+                          color: linkedParents.length > 0 ? '#6C757D' : '#999',
                           margin: '0',
                           fontFamily: 'Avenir, system-ui, sans-serif'
                         }}>
-                          If your parent is not available now
+                          {linkedParents.length > 0 
+                            ? 'If your parent is not available now' 
+                            : 'Link a parent account first to request access'}
                         </p>
                       </div>
                     </div>
                     
+                    {linkedParents.length === 0 ? (
+                      <div style={{
+                        backgroundColor: '#FFF3CD',
+                        border: '1px solid #FFECB5',
+                        borderRadius: '8px',
+                        padding: '12px',
+                        marginBottom: '12px'
+                      }}>
+                        <p style={{
+                          fontSize: '12px',
+                          color: '#856404',
+                          margin: 0,
+                          lineHeight: '1.5'
+                        }}>
+                          ⚠️ No parent account linked yet. Ask your parent to use the invite code in Settings to create their account first.
+                        </p>
+                      </div>
+                    ) : (
+                      <div style={{
+                        backgroundColor: '#D4EDDA',
+                        border: '1px solid #C3E6CB',
+                        borderRadius: '8px',
+                        padding: '12px',
+                        marginBottom: '12px'
+                      }}>
+                        <p style={{
+                          fontSize: '12px',
+                          color: '#155724',
+                          margin: '0 0 8px 0',
+                          fontWeight: '600'
+                        }}>
+                          {familyInfo ? `📨 Request will be sent to ${familyInfo.familyName}:` : '📨 Request will be sent to:'}
+                        </p>
+                        {linkedParents.map((parent, index) => (
+                          <p key={parent.id} style={{
+                            fontSize: '11px',
+                            color: '#155724',
+                            margin: '2px 0'
+                          }}>
+                            • {parent.firstName} {parent.lastName}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                    
                     <button
                       onClick={handleRequestParentApproval}
-                      disabled={isSaving}
+                      disabled={isSaving || linkedParents.length === 0}
                       style={{
                         width: '100%',
-                        backgroundColor: '#6C757D',
+                        backgroundColor: linkedParents.length > 0 ? '#6C757D' : '#E0E0E0',
                         color: 'white',
                         border: 'none',
                         borderRadius: '12px',
                         padding: '14px',
                         fontSize: '14px',
                         fontWeight: '500',
-                        cursor: 'pointer',
+                        cursor: linkedParents.length > 0 ? 'pointer' : 'not-allowed',
                         fontFamily: 'Avenir, system-ui, sans-serif',
-                        opacity: isSaving ? 0.7 : 1,
+                        opacity: (isSaving || linkedParents.length === 0) ? 0.7 : 1,
                         minHeight: '44px'
                       }}
                     >
-                      {isSaving ? 'Sending...' : '📮 Send Request to Parent'}
+                      {isSaving ? 'Sending...' : 
+                       linkedParents.length === 0 ? '🔗 Link Parent First' :
+                       '📮 Send Request to Parent'}
                     </button>
                   </div>
 

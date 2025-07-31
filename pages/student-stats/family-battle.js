@@ -9,9 +9,14 @@ import { collection, getDocs, doc, getDoc, query, where } from 'firebase/firesto
 import { db } from '../../lib/firebase';
 import Head from 'next/head';
 
+// Import sync functions
+import { 
+  getStudentFamilyBattleStatus,
+  getFamilyBattleDataForStudent
+} from '../../lib/family-battle-sync';
+
 // Import simplified battle system
 import { 
-  calculateFamilyBattleData,
   getJaneAustenQuote,
   getProgramWeekNumber,
   getLocalDateString 
@@ -454,6 +459,7 @@ export default function StudentFamilyBattleSimplified() {
   const [familyBattleUnlocked, setFamilyBattleUnlocked] = useState(false);
   const [familyBattleData, setFamilyBattleData] = useState(null);
   const [studentContribution, setStudentContribution] = useState(0);
+  const [familyStats, setFamilyStats] = useState(null);
   
   // UI states
   const [showNavMenu, setShowNavMenu] = useState(false);
@@ -529,62 +535,6 @@ export default function StudentFamilyBattleSimplified() {
     { name: 'Family Battle', path: '/student-stats/family-battle', icon: '🥊', description: 'WWE-style reading showdown!', current: true }
   ], []);
 
-  // Load family battle data
-  const loadFamilyBattleData = useCallback(async (studentData) => {
-    try {
-      const parentUid = studentData.linkedParents && studentData.linkedParents.length > 0 
-        ? studentData.linkedParents[0] 
-        : null;
-        
-      if (!parentUid) {
-        console.log('No parent linked account found');
-        return;
-      }
-
-      const today = new Date();
-      const weekStart = new Date(today.setDate(today.getDate() - today.getDay()));
-      const weekStr = getLocalDateString(weekStart);
-      
-      // Get student's reading sessions this week
-      const sessionRef = collection(db, `entities/${studentData.entityId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
-      const weekQuery = query(sessionRef, where('date', '>=', weekStr));
-      const weekSnapshot = await getDocs(weekQuery);
-      
-      let studentMinutes = 0;
-      weekSnapshot.forEach(docSnap => {
-        const session = docSnap.data();
-        studentMinutes += session.duration || 0;
-      });
-      
-      setStudentContribution(studentMinutes);
-      
-      // Get family battle data from parent's collection
-      const familyRef = doc(db, 'families', parentUid);
-      const familyDoc = await getDoc(familyRef);
-      
-      if (familyDoc.exists()) {
-        const familyData = familyDoc.data();
-        const battleData = familyData.familyBattleSettings?.currentWeek;
-        
-        if (battleData) {
-          setFamilyBattleData({
-            ...battleData,
-            totalMinutes: battleData.children + battleData.parents,
-            childrenMinutes: battleData.children,
-            parentMinutes: battleData.parents,
-            winner: battleData.winner,
-            margin: battleData.margin,
-            weekNumber: battleData.weekNumber
-          });
-        }
-      }
-      
-    } catch (error) {
-      console.error('Error loading family battle data:', error);
-      setError('Could not connect to family battle. Ask your parent to set up Family Battle!');
-    }
-  }, []);
-
   // Handle stats navigation
   const handleStatsNavigation = (option) => {
     setShowStatsDropdown(false);
@@ -616,28 +566,111 @@ export default function StudentFamilyBattleSimplified() {
       const selectedTheme = themes[selectedThemeKey];
       setCurrentTheme(selectedTheme);
       
-      // Check if family battle is unlocked
-      const parentUid = firebaseStudentData.linkedParents && firebaseStudentData.linkedParents.length > 0 
-        ? firebaseStudentData.linkedParents[0] 
-        : null;
-        
-      if (parentUid) {
-        const familyRef = doc(db, 'families', parentUid);
-        const familyDoc = await getDoc(familyRef);
-        
-        if (familyDoc.exists() && familyDoc.data().familyBattleSettings?.enabled) {
-          setFamilyBattleUnlocked(true);
-          await loadFamilyBattleData(firebaseStudentData);
-        }
-      }
-      
     } catch (error) {
       console.error('Error loading data:', error);
       setError('Failed to load family battle data. Please try again.');
     }
     
     setIsLoading(false);
-  }, [user?.uid, router, themes, loadFamilyBattleData]);
+  }, [user?.uid, router, themes]);
+
+  // New useEffect for loading family battle status
+  useEffect(() => {
+    const loadFamilyBattleStatus = async () => {
+      if (!user?.uid || !studentData) return;
+      
+      try {
+        console.log('🥊 Loading family battle status for student...');
+        
+        // Use the sync function that handles all the complexity
+        const battleStatus = await getStudentFamilyBattleStatus(studentData);
+        
+        if (battleStatus.enabled) {
+          console.log('✅ Family battle is enabled!');
+          setFamilyBattleUnlocked(true);
+          
+          // Set the battle data
+          if (battleStatus.battleData) {
+            setFamilyBattleData({
+              weekNumber: battleStatus.battleData.weekNumber,
+              childrenMinutes: battleStatus.battleData.childrenMinutes,
+              parentMinutes: battleStatus.battleData.parentMinutes,
+              winner: battleStatus.battleData.winner,
+              margin: battleStatus.battleData.margin,
+              battleStatus: battleStatus.battleData.battleStatus,
+              isResultsDay: battleStatus.battleData.isResultsDay
+            });
+          }
+          
+          // Set student's contribution
+          setStudentContribution(battleStatus.studentContribution || 0);
+          
+          // Set family stats if available
+          if (battleStatus.familyStats) {
+            const stats = battleStatus.familyStats;
+            setFamilyStats({
+              totalBattles: stats.totalBattles || 0,
+              currentStreak: stats.currentStreak || { team: null, weeks: 0 },
+              winRates: {
+                children: stats.totalBattles > 0 ? 
+                  Math.round((stats.childrenWins / stats.totalBattles) * 100) : 0,
+                parents: stats.totalBattles > 0 ? 
+                  Math.round((stats.parentWins / stats.totalBattles) * 100) : 0
+              }
+            });
+          }
+        } else {
+          console.log('❌ Family battle not enabled:', battleStatus.reason);
+          setFamilyBattleUnlocked(false);
+          
+          // Set appropriate error message based on the reason
+          if (battleStatus.reason === 'No parent account linked') {
+            setError('No parent account linked. Ask your parent to connect with your invite code!');
+          } else if (battleStatus.reason === 'Family battle not enabled by parent') {
+            setError('Ask your parent to enable Family Battle in their settings!');
+          } else {
+            setError(battleStatus.reason || 'Family battle not available');
+          }
+        }
+        
+      } catch (error) {
+        console.error('❌ Error loading family battle:', error);
+        setError('Failed to load family battle data. Please try again.');
+        setFamilyBattleUnlocked(false);
+      }
+    };
+    
+    loadFamilyBattleStatus();
+  }, [user?.uid, studentData]);
+
+  // Add auto-refresh effect
+  useEffect(() => {
+    if (!familyBattleUnlocked || !studentData) return;
+    
+    const refreshInterval = setInterval(async () => {
+      try {
+        console.log('🔄 Auto-refreshing battle data...');
+        const battleStatus = await getStudentFamilyBattleStatus(studentData);
+        
+        if (battleStatus.enabled && battleStatus.battleData) {
+          setFamilyBattleData({
+            weekNumber: battleStatus.battleData.weekNumber,
+            childrenMinutes: battleStatus.battleData.childrenMinutes,
+            parentMinutes: battleStatus.battleData.parentMinutes,
+            winner: battleStatus.battleData.winner,
+            margin: battleStatus.battleData.margin,
+            battleStatus: battleStatus.battleData.battleStatus,
+            isResultsDay: battleStatus.battleData.isResultsDay
+          });
+          setStudentContribution(battleStatus.studentContribution || 0);
+        }
+      } catch (error) {
+        console.error('❌ Error refreshing battle data:', error);
+      }
+    }, 30000); // Refresh every 30 seconds
+    
+    return () => clearInterval(refreshInterval);
+  }, [familyBattleUnlocked, studentData]);
 
   useEffect(() => {
     if (!loading && isAuthenticated && user) {
@@ -715,7 +748,7 @@ export default function StudentFamilyBattleSimplified() {
     );
   }
 
-  if (error) {
+  if (error && !familyBattleUnlocked) {
     return (
       <>
         <Head>
