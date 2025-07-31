@@ -1100,9 +1100,21 @@ export default function ChildProgress() {
   // Generate consistent color for each child
   const getChildColor = (childName, childId) => {
     const colors = [
-      '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFB000',
-      '#DDA0DD', '#FF7F50', '#87CEEB', '#98D8C8', '#FF9500',
-      '#BB8FCE', '#85C1E9', '#82E0AA', '#FFA726', '#F1948A'
+      '#FF9500', // Bright Orange (Jesse's current color)
+      '#1E3A8A', // Navy Blue  
+      '#7C3AED', // Purple
+      '#059669', // Green
+      '#DC2626', // Red
+      '#BE185D', // Dark Pink
+      '#374151', // Dark Grey
+      '#0891B2', // Teal
+      '#7C2D12', // Brown
+      '#581C87', // Deep Purple
+      '#B91C1C', // Dark Red
+      '#064E3B', // Dark Green
+      '#1F2937', // Charcoal
+      '#92400E', // Dark Orange
+      '#6B21A8'  // Dark Purple
     ]
     
     const str = (childName + childId).toLowerCase()

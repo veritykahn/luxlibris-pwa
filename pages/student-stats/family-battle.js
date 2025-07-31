@@ -470,6 +470,7 @@ export default function StudentFamilyBattleSimplified() {
   const themes = useMemo(() => ({
     classic_lux: {
       name: 'Lux Libris Classic',
+      assetPrefix: 'classic_lux',
       primary: '#ADD4EA',
       secondary: '#C3E0DE',
       accent: '#A1E5DB',
@@ -480,6 +481,7 @@ export default function StudentFamilyBattleSimplified() {
     },
     darkwood_sports: {
       name: 'Athletic Champion',
+      assetPrefix: 'darkwood_sports',
       primary: '#2F5F5F',
       secondary: '#8B2635',
       accent: '#F5DEB3',
@@ -490,6 +492,7 @@ export default function StudentFamilyBattleSimplified() {
     },
     lavender_space: {
       name: 'Cosmic Explorer',
+      assetPrefix: 'lavender_space',
       primary: '#9C88C4',
       secondary: '#B19CD9',
       accent: '#E1D5F7',
@@ -497,6 +500,61 @@ export default function StudentFamilyBattleSimplified() {
       surface: '#3D2B54',
       textPrimary: '#E1D5F7',
       textSecondary: '#B19CD9'
+    },
+    mint_music: {
+      name: 'Musical Harmony',
+      assetPrefix: 'mint_music',
+      primary: '#B8E6B8',
+      secondary: '#FFB3BA',
+      accent: '#FFCCCB',
+      background: '#FEFEFE',
+      surface: '#F8FDF8',
+      textPrimary: '#2E4739',
+      textSecondary: '#4A6B57'
+    },
+    pink_plushies: {
+      name: 'Kawaii Dreams',
+      assetPrefix: 'pink_plushies',
+      primary: '#FFB6C1',
+      secondary: '#FFC0CB',
+      accent: '#FFE4E1',
+      background: '#FFF0F5',
+      surface: '#FFE4E6',
+      textPrimary: '#4A2C2A',
+      textSecondary: '#8B4B5C'
+    },
+    teal_anime: {
+      name: 'Otaku Paradise',
+      assetPrefix: 'teal_anime',
+      primary: '#20B2AA',
+      secondary: '#48D1CC',
+      accent: '#7FFFD4',
+      background: '#E0FFFF',
+      surface: '#AFEEEE',
+      textPrimary: '#2F4F4F',
+      textSecondary: '#5F9EA0'
+    },
+    white_nature: {
+      name: 'Pure Serenity',
+      assetPrefix: 'white_nature',
+      primary: '#6B8E6B',
+      secondary: '#D2B48C',
+      accent: '#F5F5DC',
+      background: '#FFFEF8',
+      surface: '#FFFFFF',
+      textPrimary: '#2F4F2F',
+      textSecondary: '#556B2F'
+    },
+    little_luminaries: {
+      name: 'Luxlings™',
+      assetPrefix: 'little_luminaries',
+      primary: '#666666',
+      secondary: '#000000',
+      accent: '#E8E8E8',
+      background: '#FFFFFF',
+      surface: '#FAFAFA',
+      textPrimary: '#B8860B',
+      textSecondary: '#AAAAAA'
     }
   }), []);
 
