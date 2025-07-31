@@ -806,45 +806,6 @@ export default function StudentFamilyBattleSimplified() {
     );
   }
 
-  if (error && !familyBattleUnlocked) {
-    return (
-      <>
-        <Head>
-          <title>Family Battle - Lux Libris</title>
-          <meta name="description" content="Challenge your parents in epic reading battles" />
-          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-          <link rel="icon" href="/images/lux_libris_logo.png" />
-        </Head>
-        <div style={{
-          backgroundColor: currentTheme.background,
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          <div style={{ textAlign: 'center', padding: '2rem' }}>
-            <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>😞</div>
-            <h2 style={{ color: currentTheme.textPrimary, marginBottom: '1rem' }}>Battle Arena Closed!</h2>
-            <p style={{ color: currentTheme.textSecondary, marginBottom: '1.5rem' }}>{error}</p>
-            <button
-              onClick={() => window.location.reload()}
-              style={{
-                backgroundColor: currentTheme.primary,
-                color: currentTheme.textPrimary,
-                border: 'none',
-                padding: '12px 24px',
-                borderRadius: '8px',
-                cursor: 'pointer'
-              }}
-            >
-              Try Again
-            </button>
-          </div>
-        </div>
-      </>
-    );
-  }
-
   return (
     <>
       <Head>
@@ -1250,7 +1211,53 @@ export default function StudentFamilyBattleSimplified() {
               paddingBottom: '120px'
             }}>
               
-              {familyBattleUnlocked && familyBattleData ? (
+              {error && !familyBattleUnlocked ? (
+                /* Error State - Battle Arena Closed */
+                <div style={{
+                  backgroundColor: currentTheme.surface,
+                  borderRadius: '20px',
+                  padding: '40px 20px',
+                  marginTop: '20px',
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+                  textAlign: 'center'
+                }}>
+                  <div style={{ fontSize: '64px', marginBottom: '20px' }}>😞</div>
+                  <h2 style={{ 
+                    color: currentTheme.textPrimary, 
+                    marginBottom: '16px',
+                    fontSize: 'clamp(20px, 5vw, 24px)',
+                    fontFamily: 'Didot, "Times New Roman", serif'
+                  }}>
+                    Battle Arena Closed!
+                  </h2>
+                  <p style={{ 
+                    color: currentTheme.textSecondary, 
+                    marginBottom: '24px',
+                    fontSize: 'clamp(14px, 4vw, 16px)',
+                    lineHeight: '1.5'
+                  }}>
+                    {error}
+                  </p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    style={{
+                      backgroundColor: currentTheme.primary,
+                      color: currentTheme.textPrimary,
+                      border: 'none',
+                      padding: '12px 24px',
+                      borderRadius: '12px',
+                      cursor: 'pointer',
+                      fontSize: 'clamp(14px, 4vw, 16px)',
+                      fontWeight: '600',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    🔄 Try Again
+                  </button>
+                </div>
+              ) : familyBattleUnlocked && familyBattleData ? (
                 <>
                   {/* Battle Arena */}
                   <BattleArena 
