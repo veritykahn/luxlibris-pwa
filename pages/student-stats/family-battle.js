@@ -585,13 +585,23 @@ export default function StudentFamilyBattleSimplified() {
   ], [hasAccess, phaseData.currentPhase]);
 
   // Stats navigation options
-  const statsNavOptions = useMemo(() => [
-    { name: 'Stats Dashboard', path: '/student-stats', icon: '📊', description: 'Fun overview' },
-    { name: 'My Stats', path: '/student-stats/my-stats', icon: '📈', description: 'Personal deep dive' },
-    { name: 'Grade Stats', path: '/student-stats/grade-stats', icon: '🎓', description: 'Compare with classmates' },
-    { name: 'School Stats', path: '/student-stats/school-stats', icon: '🏫', description: 'School-wide progress' },
-    { name: 'Family Battle', path: '/student-stats/family-battle', icon: '🥊', description: 'WWE-style reading showdown!', current: true }
-  ], []);
+  // Stats navigation options
+const statsNavOptions = useMemo(() => [
+  { name: 'Stats Dashboard', path: '/student-stats', icon: '📊', description: 'Fun overview' },
+  { name: 'My Stats', path: '/student-stats/my-stats', icon: '📈', description: 'Personal deep dive' },
+  { name: 'Grade Stats', path: '/student-stats/grade-stats', icon: '🎓', description: 'Compare with classmates' },
+  { name: 'School Stats', path: '/student-stats/school-stats', icon: '🏫', description: 'School-wide progress' },
+  { name: 'Diocese Stats', path: '/student-stats/diocese-stats', icon: '⛪', description: 'Coming soon!', disabled: true },
+  { name: 'Global Stats', path: '/student-stats/global-stats', icon: '🌎', description: 'Coming soon!', disabled: true },
+  { 
+    name: 'Lux DNA Lab', 
+    path: '/student-stats/lux-dna-lab', 
+    icon: '🧬', 
+    description: phaseData.currentPhase === 'RESULTS' ? 'Nominees DNA locked for year' : 'Discover your reading personality',
+    phaseNote: phaseData.currentPhase === 'RESULTS' ? 'Nominees DNA analysis is closed for this academic year' : null
+  },
+  { name: 'Family Battle', path: '/student-stats/family-battle', icon: '🥊', description: 'WWE-style reading showdown!', current: true }
+], [phaseData.currentPhase]);
 
   // Handle stats navigation
   const handleStatsNavigation = (option) => {
@@ -963,12 +973,12 @@ export default function StudentFamilyBattleSimplified() {
                         {option.name}
                       </div>
                       <div style={{
-                        fontSize: '11px',
-                        color: currentTheme.textSecondary,
-                        opacity: 0.8
-                      }}>
-                        {option.description}
-                      </div>
+  fontSize: '11px',
+  color: option.phaseNote ? '#FF9800' : currentTheme.textSecondary,
+  opacity: 0.8
+}}>
+  {option.phaseNote || option.description}
+</div>
                     </div>
                     {option.current && (
                       <span style={{ fontSize: '12px', color: currentTheme.primary }}>●</span>
