@@ -132,29 +132,64 @@ export default function ParentFamilyBattle() {
   const [showSuccess, setShowSuccess] = useState('')
   const [showStreakModal, setShowStreakModal] = useState(false)
 
-  // Lux Libris Classic Theme
-  const luxTheme = {
-    primary: '#ADD4EA',
-    secondary: '#C3E0DE',
-    accent: '#A1E5DB',
-    background: '#FFFCF5',
-    surface: '#FFFFFF',
-    textPrimary: '#223848',
-    textSecondary: '#556B7A'
-  }
+ // Lux Libris Classic Theme with time-based adjustments
+const luxTheme = useMemo(() => ({
+  primary: '#ADD4EA',
+  secondary: '#C3E0DE',
+  accent: '#A1E5DB',
+  background: '#FFFCF5',
+  surface: '#FFFFFF',
+  textPrimary: '#223848',
+  textSecondary: '#556B7A',
+  timeOverlay: timeTheme.overlay
+}), [timeTheme]);
 
   // Navigation menu items
   const navMenuItems = useMemo(() => [
-    { name: 'Family Dashboard', path: '/parent/dashboard', icon: '⌂' },
-    { name: 'Child Progress', path: '/parent/child-progress', icon: '◐' },
-    { name: 'Reading Habits', path: '/parent/healthy-habits', icon: '◉' },
-    { name: 'Family Battle', path: '/parent/family-battle', icon: '⚔️', current: true },
-    { name: 'Reading DNA Lab', path: '/parent/dna-lab', icon: '⬢' },
-    { name: 'Settings', path: '/parent/settings', icon: '⚙' }
-  ], [])
+  { name: 'Family Dashboard', path: '/parent/dashboard', icon: '⌂' },
+  { name: 'Child Progress', path: '/parent/child-progress', icon: '◐' },
+  { name: 'Reading Habits', path: '/parent/healthy-habits', icon: '◉' },
+  { name: 'Family Battle', path: '/parent/family-battle', icon: '⚔️', current: true },
+  { name: 'Reading DNA Lab', path: '/parent/dna-lab', icon: '⬢' },
+  { name: 'Settings', path: '/parent/settings', icon: '⚙' }
+], [])
 
-  // Load family battle data
-  const loadFamilyBattleData = useCallback(async () => {
+// Get time-based theme - memoized with hour dependency
+const timeTheme = useMemo(() => {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) {
+    return {
+      name: 'morning',
+      gradient: 'linear-gradient(135deg, #FFE5B4, #FFD4A3, #FFC594)',
+      message: 'Good morning! Ready for a family reading battle? ☀️',
+      overlay: 'rgba(255, 220, 160, 0.1)'
+    };
+  } else if (hour >= 12 && hour < 17) {
+    return {
+      name: 'afternoon',
+      gradient: 'linear-gradient(135deg, #87CEEB, #98D8E8, #ADD8E6)',
+      message: 'Afternoon battle time! 📚',
+      overlay: 'rgba(135, 206, 235, 0.1)'
+    };
+  } else if (hour >= 17 && hour < 20) {
+    return {
+      name: 'evening',
+      gradient: 'linear-gradient(135deg, #FFB347, #FF8C42, #FF6B35)',
+      message: 'Evening reading showdown 🌅',
+      overlay: 'rgba(255, 140, 66, 0.1)'
+    };
+  } else {
+    return {
+      name: 'night',
+      gradient: 'linear-gradient(135deg, #4B0082, #6A0DAD, #7B68EE)',
+      message: 'Nighttime battle royale 🌙',
+      overlay: 'rgba(75, 0, 130, 0.1)'
+    };
+  }
+}, [Math.floor(new Date().getHours() / 6)]); // Only recalc every 6 hours
+
+// Load family battle data
+const loadFamilyBattleData = useCallback(async () => {
     if (!user?.uid || !linkedStudents.length) return;
     
     try {
@@ -415,24 +450,35 @@ if (parentData?.familyId) {
   }
 
   return (
-    <>
-      <Head>
-        <title>Family Battle - Lux Libris Parent</title>
-        <meta name="description" content="Compete with your children in weekly family reading battles" />
-        <link rel="icon" href="/images/lux_libris_logo.png" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-      </Head>
+  <>
+    <Head>
+      <title>Family Battle - Lux Libris Parent</title>
+      <meta name="description" content="Compete with your children in weekly family reading battles" />
+      <link rel="icon" href="/images/lux_libris_logo.png" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    </Head>
 
+    <div style={{
+      backgroundColor: luxTheme.background,
+      minHeight: '100vh',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      paddingBottom: '100px',
+      position: 'relative'
+    }}>
+      {/* Time-based overlay */}
       <div style={{
-        backgroundColor: luxTheme.background,
-        minHeight: '100vh',
-        fontFamily: 'system-ui, -apple-system, sans-serif',
-        paddingBottom: '100px',
-        position: 'relative'
-      }}>
-        
-        {/* Family Streak Tracker - Fixed Position */}
-        <FamilyStreakTracker
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: timeTheme.overlay,
+        pointerEvents: 'none',
+        zIndex: 1
+      }} />
+      
+      {/* Family Streak Tracker - Fixed Position */}
+      <FamilyStreakTracker
           streakDays={familyStreakData.streakDays}
           theme={luxTheme}
           onStreakClick={handleStreakClick}
@@ -440,18 +486,18 @@ if (parentData?.familyId) {
         />
         
         {/* Header */}
-        <div style={{
-          background: `linear-gradient(135deg, #FF6B6B40, #4ECDC440)`,
-          backdropFilter: 'blur(20px)',
-          padding: '30px 20px 12px',
-          position: 'relative',
-          borderRadius: '0 0 25px 25px',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-          zIndex: 100,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
+<div style={{
+  background: timeTheme.gradient,
+  backdropFilter: 'blur(20px)',
+  padding: '30px 20px 12px',
+  position: 'relative',
+  borderRadius: '0 0 25px 25px',
+  boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+  zIndex: 100,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center'
+}}>
           {/* Back Button */}
           <button
             onClick={() => router.push('/parent/dashboard')}
@@ -602,6 +648,15 @@ if (parentData?.familyId) {
               </div>
             )}
           </div>
+          {/* Time-based message */}
+        <div style={{
+          textAlign: 'center',
+          fontSize: '12px',
+          color: 'rgba(255,255,255,0.8)',
+          marginTop: '8px'
+        }}>
+          {timeTheme.message}
+        </div>
         </div>
 
         {/* Main Content - Family Battle Manager */}

@@ -10,28 +10,39 @@ export default function Home() {
   const { user, userProfile, loading, isAuthenticated, getDashboardUrl, signingOut } = useAuth()
 
   useEffect(() => {
-    console.log('🔍 HOMEPAGE DEBUG - Auth state:', {
-      loading,
-      isAuthenticated,
-      signingOut,
-      userProfile: userProfile ? {
-        accountType: userProfile.accountType,
-        firstName: userProfile.firstName,
-        uid: userProfile.uid || 'no uid'
-      } : 'null',
-      shouldRedirect: !loading && isAuthenticated && userProfile && !signingOut
-    });
+  console.log('🔍 HOMEPAGE DEBUG - Auth state:', {
+    loading,
+    isAuthenticated,
+    signingOut,
+    userProfile: userProfile ? {
+      accountType: userProfile.accountType,
+      firstName: userProfile.firstName,
+      uid: userProfile.uid || 'no uid'
+    } : 'null',
+    shouldRedirect: !loading && isAuthenticated && userProfile && !signingOut
+  });
 
-    if (!loading && isAuthenticated && userProfile && !signingOut) {
+  // More defensive check - ensure we have a valid profile with accountType
+  if (!loading && isAuthenticated && userProfile && !signingOut) {
+    // Double-check that we have a valid account type before getting dashboard URL
+    if (userProfile.accountType) {
       const dashboardUrl = getDashboardUrl();
-      console.log('✅ User already authenticated, redirecting to:', dashboardUrl);
-      router.push(dashboardUrl);
-    } else if (signingOut) {
-      console.log('🚪 Currently signing out, not redirecting');
+      // Only redirect if we get a valid dashboard URL (not role-selector)
+      if (dashboardUrl && dashboardUrl !== '/role-selector') {
+        console.log('✅ User already authenticated, redirecting to:', dashboardUrl);
+        router.push(dashboardUrl);
+      } else {
+        console.log('⚠️ Invalid dashboard URL, staying on homepage');
+      }
     } else {
-      console.log('❌ Not redirecting because conditions not met');
+      console.log('⚠️ User profile incomplete (no accountType), staying on homepage');
     }
-  }, [loading, isAuthenticated, userProfile, router, getDashboardUrl, signingOut])
+  } else if (signingOut) {
+    console.log('🚪 Currently signing out, not redirecting');
+  } else {
+    console.log('❌ Not redirecting because conditions not met');
+  }
+}, [loading, isAuthenticated, userProfile, router, getDashboardUrl, signingOut])
 
   if (loading || signingOut) {
     return (

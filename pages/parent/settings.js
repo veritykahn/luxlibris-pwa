@@ -334,13 +334,25 @@ export default function ParentSettings() {
   }
 
   const handleSignOut = async () => {
-    try {
-      await signOut({ redirectTo: '/' })
-    } catch (error) {
-      console.error('❌ Error signing out:', error)
-      setError('Failed to sign out. Please try again.')
+  try {
+    console.log('🚪 Parent signing out...')
+    setIsSaving(true)
+    
+    // Use the same approach as student sign-out
+    await signOut() // Don't need redirectTo since it defaults to '/'
+    
+  } catch (error) {
+    console.error('❌ Sign out error:', error)
+    
+    // Fallback: If signOut fails, force redirect to homepage
+    if (typeof window !== 'undefined') {
+      console.log('🏠 Force redirect to homepage')
+      window.location.replace('/')
     }
+    
+    setIsSaving(false)
   }
+}
 
   // Navigation handler
   const handleNavigation = (item) => {

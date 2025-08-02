@@ -113,20 +113,24 @@ export default function ParentDashboard() {
   ], [totalCount, newCount])
 
   // UPDATED: Bottom navigation items with notification badge
-  const bottomNavItems = useMemo(() => [
-    { name: 'Dashboard', path: '/parent/dashboard', icon: '⌂', current: true },
-    { 
-      name: 'Progress', 
-      path: '/parent/child-progress', 
-      icon: '◐',
-      badge: totalCount > 0 ? totalCount : null,
-      badgeColor: newCount > 0 ? '#F59E0B' : '#6B7280'
-    },
-    { name: 'Nominees', path: '/parent/nominees', icon: '□' },
-    { name: 'Habits', path: '/parent/healthy-habits', icon: '◉' },
-    { name: 'Battle', path: '/parent/family-battle', icon: '⚔️' },
-    { name: 'DNA Lab', path: '/parent/dna-lab', icon: '⬢' }
-  ], [totalCount, newCount])
+  const bottomNavItems = useMemo(() => {
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 400;
+    
+    return [
+      { name: isMobile ? 'Home' : 'Dashboard', path: '/parent/dashboard', icon: '⌂', current: true },
+      { 
+        name: 'Progress', 
+        path: '/parent/child-progress', 
+        icon: '◐',
+        badge: totalCount > 0 ? totalCount : null,
+        badgeColor: newCount > 0 ? '#F59E0B' : '#6B7280'
+      },
+      { name: 'Books', path: '/parent/nominees', icon: '□' },
+      { name: 'Habits', path: '/parent/healthy-habits', icon: '◉' },
+      { name: 'Battle', path: '/parent/family-battle', icon: '⚔️' },
+      { name: 'DNA', path: '/parent/dna-lab', icon: '⬢' }
+    ];
+  }, [totalCount, newCount])
 
   useEffect(() => {
     if (!authLoading && isAuthenticated && user && userProfile?.accountType === 'parent') {
@@ -514,34 +518,46 @@ export default function ParentDashboard() {
   }
 
   return (
-    <>
-      <Head>
-        <title>Family Dashboard - Lux Libris</title>
-        <meta name="description" content="Track your family's reading progress, approve quiz codes, and celebrate achievements together" />
-        <link rel="icon" href="/images/lux_libris_logo.png" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-      </Head>
-      
+  <>
+    <Head>
+      <title>Family Dashboard - Lux Libris</title>
+      <meta name="description" content="Track your family's reading progress, approve quiz codes, and celebrate achievements together" />
+      <link rel="icon" href="/images/lux_libris_logo.png" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    </Head>
+    
+    <div style={{
+      backgroundColor: luxTheme.background,
+      minHeight: '100vh',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      paddingBottom: '80px',
+      position: 'relative'
+    }}>
+      {/* Time-based overlay */}
       <div style={{
-        backgroundColor: luxTheme.background,
-        minHeight: '100vh',
-        fontFamily: 'system-ui, -apple-system, sans-serif',
-        paddingBottom: '80px'
-      }}>
-        
-        {/* Header */}
-        <div style={{
-          background: `linear-gradient(135deg, ${luxTheme.primary}F0, ${luxTheme.secondary}F0)`,
-          backdropFilter: 'blur(20px)',
-          padding: '30px 20px 12px',
-          position: 'relative',
-          borderRadius: '0 0 25px 25px',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-          zIndex: 100,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: timeTheme.overlay,
+        pointerEvents: 'none',
+        zIndex: 1
+      }} />
+      
+      {/* Header */}
+<div style={{
+  background: timeTheme.gradient,
+  backdropFilter: 'blur(20px)',
+  padding: '30px 20px 12px',
+  position: 'relative',
+  borderRadius: '0 0 25px 25px',
+  boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+  zIndex: 100,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center'
+}}>
           {/* Centered Title */}
           <h1 style={{
             fontSize: 'clamp(20px, 5vw, 24px)',
@@ -669,18 +685,29 @@ export default function ParentDashboard() {
               </div>
             )}
           </div>
+
+          {/* Time-based message */}
+          <div style={{
+            textAlign: 'center',
+            fontSize: '12px',
+            color: 'rgba(255,255,255,0.8)',
+            marginTop: '8px'
+          }}>
+            {timeTheme.message}
+          </div>
         </div>
 
         {/* Welcome Section */}
-        <div style={{ padding: '20px' }}>
-          <div style={{
-            background: `linear-gradient(135deg, ${luxTheme.primary}, ${luxTheme.secondary})`,
-            borderRadius: '16px',
-            padding: '20px',
-            boxShadow: `0 8px 24px ${luxTheme.primary}30`,
-            marginBottom: '16px',
-            color: luxTheme.textPrimary
-          }}>
+<div style={{ padding: '20px' }}>
+  <div style={{
+    background: timeTheme.gradient,
+    borderRadius: '16px',
+    padding: '20px',
+    boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+    marginBottom: '16px',
+    color: 'white',
+    position: 'relative'
+  }}>
             <h2 style={{
               fontSize: 'clamp(20px, 5vw, 24px)',
               fontWeight: 'bold',
@@ -1246,8 +1273,10 @@ export default function ParentDashboard() {
             justifyContent: 'space-around',
             alignItems: 'center',
             padding: '8px 0',
-            maxWidth: '500px',
-            margin: '0 auto'
+            maxWidth: '100%',
+            margin: '0 auto',
+            overflowX: 'auto',
+            WebkitOverflowScrolling: 'touch'
           }}>
             {bottomNavItems.map((item) => (
               <button
@@ -1267,8 +1296,10 @@ export default function ParentDashboard() {
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
-                  gap: '4px',
-                  padding: '8px 16px',
+                  gap: '2px',
+                  padding: '8px',
+                  minWidth: '60px',
+                  flex: '1 0 auto',
                   cursor: item.current ? 'default' : 'pointer',
                   color: item.current ? luxTheme.primary : luxTheme.textSecondary,
                   transition: 'all 0.2s ease',
@@ -1279,9 +1310,10 @@ export default function ParentDashboard() {
               >
                 <div style={{ position: 'relative' }}>
                   <span style={{
-                    fontSize: '20px',
+                    fontSize: '18px',
                     transform: item.current ? 'scale(1.1)' : 'scale(1)',
-                    transition: 'transform 0.2s ease'
+                    transition: 'transform 0.2s ease',
+                    display: 'block'
                   }}>
                     {item.icon}
                   </span>
@@ -1290,19 +1322,19 @@ export default function ParentDashboard() {
                   {item.badge && (
                     <div style={{
                       position: 'absolute',
-                      top: '-6px',
-                      right: '-6px',
+                      top: '-4px',
+                      right: '-4px',
                       backgroundColor: item.badgeColor,
                       color: 'white',
                       borderRadius: '10px',
-                      minWidth: '16px',
-                      height: '16px',
+                      minWidth: '14px',
+                      height: '14px',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontSize: '9px',
+                      fontSize: '8px',
                       fontWeight: 'bold',
-                      border: '2px solid white'
+                      border: '1.5px solid white'
                     }}>
                       {item.badge}
                     </div>
@@ -1310,8 +1342,9 @@ export default function ParentDashboard() {
                 </div>
                 
                 <span style={{
-                  fontSize: '10px',
-                  fontWeight: item.current ? '600' : '500'
+                  fontSize: '9px',
+                  fontWeight: item.current ? '600' : '500',
+                  whiteSpace: 'nowrap'
                 }}>
                   {item.name}
                 </span>
@@ -1367,6 +1400,23 @@ export default function ParentDashboard() {
             .nav-menu-container > div {
               right: 10px !important;
               minWidth: 180px !important;
+            }
+          }
+          
+          /* Hide scrollbar for bottom nav but keep it scrollable */
+          div::-webkit-scrollbar {
+            display: none;
+          }
+          
+          /* For Firefox */
+          div {
+            scrollbar-width: none;
+          }
+          
+          /* Ensure bottom nav items stay visible on very small screens */
+          @media (max-width: 375px) {
+            button span {
+              font-size: 8px !important;
             }
           }
         `}</style>
