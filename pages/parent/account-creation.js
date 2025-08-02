@@ -1,8 +1,8 @@
-// pages/parent/account-creation.js - Updated with Two-Parent Family Support
+// pages/parent/account-creation.js - Updated with proper validation
 import { useState } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
-import { createParentAccount, linkParentToStudent, checkExistingFamily } from '../../lib/parentLinking'
+import { validateParentInviteCode, checkStudentParentCapacity } from '../../lib/parentLinking'
 
 export default function ParentAccountCreation() {
   const router = useRouter()
@@ -17,8 +17,8 @@ export default function ParentAccountCreation() {
     confirmPassword: '',
     studentInviteCodes: [''] // Start with one invite code field
   })
-  const [linkedStudents, setLinkedStudents] = useState([])
-  const [existingFamilyInfo, setExistingFamilyInfo] = useState(null)
+  const [validatedCodes, setValidatedCodes] = useState([])
+  const [codeValidationErrors, setCodeValidationErrors] = useState({})
 
   // UPDATED: Lux Libris Classic Theme (same as student dashboard)
   const luxTheme = {
@@ -44,6 +44,12 @@ export default function ParentAccountCreation() {
         ...prev,
         studentInviteCodes: prev.studentInviteCodes.filter((_, i) => i !== index)
       }))
+      // Clear any validation errors for removed field
+      setCodeValidationErrors(prev => {
+        const newErrors = { ...prev }
+        delete newErrors[index]
+        return newErrors
+      })
     }
   }
 
@@ -54,6 +60,12 @@ export default function ParentAccountCreation() {
         i === index ? value.toUpperCase() : code
       )
     }))
+    // Clear validation error when user types
+    setCodeValidationErrors(prev => {
+      const newErrors = { ...prev }
+      delete newErrors[index]
+      return newErrors
+    })
   }
 
   const validateStep = (stepNum) => {
@@ -83,6 +95,7 @@ export default function ParentAccountCreation() {
 
   const handleNext = async () => {
     setError('')
+    setCodeValidationErrors({})
     
     const validationError = validateStep(step)
     if (validationError) {
@@ -95,52 +108,93 @@ export default function ParentAccountCreation() {
       return
     }
 
-    // Step 3: Validate invite codes and check for existing families
+    // Step 3: Validate invite codes BEFORE creating account
     setLoading(true)
 
     try {
-      console.log('🔍 Validating invite codes and checking for existing families...')
+      console.log('🔍 Validating invite codes before account creation...')
       
-      const validationResults = []
       const validCodes = parentData.studentInviteCodes.filter(code => code.trim())
-      let familyCheckResult = null
+      const validationResults = []
+      const errors = {}
+      let hasValidCode = false
       
-      // For now, we'll do basic validation and check if any student already has a family
-      // The actual linking will happen after account creation in onboarding
-      for (const inviteCode of validCodes) {
+      // Validate each code
+      for (let i = 0; i < parentData.studentInviteCodes.length; i++) {
+        const code = parentData.studentInviteCodes[i].trim()
+        if (!code) continue
+        
         try {
-          // In a real implementation, we'd validate the code exists here
-          // For now, we'll store all codes and validate during actual linking
-          validationResults.push({
-            inviteCode: inviteCode.trim(),
-            valid: true
-          })
+          console.log(`🔍 Validating code ${i}: ${code}`)
+          
+          // Validate the code and check student capacity
+          const validation = await validateParentInviteCode(code)
+          
+          if (!validation.isValid) {
+            errors[i] = validation.error
+            console.log(`❌ Code ${i} invalid: ${validation.error}`)
+          } else {
+            // Check if student has capacity for more parents
+            const capacityCheck = await checkStudentParentCapacity(validation.studentId)
+            
+            if (!capacityCheck.hasCapacity) {
+              errors[i] = capacityCheck.reason || 'This student already has 2 parents connected'
+              console.log(`❌ Code ${i} at capacity: ${errors[i]}`)
+            } else {
+              validationResults.push({
+                index: i,
+                code: code,
+                studentInfo: validation.studentInfo,
+                existingFamily: validation.existingFamily
+              })
+              hasValidCode = true
+              console.log(`✅ Code ${i} validated successfully`)
+            }
+          }
         } catch (error) {
-          validationResults.push({
-            inviteCode: inviteCode.trim(),
-            valid: false,
-            error: error.message
-          })
+          console.error(`❌ Error validating code ${i}:`, error)
+          
+          // Provide helpful error messages for common issues
+          if (error.message.includes('not found') || error.message.includes('Invalid')) {
+            errors[i] = 'Invalid code. Please check for typos and try again.'
+          } else if (error.message.includes('expired')) {
+            errors[i] = 'This invite code has expired. Please ask your child for a new one.'
+          } else {
+            errors[i] = 'Unable to validate this code. Please try again.'
+          }
         }
       }
-
-      const validInviteCodes = validationResults.filter(r => r.valid).map(r => r.inviteCode)
       
-      if (validInviteCodes.length === 0) {
-        throw new Error('No valid invite codes found. Please check your codes.')
+      // If no valid codes, show errors and don't proceed
+      if (!hasValidCode) {
+        setCodeValidationErrors(errors)
+        setError('Please fix the errors below before continuing')
+        setLoading(false)
+        return
       }
-
+      
+      // Store validated codes for account creation
+      setValidatedCodes(validationResults)
+      
+      // Check if any codes revealed existing families
+      const existingFamilies = validationResults
+        .filter(r => r.existingFamily)
+        .map(r => r.existingFamily)
+      
       // Store data for onboarding (account creation happens there)
       if (typeof window !== 'undefined') {
         const tempData = {
           parentInfo: {
             firstName: parentData.firstName,
-            lastName: parentData.lastName, // Now we have lastName for family name!
+            lastName: parentData.lastName,
             email: parentData.email,
             password: parentData.password
           },
-          validInviteCodes,
-          accountFlow: 'parent'
+          validatedCodes: validationResults,
+          existingFamilies,
+          accountFlow: 'parent',
+          // Important: codes are now pre-validated
+          codesPreValidated: true
         }
         localStorage.setItem('tempParentData', JSON.stringify(tempData))
         localStorage.setItem('luxlibris_account_flow', 'parent')
@@ -150,7 +204,7 @@ export default function ParentAccountCreation() {
 
     } catch (error) {
       console.error('❌ Validation error:', error)
-      setError(error.message || 'Failed to validate invite codes. Please try again.')
+      setError('Failed to validate invite codes. Please try again.')
     }
 
     setLoading(false)
@@ -160,6 +214,7 @@ export default function ParentAccountCreation() {
     if (step > 1) {
       setStep(step - 1)
       setError('')
+      setCodeValidationErrors({})
     } else {
       router.push('/role-selector')
     }
@@ -225,7 +280,7 @@ export default function ParentAccountCreation() {
               lineHeight: '1.4'
             }}>
               {step === 4 
-                ? 'Your information is verified! Let\'s review our terms and create your account.'
+                ? 'Your invite codes are verified! Let\'s set up your account.'
                 : 'Support your child\'s reading journey with Lux Libris'
               }
             </p>
@@ -322,8 +377,8 @@ export default function ParentAccountCreation() {
                           boxSizing: 'border-box',
                           outline: 'none',
                           minHeight: '48px',
-                          color: luxTheme.textPrimary,    // Add this
-  backgroundColor: luxTheme.surface // Add this
+                          color: luxTheme.textPrimary,
+                          backgroundColor: luxTheme.surface
                         }}
                         onFocus={(e) => e.target.style.borderColor = luxTheme.primary}
                         onBlur={(e) => e.target.style.borderColor = `${luxTheme.primary}40`}
@@ -354,7 +409,9 @@ export default function ParentAccountCreation() {
                           fontSize: 'clamp(0.875rem, 3.5vw, 1rem)',
                           boxSizing: 'border-box',
                           outline: 'none',
-                          minHeight: '48px'
+                          minHeight: '48px',
+                          color: luxTheme.textPrimary,
+                          backgroundColor: luxTheme.surface
                         }}
                         onFocus={(e) => e.target.style.borderColor = luxTheme.primary}
                         onBlur={(e) => e.target.style.borderColor = `${luxTheme.primary}40`}
@@ -388,7 +445,9 @@ export default function ParentAccountCreation() {
                         fontSize: 'clamp(0.875rem, 3.5vw, 1rem)',
                         boxSizing: 'border-box',
                         outline: 'none',
-                        minHeight: '48px'
+                        minHeight: '48px',
+                        color: luxTheme.textPrimary,
+                        backgroundColor: luxTheme.surface
                       }}
                       onFocus={(e) => e.target.style.borderColor = luxTheme.primary}
                       onBlur={(e) => e.target.style.borderColor = `${luxTheme.primary}40`}
@@ -408,7 +467,7 @@ export default function ParentAccountCreation() {
                     margin: 0,
                     lineHeight: '1.4'
                   }}>
-                    💡 <strong>What you&apos;ll get:</strong> Track your child&apos;s reading progress, unlock quiz codes, and celebrate achievements together!
+                    💡 <strong>What you'll get:</strong> Track your child's reading progress, unlock quiz codes, and celebrate achievements together!
                   </p>
                 </div>
               </div>
@@ -454,7 +513,9 @@ export default function ParentAccountCreation() {
                         fontSize: 'clamp(0.875rem, 3.5vw, 1rem)',
                         boxSizing: 'border-box',
                         outline: 'none',
-                        minHeight: '48px'
+                        minHeight: '48px',
+                        color: luxTheme.textPrimary,
+                        backgroundColor: luxTheme.surface
                       }}
                       onFocus={(e) => e.target.style.borderColor = luxTheme.primary}
                       onBlur={(e) => e.target.style.borderColor = `${luxTheme.primary}40`}
@@ -487,7 +548,9 @@ export default function ParentAccountCreation() {
                         fontSize: 'clamp(0.875rem, 3.5vw, 1rem)',
                         boxSizing: 'border-box',
                         outline: 'none',
-                        minHeight: '48px'
+                        minHeight: '48px',
+                        color: luxTheme.textPrimary,
+                        backgroundColor: luxTheme.surface
                       }}
                       onFocus={(e) => e.target.style.borderColor = luxTheme.primary}
                       onBlur={(e) => e.target.style.borderColor = `${luxTheme.primary}40`}
@@ -513,7 +576,7 @@ export default function ParentAccountCreation() {
               </div>
             )}
 
-            {/* Step 3: Student Invite Codes */}
+            {/* Step 3: Student Invite Codes - Updated with better validation */}
             {step === 3 && (
               <div>
                 <h2 style={{
@@ -538,66 +601,96 @@ export default function ParentAccountCreation() {
                 <div style={{ marginBottom: '1.5rem' }}>
                   {parentData.studentInviteCodes.map((code, index) => (
                     <div key={index} style={{
-                      display: 'flex',
-                      gap: '0.5rem',
-                      marginBottom: '1rem',
-                      alignItems: 'center'
+                      marginBottom: '1rem'
                     }}>
-                      <div style={{ flex: 1 }}>
-                        <label style={{
-                          display: 'block',
-                          fontSize: 'clamp(0.75rem, 3vw, 0.875rem)',
-                          fontWeight: '600',
-                          color: luxTheme.textSecondary,
-                          marginBottom: '0.5rem'
-                        }}>
-                          {index === 0 ? 'Student Invite Code *' : `Child ${index + 1} Invite Code`}
-                        </label>
-                        <input
-                          type="text"
-                          value={code}
-                          onChange={(e) => updateInviteCode(index, e.target.value)}
-                          placeholder="TXTEST-DEMO-EMMAK5-A7B9C2D4"
-                          style={{
-                            width: '100%',
-                            padding: '0.875rem',
-                            border: `2px solid ${luxTheme.primary}40`,
-                            borderRadius: '0.75rem',
+                      <div style={{
+                        display: 'flex',
+                        gap: '0.5rem',
+                        alignItems: 'center'
+                      }}>
+                        <div style={{ flex: 1 }}>
+                          <label style={{
+                            display: 'block',
                             fontSize: 'clamp(0.75rem, 3vw, 0.875rem)',
-                            boxSizing: 'border-box',
-                            outline: 'none',
-                            fontFamily: 'monospace',
-                            fontWeight: 'bold',
-                            textAlign: 'center',
-                            letterSpacing: '0.05em',
-                            minHeight: '48px'
-                          }}
-                          onFocus={(e) => e.target.style.borderColor = luxTheme.primary}
-                          onBlur={(e) => e.target.style.borderColor = `${luxTheme.primary}40`}
-                        />
+                            fontWeight: '600',
+                            color: luxTheme.textSecondary,
+                            marginBottom: '0.5rem'
+                          }}>
+                            {index === 0 ? 'Student Invite Code *' : `Child ${index + 1} Invite Code`}
+                          </label>
+                          <input
+                            type="text"
+                            value={code}
+                            onChange={(e) => updateInviteCode(index, e.target.value)}
+                            placeholder="TXTEST-DEMO-EMMAK5-A7B9C2D4"
+                            style={{
+                              width: '100%',
+                              padding: '0.875rem',
+                              border: `2px solid ${codeValidationErrors[index] ? '#dc2626' : luxTheme.primary}40`,
+                              borderRadius: '0.75rem',
+                              fontSize: 'clamp(0.75rem, 3vw, 0.875rem)',
+                              boxSizing: 'border-box',
+                              outline: 'none',
+                              fontFamily: 'monospace',
+                              fontWeight: 'bold',
+                              textAlign: 'center',
+                              letterSpacing: '0.05em',
+                              minHeight: '48px',
+                              color: luxTheme.textPrimary,
+                              backgroundColor: codeValidationErrors[index] ? '#fef2f2' : luxTheme.surface
+                            }}
+                            onFocus={(e) => e.target.style.borderColor = codeValidationErrors[index] ? '#dc2626' : luxTheme.primary}
+                            onBlur={(e) => e.target.style.borderColor = codeValidationErrors[index] ? '#dc2626' : `${luxTheme.primary}40`}
+                          />
+                        </div>
+                        {parentData.studentInviteCodes.length > 1 && (
+                          <button
+                            onClick={() => removeInviteCodeField(index)}
+                            style={{
+                              marginTop: '1.5rem',
+                              backgroundColor: '#fee2e2',
+                              color: '#dc2626',
+                              border: '1px solid #fca5a5',
+                              borderRadius: '0.5rem',
+                              width: '2.5rem',
+                              height: '2.5rem',
+                              cursor: 'pointer',
+                              fontSize: '1rem',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0,
+                              touchAction: 'manipulation'
+                            }}
+                          >
+                            ×
+                          </button>
+                        )}
                       </div>
-                      {parentData.studentInviteCodes.length > 1 && (
-                        <button
-                          onClick={() => removeInviteCodeField(index)}
-                          style={{
-                            marginTop: '1.5rem',
-                            backgroundColor: '#fee2e2',
+                      
+                      {/* Individual code error message */}
+                      {codeValidationErrors[index] && (
+                        <div style={{
+                          backgroundColor: '#fef2f2',
+                          border: '1px solid #fca5a5',
+                          borderRadius: '0.5rem',
+                          padding: '0.5rem 0.75rem',
+                          marginTop: '0.5rem',
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: '0.5rem'
+                        }}>
+                          <span style={{ color: '#dc2626', fontSize: '0.875rem' }}>⚠️</span>
+                          <p style={{
                             color: '#dc2626',
-                            border: '1px solid #fca5a5',
-                            borderRadius: '0.5rem',
-                            width: '2.5rem',
-                            height: '2.5rem',
-                            cursor: 'pointer',
-                            fontSize: '1rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0,
-                            touchAction: 'manipulation'
-                          }}
-                        >
-                          ×
-                        </button>
+                            fontSize: 'clamp(0.625rem, 2.5vw, 0.75rem)',
+                            margin: 0,
+                            lineHeight: '1.4',
+                            flex: 1
+                          }}>
+                            {codeValidationErrors[index]}
+                          </p>
+                        </div>
                       )}
                     </div>
                   ))}
@@ -649,7 +742,7 @@ export default function ParentAccountCreation() {
               </div>
             )}
 
-            {/* Step 4: Ready for Legal */}
+            {/* Step 4: Ready for Legal - Updated with validation info */}
             {step === 4 && (
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>✅</div>
@@ -659,7 +752,7 @@ export default function ParentAccountCreation() {
                   color: luxTheme.textPrimary,
                   marginBottom: '1rem'
                 }}>
-                  Information Verified!
+                  Codes Verified!
                 </h2>
 
                 <div style={{
@@ -679,19 +772,17 @@ export default function ParentAccountCreation() {
                     Ready to connect:
                   </h3>
                   <div style={{ fontSize: 'clamp(0.75rem, 3vw, 0.875rem)', color: luxTheme.textPrimary, lineHeight: '1.6' }}>
-                    <p style={{ margin: '0 0 0.5rem 0' }}>
-                      ✅ Account info verified
-                    </p>
-                    <p style={{ margin: '0 0 0.5rem 0' }}>
-                      ✅ {parentData.studentInviteCodes.filter(code => code.trim()).length} invite code{parentData.studentInviteCodes.filter(code => code.trim()).length !== 1 ? 's' : ''} validated
-                    </p>
-                    <p style={{ margin: 0 }}>
-                      ✅ Ready for family setup
-                    </p>
+                    {validatedCodes.map((result, index) => (
+                      <p key={index} style={{ margin: '0 0 0.5rem 0' }}>
+                        ✅ {result.studentInfo.firstName} {result.studentInfo.lastInitial}. 
+                        at {result.studentInfo.schoolName}
+                        {result.existingFamily && ' (existing family)'}
+                      </p>
+                    ))}
                   </div>
                 </div>
 
-                {existingFamilyInfo && (
+                {validatedCodes.some(r => r.existingFamily) && (
                   <div style={{
                     background: '#fef3cd',
                     border: '1px solid #f59e0b',
@@ -705,7 +796,7 @@ export default function ParentAccountCreation() {
                       margin: 0,
                       lineHeight: '1.4'
                     }}>
-                      🎉 <strong>Great news!</strong> Some of your children are already part of an existing family. You&apos;ll join as the second parent!
+                      🎉 <strong>Great news!</strong> Some of your children are already part of an existing family. You'll join as the second parent!
                     </p>
                   </div>
                 )}
@@ -723,7 +814,7 @@ export default function ParentAccountCreation() {
                     margin: 0,
                     lineHeight: '1.4'
                   }}>
-                    🚀 <strong>What&apos;s next:</strong> Review our Family Terms & Privacy Policy, then we&apos;ll create your account and connect you to your children!
+                    🚀 <strong>What's next:</strong> Review our Family Terms & Privacy Policy, then we'll create your account and connect you to your children!
                   </p>
                 </div>
               </div>
@@ -812,7 +903,7 @@ export default function ParentAccountCreation() {
                       animation: 'spin 1s linear infinite'
                     }}></div>
                   )}
-                  {step === 3 ? 'Verify & Continue to Family Terms' : 'Continue'}
+                  {step === 3 ? 'Verify Codes' : 'Continue'}
                 </button>
               </>
             ) : (
@@ -850,7 +941,7 @@ export default function ParentAccountCreation() {
               margin: 0,
               lineHeight: '1.4'
             }}>
-              Need help? Contact your child&apos;s teacher for invite codes.
+              Need help? Contact your child's teacher for invite codes.
             </p>
           </div>
         </div>

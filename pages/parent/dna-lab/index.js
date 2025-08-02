@@ -603,34 +603,35 @@ export default function ParentDnaLabDashboard() {
 
   // Unlock Reading DNA for family
   const unlockReadingDnaForFamily = async () => {
-    try {
-      setIsUnlockingReadingDna(true);
-      
-      const familyRef = doc(db, 'families', user.uid);
-      const familyDoc = await getDoc(familyRef);
-      
-      const readingDnaSettings = {
-        unlocked: true,
-        unlockedAt: new Date(),
-        unlockedBy: user.uid,
-        childrenCount: linkedStudents.length
-      };
-      
-      if (familyDoc.exists()) {
-        // Update existing family document
-        await updateDoc(familyRef, {
-          readingDnaSettings: readingDnaSettings,
-          lastUpdated: new Date()
-        });
-      } else {
-        // Create new family document
-        await setDoc(familyRef, {
-          parentUid: user.uid,
-          readingDnaSettings: readingDnaSettings,
-          createdAt: new Date(),
-          lastUpdated: new Date()
-        });
-      }
+  try {
+    setIsUnlockingReadingDna(true);
+    
+    // Get the family ID from parent data, not user.uid
+    if (!parentData?.familyId) {
+      throw new Error('No family ID found for parent');
+    }
+    
+    const familyRef = doc(db, 'families', parentData.familyId);
+    const familyDoc = await getDoc(familyRef);
+    
+    const readingDnaSettings = {
+      unlocked: true,
+      unlockedAt: new Date(),
+      unlockedBy: user.uid,
+      childrenCount: linkedStudents.length
+    };
+    
+    if (familyDoc.exists()) {
+      // Update existing family document
+      await updateDoc(familyRef, {
+        readingDnaSettings: readingDnaSettings,
+        lastUpdated: new Date()
+      });
+    } else {
+      // This shouldn't happen if family is properly created
+      console.error('⚠️ Family document not found:', parentData.familyId);
+      throw new Error('Family document not found');
+    }
       
       setFamilyReadingDnaSettings(readingDnaSettings);
       setShowReadingDnaUnlockModal(false);
@@ -720,14 +721,17 @@ export default function ParentDnaLabDashboard() {
         }
       }
 
-      // Check family Reading DNA settings
-      const familyRef = doc(db, 'families', user.uid);
-      const familyDoc = await getDoc(familyRef);
-
-      if (familyDoc.exists()) {
-        const familyData = familyDoc.data();
-        setFamilyReadingDnaSettings(familyData.readingDnaSettings || null);
-      }
+      // Check family Reading DNA settings using the correct family ID
+if (data.familyId) {
+  const familyRef = doc(db, 'families', data.familyId);
+  const familyDoc = await getDoc(familyRef);
+  if (familyDoc.exists()) {
+    const familyData = familyDoc.data();
+    setFamilyReadingDnaSettings(familyData.readingDnaSettings || null);
+  }
+} else {
+  console.log('⚠️ Parent has no familyId set');
+}
       
       // Load additional data for random facts
       await loadAdditionalData();

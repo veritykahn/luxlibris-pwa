@@ -160,38 +160,46 @@ export default function ParentFamilyBattle() {
     try {
       console.log('🏆 Loading family battle data...')
       
-      // Get current battle data
-      const battleData = await calculateFamilyBattleData(user.uid, linkedStudents);
-      setFamilyBattleData(battleData);
-      
-      // Get family statistics
-      const stats = await getFamilyBattleStats(user.uid);
-      setFamilyStats(stats);
+      // Get current battle data using family ID
+if (parentData?.familyId) {
+  const battleData = await calculateFamilyBattleData(parentData.familyId, linkedStudents);
+  setFamilyBattleData(battleData);
+  
+  // Get family statistics
+  const stats = await getFamilyBattleStats(parentData.familyId);
+  setFamilyStats(stats);
+} else {
+  console.error('⚠️ Cannot load family battle data - no familyId');
+}
       
       // Calculate streak
-      const familyRef = doc(db, 'families', user.uid);
-      const familyDoc = await getDoc(familyRef);
-      
-      if (familyDoc.exists()) {
-        const familyData = familyDoc.data();
-        
-        // Simple streak calculation
-        const today = new Date();
-        const lastRead = familyData.lastFamilyReadingDate ? new Date(familyData.lastFamilyReadingDate) : null;
-        let streakDays = 0;
-        
-        if (lastRead) {
-          const daysDiff = Math.floor((today - lastRead) / (1000 * 60 * 60 * 24));
-          if (daysDiff <= 1) {
-            streakDays = (familyData.familyStreakDays || 0) + (daysDiff === 1 ? 1 : 0);
-          }
-        }
-        
-        setFamilyStreakData({ 
-          streakDays: streakDays,
-          lastReadingDate: lastRead 
-        });
+if (parentData?.familyId) {
+  const familyRef = doc(db, 'families', parentData.familyId);
+  const familyDoc = await getDoc(familyRef);
+  
+  if (familyDoc.exists()) {
+    const familyData = familyDoc.data();
+    
+    // Simple streak calculation
+    const today = new Date();
+    const lastRead = familyData.lastFamilyReadingDate ? new Date(familyData.lastFamilyReadingDate) : null;
+    let streakDays = 0;
+    
+    if (lastRead) {
+      const daysDiff = Math.floor((today - lastRead) / (1000 * 60 * 60 * 24));
+      if (daysDiff <= 1) {
+        streakDays = (familyData.familyStreakDays || 0) + (daysDiff === 1 ? 1 : 0);
       }
+    }
+    
+    setFamilyStreakData({ 
+      streakDays: streakDays,
+      lastReadingDate: lastRead 
+    });
+  }
+} else {
+  console.log('⚠️ Parent has no familyId set');
+}
       
     } catch (error) {
       console.error('❌ Error loading family battle data:', error);

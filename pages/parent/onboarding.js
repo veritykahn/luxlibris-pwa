@@ -1,4 +1,4 @@
-// pages/parent/onboarding.js - Updated with Premium Features Step 5
+// pages/parent/onboarding.js - Updated to use pre-validated codes
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
@@ -59,7 +59,7 @@ export default function ParentOnboarding() {
         
         if (tempData) {
           const data = JSON.parse(tempData)
-          console.log('🔧 Creating parent account from temp data...')
+          console.log('🔧 Processing pre-validated parent data...')
           
           try {
             setLoading(true)
@@ -74,38 +74,49 @@ export default function ParentOnboarding() {
 
             console.log('✅ Parent account created:', parentId)
 
-            // Link to each student and check for existing families
+            // Process validated codes (they're already validated)
             const successfulLinks = []
             const failedLinks = []
             let existingFamily = null
             
-            for (const inviteCode of data.validInviteCodes) {
-              try {
-                console.log('🔗 Linking to student with code:', inviteCode)
-                const linkResult = await linkParentToStudent(parentId, inviteCode)
-                
-                successfulLinks.push({
-                  inviteCode,
-                  student: linkResult
-                })
-                
-                // Check if this student revealed an existing family
-                if (!linkResult.isNewFamily && linkResult.familyId) {
-                  existingFamily = {
-                    familyId: linkResult.familyId,
-                    familyName: linkResult.familyName,
-                    isSecondParent: true
+            if (data.codesPreValidated && data.validatedCodes) {
+              // Use pre-validated codes
+              for (const validatedCode of data.validatedCodes) {
+                try {
+                  console.log('🔗 Linking to pre-validated student:', validatedCode.studentInfo.firstName)
+                  
+                  const linkResult = await linkParentToStudent(
+                    parentId, 
+                    validatedCode.code,
+                    validatedCode // Pass the validated info
+                  )
+                  
+                  successfulLinks.push({
+                    inviteCode: validatedCode.code,
+                    student: linkResult
+                  })
+                  
+                  if (!linkResult.isNewFamily && linkResult.familyId) {
+                    existingFamily = {
+                      familyId: linkResult.familyId,
+                      familyName: linkResult.familyName,
+                      isSecondParent: true
+                    }
                   }
+                  
+                  console.log('✅ Successfully linked to:', linkResult.studentName)
+                } catch (linkError) {
+                  console.error('❌ Failed to link validated code:', validatedCode.code, linkError)
+                  failedLinks.push({
+                    inviteCode: validatedCode.code,
+                    error: linkError.message
+                  })
                 }
-                
-                console.log('✅ Successfully linked to:', linkResult.studentName)
-              } catch (linkError) {
-                console.error('❌ Failed to link to code:', inviteCode, linkError)
-                failedLinks.push({
-                  inviteCode,
-                  error: linkError.message
-                })
               }
+            } else {
+              // Legacy flow - should not happen with new validation
+              console.warn('⚠️ Using legacy code validation flow')
+              throw new Error('Invalid pre-validation data')
             }
 
             // Create onboarding data structure
@@ -244,45 +255,58 @@ export default function ParentOnboarding() {
       })
 
       // Handle family creation or joining
-      let finalFamilyId = null
-      
-      if (existingFamilyInfo && existingFamilyInfo.familyId) {
-        // Joining existing family - family document already updated during linking
-        finalFamilyId = existingFamilyInfo.familyId
-        console.log('✅ Joined existing family:', existingFamilyInfo.familyName)
-      } else {
-        // Create new family
-        const allLinkedStudents = onboardingData.linkedStudents.map(link => ({
-          id: link.student.studentId,
-          firstName: link.student.studentName.split(' ')[0],
-          lastInitial: link.student.studentName.split(' ')[1],
-          schoolName: link.student.schoolName,
-          entityId: link.student.entityId,
-          schoolId: link.student.schoolId,
-          grade: link.student.grade
-        }))
-        
-        finalFamilyId = await createFamily(
-          onboardingData.parentId,
-          onboardingData.parentInfo.lastName,
-          allLinkedStudents
-        )
-        
-        console.log('✅ Created new family:', familyData.familyName)
-      }
+let finalFamilyId = null;
 
-      // If joining existing family, update preferences for the family
-      if (existingFamilyInfo) {
-        const familyRef = doc(db, 'families', finalFamilyId)
-        await updateDoc(familyRef, {
-          // Merge reading goals (keep higher values)
-          'readingGoals.familyWeekly': Math.max(
-            familyData.readingGoals.familyWeekly,
-            150 // default if not set
-          ),
-          lastUpdated: new Date()
-        })
-      }
+// Check if any of the linked students revealed an existing family
+const hasExistingFamily = onboardingData.linkedStudents.some(link => 
+  link.familyId || (link.existingFamily && link.existingFamily.familyId)
+);
+
+if (hasExistingFamily) {
+  // Get the family ID from the first student that has one
+  const studentWithFamily = onboardingData.linkedStudents.find(link => 
+    link.familyId || (link.existingFamily && link.existingFamily.familyId)
+  );
+  finalFamilyId = studentWithFamily.familyId || studentWithFamily.existingFamily.familyId;
+  
+  console.log('✅ Parent already joined existing family during linking:', finalFamilyId);
+  
+  // Update family preferences if needed
+  const familyRef = doc(db, 'families', finalFamilyId);
+  await updateDoc(familyRef, {
+    // Merge reading goals (keep higher values)
+    'readingGoals.familyWeekly': Math.max(
+      familyData.readingGoals.familyWeekly,
+      150 // default if not set
+    ),
+    lastUpdated: new Date()
+  });
+} else {
+  // Create new family only if no existing family was found
+  const allLinkedStudents = onboardingData.linkedStudents.map(link => ({
+    id: link.student.studentId,
+    firstName: link.student.studentName.split(' ')[0],
+    lastInitial: link.student.studentName.split(' ')[1],
+    schoolName: link.student.schoolName,
+    entityId: link.student.entityId,
+    schoolId: link.student.schoolId,
+    grade: link.student.grade
+  }));
+  
+  finalFamilyId = await createFamily(
+    onboardingData.parentId,
+    onboardingData.parentInfo.lastName,
+    allLinkedStudents
+  );
+  
+  console.log('✅ Created new family:', familyData.familyName, 'with ID:', finalFamilyId);
+}
+
+// Ensure parent document has the correct familyId
+await updateDoc(doc(db, 'parents', onboardingData.parentId), {
+  familyId: finalFamilyId,
+  lastUpdated: new Date()
+});
 
       console.log('✅ Parent onboarding completed successfully')
 
@@ -329,7 +353,7 @@ export default function ParentOnboarding() {
             margin: '0 auto 1rem'
           }}></div>
           <p style={{ color: luxTheme.textPrimary, fontSize: '1.1rem' }}>
-            Loading family setup...
+            Setting up your family account...
           </p>
         </div>
       </div>
@@ -540,7 +564,7 @@ export default function ParentOnboarding() {
                       margin: 0,
                       lineHeight: '1.4'
                     }}>
-                      🎉 <strong>Welcome!</strong> You&apos;re joining as the second parent in this family. You&apos;ll have full access to view progress and unlock quizzes!
+                      🎉 <strong>Welcome!</strong> You're joining as the second parent in this family. You'll have full access to view progress and unlock quizzes!
                     </p>
                   </div>
                 ) : (
@@ -556,7 +580,7 @@ export default function ParentOnboarding() {
                       margin: 0,
                       lineHeight: '1.4'
                     }}>
-                      🏆 <strong>Family Reading Battles:</strong> You&apos;ll compete in friendly reading challenges with your children to motivate everyone!
+                      🏆 <strong>Family Reading Battles:</strong> You'll compete in friendly reading challenges with your children to motivate everyone!
                     </p>
                   </div>
                 )}
@@ -834,7 +858,7 @@ export default function ParentOnboarding() {
                       color: luxTheme.textSecondary,
                       marginBottom: '0.5rem'
                     }}>
-                      How do you like to support your child&apos;s reading?
+                      How do you like to support your child's reading?
                     </label>
                     <select
                       value={familyData.parentProfile.supportStyle}
@@ -1179,7 +1203,7 @@ export default function ParentOnboarding() {
                           margin: 0,
                           lineHeight: '1.3'
                         }}>
-                          Deep analytics and insights into your family&apos;s reading patterns and growth
+                          Deep analytics and insights into your family's reading patterns and growth
                         </p>
                       </div>
                     </div>
@@ -1234,7 +1258,7 @@ export default function ParentOnboarding() {
                     margin: 0,
                     lineHeight: '1.4'
                   }}>
-                    🚀 <strong>Ready to start!</strong> Click &apos;Complete Setup&apos; to access your family dashboard with all premium features unlocked!
+                    🚀 <strong>Ready to start!</strong> Click 'Complete Setup' to access your family dashboard with all premium features unlocked!
                   </p>
                 </div>
               </div>
