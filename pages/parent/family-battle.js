@@ -132,20 +132,8 @@ export default function ParentFamilyBattle() {
   const [showSuccess, setShowSuccess] = useState('')
   const [showStreakModal, setShowStreakModal] = useState(false)
 
- // Lux Libris Classic Theme with time-based adjustments
-const luxTheme = useMemo(() => ({
-  primary: '#ADD4EA',
-  secondary: '#C3E0DE',
-  accent: '#A1E5DB',
-  background: '#FFFCF5',
-  surface: '#FFFFFF',
-  textPrimary: '#223848',
-  textSecondary: '#556B7A',
-  timeOverlay: timeTheme.overlay
-}), [timeTheme]);
-
   // Navigation menu items
-  const navMenuItems = useMemo(() => [
+const navMenuItems = useMemo(() => [
   { name: 'Family Dashboard', path: '/parent/dashboard', icon: '⌂' },
   { name: 'Child Progress', path: '/parent/child-progress', icon: '◐' },
   { name: 'Reading Habits', path: '/parent/healthy-habits', icon: '◉' },
@@ -187,6 +175,18 @@ const timeTheme = useMemo(() => {
     };
   }
 }, [Math.floor(new Date().getHours() / 6)]); // Only recalc every 6 hours
+
+// Lux Libris Classic Theme with time-based adjustments
+const luxTheme = useMemo(() => ({
+  primary: '#ADD4EA',
+  secondary: '#C3E0DE',
+  accent: '#A1E5DB',
+  background: '#FFFCF5',
+  surface: '#FFFFFF',
+  textPrimary: '#223848',
+  textSecondary: '#556B7A',
+  timeOverlay: timeTheme.overlay
+}), [timeTheme]);
 
 // Load family battle data
 const loadFamilyBattleData = useCallback(async () => {
