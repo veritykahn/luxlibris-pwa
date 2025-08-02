@@ -464,7 +464,8 @@ export default function StudentFamilyBattleSimplified() {
   // UI states
   const [showNavMenu, setShowNavMenu] = useState(false);
   const [showStatsDropdown, setShowStatsDropdown] = useState(false);
-  const [showJaneAusten, setShowJaneAusten] = useState(true);
+const [showJaneAusten, setShowJaneAusten] = useState(true);
+
 
   // Theme definitions
   const themes = useMemo(() => ({
@@ -620,27 +621,50 @@ const statsNavOptions = useMemo(() => [
   };
 
   // Load initial data
-  const loadData = useCallback(async () => {
-    try {
-      const firebaseStudentData = await getStudentDataEntities(user.uid);
-      if (!firebaseStudentData) {
-        router.push('/student-onboarding');
-        return;
-      }
+const loadData = useCallback(async () => {
+  try {
+    // First get the basic student data
+    const firebaseStudentData = await getStudentDataEntities(user.uid);
+    if (!firebaseStudentData) {
+      router.push('/student-onboarding');
+      return;
+    }
+    
+    // IMPORTANT: Fetch fresh student data to ensure we have familyBattleSettings
+    const studentRef = doc(
+      db, 
+      `entities/${firebaseStudentData.entityId}/schools/${firebaseStudentData.schoolId}/students/${user.uid}`
+    );
+    const freshStudentDoc = await getDoc(studentRef);
+    
+    if (freshStudentDoc.exists()) {
+      const freshData = freshStudentDoc.data();
+      const completeStudentData = {
+        ...firebaseStudentData,
+        ...freshData,
+        familyBattleSettings: freshData.familyBattleSettings || null
+      };
       
+      setStudentData(completeStudentData);
+      
+      const selectedThemeKey = completeStudentData.selectedTheme || 'classic_lux';
+      const selectedTheme = themes[selectedThemeKey];
+      setCurrentTheme(selectedTheme);
+    } else {
       setStudentData(firebaseStudentData);
       
       const selectedThemeKey = firebaseStudentData.selectedTheme || 'classic_lux';
       const selectedTheme = themes[selectedThemeKey];
       setCurrentTheme(selectedTheme);
-      
-    } catch (error) {
-      console.error('Error loading data:', error);
-      setError('Failed to load family battle data. Please try again.');
     }
     
-    setIsLoading(false);
-  }, [user?.uid, router, themes]);
+  } catch (error) {
+    console.error('Error loading data:', error);
+    setError('Failed to load family battle data. Please try again.');
+  }
+  
+  setIsLoading(false);
+}, [user?.uid, router, themes]);
 
   // New useEffect for loading family battle status
   useEffect(() => {

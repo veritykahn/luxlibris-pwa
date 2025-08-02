@@ -1555,44 +1555,62 @@ export default function ParentDnaLabDashboard() {
                   {/* Current Parent */}
                   <div style={{ textAlign: 'center' }}>
                     {!hasParentDna ? (
-                      <button
-                        onClick={() => router.push('/parent/dna-lab/assessment')}
-                        style={{
-                          width: '120px',
-                          height: '120px',
-                          borderRadius: '50%',
-                          background: `linear-gradient(135deg, ${luxTheme.primary}, ${luxTheme.secondary})`,
-                          border: '3px dashed rgba(255,255,255,0.5)',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          cursor: 'pointer',
-                          position: 'relative',
-                          boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
-                          transition: 'all 0.3s ease',
-                          animation: 'pulse 2s ease-in-out infinite'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.transform = 'scale(1.05)';
-                          e.currentTarget.style.boxShadow = '0 12px 32px rgba(0,0,0,0.15)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.transform = 'scale(1)';
-                          e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.1)';
-                        }}
-                      >
-                        <div style={{ fontSize: '48px', marginBottom: '8px' }}>🧬</div>
-                        <div style={{
-                          fontSize: '14px',
-                          fontWeight: '600',
-                          color: 'white',
-                          textAlign: 'center',
-                          padding: '0 10px'
-                        }}>
-                          Discover Your<br />Reading DNA
-                        </div>
-                      </button>
+                      <div>
+  <button
+    onClick={() => router.push('/parent/dna-lab/assessment')}
+    style={{
+      width: '120px',
+      height: '120px',
+      borderRadius: '50%',
+      background: `linear-gradient(135deg, ${luxTheme.primary}, ${luxTheme.secondary})`,
+      border: '3px dashed rgba(255,255,255,0.6)',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      cursor: 'pointer',
+      position: 'relative',
+      boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
+      transition: 'all 0.3s ease',
+      animation: 'pulse 2s ease-in-out infinite'
+    }}
+    onMouseEnter={(e) => {
+      e.currentTarget.style.transform = 'scale(1.05)';
+      e.currentTarget.style.boxShadow = '0 12px 32px rgba(0,0,0,0.15)';
+    }}
+    onMouseLeave={(e) => {
+      e.currentTarget.style.transform = 'scale(1)';
+      e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.1)';
+    }}
+  >
+    <div style={{ fontSize: '56px' }}>🧬</div>
+    <div style={{
+      position: 'absolute',
+      bottom: '-8px',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      backgroundColor: luxTheme.surface,
+      padding: '2px 8px',
+      borderRadius: '12px',
+      fontSize: '11px',
+      fontWeight: '700',
+      color: luxTheme.primary,
+      boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+      whiteSpace: 'nowrap'
+    }}>
+      START
+    </div>
+  </button>
+  <div style={{
+    fontSize: '16px',
+    fontWeight: '700',
+    color: luxTheme.textPrimary,
+    marginTop: '20px',
+    lineHeight: '1.4'
+  }}>
+    Take Your<br />Assessment
+  </div>
+</div>
                     ) : (
                       <div>
                         <div
@@ -3128,10 +3146,19 @@ export default function ParentDnaLabDashboard() {
           }
           
           @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-          }
+  0% { 
+    transform: scale(1); 
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  }
+  50% { 
+    transform: scale(1.02); 
+    box-shadow: 0 8px 32px rgba(173, 212, 234, 0.3);
+  }
+  100% { 
+    transform: scale(1); 
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  }
+}
           
           @keyframes dnaReveal {
             0% { 

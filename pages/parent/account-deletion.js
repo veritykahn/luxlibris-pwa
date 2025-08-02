@@ -1,4 +1,4 @@
-// pages/parent/account-deletion.js - Dedicated page for parent data export and account deletion (UPDATED)
+// Updated parent account deletion page with multi-parent family support
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
@@ -16,6 +16,8 @@ export default function ParentAccountDeletion() {
   const [parentData, setParentData] = useState(null)
   const [familyData, setFamilyData] = useState(null)
   const [linkedStudents, setLinkedStudents] = useState([])
+  const [familyStatus, setFamilyStatus] = useState(null)
+  const [otherParents, setOtherParents] = useState([])
 
   // Account deletion state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -44,7 +46,7 @@ export default function ParentAccountDeletion() {
     }
   }, [authLoading, isAuthenticated, user, userProfile])
 
-  // Load parent data and linked students
+  // Load parent data and check family status
   const loadParentData = useCallback(async () => {
     try {
       if (!user?.uid) {
@@ -69,13 +71,24 @@ export default function ParentAccountDeletion() {
       
       setParentData(parentProfile)
 
-      // Load family profile
+      // Load family profile and check status
       const familyRef = doc(db, 'families', user.uid)
       const familyDoc = await getDoc(familyRef)
       
       if (familyDoc.exists()) {
-        setFamilyData(familyDoc.data())
+        const familyInfo = familyDoc.data()
+        setFamilyData(familyInfo)
         console.log('✅ Family profile loaded')
+        
+        // Check family status
+        const status = await dbHelpers.checkParentFamilyStatus(user.uid)
+        setFamilyStatus(status)
+        
+        // If there are other parents, get their details
+        if (status.otherParents && status.otherParents.length > 0) {
+          const otherParentDetails = await dbHelpers.getLinkedParentDetails(status.otherParents)
+          setOtherParents(otherParentDetails)
+        }
       }
       
       // Load linked students for display purposes
@@ -152,13 +165,14 @@ export default function ParentAccountDeletion() {
       const linkedStudentIds = parentData.linkedStudents || []
       
       // Use enhanced deletion with export and audit logging
-      await dbHelpers.deleteParentAccountWithExport(
+      const result = await dbHelpers.deleteParentAccountWithExport(
         user.uid, 
         linkedStudentIds,
         false // Don't auto-export since user can export manually
       )
       
       console.log('✅ Parent account deleted successfully with audit trail')
+      console.log('📊 Deletion result:', result)
       
       // Clear any local storage
       if (typeof window !== 'undefined') {
@@ -202,6 +216,10 @@ export default function ParentAccountDeletion() {
       </div>
     )
   }
+
+  // Determine messaging based on family status
+  const isOnlyParent = familyStatus?.isOnlyParent ?? true
+  const parentCount = familyStatus?.parentCount ?? 1
 
   return (
     <>
@@ -264,7 +282,7 @@ export default function ParentAccountDeletion() {
             textAlign: 'center',
             flex: 1
           }}>
-            Export & Delete Family Account
+            Export & Delete {isOnlyParent ? 'Family' : 'Parent'} Account
           </h1>
 
           <div style={{ width: '44px' }} /> {/* Spacer for center alignment */}
@@ -308,7 +326,7 @@ export default function ParentAccountDeletion() {
             </div>
           )}
 
-          {/* Warning Section */}
+          {/* Warning Section - Updated based on parent count */}
           <div style={{
             backgroundColor: '#fef2f2',
             border: '2px solid #fca5a5',
@@ -324,7 +342,7 @@ export default function ParentAccountDeletion() {
               color: '#dc2626',
               marginBottom: '12px'
             }}>
-              Important: Family Account Deletion
+              Important: {isOnlyParent ? 'Family' : 'Parent'} Account Deletion
             </h2>
             <p style={{
               fontSize: 'clamp(14px, 4vw, 16px)',
@@ -332,9 +350,46 @@ export default function ParentAccountDeletion() {
               lineHeight: '1.5',
               marginBottom: '16px'
             }}>
-              This page allows you to export your family data and permanently delete your parent account.
-              Once deleted, your account cannot be recovered.
+              {isOnlyParent 
+                ? 'This page allows you to export your family data and permanently delete your parent account and the entire family. Once deleted, your account cannot be recovered.'
+                : `You are one of ${parentCount} parents in this family. This page allows you to export your data and remove yourself from the family. The family and other parent(s) will remain.`
+              }
             </p>
+            
+            {/* Show other parents if not the only one */}
+            {!isOnlyParent && otherParents.length > 0 && (
+              <div style={{
+                backgroundColor: '#e0f2fe',
+                border: '1px solid #0284c7',
+                borderRadius: '12px',
+                padding: '16px',
+                marginBottom: '16px'
+              }}>
+                <p style={{
+                  fontSize: 'clamp(12px, 3.5vw, 14px)',
+                  color: '#0369a1',
+                  margin: '0 0 8px 0',
+                  fontWeight: '600'
+                }}>
+                  👨‍👩‍👧‍👦 Other parent(s) in this family:
+                </p>
+                <ul style={{
+                  fontSize: 'clamp(12px, 3.5vw, 14px)',
+                  color: '#0369a1',
+                  margin: '0',
+                  paddingLeft: '20px',
+                  lineHeight: '1.4',
+                  textAlign: 'left'
+                }}>
+                  {otherParents.map((parent) => (
+                    <li key={parent.id}>
+                      {parent.firstName} {parent.lastName} ({parent.email})
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
             <div style={{
               backgroundColor: '#fee2e2',
               borderRadius: '12px',
@@ -347,7 +402,10 @@ export default function ParentAccountDeletion() {
                 margin: '0 0 8px 0',
                 fontWeight: '600'
               }}>
-                Family account deletion will permanently remove:
+                {isOnlyParent 
+                  ? 'Family account deletion will permanently remove:'
+                  : 'Your account deletion will permanently remove:'
+                }
               </p>
               <ul style={{
                 fontSize: 'clamp(12px, 3.5vw, 14px)',
@@ -356,11 +414,24 @@ export default function ParentAccountDeletion() {
                 paddingLeft: '20px',
                 lineHeight: '1.4'
               }}>
-                <li>Your parent profile and family settings</li>
-                <li>Connection to your children&apos;s accounts ({linkedStudents.length} {linkedStudents.length === 1 ? 'child' : 'children'})</li>
-                <li>Access to quiz approval requests</li>
-                <li>All saved teacher quiz codes</li>
-                <li>Family name and preferences</li>
+                <li>Your parent profile and login credentials</li>
+                {isOnlyParent ? (
+                  <>
+                    <li>The entire family settings and preferences</li>
+                    <li>Connection to your children&apos;s accounts ({linkedStudents.length} {linkedStudents.length === 1 ? 'child' : 'children'})</li>
+                    <li>All saved teacher quiz codes</li>
+                    <li>Family name and all family data</li>
+                  </>
+                ) : (
+                  <>
+                    <li>Your connection to the family</li>
+                    <li>Your access to children&apos;s accounts</li>
+                    <li>Your ability to approve quiz requests</li>
+                    <li style={{ color: '#16a34a', fontWeight: '600' }}>
+                      ✅ The family and other parent(s) will remain active
+                    </li>
+                  </>
+                )}
               </ul>
               
               {linkedStudents.length > 0 && (
@@ -423,7 +494,7 @@ export default function ParentAccountDeletion() {
               marginBottom: '20px',
               lineHeight: '1.5'
             }}>
-              Before deleting your family account, we recommend exporting your data. This creates a file 
+              Before deleting your {isOnlyParent ? 'family' : 'parent'} account, we recommend exporting your data. This creates a file 
               with all your family information, quiz codes, and linked children details that you can keep forever.
             </p>
 
@@ -457,7 +528,7 @@ export default function ParentAccountDeletion() {
             )}
           </div>
 
-          {/* Step 2: Account Deletion */}
+          {/* Step 2: Account Deletion - Updated messaging */}
           <div style={{
             backgroundColor: luxTheme.surface,
             borderRadius: '16px',
@@ -487,7 +558,7 @@ export default function ParentAccountDeletion() {
                 color: '#dc2626',
                 margin: 0
               }}>
-                🗑️ Delete Your Family Account
+                🗑️ Delete Your {isOnlyParent ? 'Family' : 'Parent'} Account
               </h2>
             </div>
 
@@ -497,11 +568,13 @@ export default function ParentAccountDeletion() {
               marginBottom: '20px',
               lineHeight: '1.5'
             }}>
-              Once you delete your family account, all your data will be permanently removed from our systems. 
-              This action cannot be undone.
+              {isOnlyParent 
+                ? 'Once you delete your family account, all your data and the family will be permanently removed from our systems. This action cannot be undone.'
+                : 'Once you delete your parent account, you will be removed from the family. The family and other parent(s) will continue to have access. This action cannot be undone.'
+              }
             </p>
 
-            {/* What Happens Section */}
+            {/* What Happens Section - Updated based on parent count */}
             <div style={{
               backgroundColor: '#fef2f2',
               border: '1px solid #fca5a5',
@@ -515,7 +588,7 @@ export default function ParentAccountDeletion() {
                 color: '#dc2626',
                 marginBottom: '12px'
               }}>
-                What happens when you delete your parent account:
+                What happens when you delete your {isOnlyParent ? 'family' : 'parent'} account:
               </h3>
               <ul style={{
                 fontSize: 'clamp(12px, 3.5vw, 14px)',
@@ -525,11 +598,20 @@ export default function ParentAccountDeletion() {
                 lineHeight: '1.6'
               }}>
                 <li><strong>Your parent account:</strong> Deleted immediately and permanently</li>
-                <li><strong>Family settings:</strong> Family name and preferences removed</li>
-                <li><strong>Quiz codes:</strong> All saved teacher codes deleted</li>
-                <li><strong>Children&apos;s accounts:</strong> Remain active and keep all reading progress</li>
-                <li><strong>Parent connection:</strong> Children lose parent dashboard access</li>
-                <li><strong>Quiz approval:</strong> You can no longer approve children&apos;s quiz requests</li>
+                {isOnlyParent ? (
+                  <>
+                    <li><strong>Family settings:</strong> Entire family deleted</li>
+                    <li><strong>Quiz codes:</strong> All saved teacher codes deleted</li>
+                    <li><strong>Children&apos;s accounts:</strong> Remain active but lose parent dashboard access</li>
+                  </>
+                ) : (
+                  <>
+                    <li><strong>Family settings:</strong> Remain active for other parent(s)</li>
+                    <li><strong>Quiz codes:</strong> Remain available to other parent(s)</li>
+                    <li><strong>Children&apos;s accounts:</strong> Remain connected to other parent(s)</li>
+                  </>
+                )}
+                <li><strong>Your access:</strong> Permanently removed</li>
               </ul>
             </div>
 
@@ -577,6 +659,7 @@ export default function ParentAccountDeletion() {
                       <br />
                       <span style={{ opacity: 0.8 }}>
                         ✅ Keeps all reading progress • ✅ Keeps all achievements • ✅ Keeps all saints
+                        {!isOnlyParent && ' • ✅ Remains connected to other parent(s)'}
                       </span>
                     </div>
                   ))}
@@ -590,96 +673,100 @@ export default function ParentAccountDeletion() {
                   color: '#0369a1',
                   lineHeight: '1.4'
                 }}>
-                  <strong>📱 Next Steps:</strong> Your children can continue using Lux Libris independently. 
-                  Simply remove the parent connection by deleting the app from their devices if you no longer want them to use it.
+                  <strong>📱 Next Steps:</strong> 
+                  {isOnlyParent 
+                    ? ' Your children can continue using Lux Libris independently. Simply remove the parent connection by deleting the app from their devices if you no longer want them to use it.'
+                    : ' Your children will continue to have parent support through the remaining parent(s) in the family.'
+                  }
                 </div>
               </div>
             )}
 
-            {/* Additional Options */}
-            <div style={{
-              backgroundColor: '#fffbeb',
-              border: '1px solid #fbbf24',
-              borderRadius: '12px',
-              padding: '20px',
-              marginBottom: '24px'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-                <span style={{ fontSize: '20px' }}>💡</span>
-                <h4 style={{
-                  fontSize: 'clamp(14px, 4vw, 16px)',
-                  fontWeight: 'bold',
-                  color: '#92400e',
-                  margin: 0
-                }}>
-                  Additional Options for Children&apos;s Accounts
-                </h4>
-              </div>
-              
-              <div style={{ marginBottom: '16px' }}>
-                <div style={{
-                  backgroundColor: 'rgba(255,255,255,0.7)',
-                  borderRadius: '8px',
-                  padding: '12px',
-                  marginBottom: '8px'
-                }}>
-                  <h5 style={{
-                    fontSize: 'clamp(12px, 3.5vw, 14px)',
+            {/* Additional Options - Only show if last parent */}
+            {isOnlyParent && (
+              <div style={{
+                backgroundColor: '#fffbeb',
+                border: '1px solid #fbbf24',
+                borderRadius: '12px',
+                padding: '20px',
+                marginBottom: '24px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                  <span style={{ fontSize: '20px' }}>💡</span>
+                  <h4 style={{
+                    fontSize: 'clamp(14px, 4vw, 16px)',
                     fontWeight: 'bold',
                     color: '#92400e',
-                    margin: '0 0 4px 0'
+                    margin: 0
                   }}>
-                    🏫 Account Deactivation
-                  </h5>
-                  <p style={{
-                    fontSize: 'clamp(11px, 3vw, 13px)',
-                    color: '#92400e',
-                    margin: 0,
-                    lineHeight: '1.4'
+                    Additional Options for Children&apos;s Accounts
+                  </h4>
+                </div>
+                
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{
+                    backgroundColor: 'rgba(255,255,255,0.7)',
+                    borderRadius: '8px',
+                    padding: '12px',
+                    marginBottom: '8px'
                   }}>
-                    Contact your children&apos;s teachers to request temporary account deactivation. 
-                    This preserves their data while preventing access to the platform.
-                  </p>
+                    <h5 style={{
+                      fontSize: 'clamp(12px, 3.5vw, 14px)',
+                      fontWeight: 'bold',
+                      color: '#92400e',
+                      margin: '0 0 4px 0'
+                    }}>
+                      🏫 Account Deactivation
+                    </h5>
+                    <p style={{
+                      fontSize: 'clamp(11px, 3vw, 13px)',
+                      color: '#92400e',
+                      margin: 0,
+                      lineHeight: '1.4'
+                    }}>
+                      Contact your children&apos;s teachers to request temporary account deactivation. 
+                      This preserves their data while preventing access to the platform.
+                    </p>
+                  </div>
+
+                  <div style={{
+                    backgroundColor: 'rgba(255,255,255,0.7)',
+                    borderRadius: '8px',
+                    padding: '12px'
+                  }}>
+                    <h5 style={{
+                      fontSize: 'clamp(12px, 3.5vw, 14px)',
+                      fontWeight: 'bold',
+                      color: '#92400e',
+                      margin: '0 0 4px 0'
+                    }}>
+                    🗑️ Complete Account Deletion
+                    </h5>
+                    <p style={{
+                      fontSize: 'clamp(11px, 3vw, 13px)',
+                      color: '#92400e',
+                      margin: '0 0 8px 0',
+                      lineHeight: '1.4'
+                    }}>
+                      If you need your children&apos;s reading accounts completely deleted, you can:
+                    </p>
+                    <ul style={{
+                      fontSize: 'clamp(10px, 2.5vw, 12px)',
+                      color: '#92400e',
+                      margin: 0,
+                      paddingLeft: '16px'
+                    }}>
+                      <li>Contact your school administrator</li>
+                      <li>Email our support team directly</li>
+                    </ul>
+                  </div>
                 </div>
 
-                <div style={{
-                  backgroundColor: 'rgba(255,255,255,0.7)',
-                  borderRadius: '8px',
-                  padding: '12px'
-                }}>
-                  <h5 style={{
-                    fontSize: 'clamp(12px, 3.5vw, 14px)',
-                    fontWeight: 'bold',
-                    color: '#92400e',
-                    margin: '0 0 4px 0'
-                  }}>
-                  🗑️ Complete Account Deletion
-                  </h5>
-                  <p style={{
-                    fontSize: 'clamp(11px, 3vw, 13px)',
-                    color: '#92400e',
-                    margin: '0 0 8px 0',
-                    lineHeight: '1.4'
-                  }}>
-                    If you need your children&apos;s reading accounts completely deleted, you can:
-                  </p>
-                  <ul style={{
-                    fontSize: 'clamp(10px, 2.5vw, 12px)',
-                    color: '#92400e',
-                    margin: 0,
-                    paddingLeft: '16px'
-                  }}>
-                    <li>Contact your school administrator</li>
-                    <li>Email our support team directly</li>
-                  </ul>
-                </div>
-              </div>
-
-              {/* Support Email Button */}
-              <button
-                onClick={() => {
-                  const subject = encodeURIComponent('Request for Children\'s Account Deletion');
-                  const body = encodeURIComponent(`Hello Lux Libris Support,
+                {/* Support Email Button */}
+                <button
+                  onClick={() => {
+                    const subject = encodeURIComponent('Request for Children\'s Account Deletion');
+                    const body = encodeURIComponent(`Hello Lux Libris Support,
 
 I am requesting the complete deletion of my children's reading accounts from Lux Libris.
 
@@ -700,30 +787,31 @@ I understand that this will permanently delete all reading progress, achievement
 Thank you,
 ${parentData.firstName} ${parentData.lastName}`);
 
-                  window.open(`mailto:support@luxlibris.org?subject=${subject}&body=${body}`);
-                }}
-                style={{
-                  backgroundColor: '#f59e0b',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  padding: '10px 16px',
-                  fontSize: 'clamp(11px, 3vw, 13px)',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  margin: '0 auto',
-                  transition: 'all 0.2s ease',
-                  touchAction: 'manipulation'
-                }}
-                onMouseEnter={(e) => e.target.style.backgroundColor = '#d97706'}
-                onMouseLeave={(e) => e.target.style.backgroundColor = '#f59e0b'}
-              >
-                📧 Email Support for Children&apos;s Account Deletion
-              </button>
-            </div>
+                    window.open(`mailto:support@luxlibris.org?subject=${subject}&body=${body}`);
+                  }}
+                  style={{
+                    backgroundColor: '#f59e0b',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '10px 16px',
+                    fontSize: 'clamp(11px, 3vw, 13px)',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    margin: '0 auto',
+                    transition: 'all 0.2s ease',
+                    touchAction: 'manipulation'
+                  }}
+                  onMouseEnter={(e) => e.target.style.backgroundColor = '#d97706'}
+                  onMouseLeave={(e) => e.target.style.backgroundColor = '#f59e0b'}
+                >
+                  📧 Email Support for Children&apos;s Account Deletion
+                </button>
+              </div>
+            )}
 
             {/* Regular completion section */}
             <div style={{
@@ -745,7 +833,7 @@ ${parentData.firstName} ${parentData.lastName}`);
                 fontWeight: '600' 
               }}>
                 {hasExportedData 
-                  ? 'Great! You\'ve exported your family data and can safely proceed with parent account deletion.'
+                  ? `Great! You've exported your family data and can safely proceed with ${isOnlyParent ? 'family' : 'parent'} account deletion.`
                   : 'Consider exporting your family data first to keep a record of your settings and quiz codes.'
                 }
               </span>
@@ -770,11 +858,11 @@ ${parentData.firstName} ${parentData.lastName}`);
                 touchAction: 'manipulation'
               }}
             >
-              🗑️ Delete Parent Account Only
+              🗑️ Delete {isOnlyParent ? 'Family Account' : 'My Parent Account'}
             </button>
           </div>
 
-          {/* Delete Account Confirmation Modal */}
+          {/* Delete Account Confirmation Modal - Updated */}
           {showDeleteConfirm && (
             <div style={{
               position: 'fixed',
@@ -806,7 +894,7 @@ ${parentData.firstName} ${parentData.lastName}`);
                     color: '#dc2626',
                     marginBottom: '8px'
                   }}>
-                    Delete Parent Account Only
+                    Delete {isOnlyParent ? 'Family Account' : 'Parent Account'}
                   </h3>
                   <p style={{
                     fontSize: 'clamp(14px, 4vw, 16px)',
@@ -841,10 +929,21 @@ ${parentData.firstName} ${parentData.lastName}`);
                     lineHeight: '1.4'
                   }}>
                     <li>Your parent profile: <strong>{parentData.firstName} {parentData.lastName}</strong></li>
-                    <li>Family settings and preferences</li>
-                    <li>Connection to {linkedStudents.length} {linkedStudents.length === 1 ? 'child' : 'children'}</li>
-                    <li>Access to quiz approval requests</li>
-                    <li>All saved teacher quiz codes</li>
+                    {isOnlyParent ? (
+                      <>
+                        <li>The entire family and all settings</li>
+                        <li>Connection to {linkedStudents.length} {linkedStudents.length === 1 ? 'child' : 'children'}</li>
+                        <li>All saved teacher quiz codes</li>
+                      </>
+                    ) : (
+                      <>
+                        <li>Your connection to the family</li>
+                        <li>Your access to {linkedStudents.length} {linkedStudents.length === 1 ? 'child' : 'children'}</li>
+                        <li style={{ color: '#16a34a', marginTop: '8px' }}>
+                          <strong>✅ The family remains active for: {otherParents.map(p => p.firstName).join(', ')}</strong>
+                        </li>
+                      </>
+                    )}
                   </ul>
                   
                   {linkedStudents.length > 0 && (
@@ -951,7 +1050,7 @@ ${parentData.firstName} ${parentData.lastName}`);
                       touchAction: 'manipulation'
                     }}
                   >
-                    {isDeleting ? 'Deleting...' : 'Delete Parent Account'}
+                    {isDeleting ? 'Deleting...' : `Delete ${isOnlyParent ? 'Family' : 'My'} Account`}
                   </button>
                 </div>
               </div>

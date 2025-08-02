@@ -1,4 +1,4 @@
-// pages/parent/family-battle.js - SIMPLIFIED: No Challenges, Just Battle
+// pages/parent/family-battle.js - FIXED: Passes correct familyId
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
@@ -133,14 +133,15 @@ export default function ParentFamilyBattle() {
   const [showStreakModal, setShowStreakModal] = useState(false)
 
   // Navigation menu items
-const navMenuItems = useMemo(() => [
-  { name: 'Family Dashboard', path: '/parent/dashboard', icon: '⌂' },
-  { name: 'Child Progress', path: '/parent/child-progress', icon: '◐' },
-  { name: 'Reading Habits', path: '/parent/healthy-habits', icon: '◉' },
-  { name: 'Family Battle', path: '/parent/family-battle', icon: '⚔️', current: true },
-  { name: 'Reading DNA Lab', path: '/parent/dna-lab', icon: '⬢' },
-  { name: 'Settings', path: '/parent/settings', icon: '⚙' }
-], [])
+ const navMenuItems = useMemo(() => [
+    { name: 'Family Dashboard', path: '/parent/dashboard', icon: '⌂' },
+    { name: 'Child Progress', path: '/parent/child-progress', icon: '◐' },
+    { name: 'Book Nominees', path: '/parent/nominees', icon: '□' },
+    { name: 'Reading Habits', path: '/parent/healthy-habits', icon: '◉' },
+    { name: 'Family Battle', path: '/parent/family-battle', icon: '⚔️', current: true },
+    { name: 'Reading DNA Lab', path: '/parent/dna-lab', icon: '⬢' },
+    { name: 'Settings', path: '/parent/settings', icon: '⚙' }
+  ], [])
 
 // Get time-based theme - memoized with hour dependency
 const timeTheme = useMemo(() => {
@@ -184,58 +185,50 @@ const luxTheme = useMemo(() => ({
   timeOverlay: timeTheme.overlay
 }), [timeTheme]);
 
-// Load family battle data
+// Load family battle data - FIXED to use parentData.familyId
 const loadFamilyBattleData = useCallback(async () => {
-    if (!user?.uid || !linkedStudents.length) return;
+    if (!user?.uid || !linkedStudents.length || !parentData?.familyId) return;
     
     try {
-      console.log('🏆 Loading family battle data...')
+      console.log('🏆 Loading family battle data for family:', parentData.familyId)
       
       // Get current battle data using family ID
-if (parentData?.familyId) {
-  const battleData = await calculateFamilyBattleData(parentData.familyId, linkedStudents);
-  setFamilyBattleData(battleData);
-  
-  // Get family statistics
-  const stats = await getFamilyBattleStats(parentData.familyId);
-  setFamilyStats(stats);
-} else {
-  console.error('⚠️ Cannot load family battle data - no familyId');
-}
+      const battleData = await calculateFamilyBattleData(parentData.familyId, linkedStudents);
+      setFamilyBattleData(battleData);
+      
+      // Get family statistics
+      const stats = await getFamilyBattleStats(parentData.familyId);
+      setFamilyStats(stats);
       
       // Calculate streak
-if (parentData?.familyId) {
-  const familyRef = doc(db, 'families', parentData.familyId);
-  const familyDoc = await getDoc(familyRef);
-  
-  if (familyDoc.exists()) {
-    const familyData = familyDoc.data();
-    
-    // Simple streak calculation
-    const today = new Date();
-    const lastRead = familyData.lastFamilyReadingDate ? new Date(familyData.lastFamilyReadingDate) : null;
-    let streakDays = 0;
-    
-    if (lastRead) {
-      const daysDiff = Math.floor((today - lastRead) / (1000 * 60 * 60 * 24));
-      if (daysDiff <= 1) {
-        streakDays = (familyData.familyStreakDays || 0) + (daysDiff === 1 ? 1 : 0);
+      const familyRef = doc(db, 'families', parentData.familyId);
+      const familyDoc = await getDoc(familyRef);
+      
+      if (familyDoc.exists()) {
+        const familyData = familyDoc.data();
+        
+        // Simple streak calculation
+        const today = new Date();
+        const lastRead = familyData.lastFamilyReadingDate ? new Date(familyData.lastFamilyReadingDate) : null;
+        let streakDays = 0;
+        
+        if (lastRead) {
+          const daysDiff = Math.floor((today - lastRead) / (1000 * 60 * 60 * 24));
+          if (daysDiff <= 1) {
+            streakDays = (familyData.familyStreakDays || 0) + (daysDiff === 1 ? 1 : 0);
+          }
+        }
+        
+        setFamilyStreakData({ 
+          streakDays: streakDays,
+          lastReadingDate: lastRead 
+        });
       }
-    }
-    
-    setFamilyStreakData({ 
-      streakDays: streakDays,
-      lastReadingDate: lastRead 
-    });
-  }
-} else {
-  console.log('⚠️ Parent has no familyId set');
-}
       
     } catch (error) {
       console.error('❌ Error loading family battle data:', error);
     }
-  }, [user?.uid, linkedStudents]);
+  }, [user?.uid, linkedStudents, parentData?.familyId]);
 
   // Load initial data
   const loadInitialData = useCallback(async () => {
@@ -305,7 +298,7 @@ if (parentData?.familyId) {
 
   // Load family battle data when students are loaded
   useEffect(() => {
-    if (linkedStudents.length > 0 && parentData?.familyBattleSettings?.enabled) {
+    if (linkedStudents.length > 0 && parentData?.familyBattleSettings?.enabled && parentData?.familyId) {
       loadFamilyBattleData();
     }
   }, [linkedStudents, parentData, loadFamilyBattleData]);

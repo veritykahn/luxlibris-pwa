@@ -1,4 +1,4 @@
-// components/ParentFamilyBattleManager.js - SIMPLIFIED: No Challenges, Just Battle
+// components/ParentFamilyBattleManager.js - FIXED: Uses existing familyId
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
@@ -492,9 +492,12 @@ export default function ParentFamilyBattleManager({ theme, parentData, linkedStu
   const [showSuccess, setShowSuccess] = useState('');
   const [showJaneAusten, setShowJaneAusten] = useState(true);
 
+  // FIXED: Use the actual familyId from parentData
+  const familyId = parentData?.familyId;
+
   // Load family battle data using sync system
   const loadFamilyBattleData = useCallback(async () => {
-    if (!user?.uid) return;
+    if (!user?.uid || !familyId) return;
     
     try {
       setIsLoading(true);
@@ -511,12 +514,12 @@ export default function ParentFamilyBattleManager({ theme, parentData, linkedStu
         }
       }
       
-      // Use sync system to update and get battle data
-      const battleData = await syncFamilyBattleData(user.uid, studentsToUse || []);
+      // FIXED: Pass familyId instead of user.uid
+      const battleData = await syncFamilyBattleData(familyId, studentsToUse || []);
       setCurrentBattle(battleData);
       
-      // Get family document for stats
-      const familyRef = doc(db, 'families', user.uid);
+      // FIXED: Use correct familyId for family document
+      const familyRef = doc(db, 'families', familyId);
       const familyDoc = await getDoc(familyRef);
       
       if (familyDoc.exists()) {
@@ -543,15 +546,16 @@ export default function ParentFamilyBattleManager({ theme, parentData, linkedStu
     } finally {
       setIsLoading(false);
     }
-  }, [user?.uid, linkedStudents]);
+  }, [user?.uid, familyId, linkedStudents]);
 
   // Check family battle status and auto-invite students
   useEffect(() => {
     const checkFamilyBattleStatus = async () => {
-      if (!user?.uid) return;
+      if (!user?.uid || !familyId) return;
       
       try {
-        const familyRef = doc(db, 'families', user.uid);
+        // FIXED: Use correct familyId
+        const familyRef = doc(db, 'families', familyId);
         const familyDoc = await getDoc(familyRef);
         
         if (familyDoc.exists()) {
@@ -573,7 +577,8 @@ export default function ParentFamilyBattleManager({ theme, parentData, linkedStu
               
               if (newStudents.length > 0) {
                 console.log('🚀 Auto-inviting new children to family battle:', newStudents.length);
-                await enableFamilyBattleForStudents(user.uid, newStudents);
+                // FIXED: Pass familyId instead of user.uid
+                await enableFamilyBattleForStudents(familyId, newStudents);
                 
                 const updatedInvited = new Set(alreadyInvited);
                 newStudents.forEach(student => updatedInvited.add(student.id));
@@ -601,10 +606,10 @@ export default function ParentFamilyBattleManager({ theme, parentData, linkedStu
       }
     };
     
-    if (user?.uid && linkedStudents) {
+    if (user?.uid && familyId && linkedStudents) {
       checkFamilyBattleStatus();
     }
-  }, [user?.uid, linkedStudents, loadFamilyBattleData]);
+  }, [user?.uid, familyId, linkedStudents, loadFamilyBattleData]);
 
   // Auto-refresh battle data every 30 seconds when enabled
   useEffect(() => {
@@ -625,19 +630,27 @@ export default function ParentFamilyBattleManager({ theme, parentData, linkedStu
       return;
     }
     
+    if (!familyId) {
+      alert('No family ID found. Please ensure your family is set up correctly.');
+      return;
+    }
+    
     setIsLoading(true);
     
     try {
-      await initializeFamilyBattle(user.uid, parentData);
+      // FIXED: Pass familyId and parentData with uid
+      await initializeFamilyBattle(familyId, { ...parentData, uid: user.uid });
       
       // Enable for all linked students
       if (linkedStudents && linkedStudents.length > 0) {
-        await enableFamilyBattleForStudents(user.uid, linkedStudents);
+        // FIXED: Pass familyId instead of user.uid
+        await enableFamilyBattleForStudents(familyId, linkedStudents);
         
         const invitedIds = new Set(linkedStudents.map(student => student.id));
         setInvitedStudents(invitedIds);
         
-        const familyRef = doc(db, 'families', user.uid);
+        // FIXED: Use correct familyId
+        const familyRef = doc(db, 'families', familyId);
         await updateDoc(familyRef, {
           invitedStudents: Array.from(invitedIds)
         });
@@ -693,7 +706,7 @@ export default function ParentFamilyBattleManager({ theme, parentData, linkedStu
         {isPilotPhase && (
           <button
             onClick={handleInitializeBattle}
-            disabled={isLoading}
+            disabled={isLoading || !familyId}
             style={{
               backgroundColor: theme.primary,
               color: theme.textPrimary,
@@ -702,8 +715,8 @@ export default function ParentFamilyBattleManager({ theme, parentData, linkedStu
               padding: '12px 20px',
               fontSize: '14px',
               fontWeight: '600',
-              cursor: isLoading ? 'not-allowed' : 'pointer',
-              opacity: isLoading ? 0.7 : 1
+              cursor: isLoading || !familyId ? 'not-allowed' : 'pointer',
+              opacity: isLoading || !familyId ? 0.7 : 1
             }}
           >
             {isLoading ? '⏳ Opening Arena...' : '⚔️ Open Battle Arena'}
@@ -740,7 +753,7 @@ export default function ParentFamilyBattleManager({ theme, parentData, linkedStu
         
         <button
           onClick={handleInitializeBattle}
-          disabled={isLoading}
+          disabled={isLoading || !familyId}
           style={{
             backgroundColor: theme.primary,
             color: theme.textPrimary,
@@ -749,8 +762,8 @@ export default function ParentFamilyBattleManager({ theme, parentData, linkedStu
             padding: '14px 24px',
             fontSize: '16px',
             fontWeight: '600',
-            cursor: isLoading ? 'not-allowed' : 'pointer',
-            opacity: isLoading ? 0.7 : 1
+            cursor: isLoading || !familyId ? 'not-allowed' : 'pointer',
+            opacity: isLoading || !familyId ? 0.7 : 1
           }}
         >
           {isLoading ? '⏳ Opening Arena...' : '🚀 Start Family Battle!'}
@@ -815,13 +828,15 @@ export default function ParentFamilyBattleManager({ theme, parentData, linkedStu
                 if (uninvited.length > 0) {
                   setIsLoading(true);
                   try {
-                    await enableFamilyBattleForStudents(user.uid, uninvited);
+                    // FIXED: Pass familyId instead of user.uid
+                    await enableFamilyBattleForStudents(familyId, uninvited);
                     
                     const updatedInvited = new Set(invitedStudents);
                     uninvited.forEach(student => updatedInvited.add(student.id));
                     setInvitedStudents(updatedInvited);
                     
-                    const familyRef = doc(db, 'families', user.uid);
+                    // FIXED: Use correct familyId
+                    const familyRef = doc(db, 'families', familyId);
                     await updateDoc(familyRef, {
                       invitedStudents: Array.from(updatedInvited)
                     });
