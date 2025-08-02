@@ -142,6 +142,8 @@ export default function ParentDnaLabDashboard() {
   const [parentData, setParentData] = useState(null);
   const [hasParentDna, setHasParentDna] = useState(false);
   const [parentDnaType, setParentDnaType] = useState(null);
+  const [otherParent, setOtherParent] = useState(null);
+  const [otherParentDnaType, setOtherParentDnaType] = useState(null);
   
   // Children data states
   const [linkedStudents, setLinkedStudents] = useState([]);
@@ -218,29 +220,25 @@ export default function ParentDnaLabDashboard() {
     if (hour >= 5 && hour < 12) {
       return {
         name: 'morning',
-        gradient: 'linear-gradient(135deg, #FFE5B4, #FFD4A3, #FFC594)',
-        message: 'Good morning! Perfect time for reading together ☀️',
-        overlay: 'rgba(255, 220, 160, 0.1)'
+        gradient: 'linear-gradient(135deg, #F5C99B, #F0B88A, #EBAD7A)',
+        overlay: 'rgba(245, 201, 155, 0.1)'
       };
     } else if (hour >= 12 && hour < 17) {
       return {
         name: 'afternoon',
-        gradient: 'linear-gradient(135deg, #87CEEB, #98D8E8, #ADD8E6)',
-        message: 'Afternoon reading break? 📚',
-        overlay: 'rgba(135, 206, 235, 0.1)'
+        gradient: 'linear-gradient(135deg, #6BB6E3, #7AC5EA, #89D0EE)',
+        overlay: 'rgba(107, 182, 227, 0.1)'
       };
     } else if (hour >= 17 && hour < 20) {
       return {
         name: 'evening',
         gradient: 'linear-gradient(135deg, #FFB347, #FF8C42, #FF6B35)',
-        message: 'Cozy evening reading time 🌅',
         overlay: 'rgba(255, 140, 66, 0.1)'
       };
     } else {
       return {
         name: 'night',
         gradient: 'linear-gradient(135deg, #4B0082, #6A0DAD, #7B68EE)',
-        message: 'Bedtime stories await 🌙',
         overlay: 'rgba(75, 0, 130, 0.1)'
       };
     }
@@ -721,17 +719,78 @@ export default function ParentDnaLabDashboard() {
         }
       }
 
-      // Check family Reading DNA settings using the correct family ID
-if (data.familyId) {
-  const familyRef = doc(db, 'families', data.familyId);
-  const familyDoc = await getDoc(familyRef);
-  if (familyDoc.exists()) {
-    const familyData = familyDoc.data();
-    setFamilyReadingDnaSettings(familyData.readingDnaSettings || null);
-  }
-} else {
-  console.log('⚠️ Parent has no familyId set');
-}
+      if (parentDoc.exists()) {
+        const data = parentDoc.data();
+        setParentData(data);
+        setHasParentDna(!!data.parentDNA);
+        
+        // Check family Reading DNA settings using the correct family ID
+        if (data.familyId) {
+          const familyRef = doc(db, 'families', data.familyId);
+          const familyDoc = await getDoc(familyRef);
+          if (familyDoc.exists()) {
+            const familyData = familyDoc.data();
+            setFamilyReadingDnaSettings(familyData.readingDnaSettings || null);
+          }
+        } else {
+          console.log('⚠️ Parent has no familyId set');
+        }
+        
+        // If parent has DNA, find their type
+        if (data.parentDNA) {
+          // ... rest of the DNA type code
+        }
+        
+        // Load linked students if any
+        if (data.linkedStudents?.length > 0) {
+          await loadLinkedStudentsData(data.linkedStudents);
+        }
+        
+        // Load other parent if in a family
+        if (data.familyId) {
+          try {
+            const familyRef = doc(db, 'families', data.familyId);
+            const familyDoc = await getDoc(familyRef);
+            
+            if (familyDoc.exists()) {
+              const familyData = familyDoc.data();
+              
+              // Find the other parent
+              if (familyData.parents && familyData.parents.length > 1) {
+                const otherParentId = familyData.parents.find(id => id !== user.uid);
+                
+                if (otherParentId) {
+                  const otherParentRef = doc(db, 'parents', otherParentId);
+                  const otherParentDoc = await getDoc(otherParentRef);
+                  
+                  if (otherParentDoc.exists()) {
+                    const otherParentData = otherParentDoc.data();
+                    setOtherParent(otherParentData);
+                    
+                    // If other parent has DNA, get their type
+                    if (otherParentData.parentDNA) {
+                      let otherDnaTypeKey = null;
+                      
+                      if (otherParentData.parentDNA.primaryType?.id) {
+                        otherDnaTypeKey = otherParentData.parentDNA.primaryType.id;
+                      } else if (otherParentData.parentDNA.type) {
+                        otherDnaTypeKey = otherParentData.parentDNA.type;
+                      }
+                      
+                      if (otherDnaTypeKey && types[otherDnaTypeKey]) {
+                        setOtherParentDnaType(types[otherDnaTypeKey]);
+                        console.log('✅ Found other parent DNA type:', types[otherDnaTypeKey].name);
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          } catch (error) {
+            console.error('Error loading other parent:', error);
+          }
+        }
+      }
       
       // Load additional data for random facts
       await loadAdditionalData();
@@ -1276,16 +1335,6 @@ if (data.familyId) {
               </div>
             )}
           </div>
-
-          {/* Time-based message */}
-          <div style={{
-            textAlign: 'center',
-            fontSize: '12px',
-            color: 'rgba(255,255,255,0.8)',
-            marginTop: '8px'
-          }}>
-            {timeTheme.message}
-          </div>
         </div>
 
         {/* Main Content - NOW wrapped in PremiumGate */}
@@ -1492,14 +1541,20 @@ if (data.familyId) {
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: '24px', // Reduced from 40px
+                gap: '24px',
                 position: 'relative',
                 paddingBottom: '20px'
               }}>
-                {/* Parent DNA - Large and Centered */}
-                <div style={{ position: 'relative' }}>
-                  {!hasParentDna ? (
-                    <div style={{ textAlign: 'center' }}>
+                {/* Parents DNA - Show both parents if in family */}
+                <div style={{ 
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '60px',
+                  position: 'relative' 
+                }}>
+                  {/* Current Parent */}
+                  <div style={{ textAlign: 'center' }}>
+                    {!hasParentDna ? (
                       <button
                         onClick={() => router.push('/parent/dna-lab/assessment')}
                         style={{
@@ -1538,75 +1593,172 @@ if (data.familyId) {
                           Discover Your<br />Reading DNA
                         </div>
                       </button>
-                    </div>
-                  ) : (
-                    <div style={{ textAlign: 'center' }}>
-                      <div
-                        style={{
-                          width: '120px',
-                          height: '120px',
-                          borderRadius: '50%',
-                          background: parentDnaType ? 
-                            `linear-gradient(135deg, ${parentDnaType.color}, ${parentDnaType.color}DD)` :
-                            `linear-gradient(135deg, ${luxTheme.primary}, ${luxTheme.secondary})`,
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          cursor: 'pointer',
-                          position: 'relative',
-                          boxShadow: hoveredDna === 'parent' ? 
-                            (parentDnaType ? `0 12px 32px ${parentDnaType.color}60, 0 0 40px ${parentDnaType.color}40` : '0 12px 32px rgba(0,0,0,0.15)') : 
-                            (parentDnaType ? `0 8px 24px ${parentDnaType.color}40, 0 0 20px ${parentDnaType.color}20` : '0 8px 24px rgba(0,0,0,0.1)'),
-                          transform: hoveredDna === 'parent' ? 'scale(1.05)' : 'scale(1)',
-                          transition: 'all 0.3s ease',
-                          animation: showDnaAnimation && parentDnaType ? 'dnaReveal 0.6s ease-out' : 'none'
-                        }}
-                        onClick={() => router.push('/parent/dna-lab/my-reading-dna')}
-                        onMouseEnter={() => setHoveredDna('parent')}
-                        onMouseLeave={() => setHoveredDna(null)}
-                      >
-                        <div style={{
-                          fontSize: '48px',
-                          marginBottom: '4px'
-                        }}>
-                          {parentDnaType?.emoji || '🧬'}
+                    ) : (
+                      <div>
+                        <div
+                          style={{
+                            width: '120px',
+                            height: '120px',
+                            borderRadius: '50%',
+                            background: parentDnaType ? 
+                              `linear-gradient(135deg, ${parentDnaType.color}, ${parentDnaType.color}DD)` :
+                              `linear-gradient(135deg, ${luxTheme.primary}, ${luxTheme.secondary})`,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            position: 'relative',
+                            boxShadow: hoveredDna === 'parent' ? 
+                              (parentDnaType ? `0 12px 32px ${parentDnaType.color}60, 0 0 40px ${parentDnaType.color}40` : '0 12px 32px rgba(0,0,0,0.15)') : 
+                              (parentDnaType ? `0 8px 24px ${parentDnaType.color}40, 0 0 20px ${parentDnaType.color}20` : '0 8px 24px rgba(0,0,0,0.1)'),
+                            transform: hoveredDna === 'parent' ? 'scale(1.05)' : 'scale(1)',
+                            transition: 'all 0.3s ease',
+                            animation: showDnaAnimation && parentDnaType ? 'dnaReveal 0.6s ease-out' : 'none'
+                          }}
+                          onClick={() => router.push('/parent/dna-lab/my-reading-dna')}
+                          onMouseEnter={() => setHoveredDna('parent')}
+                          onMouseLeave={() => setHoveredDna(null)}
+                        >
+                          <div style={{
+                            fontSize: '48px',
+                            marginBottom: '4px'
+                          }}>
+                            {parentDnaType?.emoji || '🧬'}
+                          </div>
+                          <div style={{
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            color: 'white',
+                            textAlign: 'center'
+                          }}>
+                            You
+                          </div>
                         </div>
                         <div style={{
-                          fontSize: '14px',
-                          fontWeight: '600',
-                          color: 'white',
-                          textAlign: 'center'
+                          fontSize: '16px',
+                          fontWeight: '700',
+                          color: luxTheme.textPrimary,
+                          marginTop: '12px',
+                          textAlign: 'center',
+                          lineHeight: '1.4'
                         }}>
-                          You
+                          {parentDnaType?.name?.split(' ').map((word, i) => (
+                            <span key={i}>
+                              {word}
+                              {i < parentDnaType.name.split(' ').length - 1 && <br />}
+                            </span>
+                          ))}
                         </div>
                       </div>
+                    )}
+                  </div>
+
+                  {/* Other Parent (if exists) */}
+                  {otherParent && (
+                    <div style={{ textAlign: 'center' }}>
+                      {!otherParent.parentDNA ? (
+                        <div
+                          style={{
+                            width: '120px',
+                            height: '120px',
+                            borderRadius: '50%',
+                            background: 'linear-gradient(135deg, #E0E0E0, #BDBDBD)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            position: 'relative',
+                            boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
+                            opacity: 0.7
+                          }}
+                        >
+                          <div style={{ fontSize: '48px', marginBottom: '8px' }}>❓</div>
+                          <div style={{
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            color: luxTheme.textSecondary,
+                            textAlign: 'center'
+                          }}>
+                            {otherParent.firstName}
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <div
+                            style={{
+                              width: '120px',
+                              height: '120px',
+                              borderRadius: '50%',
+                              background: otherParentDnaType ? 
+                                `linear-gradient(135deg, ${otherParentDnaType.color}, ${otherParentDnaType.color}DD)` :
+                                `linear-gradient(135deg, ${luxTheme.primary}, ${luxTheme.secondary})`,
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              position: 'relative',
+                              boxShadow: hoveredDna === 'otherParent' ? 
+                                (otherParentDnaType ? `0 12px 32px ${otherParentDnaType.color}60, 0 0 40px ${otherParentDnaType.color}40` : '0 12px 32px rgba(0,0,0,0.15)') : 
+                                (otherParentDnaType ? `0 8px 24px ${otherParentDnaType.color}40, 0 0 20px ${otherParentDnaType.color}20` : '0 8px 24px rgba(0,0,0,0.1)'),
+                              transform: hoveredDna === 'otherParent' ? 'scale(1.05)' : 'scale(1)',
+                              transition: 'all 0.3s ease'
+                            }}
+                            onMouseEnter={() => setHoveredDna('otherParent')}
+                            onMouseLeave={() => setHoveredDna(null)}
+                          >
+                            <div style={{
+                              fontSize: '48px',
+                              marginBottom: '4px'
+                            }}>
+                              {otherParentDnaType?.emoji || '🧬'}
+                            </div>
+                            <div style={{
+                              fontSize: '14px',
+                              fontWeight: '600',
+                              color: 'white',
+                              textAlign: 'center'
+                            }}>
+                              {otherParent.firstName}
+                            </div>
+                          </div>
+                          <div style={{
+                            fontSize: '16px',
+                            fontWeight: '700',
+                            color: luxTheme.textPrimary,
+                            marginTop: '12px',
+                            textAlign: 'center',
+                            lineHeight: '1.4'
+                          }}>
+                            {otherParentDnaType?.name?.split(' ').map((word, i) => (
+                              <span key={i}>
+                                {word}
+                                {i < otherParentDnaType.name.split(' ').length - 1 && <br />}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       <div style={{
-                        fontSize: '16px',
-                        fontWeight: '700',
-                        color: luxTheme.textPrimary,
-                        marginTop: '12px',
-                        textAlign: 'center',
-                        lineHeight: '1.4'
+                        fontSize: '12px',
+                        color: luxTheme.textSecondary,
+                        marginTop: '8px',
+                        fontStyle: 'italic'
                       }}>
-                        {parentDnaType?.name?.split(' ').map((word, i) => (
-                          <span key={i}>
-                            {word}
-                            {i < parentDnaType.name.split(' ').length - 1 && <br />}
-                          </span>
-                        ))}
+                        {!otherParent.parentDNA && 'Not taken yet'}
                       </div>
                     </div>
                   )}
 
-                  {/* Children DNA Bubbles - Positioned around parent */}
+                  {/* Children DNA Bubbles - Positioned between parents */}
                   {linkedStudents.length > 0 && (
                     <div style={{
                       position: 'absolute',
                       top: '50%',
-                      left: '100%',
-                      transform: 'translateY(-50%)',
-                      marginLeft: '40px',
+                      left: otherParent ? '50%' : '100%',
+                      transform: otherParent ? 'translate(-50%, -50%)' : 'translateY(-50%)',
+                      marginLeft: otherParent ? '0' : '40px',
                       display: 'flex',
                       flexDirection: 'column',
                       gap: '20px'

@@ -1025,16 +1025,16 @@ export default function ParentNominees() {
     textSecondary: '#556B7A'
   }
 
-  // Navigation menu items with nominees as current
+  // Navigation menu items
   const navMenuItems = useMemo(() => [
     { name: 'Family Dashboard', path: '/parent/dashboard', icon: '⌂' },
+    { name: 'Child Progress', path: '/parent/child-progress', icon: '◐' },
     { name: 'Book Nominees', path: '/parent/nominees', icon: '□', current: true },
     { name: 'Reading Habits', path: '/parent/healthy-habits', icon: '◉' },
-    { name: 'Family DNA Lab', path: '/parent/dna-lab', icon: '🧬' },
-    { name: 'Quiz Unlock Center', path: '/parent/quiz-unlock', icon: '▦' },
-    { name: 'Family Celebrations', path: '/parent/celebrations', icon: '♔' },
+    { name: 'Family Battle', path: '/parent/family-battle', icon: '⚔️' },
+    { name: 'Reading DNA Lab', path: '/parent/dna-lab', icon: '⬢' },
     { name: 'Settings', path: '/parent/settings', icon: '⚙' }
-  ], [])
+  ], []);
 
   useEffect(() => {
     if (!authLoading && isAuthenticated && user && userProfile?.accountType === 'parent') {

@@ -50,34 +50,30 @@ export default function ParentDashboard() {
   }
 
   // Get time-based theme - memoized with hour dependency
-  const timeTheme = useMemo(() => {
-    const hour = new Date().getHours();
-    if (hour >= 5 && hour < 12) {
-      return {
-        name: 'morning',
-        gradient: 'linear-gradient(135deg, #FFE5B4, #FFD4A3, #FFC594)',
-        message: 'Good morning! Perfect time for reading together ☀️',
-        overlay: 'rgba(255, 220, 160, 0.1)'
-      };
+const timeTheme = useMemo(() => {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) {
+    return {
+      name: 'morning',
+      gradient: 'linear-gradient(135deg, #F5C99B, #F0B88A, #EBAD7A)',
+      overlay: 'rgba(245, 201, 155, 0.1)'
+    };
     } else if (hour >= 12 && hour < 17) {
-      return {
-        name: 'afternoon',
-        gradient: 'linear-gradient(135deg, #87CEEB, #98D8E8, #ADD8E6)',
-        message: 'Afternoon reading break? 📚',
-        overlay: 'rgba(135, 206, 235, 0.1)'
-      };
+    return {
+      name: 'afternoon',
+      gradient: 'linear-gradient(135deg, #6BB6E3, #7AC5EA, #89D0EE)',
+      overlay: 'rgba(107, 182, 227, 0.1)'
+    };
     } else if (hour >= 17 && hour < 20) {
       return {
         name: 'evening',
         gradient: 'linear-gradient(135deg, #FFB347, #FF8C42, #FF6B35)',
-        message: 'Cozy evening reading time 🌅',
         overlay: 'rgba(255, 140, 66, 0.1)'
       };
     } else {
       return {
         name: 'night',
         gradient: 'linear-gradient(135deg, #4B0082, #6A0DAD, #7B68EE)',
-        message: 'Bedtime stories await 🌙',
         overlay: 'rgba(75, 0, 130, 0.1)'
       };
     }
@@ -684,16 +680,6 @@ export default function ParentDashboard() {
                 ))}
               </div>
             )}
-          </div>
-
-          {/* Time-based message */}
-          <div style={{
-            textAlign: 'center',
-            fontSize: '12px',
-            color: 'rgba(255,255,255,0.8)',
-            marginTop: '8px'
-          }}>
-            {timeTheme.message}
           </div>
         </div>
 

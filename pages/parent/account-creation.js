@@ -145,7 +145,8 @@ export default function ParentAccountCreation() {
                 index: i,
                 code: code,
                 studentInfo: validation.studentInfo,
-                existingFamily: validation.existingFamily
+                existingFamily: validation.existingFamily,
+                studentPath: validation.studentPath  // Add this line
               })
               hasValidCode = true
               console.log(`✅ Code ${i} validated successfully`)
@@ -165,13 +166,21 @@ export default function ParentAccountCreation() {
         }
       }
       
-      // If no valid codes, show errors and don't proceed
-      if (!hasValidCode) {
-        setCodeValidationErrors(errors)
-        setError('Please fix the errors below before continuing')
-        setLoading(false)
-        return
-      }
+      // Check if there are ANY errors
+  if (Object.keys(errors).length > 0) {
+    setCodeValidationErrors(errors)
+    setError(`Please fix the errors below before continuing. ${Object.keys(errors).length} of ${validCodes.length} codes have issues.`)
+    setLoading(false)
+    return
+  }
+  
+  // Also check if no valid codes at all
+  if (!hasValidCode) {
+    setCodeValidationErrors(errors)
+    setError('Please enter at least one valid invite code')
+    setLoading(false)
+    return
+  }
       
       // Store validated codes for account creation
       setValidatedCodes(validationResults)

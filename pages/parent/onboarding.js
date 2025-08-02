@@ -74,29 +74,40 @@ export default function ParentOnboarding() {
 
             console.log('✅ Parent account created:', parentId)
 
-            // Process validated codes (they're already validated)
+           // Process validated codes (they're already validated)
             const successfulLinks = []
             const failedLinks = []
             let existingFamily = null
+            let familyId = null // Track family ID across all children
             
             if (data.codesPreValidated && data.validatedCodes) {
               // Use pre-validated codes
               for (const validatedCode of data.validatedCodes) {
                 try {
                   console.log('🔗 Linking to pre-validated student:', validatedCode.studentInfo.firstName)
+                  console.log('🔍 Validated code structure:', validatedCode)
                   
+                  // Pass the familyId if we already have one from a previous child
                   const linkResult = await linkParentToStudent(
                     parentId, 
                     validatedCode.code,
-                    validatedCode // Pass the validated info
+                    validatedCode, // Pass the validated info
+                    familyId // Pass existing family ID if available
                   )
                   
                   successfulLinks.push({
                     inviteCode: validatedCode.code,
-                    student: linkResult
+                    student: linkResult,
+                    familyId: linkResult.familyId // Store family ID with each link
                   })
                   
-                  if (!linkResult.isNewFamily && linkResult.familyId) {
+                  // Capture family info from first successful link
+                  if (!familyId && linkResult.familyId) {
+                    familyId = linkResult.familyId
+                    console.log('📋 Family ID captured from first child:', familyId)
+                  }
+                  
+                  if (!linkResult.isNewFamily && linkResult.familyId && !existingFamily) {
                     existingFamily = {
                       familyId: linkResult.familyId,
                       familyName: linkResult.familyName,
@@ -104,7 +115,7 @@ export default function ParentOnboarding() {
                     }
                   }
                   
-                  console.log('✅ Successfully linked to:', linkResult.studentName)
+                  console.log('✅ Successfully linked to:', linkResult.studentName, 'Family:', linkResult.familyId)
                 } catch (linkError) {
                   console.error('❌ Failed to link validated code:', validatedCode.code, linkError)
                   failedLinks.push({
@@ -127,6 +138,17 @@ export default function ParentOnboarding() {
               parentInfo: data.parentInfo,
               existingFamily
             }
+            
+            console.log('📊 Onboarding data created:', {
+              parentId,
+              linkedStudentsCount: successfulLinks.length,
+              failedLinksCount: failedLinks.length,
+              hasExistingFamily: !!existingFamily,
+              linkedStudents: successfulLinks.map(l => ({
+                name: l.student.studentName,
+                familyId: l.familyId
+              }))
+            })
             
             setOnboardingData(onboardingData)
             
@@ -518,7 +540,7 @@ await updateDoc(doc(db, 'parents', onboardingData.parentId), {
                   />
                 </div>
 
-                {onboardingData?.linkedStudents && (
+                {onboardingData?.linkedStudents && onboardingData.linkedStudents.length > 0 && (
                   <div style={{
                     background: `${luxTheme.primary}20`,
                     border: `2px solid ${luxTheme.primary}`,
@@ -544,8 +566,8 @@ await updateDoc(doc(db, 'parents', onboardingData.parentId), {
                         color: luxTheme.textPrimary
                       }}>
                         <span>📚</span>
-                        <strong>{link.student.studentName}</strong>
-                        <span>at {link.student.schoolName}</span>
+                        <strong>{link.student?.studentName || `${link.student?.firstName} ${link.student?.lastInitial}`}</strong>
+                        <span>at {link.student?.schoolName || 'School'}</span>
                       </div>
                     ))}
                   </div>
