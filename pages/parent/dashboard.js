@@ -1542,7 +1542,7 @@ export default function ParentDashboard() {
                                     fontStyle: 'italic',
                                     color: childColor
                                   }}>
-                                    Try: "{suggestion.title}"
+                                    Try: &quot;{suggestion.title}&quot;
                                   </div>
                                 )}
                               </div>
@@ -1695,7 +1695,7 @@ export default function ParentDashboard() {
                                 color: '#92400E',
                                 marginBottom: '4px'
                               }}>
-                                "{recommendedBook.title}"
+                                &quot;{recommendedBook.title}&quot;
                               </div>
                               <div style={{
                                 fontSize: 'clamp(10px, 3vw, 12px)',
@@ -1745,7 +1745,7 @@ export default function ParentDashboard() {
                               }}>
                                 ASK YOUR KIDS
                               </span>
-                              💬 "{recommendedBook.discussionQuestions[0]}"
+                              💬 &quot;{recommendedBook.discussionQuestions[0]}&quot;
                             </div>
                           )}
                           
