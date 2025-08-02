@@ -467,7 +467,7 @@ export default function ParentAccountCreation() {
                     margin: 0,
                     lineHeight: '1.4'
                   }}>
-                    💡 <strong>What you'll get:</strong> Track your child's reading progress, unlock quiz codes, and celebrate achievements together!
+                    💡 <strong>What you&apos;ll get:</strong> Track your child&apos;s reading progress, unlock quiz codes, and celebrate achievements together!
                   </p>
                 </div>
               </div>
@@ -796,7 +796,7 @@ export default function ParentAccountCreation() {
                       margin: 0,
                       lineHeight: '1.4'
                     }}>
-                      🎉 <strong>Great news!</strong> Some of your children are already part of an existing family. You'll join as the second parent!
+                      🎉 <strong>Great news!</strong> Some of your children are already part of an existing family. You&apos;ll join as the second parent!
                     </p>
                   </div>
                 )}
@@ -814,7 +814,7 @@ export default function ParentAccountCreation() {
                     margin: 0,
                     lineHeight: '1.4'
                   }}>
-                    🚀 <strong>What's next:</strong> Review our Family Terms & Privacy Policy, then we'll create your account and connect you to your children!
+                    🚀 <strong>What&apos;s next:</strong> Review our Family Terms & Privacy Policy, then we&apos;ll create your account and connect you to your children!
                   </p>
                 </div>
               </div>
@@ -941,7 +941,7 @@ export default function ParentAccountCreation() {
               margin: 0,
               lineHeight: '1.4'
             }}>
-              Need help? Contact your child's teacher for invite codes.
+              Need help? Contact your child&apos;s teacher for invite codes.
             </p>
           </div>
         </div>
