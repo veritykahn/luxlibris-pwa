@@ -548,18 +548,18 @@ console.log('🔍 All loaded modifiers:', studentModifiers);
       }
       
       // Check for family-wide Reading DNA unlock
-      if (firebaseStudentData.linkedParents?.length > 0) {
-        const parentUid = firebaseStudentData.linkedParents[0];
-        const familyRef = doc(db, 'families', parentUid);
-        const familyDoc = await getDoc(familyRef);
-        if (familyDoc.exists()) {
-          const familyData = familyDoc.data();
-          if (familyData.readingDnaSettings?.unlocked) {
-            // Add family unlock status to student data
-            firebaseStudentData.familyReadingDnaUnlocked = true;
-          }
-        }
-      }
+if (firebaseStudentData.familyId) {
+  const familyRef = doc(db, 'families', firebaseStudentData.familyId);
+  const familyDoc = await getDoc(familyRef);
+  if (familyDoc.exists()) {
+    const familyData = familyDoc.data();
+    if (familyData.readingDnaSettings?.unlocked) {
+      // Add family unlock status to student data
+      firebaseStudentData.familyReadingDnaUnlocked = true;
+      console.log('✅ Reading DNA unlocked via family settings');
+    }
+  }
+}
       
       setStudentData(firebaseStudentData);
       
