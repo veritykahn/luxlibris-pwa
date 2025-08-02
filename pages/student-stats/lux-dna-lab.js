@@ -705,21 +705,39 @@ if (firebaseStudentData.familyId) {
   };
 
   // Complete Reading DNA assessment and save results
-  const completeReadingDnaAssessment = async (answers) => {
-    try {
-      setIsCompletingReadingDna(true);
-      
-      const dnaResult = calculateReadingDnaType(answers);
-      
-      // Save to student profile
-      await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
-        readingDNA: dnaResult,
-        readingDNACompletedAt: new Date()
-      });
-      
-      setReadingDnaResult(dnaResult);
-      setShowReadingDnaModal(false);
-      setShowReadingDnaResult(true);
+const completeReadingDnaAssessment = async (answers) => {
+  try {
+    setIsCompletingReadingDna(true);
+    
+    const dnaResult = calculateReadingDnaType(answers);
+    
+    // Save to student profile
+    await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
+      readingDNA: dnaResult,
+      readingDNACompletedAt: new Date()
+    });
+    
+    // Track completion in family document
+    if (studentData.familyId) {
+      try {
+        const familyRef = doc(db, 'families', studentData.familyId);
+        await updateDoc(familyRef, {
+          [`readingDnaSettings.completedStudents.${studentData.id}`]: {
+            completedAt: new Date(),
+            resultType: dnaResult.type,
+            studentName: `${studentData.firstName} ${studentData.lastInitial}.`
+          }
+        });
+        console.log('✅ Updated family document with student completion');
+      } catch (familyError) {
+        console.error('Error updating family document:', familyError);
+        // Don't block the student's completion if family update fails
+      }
+    }
+    
+    setReadingDnaResult(dnaResult);
+    setShowReadingDnaModal(false);
+    setShowReadingDnaResult(true);
       
       // Update local state
       const newStudentData = {
