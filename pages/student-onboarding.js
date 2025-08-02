@@ -1000,6 +1000,23 @@ function PasswordPage({ formData, setFormData, selectedTheme, isPasswordValid })
 }
 
 function GoalPage({ formData, setFormData, selectedTheme, bookGoals }) {
+  const [isInteracting, setIsInteracting] = useState(false);
+  
+  const handleGoalChange = (direction) => {
+    const currentIndex = bookGoals.indexOf(formData.currentYearGoal);
+    let newIndex;
+    
+    if (direction === 'up' && currentIndex < bookGoals.length - 1) {
+      newIndex = currentIndex + 1;
+    } else if (direction === 'down' && currentIndex > 0) {
+      newIndex = currentIndex - 1;
+    } else {
+      return;
+    }
+    
+    setFormData({...formData, currentYearGoal: bookGoals[newIndex]});
+  };
+  
   return (
     <div style={{ maxWidth: '400px', margin: '0 auto', textAlign: 'center' }}>
       <h2 style={{
@@ -1022,65 +1039,137 @@ function GoalPage({ formData, setFormData, selectedTheme, bookGoals }) {
       </p>
 
       <div style={{ marginBottom: '32px' }}>
-        <h3 style={{
-          fontSize: '18px',
-          fontWeight: 'bold',
-          color: selectedTheme.textPrimary,
-          marginBottom: '8px'
-        }}>
-          Your Reading Goal
-        </h3>
-
+        {/* Horizontal Ticker */}
         <div style={{
+          position: 'relative',
+          height: '180px',
           backgroundColor: selectedTheme.surface,
-          borderRadius: '12px',
-          border: `2px solid ${selectedTheme.primary}50`,
-          padding: '16px',
-          maxWidth: '200px',
-          margin: '0 auto'
+          borderRadius: '20px',
+          overflow: 'hidden',
+          border: `2px solid ${selectedTheme.primary}30`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
         }}>
+          {/* Center highlight */}
           <div style={{
-            fontSize: '32px',
-            fontWeight: 'bold',
-            color: selectedTheme.primary,
-            marginBottom: '4px'
-          }}>
-            {formData.currentYearGoal}
-          </div>
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: '120px',
+            height: '80px',
+            backgroundColor: `${selectedTheme.primary}15`,
+            borderRadius: '16px',
+            border: `2px solid ${selectedTheme.primary}50`,
+            zIndex: 1
+          }} />
+          
+          {/* Numbers container */}
           <div style={{
-            fontSize: '12px',
-            color: `${selectedTheme.textPrimary}CC`,
-            marginBottom: '16px'
+            display: 'flex',
+            alignItems: 'center',
+            gap: '20px',
+            position: 'relative',
+            zIndex: 2,
+            userSelect: 'none'
           }}>
-            {formData.currentYearGoal === 1 ? 'book' : 'books'}
+            {/* Show 5 numbers centered on current selection */}
+            {[-2, -1, 0, 1, 2].map(offset => {
+              const goalIndex = bookGoals.indexOf(formData.currentYearGoal) + offset;
+              const goal = bookGoals[goalIndex];
+              
+              if (!goal) return <div key={offset} style={{ width: '60px' }} />;
+              
+              const isCenter = offset === 0;
+              const distance = Math.abs(offset);
+              
+              return (
+                <button
+                  key={offset}
+                  onClick={() => setFormData({...formData, currentYearGoal: goal})}
+                  onMouseDown={() => setIsInteracting(true)}
+                  onMouseUp={() => setIsInteracting(false)}
+                  style={{
+                    fontSize: isCenter ? '48px' : `${32 - distance * 8}px`,
+                    fontWeight: isCenter ? 'bold' : '500',
+                    color: isCenter ? selectedTheme.primary : `${selectedTheme.textPrimary}${Math.max(40, 100 - distance * 30).toString(16)}`,
+                    opacity: isCenter ? 1 : 0.7 - distance * 0.2,
+                    transform: `scale(${isCenter ? 1 : 0.9 - distance * 0.1})`,
+                    transition: isInteracting ? 'none' : 'all 0.3s ease',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '10px',
+                    minWidth: '60px'
+                  }}
+                >
+                  {goal}
+                </button>
+              );
+            })}
           </div>
           
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
-            gap: '8px',
-            maxHeight: '120px',
-            overflowY: 'auto'
-          }}>
-            {bookGoals.map(goal => (
-              <button
-                key={goal}
-                onClick={() => setFormData({...formData, currentYearGoal: goal})}
-                style={{
-                  padding: '8px',
-                  backgroundColor: formData.currentYearGoal === goal ? selectedTheme.primary : 'transparent',
-                  color: selectedTheme.textPrimary,
-                  border: `1px solid ${selectedTheme.primary}30`,
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                {goal}
-              </button>
-            ))}
-          </div>
+          {/* Navigation arrows */}
+          <button
+            onClick={() => handleGoalChange('down')}
+            disabled={formData.currentYearGoal === bookGoals[0]}
+            style={{
+              position: 'absolute',
+              left: '20px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              background: selectedTheme.primary,
+              border: 'none',
+              borderRadius: '50%',
+              width: '40px',
+              height: '40px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              opacity: formData.currentYearGoal === bookGoals[0] ? 0.3 : 1,
+              transition: 'opacity 0.3s ease',
+              zIndex: 3
+            }}
+          >
+            <span style={{ color: selectedTheme.background, fontSize: '20px' }}>‹</span>
+          </button>
+          
+          <button
+            onClick={() => handleGoalChange('up')}
+            disabled={formData.currentYearGoal === bookGoals[bookGoals.length - 1]}
+            style={{
+              position: 'absolute',
+              right: '20px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              background: selectedTheme.primary,
+              border: 'none',
+              borderRadius: '50%',
+              width: '40px',
+              height: '40px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              opacity: formData.currentYearGoal === bookGoals[bookGoals.length - 1] ? 0.3 : 1,
+              transition: 'opacity 0.3s ease',
+              zIndex: 3
+            }}
+          >
+            <span style={{ color: selectedTheme.background, fontSize: '20px' }}>›</span>
+          </button>
+        </div>
+        
+        {/* Goal text */}
+        <div style={{
+          marginTop: '16px',
+          fontSize: '18px',
+          fontWeight: '600',
+          color: selectedTheme.primary
+        }}>
+          {formData.currentYearGoal} {formData.currentYearGoal === 1 ? 'book' : 'books'} this year!
         </div>
       </div>
 
