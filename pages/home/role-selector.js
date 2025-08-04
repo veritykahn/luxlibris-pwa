@@ -165,7 +165,7 @@ export default function RoleSelector() {
               letterSpacing: '0.12em',
               lineHeight: '1.6'
             }}>
-              Welcome families! Join your school's reading program and start your reading journey today!
+              Welcome families! Join your school&apos;s reading program and start your reading journey today!
             </p>
 
             {/* PROMINENT INSTALL APP BANNER */}
@@ -266,7 +266,7 @@ export default function RoleSelector() {
                       fontSize: 'clamp(0.9rem, 2.5vw, 1rem)',
                       opacity: 0.9
                     }}>
-                      You're all set for the best Lux Libris experience
+                      You&apos;re all set for the best Lux Libris experience
                     </p>
                   </div>
                 </div>

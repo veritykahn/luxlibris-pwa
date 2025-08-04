@@ -241,7 +241,7 @@ export default function Demo() {
                     </h3>
                     <p className="mb-4" style={{color: '#223848'}}>
                       See how the Johnson family uses the parent app (FREE with school subscription) to support their 
-                      children's reading journey and explore premium features like the Reading DNA Lab.
+                      children&apos;s reading journey and explore premium features like the Reading DNA Lab.
                     </p>
                     <ul className="space-y-2">
                       <VideoHighlight text="Multi-child tracking across multiple schools" />

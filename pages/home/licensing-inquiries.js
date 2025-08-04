@@ -42,7 +42,7 @@ export default function LicensingInquiries() {
             Flexible Licensing Options
           </h2>
           <p className="text-center mb-12" style={{color: '#223848'}}>
-            Choose the plan that best fits your organization's needs
+            Choose the plan that best fits your organization&apos;s needs
           </p>
           
           {/* Tier Selector */}
@@ -342,7 +342,7 @@ export default function LicensingInquiries() {
           
           <div className="bg-white rounded-3xl shadow-lg p-8">
             <h3 className="text-xl font-bold mb-6" style={{color: '#223848'}}>
-              We're with you every step of the way
+              We&apos;re with you every step of the way
             </h3>
             
             <div className="space-y-6">
@@ -452,7 +452,7 @@ export default function LicensingInquiries() {
             </span>
           </h2>
           <p className="text-xl mb-8 max-w-2xl mx-auto" style={{color: '#223848'}}>
-            Let's discuss how Lux Libris can support your educational mission.
+            Let&apos;s discuss how Lux Libris can support your educational mission.
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">

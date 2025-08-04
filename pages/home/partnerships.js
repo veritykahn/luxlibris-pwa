@@ -49,7 +49,7 @@ export default function Partnerships() {
               </span>
             </h1>
             <p className="text-xl leading-relaxed max-w-3xl mx-auto" style={{color: '#223848'}}>
-              Join us in our mission to form saints through reading. We're building 
+              Join us in our mission to form saints through reading. We&apos;re building 
               partnerships that strengthen Catholic education and inspire young readers.
             </p>
           </div>
@@ -75,7 +75,7 @@ export default function Partnerships() {
               </h3>
               <p className="mb-6 leading-relaxed" style={{color: '#223848'}}>
                 Connect your books with thousands of Catholic school students. Our curated 
-                annual list showcases the best in Catholic children's literature.
+                annual list showcases the best in Catholic children&apos;s literature.
               </p>
               <ul className="space-y-3 mb-6">
                 <li className="flex items-start" style={{color: '#223848'}}>
@@ -106,7 +106,7 @@ export default function Partnerships() {
                 Reading List Organizations
               </h3>
               <p className="mb-6 leading-relaxed" style={{color: '#223848'}}>
-                Bring your curated reading lists to our platform. We'll create quizzes, 
+                Bring your curated reading lists to our platform. We&apos;ll create quizzes, 
                 integrate achievements, and help schools implement your program.
               </p>
               <ul className="space-y-3 mb-6">
@@ -234,7 +234,7 @@ export default function Partnerships() {
                 Future Opportunities
               </h3>
               <p className="mb-6 leading-relaxed" style={{color: '#223848'}}>
-                As we grow, we're exploring partnerships for merchandise, physical products, 
+                As we grow, we&apos;re exploring partnerships for merchandise, physical products, 
                 and expanded educational offerings.
               </p>
               <ul className="space-y-3 mb-6">
@@ -311,7 +311,7 @@ export default function Partnerships() {
                 Mission-Aligned Impact
               </h3>
               <p style={{color: '#223848'}}>
-                Join a movement that's transforming how Catholic schools approach reading, 
+                Join a movement that&apos;s transforming how Catholic schools approach reading, 
                 combining faith formation with literacy in an engaging, gamified experience.
               </p>
             </div>
@@ -477,7 +477,7 @@ export default function Partnerships() {
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl font-bold mb-6" 
               style={{fontFamily: 'Didot, Georgia, serif', color: '#223848'}}>
-            Let's Build Something
+            Let&apos;s Build Something
             <span style={{
               background: 'linear-gradient(to right, #FFAB91, #ADD4EA, #A1E5DB)',
               WebkitBackgroundClip: 'text',
@@ -487,7 +487,7 @@ export default function Partnerships() {
             </span>
           </h2>
           <p className="text-xl mb-8 max-w-2xl mx-auto" style={{color: '#223848'}}>
-            Ready to explore partnership opportunities? We'd love to hear from you.
+            Ready to explore partnership opportunities? We&apos;d love to hear from you.
           </p>
           
           <Link href="/licensing-inquiries">

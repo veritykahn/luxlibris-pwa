@@ -36,7 +36,7 @@ export default function Contact() {
         <div className="max-w-6xl mx-auto px-6 text-center">
           <h2 className="text-5xl md:text-6xl font-bold mb-6"
               style={{fontFamily: 'Didot, Georgia, serif', letterSpacing: '0.02em', color: '#223848'}}>
-            We're Here
+            We&apos;re Here
             <span style={{
               background: 'linear-gradient(to right, #FFAB91, #ADD4EA, #A1E5DB)',
               WebkitBackgroundClip: 'text',
@@ -47,7 +47,7 @@ export default function Contact() {
           </h2>
           <p className="text-xl max-w-3xl mx-auto mb-12 leading-relaxed" style={{color: '#223848'}}>
             Whether you need technical support, want to learn more about bringing 
-            Lux Libris to your school, or have partnership ideas, we'd love to hear from you.
+            Lux Libris to your school, or have partnership ideas, we&apos;d love to hear from you.
           </p>
         </div>
       </section>
@@ -316,7 +316,7 @@ export default function Contact() {
             Schedule a Personalized Demo
           </h3>
           <p className="text-lg mb-8 max-w-2xl mx-auto" style={{color: '#223848'}}>
-            See Lux Libris in action with a guided walkthrough tailored to your school's needs. 
+            See Lux Libris in action with a guided walkthrough tailored to your school&apos;s needs. 
             Our team will show you exactly how the platform can transform your reading program.
           </p>
           
@@ -338,7 +338,7 @@ export default function Contact() {
                   Monday - Friday: 9:00 AM - 4:00 PM CST
                 </p>
                 <p className="text-sm mb-4" style={{color: '#223848'}}>
-                  We'll work around your school schedule!
+                  We&apos;ll work around your school schedule!
                 </p>
                 <a 
                   href="mailto:veritykahn@luxlibris.org?subject=Demo Request"

@@ -95,7 +95,7 @@ export default function ClassroomReading() {
                   <div>
                     <h4 className="font-bold mb-2" style={{color: '#223848'}}>Quick Setup</h4>
                     <p style={{color: '#223848'}}>
-                      Join with your school's teacher code and create your class 
+                      Join with your school&apos;s teacher code and create your class 
                       in minutes. No complex configuration needed.
                     </p>
                   </div>
@@ -121,7 +121,7 @@ export default function ClassroomReading() {
                   <div>
                     <h4 className="font-bold mb-2" style={{color: '#223848'}}>Monitor Progress</h4>
                     <p style={{color: '#223848'}}>
-                      See real-time dashboards of who's reading, when they're reading, 
+                      See real-time dashboards of who&apos;s reading, when they&apos;re reading, 
                       and parent verification status.
                     </p>
                   </div>
@@ -362,9 +362,9 @@ export default function ClassroomReading() {
               Built by Teachers, for Teachers
             </h3>
             <p className="text-lg mb-6 italic" style={{color: '#223848'}}>
-              "Finally, a reading tracker that actually works in real classrooms! 
+              &quot;Finally, a reading tracker that actually works in real classrooms! 
               No more lost paper logs, no more manual calculations. I can see at 
-              a glance who's reading and celebrate their success immediately."
+              a glance who&apos;s reading and celebrate their success immediately.&quot;
             </p>
             <p className="font-semibold" style={{color: '#223848'}}>
               - Early Beta Tester, 4th Grade Teacher
@@ -389,7 +389,7 @@ export default function ClassroomReading() {
               </span>
             </h2>
             <p className="text-xl mb-8 max-w-2xl mx-auto" style={{color: '#223848'}}>
-              We're looking for innovative teachers to help shape the future 
+              We&apos;re looking for innovative teachers to help shape the future 
               of classroom reading management. Pilot participants get:
             </p>
             
@@ -482,7 +482,7 @@ export default function ClassroomReading() {
             Questions About Classroom Reading?
           </h2>
           <p className="text-xl mb-8" style={{color: '#223848'}}>
-            We'd love to hear from teachers interested in daily reading management.
+            We&apos;d love to hear from teachers interested in daily reading management.
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">

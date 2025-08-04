@@ -49,35 +49,35 @@ export default function LuxLibrisAward() {
   const nominees = {
     chapterBooks: [
       { title: "Dogtown", authors: "Katherine Applegate and Gennifer Choldenko", grades: "4-7", review: "Dogs, loyalty, and an unforgettable story about rescue and friendship.", coverUrl: "https://mpd-biblio-covers.imgix.net/9781250811608.jpg" },
-      { title: "Impossible Creatures", authors: "Katherine Rundell", grades: "5-8", review: "Mythical creatures come to life in this magical, adventurous read that's perfect for animal lovers and daydreamers alike. Already a classic and one of my favorites!", coverUrl: "https://images.penguinrandomhouse.com/cover/9780593809860" },
+      { title: "Impossible Creatures", authors: "Katherine Rundell", grades: "5-8", review: "Mythical creatures come to life in this magical, adventurous read that&apos;s perfect for animal lovers and daydreamers alike. Already a classic and one of my favorites!", coverUrl: "https://images.penguinrandomhouse.com/cover/9780593809860" },
       { title: "Invisible Isabel", authors: "Sally J. Pla", grades: "4-6", review: "A heartwarming story about a girl with sensory differences, helping us see how we can love and understand each other better.", coverUrl: "https://www.harpercollins.com/cdn/shop/files/9780063268852_af2480f8-5db4-4273-aa89-814ac893538f_1200x1200.jpg?v=1748056742" },
       { title: "It Came from the Trees", authors: "Ally Russell", grades: "4-7", review: "A creepy, spooky mystery that makes you think twice about the world outside—and how we care for it.", coverUrl: "https://images2.penguinrandomhouse.com/cover/9780593865583" },
       { title: "Legendarios: Wrath of the Rain God", authors: "Karla Arenas Valenti", grades: "4-7", review: "A thrilling dive into Aztec mythology—action-packed and full of cultural richness.", coverUrl: "https://d28hgpri8am2if.cloudfront.net/book_images/onix/cvr9781665935999/wrath-of-the-rain-god-9781665935999_hr.jpg" },
-      { title: "Lost Library", authors: "Rebecca Stead", grades: "4-7", review: "A story with a ghost and a secret library—what's not to love? It's a book about the power of stories themselves.", coverUrl: "https://mpd-biblio-covers.imgix.net/9781250838810.jpg" },
+      { title: "Lost Library", authors: "Rebecca Stead", grades: "4-7", review: "A story with a ghost and a secret library—what&apos;s not to love? It&apos;s a book about the power of stories themselves.", coverUrl: "https://mpd-biblio-covers.imgix.net/9781250838810.jpg" },
       { title: "Nimbus", authors: "Jan Eldredge", grades: "4-6", review: "A little creepy, a lot magical—this book is for kids who like to explore the unknown.", coverUrl: "https://www.harpercollins.com/cdn/shop/files/9780062680372.jpg?v=1747467590" },
       { title: "Tales from Cabin 23: The Boo Hag Flex", authors: "Justina Ireland", grades: "4-6", review: "A spooky, exciting tale with a southern twist—just the right amount of scary for middle-grade readers.", coverUrl: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQlqhFdpPsrg6hs6n2ZyrpLe_tKAPRjIBIWiQ&s" },
-      { title: "The Liars Society", authors: "Alyson Gerber", grades: "4-7", review: "A smart, engaging mystery that'll get kids thinking about truth, trust, and what we owe our friends.", coverUrl: "https://static.wixstatic.com/media/31eb4f_bd3e663d12c24489be1343440d0d819c~mv2.webp/v1/fill/w_720,h_1008,al_c,q_85,enc_avif,quality_auto/LiarsSociety1.webp" },
-      { title: "The Lumbering Giants of Windy Pines", authors: "Mo Netz", grades: "4-7", review: "Sasquatch meets small-town mystery—this one's just plain fun.", coverUrl: "https://www.harpercollins.com/cdn/shop/files/9780063266537_056c64c5-2547-4553-b585-8dbd3b8d82f7.jpg?v=1747961510" },
+      { title: "The Liars Society", authors: "Alyson Gerber", grades: "4-7", review: "A smart, engaging mystery that&apos;ll get kids thinking about truth, trust, and what we owe our friends.", coverUrl: "https://static.wixstatic.com/media/31eb4f_bd3e663d12c24489be1343440d0d819c~mv2.webp/v1/fill/w_720,h_1008,al_c,q_85,enc_avif,quality_auto/LiarsSociety1.webp" },
+      { title: "The Lumbering Giants of Windy Pines", authors: "Mo Netz", grades: "4-7", review: "Sasquatch meets small-town mystery—this one&apos;s just plain fun.", coverUrl: "https://www.harpercollins.com/cdn/shop/files/9780063266537_056c64c5-2547-4553-b585-8dbd3b8d82f7.jpg?v=1747961510" },
       { title: "The Sherlock Society", authors: "James Ponti", grades: "4-7", review: "From a fan-favorite mystery writer—this is a brand-new series perfect for kids who love solving puzzles.", coverUrl: "https://d28hgpri8am2if.cloudfront.net/book_images/onix/cvr9781665932530/the-sherlock-society-9781665932530.jpg" },
-      { title: "When We Flew Away", authors: "Alice Hoffman", grades: "5-8", review: "A gorgeous, imaginative story about Anne Frank—before the diary. It's a moving look at the creeping oppression of the Nazi regime, told through a lyrical, hopeful lens.", coverUrl: "https://alicehoffman.com/wp-content/uploads/2024/05/When-We-Flew-Away-Alice-Hoffman.jpg" }
+      { title: "When We Flew Away", authors: "Alice Hoffman", grades: "5-8", review: "A gorgeous, imaginative story about Anne Frank—before the diary. It&apos;s a moving look at the creeping oppression of the Nazi regime, told through a lyrical, hopeful lens.", coverUrl: "https://alicehoffman.com/wp-content/uploads/2024/05/When-We-Flew-Away-Alice-Hoffman.jpg" }
     ],
     pictureBooks: [
-      { title: "Haiku, Ew!", authors: "Lynn Brunelle, illustrated by Julia Patton", grades: "3-5", review: "Gross, funny, and totally delightful—it's a celebration of the weird side of nature in haiku form!", coverUrl: "https://www.slj.com/binaries/content/gallery/Jlibrary/2024/04/haiku-ew.jpg" },
+      { title: "Haiku, Ew!", authors: "Lynn Brunelle, illustrated by Julia Patton", grades: "3-5", review: "Gross, funny, and totally delightful—it&apos;s a celebration of the weird side of nature in haiku form!", coverUrl: "https://www.slj.com/binaries/content/gallery/Jlibrary/2024/04/haiku-ew.jpg" },
       { title: "The Girl Who Figured It Out", authors: "Minda Dentler, illustrated by Stephanie Dehennin", grades: "2-5", review: "The true story of Minda Dentler—an inspiring tale of determination, courage, and never giving up.", coverUrl: "https://s3.amazonaws.com/ArchiveImages/LegacyReviews/SLJ/9781728276533.jpg" },
       { title: "Volcanoes", authors: "Nell Cross Beckerman, illustrated by Kalen Chock", grades: "3-6", review: "Big, bold, and fascinating—this book makes volcanoes come alive.", coverUrl: "https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/1697708712i/195263597.jpg" }
     ],
     graphicNovels: [
-      { title: "Doña Quixote: Rise of the Knight", authors: "Rey Terciero, illustrated by Monica M. Magaña", grades: "4-7", review: "A clever, fresh take on the classic story, featuring a girl with big dreams of becoming a knight. It's fun, empowering, and packed with heart.", coverUrl: "https://mpd-biblio-covers.imgix.net/9781250795472.jpg" },
-      { title: "Scare School Diaries: Welcome to Scare School", authors: "Jarrett Lerner", grades: "3-6", review: "Spooky, silly, and full of laugh-out-loud moments—this one's a great intro to the graphic novel world.", coverUrl: "https://d28hgpri8am2if.cloudfront.net/book_images/onix/cvr9781665922081/welcome-to-scare-school-9781665922081_hr.jpg" }
+      { title: "Doña Quixote: Rise of the Knight", authors: "Rey Terciero, illustrated by Monica M. Magaña", grades: "4-7", review: "A clever, fresh take on the classic story, featuring a girl with big dreams of becoming a knight. It&apos;s fun, empowering, and packed with heart.", coverUrl: "https://mpd-biblio-covers.imgix.net/9781250795472.jpg" },
+      { title: "Scare School Diaries: Welcome to Scare School", authors: "Jarrett Lerner", grades: "3-6", review: "Spooky, silly, and full of laugh-out-loud moments—this one&apos;s a great intro to the graphic novel world.", coverUrl: "https://d28hgpri8am2if.cloudfront.net/book_images/onix/cvr9781665922081/welcome-to-scare-school-9781665922081_hr.jpg" }
     ],
     hiddenTreasure: [
-      { title: "The Silver Arrow", authors: "Lev Grossman", grades: "4-7", review: "A magical train, talking animals, and an environmental message—this book's an adventure from start to finish.", coverUrl: "https://www.hachettebookgroup.com/wp-content/uploads/2021/01/SilverArrow_9780316539548_PB_cvr.jpg?w=441" }
+      { title: "The Silver Arrow", authors: "Lev Grossman", grades: "4-7", review: "A magical train, talking animals, and an environmental message—this book&apos;s an adventure from start to finish.", coverUrl: "https://www.hachettebookgroup.com/wp-content/uploads/2021/01/SilverArrow_9780316539548_PB_cvr.jpg?w=441" }
     ],
     catholicPick: [
-      { title: "We Have a Pope", authors: "Katherine Bogner", grades: "3-5", review: "This is a warm, welcoming introduction to how we get a new pope—and why it matters. It's the kind of book that makes kids feel part of the Church, showing that the Catholic faith is a family and a community.", coverUrl: "https://cdn4.volusion.store/xmfkv-mtaqs/v/vspfiles/photos/9781645853633-2.png?v-cache=1736590235" }
+      { title: "We Have a Pope", authors: "Katherine Bogner", grades: "3-5", review: "This is a warm, welcoming introduction to how we get a new pope—and why it matters. It&apos;s the kind of book that makes kids feel part of the Church, showing that the Catholic faith is a family and a community.", coverUrl: "https://cdn4.volusion.store/xmfkv-mtaqs/v/vspfiles/photos/9781645853633-2.png?v-cache=1736590235" }
     ],
     classic: [
-      { title: "The Silver Sword", authors: "Ian Serraillier", grades: "5-8", review: "This book is a powerful story about kids surviving on their own during World War II. It's not just an adventure—it's about family, courage, and finding hope even when everything feels impossible.", coverUrl: "https://ofscriptedshadows.wordpress.com/wp-content/uploads/2018/11/9780141362649.jpg" }
+      { title: "The Silver Sword", authors: "Ian Serraillier", grades: "5-8", review: "This book is a powerful story about kids surviving on their own during World War II. It&apos;s not just an adventure—it&apos;s about family, courage, and finding hope even when everything feels impossible.", coverUrl: "https://ofscriptedshadows.wordpress.com/wp-content/uploads/2018/11/9780141362649.jpg" }
     ]
   }
 
@@ -128,7 +128,7 @@ export default function LuxLibrisAward() {
           </h1>
           
           <p className="text-lg sm:text-xl italic mb-6" style={{color: '#556B7A', fontFamily: 'Didot, Georgia, serif'}}>
-            "Illuminating the World Through Stories"
+            &quot;Illuminating the World Through Stories&quot;
           </p>
           
           <p className="text-base sm:text-lg max-w-3xl mx-auto mb-8 leading-relaxed" style={{color: '#223848'}}>
@@ -202,7 +202,7 @@ export default function LuxLibrisAward() {
               
               <div className="prose prose-lg mx-auto" style={{color: '#223848'}}>
                 <p className="text-lg leading-relaxed mb-6">
-                  The Lux Libris Award is more than just a reading list—it's a carefully curated journey 
+                  The Lux Libris Award is more than just a reading list—it&apos;s a carefully curated journey 
                   designed to illuminate young minds and hearts through the power of story. Each year, 
                   we select 20 exceptional books that span genres, cultures, and perspectives, all while 
                   remaining true to our Catholic values.
@@ -237,7 +237,7 @@ export default function LuxLibrisAward() {
                 </div>
 
                 <p className="text-lg leading-relaxed">
-                  Lux means "light" and Libris means "books"—together, they represent our belief that 
+                  Lux means &quot;light&quot; and Libris means &quot;books&quot;—together, they represent our belief that 
                   stories have the power to illuminate the world, helping students grow as readers, 
                   thinkers, and disciples of Christ.
                 </p>
@@ -377,7 +377,7 @@ export default function LuxLibrisAward() {
                 />
                 <ObjectiveCard 
                   icon="✨"
-                  title="Reveal Christ's Light"
+                  title="Reveal Christ&apos;s Light"
                   description="Recognize storytelling as a vital way to encounter truth, foster empathy, and build bridges."
                 />
               </div>
@@ -457,8 +457,8 @@ export default function LuxLibrisAward() {
                 </p>
                 
                 <blockquote className="border-l-4 pl-6 italic my-6" style={{borderColor: '#A1E5DB'}}>
-                  "I was shocked and saddened. This program had been meaningful to so many students' 
-                  journeys, and suddenly schools were left without a Catholic-centered reading program."
+                  &quot;I was shocked and saddened. This program had been meaningful to so many students&apos; 
+                  journeys, and suddenly schools were left without a Catholic-centered reading program.&quot;
                   <footer className="text-sm mt-2">— A School Librarian</footer>
                 </blockquote>
                 
@@ -469,10 +469,10 @@ export default function LuxLibrisAward() {
                 </p>
                 
                 <div className="bg-amber-50 rounded-xl p-5 my-6">
-                  <h3 className="text-xl font-bold mb-3">Why "Lux Libris"?</h3>
+                  <h3 className="text-xl font-bold mb-3">Why &quot;Lux Libris&quot;?</h3>
                   <p className="text-base">
-                    The name reflects the award's mission perfectly. <em>Lux</em> means "light" in Latin, 
-                    and <em>Libris</em> means "books." Together, they represent our belief that books 
+                    The name reflects the award&apos;s mission perfectly. <em>Lux</em> means &quot;light&quot; in Latin, 
+                    and <em>Libris</em> means &quot;books.&quot; Together, they represent our belief that books 
                     illuminate the minds and hearts of our students, guiding them toward truth, beauty, 
                     and goodness.
                   </p>
@@ -490,7 +490,7 @@ export default function LuxLibrisAward() {
                 </p>
                 
                 <p className="text-lg leading-relaxed mb-6">
-                  That's when the vision of Lux Libris expanded: What if there was a better way? What if schools could 
+                  That&apos;s when the vision of Lux Libris expanded: What if there was a better way? What if schools could 
                   have a complete digital platform that made running a Catholic reading program not just 
                   manageable, but delightful? The Lux Libris reading platform was born.
                 </p>
@@ -500,8 +500,8 @@ export default function LuxLibrisAward() {
                     <h4 className="font-bold mb-2">🆕 New Additions</h4>
                     <ul className="space-y-1 text-sm">
                       <li>• A specifically Catholic book each year</li>
-                      <li>• A children's classic on every list</li>
-                      <li>• "Hidden Treasure" category for overlooked gems</li>
+                      <li>• A children&apos;s classic on every list</li>
+                      <li>• &quot;Hidden Treasure&quot; category for overlooked gems</li>
                       <li>• Digital platform for easy tracking</li>
                       <li>• Student engagement features</li>
                     </ul>
@@ -670,7 +670,7 @@ function BookItem({ book, color }) {
       </p>
       {book.review && (
         <p className="text-xs italic leading-relaxed text-center" style={{color: '#556B7A'}}>
-          "{book.review}"
+          &quot;{book.review}&quot;
         </p>
       )}
     </div>
