@@ -11,12 +11,14 @@ export default function TeacherSetupChoice() {
       <Head>
         <title>Teacher Setup - Choose Your Focus</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="icon" href="/images/lux_libris_logo.png" />
       </Head>
       
       <div style={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #FFFCF5 0%, #C3E0DE 50%, #A1E5DB 100%)',
-        fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
+        background: 'linear-gradient(135deg, #F5EBDC 0%, #C3E0DE 50%, #A1E5DB 100%)',
+        fontFamily: 'Avenir, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
+        letterSpacing: '0.12em'
       }}>
         
         {/* Header with Back Arrow */}
@@ -61,16 +63,17 @@ export default function TeacherSetupChoice() {
               color: '#223848',
               margin: 0,
               fontFamily: 'Didot, Georgia, serif',
-              letterSpacing: '1.2px'
+              letterSpacing: '0.02em'
             }}>
               Choose Your Setup Type
             </h1>
             <p style={{
-              color: '#A1E5DB',
+              color: '#223848',
               fontSize: 'clamp(0.75rem, 3vw, 0.875rem)',
               margin: 0,
-              fontFamily: 'Avenir',
-              letterSpacing: '1.2px'
+              fontFamily: 'Avenir, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
+              letterSpacing: '0.12em',
+              opacity: 0.8
             }}>
               What would you like to set up?
             </p>
@@ -88,10 +91,10 @@ export default function TeacherSetupChoice() {
             <div style={{ fontSize: 'clamp(2rem, 8vw, 3rem)', marginBottom: '1rem' }}>👩‍🏫</div>
             <p style={{
               fontSize: 'clamp(1rem, 3vw, 1.25rem)',
-              color: '#6b7280',
+              color: '#223848',
               marginBottom: '2rem',
-              fontFamily: 'Avenir',
-              letterSpacing: '1.2px',
+              fontFamily: 'Avenir, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
+              letterSpacing: '0.12em',
               maxWidth: '600px',
               margin: '0 auto 2rem'
             }}>
@@ -164,7 +167,7 @@ export default function TeacherSetupChoice() {
               color: '#223848',
               marginBottom: '1rem',
               fontFamily: 'Didot, Georgia, serif',
-              letterSpacing: '1.2px',
+              letterSpacing: '0.02em',
               textAlign: 'center'
             }}>
               🤔 Not Sure Which to Choose?
@@ -175,13 +178,14 @@ export default function TeacherSetupChoice() {
               gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
               gap: '1rem',
               fontSize: 'clamp(0.875rem, 2.5vw, 0.95rem)',
-              color: '#6b7280',
-              fontFamily: 'Avenir'
+              color: '#223848',
+              fontFamily: 'Avenir, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
+              letterSpacing: '0.12em'
             }}>
               <div>
                 <strong style={{ color: '#223848' }}>Choose Reading Program if:</strong>
                 <ul style={{ marginTop: '0.5rem', paddingLeft: '1.2rem' }}>
-                  <li>You&apos;re setting up for your whole school</li>
+                  <li>You're setting up for your whole school</li>
                   <li>You want school-wide book selections</li>
                   <li>You need achievement tracking</li>
                 </ul>
@@ -189,9 +193,9 @@ export default function TeacherSetupChoice() {
               <div>
                 <strong style={{ color: '#223848' }}>Choose Classroom Management if:</strong>
                 <ul style={{ marginTop: '0.5rem', paddingLeft: '1.2rem' }}>
-                  <li>You&apos;re managing just your classroom</li>
-                  <li>You want to track students&apos; reading habits</li>
-                  <li>You need analystics for parent meetings</li>
+                  <li>You're managing just your classroom</li>
+                  <li>You want to track students' reading habits</li>
+                  <li>You need analytics for parent meetings</li>
                 </ul>
               </div>
             </div>
@@ -208,7 +212,8 @@ export default function TeacherSetupChoice() {
                 margin: 0,
                 fontSize: 'clamp(0.8rem, 2vw, 0.9rem)',
                 color: '#223848',
-                fontFamily: 'Avenir'
+                fontFamily: 'Avenir, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
+                letterSpacing: '0.12em'
               }}>
                 💡 <strong>Note:</strong> You can always set up both types later. Start with your immediate need!
               </p>
@@ -270,7 +275,7 @@ function SetupCard({
           left: '50%',
           transform: 'translateX(-50%)',
           background: available ? 
-            (highlight === 'Most Popular' ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'linear-gradient(135deg, #6b7280, #4b5563)') :
+            (highlight === 'Most Popular' ? 'linear-gradient(135deg, #FFAB91, #FFC4A3)' : 'linear-gradient(135deg, #223848, #374a5a)') :
             '#6b7280',
           color: 'white',
           padding: '0.4rem 1rem',
@@ -279,8 +284,8 @@ function SetupCard({
           fontWeight: 'bold',
           whiteSpace: 'nowrap',
           boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
-          fontFamily: 'Avenir',
-          letterSpacing: '1.2px'
+          fontFamily: 'Avenir, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
+          letterSpacing: '0.12em'
         }}>
           {highlight}
         </div>
@@ -290,7 +295,7 @@ function SetupCard({
         width: 'clamp(3.5rem, 8vw, 4rem)',
         height: 'clamp(3.5rem, 8vw, 4rem)',
         background: available ? 
-          (gradient.includes('purple') ? 'linear-gradient(135deg, #a855f7, #ec4899)' : 'linear-gradient(135deg, #3b82f6, #14b8a6)') :
+          (gradient.includes('purple') ? 'linear-gradient(135deg, #D4C5E8, #E6D9F2)' : 'linear-gradient(135deg, #ADD4EA, #B6DFEB)') :
           '#9ca3af',
         borderRadius: '50%',
         display: 'flex',
@@ -309,21 +314,22 @@ function SetupCard({
         color: available ? '#223848' : '#6b7280',
         marginBottom: '1rem',
         fontFamily: 'Didot, Georgia, serif',
-        letterSpacing: '1.2px',
+        letterSpacing: '0.02em',
         textAlign: 'center'
       }}>
         {title}
       </h3>
       
       <p style={{
-        color: available ? '#6b7280' : '#9ca3af',
+        color: available ? '#223848' : '#9ca3af',
         marginBottom: '1.5rem',
         lineHeight: '1.6',
         fontSize: 'clamp(0.9rem, 2.5vw, 1rem)',
         flexGrow: 1,
-        fontFamily: 'Avenir',
-        letterSpacing: '1.2px',
-        textAlign: 'center'
+        fontFamily: 'Avenir, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
+        letterSpacing: '0.12em',
+        textAlign: 'center',
+        opacity: available ? 0.8 : 0.6
       }}>
         {description}
       </p>
@@ -337,10 +343,11 @@ function SetupCard({
         {features.map((feature, index) => (
           <li key={index} style={{
             fontSize: 'clamp(0.8rem, 2vw, 0.9rem)',
-            color: available ? '#6b7280' : '#9ca3af',
+            color: available ? '#223848' : '#9ca3af',
             marginBottom: '0.75rem',
             lineHeight: '1.4',
-            fontFamily: 'Avenir',
+            fontFamily: 'Avenir, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
+            letterSpacing: '0.12em',
             display: 'flex',
             alignItems: 'flex-start',
             gap: '0.5rem'
@@ -357,7 +364,7 @@ function SetupCard({
             display: 'block',
             width: '100%',
             background: '#d1d5db',
-            color: '#6b7280',
+            color: '#223848',
             padding: '1rem',
             borderRadius: '0.75rem',
             textAlign: 'center',
@@ -367,8 +374,8 @@ function SetupCard({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontFamily: 'Avenir',
-            letterSpacing: '1.2px',
+            fontFamily: 'Avenir, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
+            letterSpacing: '0.12em',
             fontWeight: '600'
           }}>
             🚧 {buttonText} (Coming Soon)
@@ -377,8 +384,8 @@ function SetupCard({
           <button onClick={onClick} style={{
             display: 'block',
             width: '100%',
-            background: gradient.includes('purple') ? 'linear-gradient(135deg, #a855f7, #ec4899)' : 'linear-gradient(135deg, #3b82f6, #14b8a6)',
-            color: 'white',
+            background: gradient.includes('purple') ? 'linear-gradient(135deg, #D4C5E8, #E6D9F2)' : 'linear-gradient(135deg, #ADD4EA, #B6DFEB)',
+            color: '#223848',
             padding: '1rem',
             borderRadius: '0.75rem',
             border: 'none',
@@ -390,8 +397,8 @@ function SetupCard({
             cursor: 'pointer',
             minHeight: '54px',
             boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)',
-            fontFamily: 'Avenir',
-            letterSpacing: '1.2px'
+            fontFamily: 'Avenir, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
+            letterSpacing: '0.12em'
           }}
           onMouseEnter={(e) => {
             e.target.style.transform = 'translateY(-2px)'
