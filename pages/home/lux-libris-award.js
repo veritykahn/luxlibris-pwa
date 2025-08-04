@@ -62,7 +62,7 @@ export default function LuxLibrisAward() {
       { title: "When We Flew Away", authors: "Alice Hoffman", grades: "5-8", review: "A gorgeous, imaginative story about Anne Frank—before the diary. It&apos;s a moving look at the creeping oppression of the Nazi regime, told through a lyrical, hopeful lens.", coverUrl: "https://alicehoffman.com/wp-content/uploads/2024/05/When-We-Flew-Away-Alice-Hoffman.jpg" }
     ],
     pictureBooks: [
-      { title: "Haiku, Ew!", authors: "Lynn Brunelle, illustrated by Julia Patton", grades: "3-5", review: "Gross, funny, and totally delightful—it&apos;s a celebration of the weird side of nature in haiku form!", coverUrl: "https://www.slj.com/binaries/content/gallery/Jlibrary/2024/04/haiku-ew.jpg" },
+      { title: "Haiku, Ew!", authors: "Lynn Brunelle, illustrated by Julia Patton", grades: "3-5", review: "Gross, funny, and totally delightful—it&apos;s a celebration of the weird side of nature in haiku form!", coverUrl: "https://books.google.com/books/publisher/content?id=Kk1kEQAAQBAJ&pg=PP1&img=1&zoom=3&hl=en&bul=1&sig=ACfU3U39XXXhCy-ZxhtHd_d9rhohU6h5xg&w=1280" },
       { title: "The Girl Who Figured It Out", authors: "Minda Dentler, illustrated by Stephanie Dehennin", grades: "2-5", review: "The true story of Minda Dentler—an inspiring tale of determination, courage, and never giving up.", coverUrl: "https://s3.amazonaws.com/ArchiveImages/LegacyReviews/SLJ/9781728276533.jpg" },
       { title: "Volcanoes", authors: "Nell Cross Beckerman, illustrated by Kalen Chock", grades: "3-6", review: "Big, bold, and fascinating—this book makes volcanoes come alive.", coverUrl: "https://images-na.ssl-images-amazon.com/images/S/compressed.photo.goodreads.com/books/1697708712i/195263597.jpg" }
     ],
