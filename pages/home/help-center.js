@@ -5,6 +5,7 @@ import { useState } from 'react'
 
 export default function HelpCenter() {
   const [activeCategory, setActiveCategory] = useState('general')
+  const [searchQuery, setSearchQuery] = useState('')
 
   const faqCategories = {
     general: {
@@ -26,6 +27,10 @@ export default function HelpCenter() {
         {
           question: "When is the program available each year?",
           answer: "The reading program runs from June 1st to March 31st. After that, students vote for their favorite books (April 1-14), winners are announced April 15th, and the new year's nominees are revealed in late May before the cycle begins again June 1st."
+        },
+        {
+          question: "I'm having trouble logging in. What should I do?",
+          answer: "First, ensure you're using the correct email associated with your account. Try resetting your password using the 'Forgot Password' link. If issues persist, email support@luxlibris.org with your school name and we'll help immediately."
         }
       ]
     },
@@ -48,6 +53,10 @@ export default function HelpCenter() {
         {
           question: "Can we customize the program for our school?",
           answer: "Yes! Schools select 15-20 books from our annual list, set custom achievement intervals (e.g., rewards at 5, 10, 15, 20 books), configure submission options (quizzes, teacher discussions, projects), and define real-world rewards like mass recognition or certificates."
+        },
+        {
+          question: "Our diocese wants to implement Lux Libris. Who should we contact?",
+          answer: "For diocese-wide implementations, email inquiries@luxlibris.org. We offer special pricing for multi-school organizations and can coordinate rollout across all your schools."
         }
       ]
     },
@@ -70,6 +79,10 @@ export default function HelpCenter() {
         {
           question: "Can I use the app without internet?",
           answer: "The reading timer and basic features work offline. You only need internet to sync progress, take quizzes, submit books, and view leaderboards. Your reading data is saved locally and syncs when you reconnect."
+        },
+        {
+          question: "How do I get a teacher code to join my school?",
+          answer: "Teacher codes are provided by your school administrator. Contact your principal or librarian to receive your unique join code. If your school hasn't registered yet, direct them to luxlibris.org/for-schools."
         }
       ]
     },
@@ -92,6 +105,10 @@ export default function HelpCenter() {
         {
           question: "Can homeschool families use Lux Libris?",
           answer: "Yes! Homeschool families can subscribe independently for $25/year (coming in Phase 3). This includes up to 6 children, a scaled reading program, basic saint achievements, and family progress tracking - perfect for homeschool co-ops and reading groups."
+        },
+        {
+          question: "Can parents use the app if they don't have a smartphone?",
+          answer: "Yes! The parent app works on any device with internet access, including computers and tablets. Parents can also participate without the app - teachers can print progress reports to send home."
         }
       ]
     },
@@ -114,10 +131,42 @@ export default function HelpCenter() {
         {
           question: "How do teacher accounts work?",
           answer: "Teachers join with school-provided codes, create email/password accounts, and receive unique codes for their students and parents. Each teacher can manage their own classroom, track submissions, and view class-specific analytics while maintaining student privacy."
+        },
+        {
+          question: "Is there a help center or documentation available?",
+          answer: "Yes! Once logged in, you'll find comprehensive help documentation in your dashboard. We also offer video tutorials and PDF guides. For immediate assistance, email support@luxlibris.org."
         }
       ]
     }
   }
+
+  // Filter questions based on search query
+  const getFilteredQuestions = () => {
+    if (!searchQuery) return null;
+    
+    const filtered = {};
+    const query = searchQuery.toLowerCase();
+    
+    Object.entries(faqCategories).forEach(([key, category]) => {
+      const matchingQuestions = category.questions.filter(
+        item => 
+          item.question.toLowerCase().includes(query) || 
+          item.answer.toLowerCase().includes(query)
+      );
+      
+      if (matchingQuestions.length > 0) {
+        filtered[key] = {
+          ...category,
+          questions: matchingQuestions
+        };
+      }
+    });
+    
+    return Object.keys(filtered).length > 0 ? filtered : null;
+  };
+
+  const filteredCategories = getFilteredQuestions();
+  const displayCategories = searchQuery ? filteredCategories : { [activeCategory]: faqCategories[activeCategory] };
 
   return (
     <Layout 
@@ -125,10 +174,10 @@ export default function HelpCenter() {
       description="Find answers to frequently asked questions about Lux Libris. Get help with setup, features, technical support, and more."
     >
       {/* Hero Section */}
-      <section className="relative overflow-hidden py-20">
+      <section className="relative overflow-hidden py-20 bg-white">
         <div className="max-w-6xl mx-auto px-6 text-center">
-          <h1 className="text-5xl md:text-6xl font-bold mb-6"
-              style={{fontFamily: 'Didot, Georgia, serif', letterSpacing: '0.02em', color: '#223848'}}>
+          <h1 className="text-5xl md:text-6xl font-bold mb-6 text-gray-800"
+              style={{fontFamily: 'Didot, Georgia, serif', letterSpacing: '0.02em'}}>
             How Can We
             <span style={{
               background: 'linear-gradient(to right, #FFAB91, #ADD4EA, #A1E5DB)',
@@ -138,148 +187,104 @@ export default function HelpCenter() {
               {" "}Help You?
             </span>
           </h1>
-          <p className="text-xl max-w-3xl mx-auto mb-12 leading-relaxed" style={{color: '#223848'}}>
+          <p className="text-xl max-w-3xl mx-auto mb-12 leading-relaxed text-gray-700">
             Find answers to common questions or reach out to our support team for personalized assistance.
           </p>
 
-          {/* Quick Search */}
+          {/* Search Bar */}
           <div className="max-w-2xl mx-auto mb-8">
             <div className="relative">
               <input
                 type="text"
                 placeholder="Search for help..."
-                className="w-full px-6 py-4 rounded-full shadow-lg text-lg pr-12"
-                style={{backgroundColor: 'white', color: '#223848'}}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full px-6 py-4 rounded-full shadow-lg text-lg pr-12 text-gray-800 border border-gray-200 focus:border-[#A1E5DB] focus:ring-2 focus:ring-[#A1E5DB]/20 transition-all"
               />
               <span className="absolute right-4 top-1/2 transform -translate-y-1/2 text-2xl">
                 🔍
               </span>
             </div>
-          </div>
-
-          {/* Quick Links */}
-          <div className="flex flex-wrap justify-center gap-4">
-            <QuickLink icon="📧" text="Email Support" href="mailto:support@luxlibris.org" />
-            <QuickLink icon="📅" text="Schedule Demo" href="/home/contact#demo" />
-            <QuickLink icon="📄" text="Download Guide" href="/resources/lux-libris-guide.pdf" />
-            <QuickLink icon="🎥" text="Watch Videos" href="/home/demo" />
+            {searchQuery && !filteredCategories && (
+              <p className="mt-4 text-gray-600">No results found for "{searchQuery}"</p>
+            )}
           </div>
         </div>
       </section>
 
       {/* FAQ Categories */}
-      <section className="bg-white py-20">
+      <section className="bg-gray-50 py-20">
         <div className="max-w-6xl mx-auto px-6">
-          {/* Category Tabs */}
-          <div className="flex flex-wrap justify-center gap-3 mb-12">
-            {Object.entries(faqCategories).map(([key, category]) => (
-              <button
-                key={key}
-                onClick={() => setActiveCategory(key)}
-                className={`
-                  px-6 py-3 rounded-full font-semibold transition-all flex items-center gap-2
-                  ${activeCategory === key 
-                    ? 'text-white shadow-lg' 
-                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                  }
-                `}
-                style={activeCategory === key ? {backgroundColor: '#A1E5DB'} : {}}
-              >
-                <span className="text-xl">{category.icon}</span>
-                <span>{category.title}</span>
-              </button>
-            ))}
-          </div>
+          {/* Category Tabs - only show if not searching */}
+          {!searchQuery && (
+            <div className="flex flex-wrap justify-center gap-3 mb-12">
+              {Object.entries(faqCategories).map(([key, category]) => (
+                <button
+                  key={key}
+                  onClick={() => setActiveCategory(key)}
+                  className={`
+                    px-6 py-3 rounded-full font-semibold transition-all flex items-center gap-2
+                    ${activeCategory === key 
+                      ? 'text-white shadow-lg' 
+                      : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-200'
+                    }
+                  `}
+                  style={activeCategory === key ? {backgroundColor: '#A1E5DB'} : {}}
+                >
+                  <span className="text-xl">{category.icon}</span>
+                  <span>{category.title}</span>
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* FAQ Content */}
           <div className="max-w-4xl mx-auto">
-            <div className="space-y-6">
-              {faqCategories[activeCategory].questions.map((item, index) => (
-                <FAQItem
-                  key={index}
-                  question={item.question}
-                  answer={item.answer}
-                />
-              ))}
-            </div>
+            {displayCategories ? (
+              Object.entries(displayCategories).map(([key, category]) => (
+                <div key={key} className="mb-8">
+                  {searchQuery && (
+                    <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-gray-800">
+                      <span>{category.icon}</span>
+                      <span>{category.title}</span>
+                    </h3>
+                  )}
+                  <div className="space-y-6">
+                    {category.questions.map((item, index) => (
+                      <FAQItem
+                        key={`${key}-${index}`}
+                        question={item.question}
+                        answer={item.answer}
+                        searchQuery={searchQuery}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-center text-gray-600">No questions found in this category.</p>
+            )}
           </div>
         </div>
       </section>
 
       {/* Still Need Help Section */}
-      <section className="py-20" style={{backgroundColor: '#F5EBDC'}}>
+      <section className="py-20 bg-orange-50">
         <div className="max-w-4xl mx-auto px-6 text-center">
-          <h2 className="text-3xl font-bold mb-6" style={{fontFamily: 'Didot, Georgia, serif', color: '#223848'}}>
+          <h2 className="text-3xl font-bold mb-6 text-gray-800" style={{fontFamily: 'Didot, Georgia, serif'}}>
             Still Need Help?
           </h2>
-          <p className="text-xl mb-8" style={{color: '#223848'}}>
+          <p className="text-xl mb-8 text-gray-700">
             Our support team is here to assist you with any questions about Lux Libris.
           </p>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            <ContactCard
-              icon="📧"
-              title="Email Support"
-              description="Get a response within 24 hours"
-              action="Send Email"
-              href="mailto:support@luxlibris.org"
-            />
-            
-            <ContactCard
-              icon="💬"
-              title="Live Chat"
-              description="Chat with our team Mon-Fri 9am-5pm CST"
-              action="Coming Soon"
-              disabled
-            />
-            
-            <ContactCard
-              icon="📞"
-              title="Phone Support"
-              description="For urgent school inquiries"
-              action="Contact Dr. Kahn"
-              href="mailto:veritykahn@luxlibris.org"
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Resources Section */}
-      <section className="bg-white py-20">
-        <div className="max-w-6xl mx-auto px-6">
-          <h2 className="text-3xl font-bold text-center mb-12" style={{fontFamily: 'Didot, Georgia, serif', color: '#223848'}}>
-            Helpful Resources
-          </h2>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <ResourceLink
-              icon="📖"
-              title="Getting Started Guide"
-              description="Step-by-step setup instructions"
-              href="/resources/getting-started"
-            />
-            
-            <ResourceLink
-              icon="🎥"
-              title="Video Tutorials"
-              description="Watch walkthroughs and demos"
-              href="/home/demo"
-            />
-            
-            <ResourceLink
-              icon="📊"
-              title="Best Practices"
-              description="Tips for maximum engagement"
-              href="/resources/best-practices"
-            />
-            
-            <ResourceLink
-              icon="🎯"
-              title="Success Stories"
-              description="See how schools are thriving"
-              href="/home/for-schools#success"
-            />
-          </div>
+          <Link
+            href="/home/contact"
+            className="inline-block text-white px-8 py-4 rounded-full text-lg font-semibold transition-all transform hover:scale-105 shadow-lg"
+            style={{backgroundColor: '#A1E5DB'}}
+          >
+            Contact Us
+          </Link>
         </div>
       </section>
 
@@ -305,31 +310,31 @@ export default function HelpCenter() {
 }
 
 // Supporting Components
-function QuickLink({ icon, text, href }) {
-  return (
-    <Link
-      href={href}
-      className="bg-white hover:bg-gray-50 px-6 py-3 rounded-full shadow transition-all flex items-center gap-2"
-    >
-      <span className="text-xl">{icon}</span>
-      <span style={{color: '#223848'}}>{text}</span>
-    </Link>
-  )
-}
+function FAQItem({ question, answer, searchQuery }) {
+  const [isOpen, setIsOpen] = useState(!!searchQuery)
 
-function FAQItem({ question, answer }) {
-  const [isOpen, setIsOpen] = useState(false)
+  // Highlight search terms
+  const highlightText = (text) => {
+    if (!searchQuery) return text;
+    
+    const parts = text.split(new RegExp(`(${searchQuery})`, 'gi'));
+    return parts.map((part, index) => 
+      part.toLowerCase() === searchQuery.toLowerCase() 
+        ? <span key={index} style={{backgroundColor: '#A1E5DB40'}}>{part}</span>
+        : part
+    );
+  };
 
   return (
-    <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl overflow-hidden">
+    <div className="bg-white rounded-xl overflow-hidden border border-gray-200">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full text-left p-6 flex items-center justify-between hover:bg-slate-100 transition-colors"
+        className="w-full text-left p-6 flex items-center justify-between hover:bg-gray-50 transition-colors"
       >
-        <h4 className="text-lg font-bold pr-4" style={{color: '#223848'}}>
-          {question}
+        <h4 className="text-lg font-bold pr-4 text-gray-800">
+          {highlightText(question)}
         </h4>
-        <span className="text-2xl transform transition-transform" style={{
+        <span className="text-2xl transform transition-transform text-gray-500" style={{
           transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)'
         }}>
           ⌄
@@ -338,71 +343,11 @@ function FAQItem({ question, answer }) {
       
       {isOpen && (
         <div className="px-6 pb-6 animate-fadeIn">
-          <p className="leading-relaxed" style={{color: '#223848'}}>
-            {answer}
+          <p className="leading-relaxed text-gray-700">
+            {highlightText(answer)}
           </p>
         </div>
       )}
     </div>
-  )
-}
-
-function ContactCard({ icon, title, description, action, href, disabled }) {
-  const content = (
-    <>
-      <div className="text-4xl mb-4">{icon}</div>
-      <h3 className="text-xl font-bold mb-2" style={{color: '#223848'}}>
-        {title}
-      </h3>
-      <p className="mb-4" style={{color: '#223848'}}>
-        {description}
-      </p>
-      <div className={`
-        px-6 py-3 rounded-full font-semibold inline-block text-white
-        ${disabled 
-          ? 'bg-gray-200 text-gray-400' 
-          : ''
-        }
-      `}
-        style={!disabled ? {backgroundColor: '#A1E5DB'} : {}}
-        onMouseEnter={(e) => !disabled && (e.target.style.backgroundColor = '#8FD4CA')}
-        onMouseLeave={(e) => !disabled && (e.target.style.backgroundColor = '#A1E5DB')}
-      >
-        {action}
-      </div>
-    </>
-  )
-
-  if (disabled) {
-    return (
-      <div className="bg-white rounded-2xl p-6 shadow-lg text-center cursor-not-allowed opacity-75">
-        {content}
-      </div>
-    )
-  }
-
-  return (
-    <Link href={href} className="block">
-      <div className="bg-white rounded-2xl p-6 shadow-lg text-center hover:shadow-xl transition-shadow">
-        {content}
-      </div>
-    </Link>
-  )
-}
-
-function ResourceLink({ icon, title, description, href }) {
-  return (
-    <Link href={href} className="block">
-      <div className="rounded-xl p-6 hover:shadow-lg transition-all" 
-           style={{background: 'linear-gradient(to br, #A1E5DB20, #ADD4EA20)'}}>
-        <div className="text-3xl mb-3">{icon}</div>
-        <h4 className="font-bold mb-2" style={{color: '#223848'}}>
-          {title}
-        </h4>
-        <p className="text-sm" style={{color: '#223848'}}>
-          {description}
-        </p>
-      </div>
-    </Link>
   )
 }
