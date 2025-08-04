@@ -117,7 +117,7 @@ export default function Contact() {
             {formStatus.submitted && (
               <div className="mb-8 p-4 rounded-lg bg-green-50 border border-green-200">
                 <p className="text-green-800 text-center font-semibold">
-                  ✓ Thank you for your message! We'll get back to you within {
+                  ✓ Thank you for your message! We&apos;ll get back to you within {
                     formData.inquiryType === 'support' ? '24-48 hours' :
                     formData.inquiryType === 'pricing' || formData.inquiryType === 'demo' ? '24 hours' :
                     '3-5 business days'

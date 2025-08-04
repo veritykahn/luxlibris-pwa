@@ -206,7 +206,7 @@ export default function HelpCenter() {
               </span>
             </div>
             {searchQuery && !filteredCategories && (
-              <p className="mt-4 text-gray-600">No results found for "{searchQuery}"</p>
+              <p className="mt-4 text-gray-600">No results found for &quot;{searchQuery}&quot;</p>
             )}
           </div>
         </div>

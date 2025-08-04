@@ -357,7 +357,7 @@ export default function Partnerships() {
             {formStatus.submitted && (
               <div className="mb-8 p-4 rounded-lg bg-green-50 border border-green-200">
                 <p className="text-green-800 text-center font-semibold">
-                  ✓ Thank you for your partnership inquiry! We'll review your submission and get back to you within 3-5 business days.
+                  ✓ Thank you for your partnership inquiry! We&apos;ll review your submission and get back to you within 3-5 business days.
                 </p>
               </div>
             )}
