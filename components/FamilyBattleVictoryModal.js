@@ -240,7 +240,7 @@ export default function FamilyBattleVictoryModal({ show, onClose, victories, the
                   paddingLeft: '48px',
                   paddingRight: '60px'
                 }}>
-                  "{bragLine.line}"
+                  &quot;{bragLine.line}&quot;
                 </div>
               </div>
             );
