@@ -1173,7 +1173,7 @@ export default function ParentDashboard() {
                         color: '#A16207',
                         wordBreak: 'break-word'
                       }}>
-                        "{approval.bookTitle}"
+                        &quot;{approval.bookTitle}&quot;
                       </div>
                     </div>
                     <button
@@ -1561,7 +1561,7 @@ export default function ParentDashboard() {
                                       color: childColor,
                                       wordWrap: 'break-word'
                                     }}>
-                                      Try: "{suggestion.title}"
+                                      Try: &quot;{suggestion.title}&quot;
                                     </div>
                                   )}
                                 </div>
@@ -1715,7 +1715,7 @@ export default function ParentDashboard() {
                                 color: '#92400E',
                                 marginBottom: '4px'
                               }}>
-                                "{recommendedBook.title}"
+                                &quot;{recommendedBook.title}&quot;
                               </div>
                               <div style={{
                                 fontSize: 'clamp(10px, 3vw, 12px)',
@@ -1765,7 +1765,7 @@ export default function ParentDashboard() {
                               }}>
                                 ASK YOUR KIDS
                               </span>
-                              💬 "{recommendedBook.discussionQuestions[0]}"
+                              💬 &quot;{recommendedBook.discussionQuestions[0]}&quot;
                             </div>
                           )}
                           
