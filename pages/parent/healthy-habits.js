@@ -1,4 +1,4 @@
-// pages/parent/healthy-habits.js - Fixed Timer Settings Integration & Restructured Layout
+// pages/parent/healthy-habits.js - Fixed with Direct Family Battle Updates (No Sync Loop)
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
@@ -6,77 +6,62 @@ import { useTimer } from '../../contexts/TimerContext'
 import { usePremiumFeatures } from '../../hooks/usePremiumFeatures'
 import PremiumGate from '../../components/PremiumGate'
 import Head from 'next/head'
-import { collection, addDoc, query, where, getDocs, doc, getDoc } from 'firebase/firestore'
+import { collection, addDoc, query, where, getDocs, doc, getDoc, updateDoc, increment } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
+// ADDED: Import sync function ONLY for initial load
+import { syncFamilyBattleData } from '../../lib/family-battle-sync'
+
+// Utility function for getting week start
+const getProgramWeekStart = (date = new Date()) => {
+  const d = new Date(date)
+  const day = d.getDay()
+  const diff = d.getDate() - day
+  const weekStart = new Date(d.setDate(diff))
+  weekStart.setHours(0, 0, 0, 0)
+  return weekStart
+}
+
+// Utility function for week number
+const getProgramWeekNumber = (date = new Date()) => {
+  const yearStart = new Date(date.getFullYear(), 0, 1)
+  const weekNumber = Math.ceil(((date - yearStart) / 86400000 + yearStart.getDay() + 1) / 7)
+  return weekNumber
+}
 
 // Family Battle Card Component - Shows Real Stats
-function FamilyBattleCard({ linkedStudents, user, luxTheme, router, isPilotPhase }) {
+function FamilyBattleCard({ linkedStudents, user, luxTheme, router, isPilotPhase, parentData }) {
   const [battleData, setBattleData] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  // Utility function for local date
-  const getLocalDateString = (date = new Date()) => {
-    const d = new Date(date)
-    const year = d.getFullYear()
-    const month = String(d.getMonth() + 1).padStart(2, '0')
-    const day = String(d.getDate()).padStart(2, '0')
-    return `${year}-${month}-${day}`
-  }
-
-  // Load family battle data
+  // Load family battle data - only on initial load, not after every update
   useEffect(() => {
     const loadBattleData = async () => {
-      if (!linkedStudents?.length || !user?.uid) {
+      if (!linkedStudents?.length || !user?.uid || !parentData?.familyId) {
         setLoading(false)
         return
       }
 
       try {
-        const today = new Date()
-        const startOfWeek = new Date(today.setDate(today.getDate() - today.getDay()))
-        const weekStr = getLocalDateString(startOfWeek)
+        // Get the current battle data from family document (already synced)
+        const familyRef = doc(db, 'families', parentData.familyId)
+        const familyDoc = await getDoc(familyRef)
         
-        // Get parent minutes this week
-        const parentSessionsRef = collection(db, `parents/${user.uid}/readingSessions`)
-        const parentWeekQuery = query(
-          parentSessionsRef,
-          where('date', '>=', weekStr)
-        )
-        const parentWeekSnapshot = await getDocs(parentWeekQuery)
-        let parentMinutes = 0
-        
-        parentWeekSnapshot.forEach(docSnap => {
-          const session = docSnap.data()
-          parentMinutes += session.duration
-        })
-
-        // Get children's minutes this week
-        let childrenMinutes = 0
-        
-        for (const student of linkedStudents) {
-          const studentSessionsRef = collection(db, `entities/${student.entityId}/schools/${student.schoolId}/students/${student.id}/readingSessions`)
-          const studentWeekQuery = query(
-            studentSessionsRef,
-            where('date', '>=', weekStr)
-          )
-          const studentWeekSnapshot = await getDocs(studentWeekQuery)
+        if (familyDoc.exists()) {
+          const familyData = familyDoc.data()
+          const currentWeek = familyData.familyBattleSettings?.currentWeek
           
-          studentWeekSnapshot.forEach(docSnap => {
-            const session = docSnap.data()
-            childrenMinutes += session.duration
-          })
+          if (currentWeek) {
+            setBattleData({
+              parentMinutes: currentWeek.parents || 0,
+              childrenMinutes: currentWeek.children || 0,
+              winner: currentWeek.winner,
+              lead: currentWeek.margin || 0,
+              totalMinutes: (currentWeek.parents || 0) + (currentWeek.children || 0),
+              weekNumber: currentWeek.weekNumber,
+              battleStatus: currentWeek.battleStatus
+            })
+          }
         }
-
-        const winner = parentMinutes > childrenMinutes ? 'parents' : 'children'
-        const lead = Math.abs(parentMinutes - childrenMinutes)
-
-        setBattleData({
-          parentMinutes,
-          childrenMinutes,
-          winner,
-          lead,
-          totalMinutes: parentMinutes + childrenMinutes
-        })
       } catch (error) {
         console.error('Error loading battle data:', error)
       }
@@ -85,9 +70,7 @@ function FamilyBattleCard({ linkedStudents, user, luxTheme, router, isPilotPhase
     }
 
     loadBattleData()
-  }, [linkedStudents, user?.uid])
-
-  // Don't show loading, just default fallback
+  }, [linkedStudents, user?.uid, parentData?.familyId])
 
   return (
     <div 
@@ -136,16 +119,15 @@ function FamilyBattleCard({ linkedStudents, user, luxTheme, router, isPilotPhase
           color: luxTheme.textPrimary,
           margin: '0 0 8px 0'
         }}>
-          Family Reading Battle
+          Family Reading Battle - Week {battleData?.weekNumber || '?'}
         </h3>
         <p style={{
           fontSize: '14px',
           color: luxTheme.textSecondary,
           margin: '0 0 12px 0'
         }}>
-          {battleData?.winner === 'parents' ? `👨‍👩 Parents are winning - ${battleData.parentMinutes} minutes` :
-           battleData?.winner === 'children' ? `👧👦 Kids are winning - ${battleData.childrenMinutes} minutes` :
-           'See how your family competes in reading!'}
+          {loading ? 'Loading battle status...' :
+           battleData?.battleStatus || 'Start your family battle!'}
         </p>
         <div style={{
           backgroundColor: `${luxTheme.primary}20`,
@@ -191,7 +173,7 @@ export default function ParentHealthyHabits() {
   const [parentData, setParentData] = useState(null)
   const [linkedStudents, setLinkedStudents] = useState([])
   
-  // Progress states (same pattern as student)
+  // Progress states (removed XP, added total sessions)
   const [todaysSessions, setTodaysSessions] = useState([])
   const [todaysMinutes, setTodaysMinutes] = useState(0)
   const [currentStreak, setCurrentStreak] = useState(0)
@@ -202,15 +184,13 @@ export default function ParentHealthyHabits() {
     color: '#8B5CF6',
     textColor: '#FFFFFF' 
   })
-  const [totalXP, setTotalXP] = useState(0)
+  const [totalSessions, setTotalSessions] = useState(0) // NEW: Track total sessions instead of XP
 
-  // UI states
+  // UI states (removed XP reward states)
   const [showSuccess, setShowSuccess] = useState('')
   const [showCompletionCelebration, setShowCompletionCelebration] = useState(false)
-  const [showXPReward, setShowXPReward] = useState(false)
-  const [xpReward, setXPReward] = useState({ amount: 0, reason: '', total: 0 })
   const [showNavMenu, setShowNavMenu] = useState(false)
-  const [showReadingTips, setShowReadingTips] = useState(false) // NEW: For collapsible tips
+  const [showReadingTips, setShowReadingTips] = useState(false)
 
   // Lux Libris Classic Theme
   const luxTheme = {
@@ -378,7 +358,7 @@ export default function ParentHealthyHabits() {
     }
   }, [calculateSmartStreak])
 
-  // Load parent reading data
+  // Load parent reading data (UPDATED: removed XP tracking)
   const loadParentReadingData = useCallback(async () => {
     try {
       const today = getLocalDateString(new Date())
@@ -390,14 +370,11 @@ export default function ParentHealthyHabits() {
       const todaySnapshot = await getDocs(todayQuery)
       const sessions = []
       let minutesToday = 0
-      let totalXPEver = 0
+      let totalSessionsCount = 0
 
-      // Get all sessions to calculate total XP
+      // Get all sessions to calculate total sessions
       const allSessionsSnapshot = await getDocs(sessionsRef)
-      allSessionsSnapshot.forEach(docSnap => {
-        const session = docSnap.data()
-        totalXPEver += session.xpEarned || session.duration || 0
-      })
+      totalSessionsCount = allSessionsSnapshot.size
 
       // Process today's sessions
       const sessionData = []
@@ -421,7 +398,7 @@ export default function ParentHealthyHabits() {
 
       setTodaysSessions(sessions)
       setTodaysMinutes(minutesToday)
-      setTotalXP(totalXPEver)
+      setTotalSessions(totalSessionsCount) // Track total sessions instead of XP
 
       await loadStreakData(user.uid)
       await calculateParentReadingLevel(user.uid)
@@ -430,13 +407,12 @@ export default function ParentHealthyHabits() {
     }
   }, [user?.uid, loadStreakData, calculateParentReadingLevel])
 
-  // UPDATED: Save reading session (removed bookTitle parameter)
+  // FIXED: Save reading session with direct family battle updates (no sync loop)
   const saveReadingSession = useCallback(async (duration, completed) => {
     try {
       if (!user?.uid) return
 
       const today = getLocalDateString(new Date())
-      const sessionXP = duration // 1 XP per minute
 
       const sessionData = {
         date: today,
@@ -444,8 +420,7 @@ export default function ParentHealthyHabits() {
         duration: duration,
         targetDuration: Math.floor(timerDuration / 60),
         completed: completed,
-        bookTitle: 'Parent Reading Time', // UPDATED: Static title for parent sessions
-        xpEarned: sessionXP,
+        bookTitle: 'Parent Reading Time',
         isWithChildren: false // TODO: Add toggle for this
       }
 
@@ -455,30 +430,101 @@ export default function ParentHealthyHabits() {
 
       setTodaysSessions(prev => [newSession, ...prev])
       setTodaysMinutes(prev => prev + duration)
+      setTotalSessions(prev => prev + 1)
 
-      const newTotalXP = totalXP + sessionXP
-      setTotalXP(newTotalXP)
+      // Show success messages focused on modeling behavior
+      setShowSuccess(completed ? 
+        `🎉 Reading session completed! You're setting an amazing example!` : 
+        `📖 Progress saved! ${duration} minutes of reading tracked!`
+      )
+      setTimeout(() => setShowSuccess(''), 3000)
 
-      // Show XP reward
-      setXPReward({
-        amount: sessionXP,
-        reason: completed ? `${duration} minute session completed!` : `${duration} minutes of reading!`,
-        total: newTotalXP
-      })
-      setShowXPReward(true)
-      setTimeout(() => setShowXPReward(false), 4000)
+      // CRITICAL FIX: Direct update to family battle data (no sync loop)
+      if (parentData?.familyBattleSettings?.enabled && parentData?.familyId) {
+        console.log('⚔️ Updating family battle stats directly...')
+        try {
+          const familyRef = doc(db, 'families', parentData.familyId)
+          const weekStr = getLocalDateString(getProgramWeekStart())
+          
+          // Direct incremental update - no recalculation needed
+          await updateDoc(familyRef, {
+            // Increment total parent minutes
+            'familyBattleSettings.currentWeek.parents': increment(duration),
+            
+            // Update this specific parent's contribution
+            [`familyBattleSettings.currentWeek.parentBreakdown.${user.uid}`]: increment(duration),
+            
+            // Update battle status based on new totals
+            'familyBattleSettings.currentWeek.lastUpdated': new Date(),
+            
+            // Don't update lastSynced - that's only for full syncs
+          })
+          
+          // Also update the margin and status locally (without full sync)
+          const familyDoc = await getDoc(familyRef)
+          if (familyDoc.exists()) {
+            const familyData = familyDoc.data()
+            const currentWeek = familyData.familyBattleSettings?.currentWeek
+            
+            if (currentWeek) {
+              const parentTotal = currentWeek.parents || 0
+              const childTotal = currentWeek.children || 0
+              const margin = Math.abs(parentTotal - childTotal)
+              const dayOfWeek = new Date().getDay()
+              
+              let winner = 'tie'
+              let battleStatus = 'The battle begins!'
+              
+              if (dayOfWeek === 0) { // Sunday - results day
+                if (childTotal > parentTotal) {
+                  winner = 'children'
+                  battleStatus = `🏆 KIDS DOMINATED! Won by ${margin} minutes!`
+                } else if (parentTotal > childTotal) {
+                  winner = 'parents'
+                  battleStatus = `👑 PARENTS DOMINATED! Won by ${margin} minutes!`
+                } else if (parentTotal > 0 || childTotal > 0) {
+                  battleStatus = '🤝 EPIC TIE BATTLE! Both teams fought hard!'
+                }
+              } else {
+                // During the week
+                if (childTotal > parentTotal) {
+                  winner = 'children'
+                  battleStatus = `Kids leading by ${margin} minutes! Keep reading!`
+                } else if (parentTotal > childTotal) {
+                  winner = 'parents'
+                  battleStatus = `Parents leading by ${margin} minutes! Battle continues!`
+                } else if (parentTotal > 0 || childTotal > 0) {
+                  battleStatus = 'Tied up! Every minute counts!'
+                }
+              }
+              
+              // Update just the calculated fields
+              await updateDoc(familyRef, {
+                'familyBattleSettings.currentWeek.margin': margin,
+                'familyBattleSettings.currentWeek.winner': dayOfWeek === 0 ? winner : 'ongoing',
+                'familyBattleSettings.currentWeek.battleStatus': battleStatus
+              })
+            }
+          }
+          
+          console.log('✅ Family battle stats updated directly (no sync loop)!')
+          
+          // Show battle-specific success if in an active battle
+          const dayOfWeek = new Date().getDay()
+          if (dayOfWeek !== 0) { // Not Sunday (results day)
+            setShowSuccess(prev => prev + ' ⚔️ Battle stats updated!')
+          }
+        } catch (updateError) {
+          console.error('⚠️ Could not update family battle:', updateError)
+          // Don't fail the whole save operation for battle update failure
+        }
+      }
 
       // Update streaks and level if completed
       if (completed) {
         await loadStreakData(user.uid)
         await calculateParentReadingLevel(user.uid)
       }
-
-      setShowSuccess(completed ? 
-        `🎉 Reading session completed! +${sessionXP} XP earned!` : 
-        `📖 Progress saved! +${sessionXP} XP earned!`
-      )
-      setTimeout(() => setShowSuccess(''), 3000)
 
       // Reload to check stats
       await loadParentReadingData()
@@ -487,7 +533,7 @@ export default function ParentHealthyHabits() {
       setShowSuccess('❌ Error saving session. Please try again.')
       setTimeout(() => setShowSuccess(''), 3000)
     }
-  }, [user?.uid, timerDuration, totalXP, loadStreakData, calculateParentReadingLevel, loadParentReadingData])
+  }, [user?.uid, timerDuration, parentData, loadStreakData, calculateParentReadingLevel, loadParentReadingData])
 
   // Check authentication and premium access
   useEffect(() => {
@@ -527,6 +573,18 @@ export default function ParentHealthyHabits() {
       
       // Load linked students
       await loadLinkedStudentsData(parentProfile.linkedStudents || [])
+
+      // Do ONE initial sync on page load to ensure data is current
+      if (parentProfile.familyBattleSettings?.enabled && parentProfile.familyId) {
+        console.log('🔄 Performing initial family battle sync on page load...')
+        try {
+          const students = await loadLinkedStudentsDataForSync(parentProfile.linkedStudents || [])
+          await syncFamilyBattleData(parentProfile.familyId, students)
+          console.log('✅ Initial sync complete')
+        } catch (syncError) {
+          console.error('⚠️ Initial sync failed, continuing anyway:', syncError)
+        }
+      }
 
       await loadParentReadingData()
       
@@ -575,6 +633,43 @@ export default function ParentHealthyHabits() {
     }
   }
 
+  // Helper function for sync only
+  const loadLinkedStudentsDataForSync = async (linkedStudentIds) => {
+    try {
+      const students = []
+      const entitiesSnapshot = await getDocs(collection(db, 'entities'))
+      
+      for (const entityDoc of entitiesSnapshot.docs) {
+        const entityId = entityDoc.id
+        const schoolsSnapshot = await getDocs(collection(db, `entities/${entityId}/schools`))
+        
+        for (const schoolDoc of schoolsSnapshot.docs) {
+          const schoolId = schoolDoc.id
+          const schoolData = schoolDoc.data()
+          const studentsSnapshot = await getDocs(collection(db, `entities/${entityId}/schools/${schoolId}/students`))
+          
+          for (const studentDoc of studentsSnapshot.docs) {
+            if (linkedStudentIds.includes(studentDoc.id)) {
+              const studentData = {
+                id: studentDoc.id,
+                entityId,
+                schoolId,
+                schoolName: schoolData.name,
+                ...studentDoc.data()
+              }
+              students.push(studentData)
+            }
+          }
+        }
+      }
+      
+      return students
+    } catch (error) {
+      console.error('❌ Error loading linked students for sync:', error)
+      return []
+    }
+  }
+
   // Close nav menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -600,7 +695,7 @@ export default function ParentHealthyHabits() {
     }
   }, [showNavMenu])
 
-  // Timer completion handler
+  // Timer completion handler - ENHANCED with direct battle updates
   const handleTimerComplete = useCallback(async () => {
     // Notification effects (simplified for parent)
     try {
@@ -650,7 +745,7 @@ export default function ParentHealthyHabits() {
     resumeTimer()
   }
 
-  // Handle banking session
+  // Handle banking session - ENHANCED with direct battle updates
   const handleBankSession = async () => {
     const minutesRead = getMinutesRead()
     
@@ -665,8 +760,8 @@ export default function ParentHealthyHabits() {
     await saveReadingSession(minutesRead, isCompleted)
 
     setShowSuccess(isCompleted ?
-      `🎉 Session banked! +${minutesRead} XP + streak earned!` :
-      `📖 ${minutesRead} minutes banked! +${minutesRead} XP earned`
+      `🎉 Session banked! ${minutesRead} minutes completed - amazing example for your children!` :
+      `📖 ${minutesRead} minutes banked! Keep showing your children how important reading is!`
     )
     setTimeout(() => setShowSuccess(''), 4000)
   }
@@ -1327,7 +1422,7 @@ export default function ParentHealthyHabits() {
                 </div>
               </div>
 
-              {/* Stats Grid */}
+              {/* Stats Grid - UPDATED with sessions instead of XP */}
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: '1fr 1fr 1fr',
@@ -1385,13 +1480,13 @@ export default function ParentHealthyHabits() {
                     fontWeight: 'bold',
                     color: luxTheme.textPrimary
                   }}>
-                    {totalXP}
+                    {totalSessions}
                   </div>
                   <div style={{
                     fontSize: '10px',
                     color: luxTheme.textSecondary
                   }}>
-                    total XP
+                    sessions
                   </div>
                 </div>
               </div>
@@ -1486,7 +1581,7 @@ export default function ParentHealthyHabits() {
               </div>
             </div>
 
-            {/* Family Battle Card - Real Stats */}
+            {/* Family Battle Card - Real Stats with Enhanced Data */}
             <PremiumGate 
               feature="familyBattle"
               fallback={
@@ -1534,76 +1629,13 @@ export default function ParentHealthyHabits() {
                 luxTheme={luxTheme}
                 router={router}
                 isPilotPhase={isPilotPhase}
+                parentData={parentData}
               />
             </PremiumGate>
           </div>
         </PremiumGate>
 
-        {/* XP Reward Popup */}
-        {showXPReward && (
-          <div style={{
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            backgroundColor: luxTheme.surface,
-            borderRadius: '20px',
-            padding: '24px',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
-            zIndex: 1001,
-            textAlign: 'center',
-            border: `3px solid ${luxTheme.primary}`,
-            minWidth: '280px',
-            maxWidth: '90vw'
-          }}>
-            <div style={{ fontSize: '48px', marginBottom: '12px' }}>
-              ⚡
-            </div>
-            
-            <div style={{
-              fontSize: '24px',
-              fontWeight: 'bold',
-              color: luxTheme.primary,
-              marginBottom: '8px'
-            }}>
-              +{xpReward.amount} XP!
-            </div>
-            
-            <div style={{
-              fontSize: '14px',
-              color: luxTheme.textPrimary,
-              marginBottom: '8px'
-            }}>
-              {xpReward.reason}
-            </div>
-            
-            <div style={{
-              fontSize: '12px',
-              color: luxTheme.textSecondary,
-              marginBottom: '16px'
-            }}>
-              Total XP: {xpReward.total}
-            </div>
-            
-            <button
-              onClick={() => setShowXPReward(false)}
-              style={{
-                backgroundColor: luxTheme.primary,
-                color: luxTheme.textPrimary,
-                border: 'none',
-                borderRadius: '12px',
-                padding: '12px 24px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer'
-              }}
-            >
-              Great! 🎯
-            </button>
-          </div>
-        )}
-
-        {/* Completion Celebration */}
+        {/* Completion Celebration - UPDATED messaging */}
         {showCompletionCelebration && (
           <div style={{
             position: 'fixed',
@@ -1642,7 +1674,8 @@ export default function ParentHealthyHabits() {
                 margin: 0,
                 lineHeight: '1.4'
               }}>
-                Excellent work leading by example! Your children are learning from your dedication.
+                Excellent work leading by example! Your children are learning the value of reading by watching you.
+                {parentData?.familyBattleSettings?.enabled && ' ⚔️ Battle stats updated!'}
               </p>
             </div>
           </div>

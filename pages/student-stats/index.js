@@ -1,17 +1,15 @@
 // pages/student-stats/index.js - COMPLETE FIXED VERSION with Badge System, Notifications & Responsive Layout
-
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePhaseAccess } from '../../hooks/usePhaseAccess';
 import { getStudentDataEntities, updateStudentDataEntities } from '../../lib/firebase';
-import { getCurrentWeekBadge, getBadgeProgress, getEarnedBadges, getLevelProgress } from '../../lib/badge-system';
+import { getCurrentWeekBadge, getBadgeProgress, getEarnedBadges, getLevelProgress, BADGE_CALENDAR } from '../../lib/badge-system';
 import { calculateReadingPersonality, shouldShowFirstBookCelebration, unlockCertificate } from '../../lib/reading-personality';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import Head from 'next/head';
 import EnhancedBraggingRightsModal from '../../components/EnhancedBraggingRightsModal';
-
 export default function StudentStatsMain() {
   const router = useRouter();
   const { user, isAuthenticated, loading } = useAuth();
@@ -24,16 +22,13 @@ export default function StudentStatsMain() {
   const [showFirstBookCelebration, setShowFirstBookCelebration] = useState(false);
   const [showBraggingRights, setShowBraggingRights] = useState(false);
   const [showSuccess, setShowSuccess] = useState('');
-
   // BADGE CHALLENGE STATE VARIABLES
   const [showBadgeChallenge, setShowBadgeChallenge] = useState(false);
   const [challengeProgress, setChallengeProgress] = useState(null);
-
   // BADGE NOTIFICATION SYSTEM
   const [showBadgeNotification, setShowBadgeNotification] = useState(false);
   const [badgeNotificationData, setBadgeNotificationData] = useState(null);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
-
   // Light overview data
   const [quickStats, setQuickStats] = useState(null);
   const [earnedBadges, setEarnedBadges] = useState([]);
@@ -41,7 +36,6 @@ export default function StudentStatsMain() {
   const [currentWeekBadge, setCurrentWeekBadge] = useState(null);
   const [funTidbits, setFunTidbits] = useState([]);
   const [weeklyXP, setWeeklyXP] = useState(0);
-
   // Theme definitions
   const themes = useMemo(() => ({
     classic_lux: {
@@ -133,7 +127,6 @@ export default function StudentStatsMain() {
       textSecondary: '#AAAAAA'
     }
   }), []);
-
   const navMenuItems = useMemo(() => [
     { name: 'Dashboard', path: '/student-dashboard', icon: '⌂' },
     { 
@@ -158,7 +151,6 @@ export default function StudentStatsMain() {
     { name: 'Stats', path: '/student-stats', icon: '△', current: true },
     { name: 'Settings', path: '/student-settings', icon: '⚙' }
   ], [hasAccess, phaseData.currentPhase]);
-
 const statsNavOptions = useMemo(() => [
   { name: 'Stats Dashboard', path: '/student-stats', icon: '📊', description: 'Fun overview', current: true },
   { name: 'My Stats', path: '/student-stats/my-stats', icon: '📈', description: 'Personal deep dive' },
@@ -175,7 +167,6 @@ const statsNavOptions = useMemo(() => [
   },
   { name: 'Family Battle', path: '/student-stats/family-battle', icon: '🥊', description: 'WWE-style reading showdown!', disabled: false }
 ], [phaseData.currentPhase]);
-
   // BADGE NOTIFICATION SYSTEM
   const badgeUnlockFeedback = useCallback(() => {
     // Vibration
@@ -211,7 +202,6 @@ const statsNavOptions = useMemo(() => [
       console.log('Audio notification not supported');
     }
   }, []);
-
   const sendBadgeNotification = useCallback((badgeName, xpEarned) => {
     // Browser notification
     if (notificationsEnabled && Notification.permission === 'granted') {
@@ -241,7 +231,43 @@ const statsNavOptions = useMemo(() => [
       setShowBadgeNotification(false);
     }, 4000);
   }, [notificationsEnabled]);
-
+  
+  // CHECK FOR NEW CONTENT BADGES FUNCTION
+const checkForNewContentBadges = useCallback(async () => {
+  if (!studentData) return;
+  
+  const contentBadgeWeeks = [1, 6, 16, 24, 33, 43, 44];
+  const newBadges = [];
+  
+  for (const week of contentBadgeWeeks) {
+    const badge = BADGE_CALENDAR[week]; // Get badge for specific week
+    if (badge && studentData[`badgeEarnedWeek${week}`]) {
+      // Check if this badge was earned recently (within last hour)
+      const lastBadgeEarned = studentData.lastBadgeEarned?.toDate?.() || 
+                             studentData.lastBadgeEarned ? new Date(studentData.lastBadgeEarned) : null;
+      
+      if (lastBadgeEarned) {
+        const hoursSince = (new Date() - lastBadgeEarned) / (1000 * 60 * 60);
+        
+        if (hoursSince < 1 && (badge.type === 'content' || badge.type === 'voting')) {
+          newBadges.push({ ...badge, week });
+        }
+      }
+    }
+  }
+    
+    // Show notification for new badges
+    if (newBadges.length > 0) {
+      const latestBadge = newBadges[newBadges.length - 1];
+      badgeUnlockFeedback();
+      sendBadgeNotification(latestBadge.name, latestBadge.xp);
+      
+      // Update earned badges list
+      const updatedBadges = getEarnedBadges(studentData);
+      setEarnedBadges(updatedBadges);
+    }
+  }, [studentData, badgeUnlockFeedback, sendBadgeNotification]);
+  
   // FIXED BADGE AWARD LOGIC
   const awardBadgeIfComplete = async (progress, weekBadge) => {
     if (!progress || !progress.completed || !weekBadge || !studentData) return false;
@@ -285,7 +311,6 @@ const statsNavOptions = useMemo(() => [
       return false;
     }
   };
-
   // BADGE CHALLENGE FUNCTIONS
   const calculateChallengeProgress = useCallback(async (studentData, weekBadge) => {
     if (!weekBadge || !studentData) return null;
@@ -307,7 +332,7 @@ const statsNavOptions = useMemo(() => [
         daysSinceJune1 = Math.floor((today.getTime() - june1.getTime()) / (1000 * 60 * 60 * 24));
       }
 
-      // Calculate the start of the current badge week (7-day periods from June 1st)
+      // Calculate the start of the current badge week
       const weekNumber = Math.floor(daysSinceJune1 / 7);
       const weekStartDays = weekNumber * 7;
 
@@ -340,8 +365,16 @@ const statsNavOptions = useMemo(() => [
       
       const sessions = [];
       const dailySessions = {};
+      const dailyMinutes = {};
       let totalMinutes = 0;
       let completedSessions = 0;
+      let longSessions30 = 0;
+      let longSessions45 = 0;
+      let longSessions60 = 0;
+      let longSessions90 = 0;
+      let morningSessions = 0;
+      let eveningSessions = 0;
+      let weekendSessions = 0;
       
       weekSnapshot.forEach(doc => {
         const session = doc.data();
@@ -351,6 +384,27 @@ const statsNavOptions = useMemo(() => [
         if (session.completed) {
           completedSessions++;
           dailySessions[session.date] = true;
+          
+          // Track daily minutes
+          if (!dailyMinutes[session.date]) {
+            dailyMinutes[session.date] = 0;
+          }
+          dailyMinutes[session.date] += session.duration || 0;
+          
+          // Track long sessions
+          if (session.duration >= 30) longSessions30++;
+          if (session.duration >= 45) longSessions45++;
+          if (session.duration >= 60) longSessions60++;
+          if (session.duration >= 90) longSessions90++;
+          
+          // Track time-based sessions
+          const sessionHour = new Date(session.startTime).getHours();
+          if (sessionHour < 9) morningSessions++;
+          if (sessionHour >= 19) eveningSessions++;
+          
+          // Track weekend sessions
+          const sessionDay = new Date(session.date).getDay();
+          if (sessionDay === 0 || sessionDay === 6) weekendSessions++;
         }
       });
       
@@ -358,136 +412,314 @@ const statsNavOptions = useMemo(() => [
       const todayStr = getLocalDateString(today);
       const hasReadToday = dailySessions[todayStr] || false;
       
+      // Check if all days have 20+ or 30+ minutes
+      let daysWithMin20 = 0;
+      let daysWithMin30 = 0;
+      Object.values(dailyMinutes).forEach(minutes => {
+        if (minutes >= 20) daysWithMin20++;
+        if (minutes >= 30) daysWithMin30++;
+      });
+      
       // Calculate progress based on badge type and requirements
       let progress = null;
       
       switch (weekBadge.name) {
+        // CONTENT BADGES (shouldn't be in timer progress)
         case "Hummingbird Herald":
-          // "Celebrate the new nominee list by adding your first book to your shelf"
-          const booksInShelf = studentData.bookshelf?.length || 0;
+        case "Peacock Pride":
+        case "Woodpecker Wisdom":
+        case "Raven Ratings":
+        case "Spoonbill Scholar":
+        case "Gannet Sprint":
+        case "Cormorant Democracy":
+          // These are content badges, not timer badges
           progress = {
-            type: 'books_added',
-            current: booksInShelf,
+            type: 'content_badge',
+            current: 0,
             target: 1,
-            percentage: Math.min(100, (booksInShelf / 1) * 100),
-            description: 'Books added to shelf',
-            completed: booksInShelf >= 1
+            percentage: 0,
+            description: 'This is a content badge, not a timer badge',
+            completed: false
           };
           break;
-          
+        
+        // FIRST SESSION BADGES
         case "Kingfisher Kickoff":
         case "Pigeon Starter":
-          // "Complete your first 20-minute reading session"
           progress = {
             type: 'first_session',
             current: completedSessions,
             target: 1,
             percentage: Math.min(100, (completedSessions / 1) * 100),
-            description: 'Reading sessions completed',
+            description: 'Complete any reading session',
             completed: completedSessions >= 1
           };
           break;
-          
+        
+        // 30+ MINUTE SESSION BADGES
         case "Cardinal Courage":
-        case "Ostrich Odyssey":
-          // "Read 30+ minutes in a single session this week"
-          const longSessions = sessions.filter(s => s.duration >= 30).length;
           progress = {
-            type: 'long_session',
-            current: longSessions,
+            type: 'long_session_30',
+            current: longSessions30,
             target: 1,
-            percentage: Math.min(100, (longSessions / 1) * 100),
-            description: '30+ minute sessions',
-            completed: longSessions >= 1
+            percentage: Math.min(100, (longSessions30 / 1) * 100),
+            description: 'Complete a 30+ minute session',
+            completed: longSessions30 >= 1
           };
           break;
-          
+        
+        // 45+ MINUTE SESSION BADGES
         case "Toucan Triumph":
-          // "Complete a 45+ minute reading session"
-          const extraLongSessions = sessions.filter(s => s.duration >= 45).length;
+        case "Ostrich Odyssey":
           progress = {
-            type: 'extra_long_session',
-            current: extraLongSessions,
+            type: 'long_session_45',
+            current: longSessions45,
             target: 1,
-            percentage: Math.min(100, (extraLongSessions / 1) * 100),
-            description: '45+ minute sessions',
-            completed: extraLongSessions >= 1
+            percentage: Math.min(100, (longSessions45 / 1) * 100),
+            description: 'Complete a 45+ minute session',
+            completed: longSessions45 >= 1
+          };
+          break;
+        
+        // 60+ MINUTE SESSION BADGES
+        case "Bird of Paradise Performance":
+          progress = {
+            type: 'long_session_60',
+            current: longSessions60,
+            target: 1,
+            percentage: Math.min(100, (longSessions60 / 1) * 100),
+            description: 'Complete a 60+ minute session',
+            completed: longSessions60 >= 1
           };
           break;
           
+        // 90+ MINUTE SESSION BADGES
+        case "Horned Owl Summit":
+          progress = {
+            type: 'long_session_90',
+            current: longSessions90,
+            target: 1,
+            percentage: Math.min(100, (longSessions90 / 1) * 100),
+            description: 'Complete a 90+ minute session',
+            completed: longSessions90 >= 1
+          };
+          break;
+        
+        // WEEKEND READING BADGES
+        case "Puffin Power":
+          progress = {
+            type: 'weekend_reading',
+            current: weekendSessions,
+            target: 1,
+            percentage: Math.min(100, (weekendSessions / 1) * 100),
+            description: 'Read on Saturday or Sunday',
+            completed: weekendSessions >= 1
+          };
+          break;
+          
+        case "Secretary Bird Weekend":
+          progress = {
+            type: 'both_weekend_days',
+            current: weekendSessions,
+            target: 2,
+            percentage: Math.min(100, (weekendSessions / 2) * 100),
+            description: 'Read both Saturday AND Sunday',
+            completed: weekendSessions >= 2
+          };
+          break;
+        
+        // MORNING SESSION BADGES
+        case "Macaw Motivation":
+        case "Pheasant Focus":
+          progress = {
+            type: 'morning_sessions',
+            current: morningSessions,
+            target: 2,
+            percentage: Math.min(100, (morningSessions / 2) * 100),
+            description: 'Complete 2 morning sessions (before 9am)',
+            completed: morningSessions >= 2
+          };
+          break;
+          
+        case "Booby Morning":
+          progress = {
+            type: 'morning_sessions',
+            current: morningSessions,
+            target: 4,
+            percentage: Math.min(100, (morningSessions / 4) * 100),
+            description: 'Complete 4 morning sessions',
+            completed: morningSessions >= 4
+          };
+          break;
+        
+        // EVENING SESSION BADGES
+        case "Barn Owl Night Reader":
+          progress = {
+            type: 'evening_sessions',
+            current: eveningSessions,
+            target: 2,
+            percentage: Math.min(100, (eveningSessions / 2) * 100),
+            description: 'Complete 2 evening sessions (after 7pm)',
+            completed: eveningSessions >= 2
+          };
+          break;
+        
+        // DAYS WITH READING BADGES
         case "Flamingo Focus":
-          // "Read on 4 different days this week"
           progress = {
             type: 'reading_days',
             current: daysWithReading,
             target: 4,
             percentage: Math.min(100, (daysWithReading / 4) * 100),
-            description: 'Days with reading',
+            description: 'Read on 4 different days',
             completed: daysWithReading >= 4
           };
           break;
-          
+        
+        case "Heron Habits":
+          progress = {
+            type: 'consecutive_20min_days',
+            current: daysWithMin20,
+            target: 5,
+            percentage: Math.min(100, (daysWithMin20 / 5) * 100),
+            description: 'Read 20+ min for 5 days',
+            completed: daysWithMin20 >= 5
+          };
+          break;
+        
         case "Duck Dedication":
-        case "Lyre Bird Perfection":
-          // "Read every day this week (7 days straight)"
+        case "Oystercatcher Streak":
+        case "Grebe Streak":
+        case "Kiwi Consistency":
           progress = {
             type: 'daily_reading',
             current: daysWithReading,
             target: 7,
             percentage: Math.min(100, (daysWithReading / 7) * 100),
-            description: 'Days completed',
+            description: 'Read every day this week',
             completed: daysWithReading >= 7
           };
           break;
           
+        case "Lyre Bird Perfection":
+        case "Hornbill Champion":
+          progress = {
+            type: 'daily_30min',
+            current: daysWithMin30,
+            target: 7,
+            percentage: Math.min(100, (daysWithMin30 / 7) * 100),
+            description: 'Read 30+ min every day',
+            completed: daysWithMin30 >= 7
+          };
+          break;
+        
+        // TOTAL MINUTES BADGES
         case "Pelican Persistence":
         case "Cassowary Challenge":
         case "Sandgrouse Summer":
-          // "Read 3+ hours total this week (180+ minutes)"
           progress = {
-            type: 'total_minutes',
+            type: 'total_minutes_180',
             current: totalMinutes,
             target: 180,
             percentage: Math.min(100, (totalMinutes / 180) * 100),
-            description: 'Minutes read',
+            description: 'Read 180+ minutes total (3 hours)',
             completed: totalMinutes >= 180
           };
           break;
-          
+        
         case "Bald Eagle Excellence":
         case "Crow Marathon":
-          // "Complete 4+ hours of reading this week (240+ minutes)"
           progress = {
-            type: 'marathon_minutes',
+            type: 'total_minutes_240',
             current: totalMinutes,
             target: 240,
             percentage: Math.min(100, (totalMinutes / 240) * 100),
-            description: 'Minutes read',
+            description: 'Read 240+ minutes total (4 hours)',
             completed: totalMinutes >= 240
           };
           break;
-          
+        
+        // SPECIAL SESSION REQUIREMENTS
         case "Albatross Adventure":
-          // "Complete 60+ minutes over 3 reading sessions"
           progress = {
-            type: 'session_minutes',
+            type: 'sessions_with_total',
             current: completedSessions,
             target: 3,
             percentage: Math.min(100, (completedSessions / 3) * 100),
-            description: 'Reading sessions',
+            description: 'Complete 3 sessions (60+ min total)',
             completed: completedSessions >= 3 && totalMinutes >= 60
           };
           break;
           
-        default:
-          // Generic weekly challenge
+        case "Frigate Lightning":
+          const sessions30Plus = sessions.filter(s => s.duration >= 30 && s.completed).length;
           progress = {
-            type: 'general',
-            current: completedSessions,
+            type: 'multiple_30min_sessions',
+            current: sessions30Plus,
             target: 3,
-            percentage: Math.min(100, (completedSessions / 3) * 100),
-            description: 'Reading sessions',
-            completed: completedSessions >= 3
+            percentage: Math.min(100, (sessions30Plus / 3) * 100),
+            description: 'Complete 3 sessions of 30+ minutes',
+            completed: sessions30Plus >= 3
+          };
+          break;
+          
+        case "Roadrunner Speed":
+          progress = {
+            type: 'multiple_45min_sessions',
+            current: longSessions45,
+            target: 3,
+            percentage: Math.min(100, (longSessions45 / 3) * 100),
+            description: 'Complete 3 sessions of 45+ minutes',
+            completed: longSessions45 >= 3
+          };
+          break;
+        
+        // SEASONAL/HOLIDAY BADGES - Just need any session
+        case "Quetzal Quest":
+        case "Vulture Victory":
+        case "Penguin Thanksgiving":
+        case "Swan Serenity":
+        case "Snowy Owl Scholar":
+        case "Ibis Inspiration":
+        case "Seagull Sweetheart":
+        case "Hoopoe Luck":
+        case "Jacana Journey":
+        case "Loon Library":
+          progress = {
+            type: 'seasonal',
+            current: completedSessions,
+            target: 1,
+            percentage: Math.min(100, (completedSessions / 1) * 100),
+            description: 'Complete any reading session this week',
+            completed: completedSessions >= 1
+          };
+          break;
+        
+        // IMPROVEMENT BADGES (need special logic)
+        case "Goose Goals":
+        case "Roller Progress":
+        case "Avocet Achievement":
+        case "Turnstone Variety":
+          // These need comparison with previous week or special calculations
+          progress = {
+            type: 'special',
+            current: 0,
+            target: 1,
+            percentage: 0,
+            description: 'Special requirements - check badge description',
+            completed: false
+          };
+          break;
+        
+        default:
+          console.warn(`Unknown badge in progress calculation: ${weekBadge.name}`);
+          progress = {
+            type: 'unknown',
+            current: 0,
+            target: 1,
+            percentage: 0,
+            description: 'Unknown badge type',
+            completed: false
           };
           break;
       }
@@ -507,7 +739,6 @@ const statsNavOptions = useMemo(() => [
       return null;
     }
   }, []);
-
   // ENHANCED BADGE CHALLENGE CLICK HANDLER
   const handleBadgeChallengeClick = async () => {
     if (currentWeekBadge && studentData) {
@@ -521,14 +752,12 @@ const statsNavOptions = useMemo(() => [
       }
     }
   };
-
   // Check notification permission on load
   useEffect(() => {
     if ('Notification' in window && Notification.permission === 'granted') {
       setNotificationsEnabled(true);
     }
   }, []);
-
   // Close nav menus when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -539,7 +768,6 @@ const statsNavOptions = useMemo(() => [
         setShowStatsDropdown(false);
       }
     };
-
     const handleEscape = (event) => {
       if (event.key === 'Escape') {
         setShowNavMenu(false);
@@ -551,18 +779,15 @@ const statsNavOptions = useMemo(() => [
         setShowBadgeNotification(false);
       }
     };
-
     if (showNavMenu || showStatsDropdown || showFirstBookCelebration || showBraggingRights || showBadgeChallenge || showBadgeNotification) {
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('keydown', handleEscape);
     }
-
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscape);
     };
   }, [showNavMenu, showStatsDropdown, showFirstBookCelebration, showBraggingRights, showBadgeChallenge, showBadgeNotification]);
-
   // Generate dynamic celebration messages with phase awareness
   const generateCelebrationMessages = useCallback((stats) => {
     const messages = {
@@ -571,7 +796,6 @@ const statsNavOptions = useMemo(() => [
       saints: '',
       readingTime: ''
     };
-
     // Books celebration
     const books = stats.booksThisYear;
     if (books >= 10) {
@@ -583,7 +807,6 @@ const statsNavOptions = useMemo(() => [
     } else {
       messages.books = 'Ready to Read!';
     }
-
     // Streak celebration  
     const streak = stats.currentStreak;
     if (streak >= 30) {
@@ -597,7 +820,6 @@ const statsNavOptions = useMemo(() => [
     } else {
       messages.streak = 'Day Streak';
     }
-
     // Saints celebration
     const saints = stats.saintsUnlocked;
     if (saints >= 20) {
@@ -609,7 +831,6 @@ const statsNavOptions = useMemo(() => [
     } else {
       messages.saints = 'Saints';
     }
-
     // Reading time fun facts
     const minutes = stats.totalReadingMinutes;
     if (minutes >= 300) {
@@ -625,10 +846,8 @@ const statsNavOptions = useMemo(() => [
     } else {
       messages.readingTime = 'Ready to start your reading adventure!';
     }
-
     return messages;
   }, []);
-
   // Determine which stat should be the "hero" (most impressive)
   const getHeroStat = useCallback((stats) => {
     const scores = {
@@ -636,10 +855,8 @@ const statsNavOptions = useMemo(() => [
       streak: stats.currentStreak >= 30 ? 95 : stats.currentStreak >= 14 ? 85 : stats.currentStreak >= 7 ? 70 : stats.currentStreak >= 3 ? 50 : 20,
       saints: stats.saintsUnlocked >= 20 ? 90 : stats.saintsUnlocked >= 10 ? 75 : stats.saintsUnlocked >= 5 ? 55 : 30
     };
-
     return Object.entries(scores).reduce((a, b) => scores[a[0]] > scores[b[0]] ? a : b)[0];
   }, []);
-
   // Generate enhanced fun tidbits with phase awareness
   const generateFunTidbits = useCallback(async (studentData) => {
     try {
@@ -763,7 +980,6 @@ const statsNavOptions = useMemo(() => [
       setFunTidbits(['🚀 Keep building those reading superpowers!', '💪 Every book makes you stronger!']);
     }
   }, [earnedBadges, levelProgress, quickStats, phaseData.currentPhase]);
-
   // Calculate light overview stats
   const calculateQuickStats = useCallback(async (studentData) => {
     try {
@@ -794,7 +1010,6 @@ const statsNavOptions = useMemo(() => [
           }
         }
       });
-
       // Calculate current streak (simplified)
       const today = new Date();
       const todayStr = today.toISOString().split('T')[0];
@@ -814,11 +1029,9 @@ const statsNavOptions = useMemo(() => [
           break;
         }
       }
-
       const booksThisYear = studentData.booksSubmittedThisYear || 0;
       const personalGoal = studentData.personalGoal || 15;
       const goalProgress = Math.min(100, Math.round((booksThisYear / personalGoal) * 100));
-
       setQuickStats({
         booksThisYear,
         personalGoal,
@@ -847,7 +1060,6 @@ const statsNavOptions = useMemo(() => [
       setWeeklyXP(0);
     }
   }, []);
-
   // Load student data and calculate stats
   const loadStatsData = useCallback(async () => {
     try {
@@ -890,14 +1102,12 @@ const statsNavOptions = useMemo(() => [
     
     setIsLoading(false);
   }, [user, router, themes, calculateQuickStats]);
-
   // Generate fun tidbits after data loads
   useEffect(() => {
     if (studentData && quickStats && earnedBadges && levelProgress) {
       generateFunTidbits(studentData);
     }
   }, [studentData, quickStats, earnedBadges, levelProgress, generateFunTidbits]);
-
   // Load initial data
   useEffect(() => {
     if (!loading && isAuthenticated && user) {
@@ -906,7 +1116,13 @@ const statsNavOptions = useMemo(() => [
       router.push('/role-selector');
     }
   }, [loading, isAuthenticated, user, loadStatsData]);
-
+  
+  // Check for new content badges after data loads
+  useEffect(() => {
+    if (studentData && !isLoading) {
+      checkForNewContentBadges();
+    }
+  }, [studentData, isLoading, checkForNewContentBadges]);
   // Handle stats navigation
   const handleStatsNavigation = (option) => {
     setShowStatsDropdown(false);
@@ -922,7 +1138,6 @@ const statsNavOptions = useMemo(() => [
     
     router.push(option.path);
   };
-
   // Handle first book celebration completion
   const handleFirstBookCelebration = async () => {
     setShowFirstBookCelebration(false);
@@ -937,7 +1152,6 @@ const statsNavOptions = useMemo(() => [
       console.error('Error handling first book celebration:', error);
     }
   };
-
   // Get phase-specific messaging for the dashboard
   const getPhaseSpecificMessage = () => {
     switch (phaseData.currentPhase) {
@@ -951,7 +1165,6 @@ const statsNavOptions = useMemo(() => [
         return null;
     }
   };
-
   // Badge notification popup component
   const BadgeNotificationPopup = ({ show, badgeData }) => {
     if (!show || !badgeData) return null;
@@ -998,7 +1211,6 @@ const statsNavOptions = useMemo(() => [
       </div>
     );
   };
-
   // Show loading
   if (loading || isLoading || !studentData || !currentTheme || !quickStats) {
     return (
@@ -1024,7 +1236,6 @@ const statsNavOptions = useMemo(() => [
       </div>
     );
   }
-
   return (
     <>
       <Head>
@@ -1099,7 +1310,6 @@ const statsNavOptions = useMemo(() => [
           >
             ←
           </button>
-
           {/* STATS DROPDOWN */}
           <div className="stats-dropdown-container" style={{ position: 'relative', flex: 1 }}>
             <button
@@ -1128,7 +1338,6 @@ const statsNavOptions = useMemo(() => [
               <span style={{ fontFamily: 'Didot, "Times New Roman", serif' }}>Stats Dashboard</span>
               <span style={{ fontSize: '12px', transform: showStatsDropdown ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▼</span>
             </button>
-
             {showStatsDropdown && (
               <div style={{
                 position: 'absolute',
@@ -1244,7 +1453,6 @@ const statsNavOptions = useMemo(() => [
               </div>
             )}
           </div>
-
           {/* HAMBURGER MENU WITH PHASE-AWARE LOCKING */}
           <div className="nav-menu-container" style={{ position: 'relative' }}>
             <button
@@ -1269,7 +1477,6 @@ const statsNavOptions = useMemo(() => [
             >
               ☰
             </button>
-
             {showNavMenu && (
               <div style={{
                 position: 'absolute',
@@ -1348,7 +1555,6 @@ const statsNavOptions = useMemo(() => [
             )}
           </div>
         </div>
-
         {/* TEACHER_SELECTION: Show only messaging box */}
         {phaseData.currentPhase === 'TEACHER_SELECTION' ? (
           <div style={{ padding: 'clamp(40px, 10vw, 60px) clamp(20px, 5vw, 40px)', textAlign: 'center' }}>
@@ -1477,7 +1683,6 @@ const statsNavOptions = useMemo(() => [
                 </div>
               </div>
             )}
-
             {/* MAIN CONTENT */}
             <div className="stats-main-content" style={{ padding: 'clamp(16px, 5vw, 20px)', maxWidth: '500px', margin: '0 auto' }}>
           
@@ -1683,7 +1888,6 @@ const statsNavOptions = useMemo(() => [
                     }}>
                       {celebrationMessages.readingTime}
                     </div>
-
                     {/* ENHANCED XP DISPLAY */}
                     <div className="xp-display-card" style={{
                       backgroundColor: `${currentTheme.primary}20`,
@@ -1739,7 +1943,6 @@ const statsNavOptions = useMemo(() => [
                         </div>
                       )}
                     </div>
-
                     {/* ENHANCED BRAGGING RIGHTS BUTTON */}
                     <button
                       onClick={() => {
@@ -1852,7 +2055,6 @@ const statsNavOptions = useMemo(() => [
                   </div>
                 );
               })()}
-
               {/* ENHANCED FUN TIDBITS SECTION */}
               {funTidbits.length > 0 && (
                 <div className="fun-tidbits-section" style={{
@@ -1892,7 +2094,6 @@ const statsNavOptions = useMemo(() => [
                   </div>
                 </div>
               )}
-
               {/* EXPLORE MORE FOOTER */}
               <div style={{
                 backgroundColor: currentTheme.surface,
@@ -1926,7 +2127,6 @@ const statsNavOptions = useMemo(() => [
                 </div>
               </div>
             </div>
-
             {/* FIRST BOOK CELEBRATION MODAL */}
             {showFirstBookCelebration && (
               <div style={{
@@ -1974,7 +2174,6 @@ const statsNavOptions = useMemo(() => [
                       You completed your first book!
                     </p>
                   </div>
-
                   <div style={{ padding: '30px 20px' }}>
                     <div style={{
                       textAlign: 'center',
@@ -2011,7 +2210,6 @@ const statsNavOptions = useMemo(() => [
                         </div>
                       </div>
                     </div>
-
                     <button
                       onClick={handleFirstBookCelebration}
                       style={{
@@ -2041,7 +2239,6 @@ const statsNavOptions = useMemo(() => [
             )}
           </>
         )}
-
         {/* ENHANCED BRAGGING RIGHTS MODAL */}
         <EnhancedBraggingRightsModal
           show={showBraggingRights}
@@ -2052,7 +2249,6 @@ const statsNavOptions = useMemo(() => [
           readingPersonality={null}
           currentTheme={currentTheme}
         />
-
         {/* FIXED BADGE CHALLENGE MODAL WITH COMPLETION STATE */}
         {showBadgeChallenge && currentWeekBadge && (
           <div style={{
@@ -2104,7 +2300,6 @@ const statsNavOptions = useMemo(() => [
               >
                 ✕
               </button>
-
               {/* Header */}
               <div style={{
                 background: challengeProgress?.completed 
@@ -2204,7 +2399,6 @@ const statsNavOptions = useMemo(() => [
                   {challengeProgress?.weekStart} - {challengeProgress?.weekEnd}
                 </div>
               </div>
-
               <div style={{ padding: '24px' }}>
                 {/* COMPLETED STATE */}
                 {challengeProgress?.completed ? (
@@ -2300,7 +2494,6 @@ const statsNavOptions = useMemo(() => [
                         {currentWeekBadge.description}
                       </div>
                     </div>
-
                     {/* Progress Tracking */}
                     {challengeProgress && (
                       <div style={{
@@ -2378,7 +2571,6 @@ const statsNavOptions = useMemo(() => [
                         </div>
                       </div>
                     )}
-
                     {/* Action Buttons */}
                     <div style={{
                       display: 'grid',
@@ -2428,7 +2620,6 @@ const statsNavOptions = useMemo(() => [
                     </div>
                   </>
                 )}
-
                 {/* Bird Fact */}
                 <div style={{
                   backgroundColor: `${currentTheme.accent || currentTheme.primary}15`,
@@ -2459,13 +2650,11 @@ const statsNavOptions = useMemo(() => [
             </div>
           </div>
         )}
-
         {/* BADGE NOTIFICATION POPUP */}
         <BadgeNotificationPopup 
           show={showBadgeNotification}
           badgeData={badgeNotificationData}
         />
-
         <style jsx>{`
           @keyframes spin {
             from { transform: rotate(0deg); }
@@ -2597,7 +2786,6 @@ const statsNavOptions = useMemo(() => [
             -webkit-overflow-scrolling: touch;
             scroll-behavior: smooth;
           }
-
           /* ENHANCED DESKTOP RESPONSIVE LAYOUT */
           @media screen and (min-width: 768px) and (max-width: 1024px) {
             .stats-main-content {
@@ -2646,7 +2834,6 @@ const statsNavOptions = useMemo(() => [
               margin: 0 auto !important;
             }
           }
-
           /* LARGE DESKTOP LAYOUT */
           @media screen and (min-width: 1024px) {
             .stats-main-content {

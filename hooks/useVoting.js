@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { db, dbHelpers } from '../lib/firebase';
 import { doc, updateDoc, getDoc, collection, getDocs, query, where, addDoc, setDoc, increment, arrayUnion } from 'firebase/firestore';
+import { checkSpecificContentBadge } from '../lib/badge-system-content';
 
 export const useVoting = (studentData) => {
   const [votingData, setVotingData] = useState({
@@ -193,7 +194,25 @@ export const useVoting = (studentData) => {
         hasVoted: true
       }));
       
+      // CHECK CORMORANT DEMOCRACY BADGE
+      const updatedStudent = {
+        ...studentData,
+        votes: [newVote]
+      };
+
+      const cormorantBadge = await checkSpecificContentBadge(
+        updatedStudent, studentData.entityId, studentData.schoolId, "Cormorant Democracy"
+      );
+
       console.log('✅ PERMANENT vote submitted successfully!');
+
+      if (cormorantBadge) {
+        return { 
+          success: true, 
+          badgeEarned: cormorantBadge 
+        };
+      }
+      
       return { success: true };
       
     } catch (error) {

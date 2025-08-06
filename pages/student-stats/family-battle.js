@@ -9,8 +9,11 @@ import { collection, getDocs, doc, getDoc, query, where } from 'firebase/firesto
 import { db } from '../../lib/firebase';
 import Head from 'next/head';
 
+// Import modal component
+import FamilyBattleResultsModal from '../../components/FamilyBattleResultsModal';
+
 // Import sync functions
-import { 
+import {
   getStudentFamilyBattleStatus,
   getFamilyBattleDataForStudent
 } from '../../lib/family-battle-sync';
@@ -464,7 +467,8 @@ export default function StudentFamilyBattleSimplified() {
   // UI states
   const [showNavMenu, setShowNavMenu] = useState(false);
   const [showStatsDropdown, setShowStatsDropdown] = useState(false);
-const [showJaneAusten, setShowJaneAusten] = useState(true);
+  const [showJaneAusten, setShowJaneAusten] = useState(true);
+  const [showResultsModal, setShowResultsModal] = useState(false);
 
 
   // Theme definitions
@@ -763,6 +767,17 @@ const loadData = useCallback(async () => {
     
     return () => clearInterval(refreshInterval);
   }, [familyBattleUnlocked, studentData]);
+
+  // Auto-show results modal on Sunday
+  useEffect(() => {
+    const today = new Date();
+    const isSunday = today.getDay() === 0;
+    
+    // Only show if it's Sunday and we have a winner (not 'ongoing')
+    if (isSunday && familyBattleData && familyBattleData.winner && familyBattleData.winner !== 'ongoing') {
+      setShowResultsModal(true);
+    }
+  }, [familyBattleData]);
 
   useEffect(() => {
     if (!loading && isAuthenticated && user) {
@@ -1309,7 +1324,6 @@ const loadData = useCallback(async () => {
                     boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                     border: `2px solid ${currentTheme.accent}60`
                   }}>
-                    <div style={{ fontSize: '48px', marginBottom: '12px' }}>💪</div>
                     <h3 style={{
                       fontSize: 'clamp(16px, 4.5vw, 18px)',
                       fontWeight: '600',
@@ -1343,7 +1357,7 @@ const loadData = useCallback(async () => {
                         margin: '0 auto'
                       }}
                     >
-                      📖 Start Reading Battle
+                      🤼 Enter the Reading Ring
                     </button>
                   </div>
                 </>
@@ -1394,6 +1408,15 @@ const loadData = useCallback(async () => {
             familyBattleData={familyBattleData}
           />
         )}
+
+        {/* Family Battle Results Modal */}
+        <FamilyBattleResultsModal
+          show={showResultsModal && familyBattleUnlocked}
+          onClose={() => setShowResultsModal(false)}
+          battleData={familyBattleData}
+          isStudent={true}
+          theme={currentTheme}
+        />
 
         <style jsx>{`
           @keyframes spin {

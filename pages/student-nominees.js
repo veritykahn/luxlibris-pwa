@@ -2,8 +2,9 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
-import { usePhaseAccess } from '../hooks/usePhaseAccess'; // PHASE LOCKING IMPORT
+import { usePhaseAccess } from '../hooks/usePhaseAccess';
 import { getStudentDataEntities, getSchoolNomineesEntities, addBookToBookshelfEntities, addBookToBookshelfEntitiesWithYear, removeBookFromBookshelfEntities, getCurrentAcademicYear } from '../lib/firebase';
+import { checkSpecificContentBadge } from '../lib/badge-system-content';
 import Head from 'next/head';
 
 export default function StudentNominees() {
@@ -440,43 +441,54 @@ useEffect(() => {
 
   // Internal function to actually add book
   const addBookToBookshelfInternal = async (book, format) => {
-    setIsAddingBook(true);
-    try {
-      console.log('📖 Adding book to bookshelf:', book.title, format);
-      const newBookProgress = await addBookToBookshelfEntitiesWithYear(
-        studentData.id,
-        studentData.entityId,
-        studentData.schoolId,
-        book.id,
-        format
-      );
+  setIsAddingBook(true);
+  try {
+    console.log('📖 Adding book to bookshelf:', book.title, format);
+    const newBookProgress = await addBookToBookshelfEntitiesWithYear(
+      studentData.id,
+      studentData.entityId,
+      studentData.schoolId,
+      book.id,
+      format
+    );
 
-      // Update local state to reflect the addition
-      setStudentData(prev => ({
-        ...prev,
-        bookshelf: [...(prev.bookshelf || []), newBookProgress]
-      }));
+    // Update local state to reflect the addition
+    setStudentData(prev => ({
+      ...prev,
+      bookshelf: [...(prev.bookshelf || []), newBookProgress]
+    }));
 
-      // Show interactive "View in Bookshelf" dialog
-      setShowBookAddedDialog({
-        book: book,
-        format: format,
-        message: format === 'audiobook' 
-          ? `🎧 ${book.title} added as audiobook!`
-          : `📖 ${book.title} added to bookshelf!`
-      });
+    // CHECK HUMMINGBIRD HERALD BADGE (first book added)
+    const updatedStudent = {
+      ...studentData,
+      bookshelf: [...(studentData.bookshelf || []), newBookProgress]
+    };
 
-    } catch (error) {
-      console.error('❌ Error adding book:', error);
-      let errorMessage = '❌ Error adding book. Please try again.';
-      if (error.message && error.message.includes('already in your bookshelf')) {
-        errorMessage = `📚 ${book.title} is already in your bookshelf!`;
-      }
-      setShowAddMessage(errorMessage);
-      setTimeout(() => setShowAddMessage(''), 3000);
-    }
-    setIsAddingBook(false);
-  };
+    const hummingbirdBadge = await checkSpecificContentBadge(
+      updatedStudent, studentData.entityId, studentData.schoolId, "Hummingbird Herald"
+    );
+
+    // Show interactive "View in Bookshelf" dialog
+    setShowBookAddedDialog({
+      book: book,
+      format: format,
+      message: format === 'audiobook' 
+        ? `🎧 ${book.title} added as audiobook!`
+        : `📖 ${book.title} added to bookshelf!`,
+      badgeEarned: hummingbirdBadge // Add this line
+    });
+
+  } catch (error) {
+  console.error('❌ Error adding book:', error);
+  let errorMessage = '❌ Error adding book. Please try again.';
+  if (error.message && error.message.includes('already in your bookshelf')) {
+    errorMessage = `📚 ${book.title} is already in your bookshelf!`;
+  }
+  setShowAddMessage(errorMessage);
+  setTimeout(() => setShowAddMessage(''), 3000);
+}
+setIsAddingBook(false);
+};
 
   // Handle format switching confirmation
   const handleFormatSwitch = async (confirm) => {
@@ -1715,31 +1727,51 @@ useEffect(() => {
               position: 'relative'
             }}>
               {/* Success Icon */}
-              <div style={{
-                width: '64px',
-                height: '64px',
-                backgroundColor: currentTheme.primary,
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '32px',
-                margin: '0 auto 16px',
-                boxShadow: `0 4px 12px ${currentTheme.primary}40`,
-                color: currentTheme.textPrimary
-              }}>
-                ✓
-              </div>
+<div style={{
+  width: '64px',
+  height: '64px',
+  backgroundColor: currentTheme.primary,
+  borderRadius: '50%',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontSize: '32px',
+  margin: '0 auto 16px',
+  boxShadow: `0 4px 12px ${currentTheme.primary}40`,
+  color: currentTheme.textPrimary
+}}>
+  ✓
+</div>
 
-              {/* Success Message */}
-              <h3 style={{
-                fontSize: '18px',
-                color: currentTheme.textPrimary,
-                marginBottom: '8px',
-                fontWeight: '600'
-              }}>
-                Book Added!
-              </h3>
+{/* Badge Earned Notification */}
+{showBookAddedDialog.badgeEarned && (
+  <div style={{
+    backgroundColor: '#FFD700',
+    color: '#000',
+    padding: '12px',
+    borderRadius: '12px',
+    marginBottom: '16px',
+    fontSize: '14px',
+    fontWeight: '600',
+    textAlign: 'center',
+    border: '2px solid #FFA500'
+  }}>
+    🏆 Badge Earned: {showBookAddedDialog.badgeEarned.name}!
+    <div style={{ fontSize: '12px', marginTop: '4px', fontWeight: '400' }}>
+      {showBookAddedDialog.badgeEarned.birdFact}
+    </div>
+  </div>
+)}
+
+{/* Success Message */}
+<h3 style={{
+  fontSize: '18px',
+  color: currentTheme.textPrimary,
+  marginBottom: '8px',
+  fontWeight: '600'
+}}>
+  Book Added!
+</h3>
               
               <p style={{
                 fontSize: '14px',

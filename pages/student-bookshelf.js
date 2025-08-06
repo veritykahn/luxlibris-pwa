@@ -6,6 +6,7 @@ import { getStudentDataEntities, getSchoolNomineesEntities, updateStudentDataEnt
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { getQuizByBookId } from '../book-quizzes-manager';
+import { checkSpecificContentBadge } from '../lib/badge-system-content';
 import Head from 'next/head';
 
 export default function StudentBookshelf() {
@@ -917,33 +918,70 @@ const openBookModal = (bookshelfBook) => {
       const isOnlyRatingNotesUpdate = tempProgress === selectedBook.currentProgress;
       
       // Allow rating and notes updates even when locked OR when slider is locked at 100%
-      if (isOnlyRatingNotesUpdate || (isSliderLocked && isNowCompleted)) {
-        console.log('📝 Saving rating/notes update only');
-        
-        const updatedBookshelf = studentData.bookshelf.map(book => {
-          if (book.bookId === selectedBook.bookId) {
-            return {
-              ...book,
-              currentProgress: tempProgress, // Save the 100% progress too
-              rating: tempRating,
-              notes: tempNotes
-            };
-          }
-          return book;
-        });
-        
-        await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
-          bookshelf: updatedBookshelf
-        });
-        
-        setStudentData({ ...studentData, bookshelf: updatedBookshelf });
-        setShowSuccess('💾 Progress saved!');
-        
-        // Don't close modal, just show success
-        setTimeout(() => setShowSuccess(''), 3000);
-        setIsSaving(false);
-        return;
-      }
+if (isOnlyRatingNotesUpdate || (isSliderLocked && isNowCompleted)) {
+  console.log('📝 Saving rating/notes update only');
+  
+  const updatedBookshelf = studentData.bookshelf.map(book => {
+    if (book.bookId === selectedBook.bookId) {
+      return {
+        ...book,
+        currentProgress: tempProgress, // Save the 100% progress too
+        rating: tempRating,
+        notes: tempNotes
+      };
+    }
+    return book;
+  });
+  
+  await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
+    bookshelf: updatedBookshelf
+  });
+  
+  setStudentData({ ...studentData, bookshelf: updatedBookshelf });
+  setShowSuccess('💾 Progress saved!');
+  
+  // CHECK CONTENT BADGES
+  const updatedStudent = { ...studentData, bookshelf: updatedBookshelf };
+  let badgeEarned = null;
+
+  // Check Peacock Pride (first rating)
+  if (tempRating > 0 && !badgeEarned) {
+    badgeEarned = await checkSpecificContentBadge(
+      updatedStudent, studentData.entityId, studentData.schoolId, "Peacock Pride"
+    );
+  }
+
+  // Check for notes badges
+  if (tempNotes.trim().length > 0 && !badgeEarned) {
+    badgeEarned = await checkSpecificContentBadge(
+      updatedStudent, studentData.entityId, studentData.schoolId, "Spoonbill Scholar"
+    );
+  }
+
+  // Check Raven Ratings (2 books rated)
+  if (!badgeEarned) {
+    badgeEarned = await checkSpecificContentBadge(
+      updatedStudent, studentData.entityId, studentData.schoolId, "Raven Ratings"
+    );
+  }
+
+  // Check Gannet Sprint (all books have ratings or notes)
+  if (!badgeEarned) {
+    badgeEarned = await checkSpecificContentBadge(
+      updatedStudent, studentData.entityId, studentData.schoolId, "Gannet Sprint"
+    );
+  }
+
+  // Update success message if badge was earned
+  if (badgeEarned) {
+    setShowSuccess(`🎉 Badge earned: ${badgeEarned.name}!`);
+  }
+  
+  // Don't close modal, just show success
+  setTimeout(() => setShowSuccess(''), 3000);
+  setIsSaving(false);
+  return;
+}
       
       // Block progress changes that would trigger completion when locked (unless ready for resubmission)
       if (isNowCompleted && isCurrentlyLocked && !canResubmit) {
@@ -991,28 +1029,72 @@ const openBookModal = (bookshelfBook) => {
       }
       
       // Regular progress save (not at 100% or already completed)
-      const updatedBookshelf = studentData.bookshelf.map(book => {
-        if (book.bookId === selectedBook.bookId) {
-          return {
-            ...book,
-            currentProgress: tempProgress,
-            rating: tempRating,
-            notes: tempNotes,
-            completed: book.completed
-          };
-        }
-        return book;
-      });
-      
-      await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
-        bookshelf: updatedBookshelf
-      });
-      
-      setStudentData({ ...studentData, bookshelf: updatedBookshelf });
-      setShowSuccess('📚 Progress saved!');
-      
-      closeBookModal();
-      setTimeout(() => setShowSuccess(''), 3000);
+const updatedBookshelf = studentData.bookshelf.map(book => {
+  if (book.bookId === selectedBook.bookId) {
+    return {
+      ...book,
+      currentProgress: tempProgress,
+      rating: tempRating,
+      notes: tempNotes,
+      completed: book.completed
+    };
+  }
+  return book;
+});
+
+await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
+  bookshelf: updatedBookshelf
+});
+
+setStudentData({ ...studentData, bookshelf: updatedBookshelf });
+setShowSuccess('📚 Progress saved!');
+
+// CHECK CONTENT BADGES
+const updatedStudent = { ...studentData, bookshelf: updatedBookshelf };
+let badgeEarned = null;
+
+// Check Peacock Pride (first rating)
+if (tempRating > 0 && !badgeEarned) {
+  badgeEarned = await checkSpecificContentBadge(
+    updatedStudent, studentData.entityId, studentData.schoolId, "Peacock Pride"
+  );
+}
+
+// Check Woodpecker Wisdom (first progress update)
+if (tempProgress > 0 && !badgeEarned) {
+  badgeEarned = await checkSpecificContentBadge(
+    updatedStudent, studentData.entityId, studentData.schoolId, "Woodpecker Wisdom"
+  );
+}
+
+// Check for notes badges
+if (tempNotes.trim().length > 0 && !badgeEarned) {
+  badgeEarned = await checkSpecificContentBadge(
+    updatedStudent, studentData.entityId, studentData.schoolId, "Spoonbill Scholar"
+  );
+}
+
+// Check Raven Ratings (2 books rated)
+if (!badgeEarned) {
+  badgeEarned = await checkSpecificContentBadge(
+    updatedStudent, studentData.entityId, studentData.schoolId, "Raven Ratings"
+  );
+}
+
+// Check Gannet Sprint (all books have ratings or notes)
+if (!badgeEarned) {
+  badgeEarned = await checkSpecificContentBadge(
+    updatedStudent, studentData.entityId, studentData.schoolId, "Gannet Sprint"
+  );
+}
+
+// Update success message if badge was earned
+if (badgeEarned) {
+  setShowSuccess(`🎉 Badge earned: ${badgeEarned.name}!`);
+}
+
+closeBookModal();
+setTimeout(() => setShowSuccess(''), 3000);
       
     } catch (error) {
       console.error('❌ Error saving progress:', error);
@@ -1025,39 +1107,69 @@ const openBookModal = (bookshelfBook) => {
 
   // NEW: Helper function to save progress and close modals when submission is cancelled
   const saveProgressAndClose = async () => {
-    if (!selectedBook || !studentData) {
-      closeBookModal();
-      return;
-    }
-    
-    setIsSaving(true);
-    try {
-      const updatedBookshelf = studentData.bookshelf.map(book => {
-        if (book.bookId === selectedBook.bookId) {
-          return {
-            ...book,
-            currentProgress: tempProgress,
-            rating: tempRating,
-            notes: tempNotes
-          };
-        }
-        return book;
-      });
-      
-      await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
-        bookshelf: updatedBookshelf
-      });
-      
-      setStudentData({ ...studentData, bookshelf: updatedBookshelf });
-      
-    } catch (error) {
-      console.error('❌ Error saving progress on close:', error);
-    }
-    
-    setIsSaving(false);
-    setShowSubmissionPopup(false);
+  if (!selectedBook || !studentData) {
     closeBookModal();
-  };
+    return;
+  }
+  
+  setIsSaving(true);
+  try {
+    const updatedBookshelf = studentData.bookshelf.map(book => {
+      if (book.bookId === selectedBook.bookId) {
+        return {
+          ...book,
+          currentProgress: tempProgress,
+          rating: tempRating,
+          notes: tempNotes
+        };
+      }
+      return book;
+    });
+    
+    await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
+      bookshelf: updatedBookshelf
+    });
+    
+    setStudentData({ ...studentData, bookshelf: updatedBookshelf });
+    
+    // CHECK CONTENT BADGES (silent - no success message since we're closing)
+    const updatedStudent = { ...studentData, bookshelf: updatedBookshelf };
+    
+    // Check all relevant badges but don't show success message
+    if (tempRating > 0) {
+      await checkSpecificContentBadge(
+        updatedStudent, studentData.entityId, studentData.schoolId, "Peacock Pride"
+      );
+    }
+    
+    if (tempProgress > 0) {
+      await checkSpecificContentBadge(
+        updatedStudent, studentData.entityId, studentData.schoolId, "Woodpecker Wisdom"
+      );
+    }
+    
+    if (tempNotes.trim().length > 0) {
+      await checkSpecificContentBadge(
+        updatedStudent, studentData.entityId, studentData.schoolId, "Spoonbill Scholar"
+      );
+    }
+    
+    await checkSpecificContentBadge(
+      updatedStudent, studentData.entityId, studentData.schoolId, "Raven Ratings"
+    );
+    
+    await checkSpecificContentBadge(
+      updatedStudent, studentData.entityId, studentData.schoolId, "Gannet Sprint"
+    );
+    
+  } catch (error) {
+    console.error('❌ Error saving progress on close:', error);
+  }
+  
+  setIsSaving(false);
+  setShowSubmissionPopup(false);
+  closeBookModal();
+};
 const deleteBook = async (bookId) => {
     if (!studentData) return;
     

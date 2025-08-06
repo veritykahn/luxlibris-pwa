@@ -327,8 +327,18 @@ function BattleStatusCard({ currentBattle, theme }) {
 }
 
 // Championship History Card
-function ChampionshipCard({ familyStats, theme }) {
+function ChampionshipCard({ familyStats, theme, setShowVictoryModal }) {
   if (!familyStats) return null;
+
+  // Calculate parent victories from total battles and win rate
+  const parentVictories = [];
+  if (familyStats.totalBattles > 0 && familyStats.winRates?.parents > 0) {
+    const parentWins = Math.round(familyStats.totalBattles * (familyStats.winRates.parents / 100));
+    // Create array with parent wins count for the button badge
+    for (let i = 0; i < parentWins; i++) {
+      parentVictories.push(i);
+    }
+  }
 
   return (
     <div style={{
@@ -435,6 +445,54 @@ function ChampionshipCard({ familyStats, theme }) {
           </div>
         </div>
       )}
+      
+      {/* Victory Archive Button */}
+      {familyStats.winRates?.parents > 0 && (
+        <button
+          onClick={() => setShowVictoryModal(true)}
+          style={{
+            backgroundColor: '#FFD700',
+            color: '#000',
+            border: 'none',
+            borderRadius: '12px',
+            padding: '12px 20px',
+            fontSize: '14px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            marginTop: '16px',
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            transition: 'all 0.2s ease'
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.transform = 'scale(1.02)';
+            e.target.style.boxShadow = '0 4px 12px rgba(255, 215, 0, 0.4)';
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.transform = 'scale(1)';
+            e.target.style.boxShadow = 'none';
+          }}
+        >
+          🏆 View Your Victory Archive
+          <span style={{
+            backgroundColor: '#000',
+            color: '#FFD700',
+            borderRadius: '50%',
+            width: '24px',
+            height: '24px',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '12px',
+            fontWeight: 'bold'
+          }}>
+            {parentVictories.length}
+          </span>
+        </button>
+      )}
     </div>
   );
 }
@@ -491,6 +549,7 @@ export default function ParentFamilyBattleManager({ theme, parentData, linkedStu
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState('');
   const [showJaneAusten, setShowJaneAusten] = useState(true);
+  const [showVictoryModal, setShowVictoryModal] = useState(false);
 
   // FIXED: Use the actual familyId from parentData
   const familyId = parentData?.familyId;
@@ -517,6 +576,11 @@ export default function ParentFamilyBattleManager({ theme, parentData, linkedStu
       // FIXED: Pass familyId instead of user.uid
       const battleData = await syncFamilyBattleData(familyId, studentsToUse || []);
       setCurrentBattle(battleData);
+      
+      // Pass battle data up to parent component
+      if (onUpdate) {
+        onUpdate({ battleData });
+      }
       
       // FIXED: Use correct familyId for family document
       const familyRef = doc(db, 'families', familyId);
@@ -799,6 +863,7 @@ export default function ParentFamilyBattleManager({ theme, parentData, linkedStu
       <ChampionshipCard
         familyStats={familyStats}
         theme={theme}
+        setShowVictoryModal={setShowVictoryModal}
       />
 
       {/* Battle Management */}

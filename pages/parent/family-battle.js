@@ -1,10 +1,13 @@
-// pages/parent/family-battle.js - FIXED: Passes correct familyId
-import { useState, useEffect, useCallback, useMemo } from 'react'
+// pages/parent/family-battle.js - FIXED VERSION
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
 import { usePremiumFeatures } from '../../hooks/usePremiumFeatures'
 import PremiumGate from '../../components/PremiumGate'
 import ParentFamilyBattleManager from '../../components/ParentFamilyBattleManager'
+import FamilyBattleVictoryModal from '../../components/FamilyBattleVictoryModal'
+import FamilyBattleResultsModal from '../../components/FamilyBattleResultsModal'
+import { getParentVictories } from '../../lib/family-battle-updates'
 import Head from 'next/head'
 import { collection, getDocs, doc, getDoc, query, where, updateDoc } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
@@ -16,11 +19,11 @@ import {
 // Family Streak Tracker Component
 function FamilyStreakTracker({ streakDays, theme, onStreakClick, currentStreak }) {
   const getStreakColor = (days) => {
-    if (days >= 30) return '#FF4444' // Fire red for 30+ days
-    if (days >= 14) return '#FF6B35' // Orange for 2+ weeks  
-    if (days >= 7) return '#FFA500'  // Yellow-orange for 1+ week
-    if (days >= 3) return '#FFD700'  // Gold for 3+ days
-    return '#87CEEB' // Light blue for starting out
+    if (days >= 30) return '#FF4444'
+    if (days >= 14) return '#FF6B35'
+    if (days >= 7) return '#FFA500'
+    if (days >= 3) return '#FFD700'
+    return '#87CEEB'
   }
 
   const getStreakEmoji = (days) => {
@@ -93,7 +96,6 @@ function FamilyStreakTracker({ streakDays, theme, onStreakClick, currentStreak }
         </div>
       </div>
       
-      {/* Championship Indicator */}
       {currentStreak?.team && currentStreak.weeks >= 2 && (
         <div style={{
           position: 'absolute',
@@ -131,9 +133,16 @@ export default function ParentFamilyBattle() {
   const [showNavMenu, setShowNavMenu] = useState(false)
   const [showSuccess, setShowSuccess] = useState('')
   const [showStreakModal, setShowStreakModal] = useState(false)
+  const [showVictoryModal, setShowVictoryModal] = useState(false)
+  const [showResultsModal, setShowResultsModal] = useState(false)
+  const [parentVictories, setParentVictories] = useState([])
+  
+  // Add loading flag to prevent concurrent loads
+  const isLoadingBattleData = useRef(false)
+  const hasLoadedInitialData = useRef(false)
 
   // Navigation menu items
- const navMenuItems = useMemo(() => [
+  const navMenuItems = useMemo(() => [
     { name: 'Family Dashboard', path: '/parent/dashboard', icon: '⌂' },
     { name: 'Child Progress', path: '/parent/child-progress', icon: '◐' },
     { name: 'Book Nominees', path: '/parent/nominees', icon: '□' },
@@ -143,55 +152,95 @@ export default function ParentFamilyBattle() {
     { name: 'Settings', path: '/parent/settings', icon: '⚙' }
   ], [])
 
-// Get time-based theme - memoized with hour dependency
-const timeTheme = useMemo(() => {
-  const hour = new Date().getHours();
-  if (hour >= 5 && hour < 12) {
-    return {
-      name: 'morning',
-      gradient: 'linear-gradient(135deg, #F5C99B, #F0B88A, #EBAD7A)',
-      overlay: 'rgba(245, 201, 155, 0.1)'
-    };
-  } else if (hour >= 12 && hour < 17) {
-    return {
-      name: 'afternoon',
-      gradient: 'linear-gradient(135deg, #6BB6E3, #7AC5EA, #89D0EE)',
-      overlay: 'rgba(107, 182, 227, 0.1)'
-    };
-  } else if (hour >= 17 && hour < 20) {
-    return {
-      name: 'evening',
-      gradient: 'linear-gradient(135deg, #FFB347, #FF8C42, #FF6B35)',
-      overlay: 'rgba(255, 140, 66, 0.1)'
-    };
-  } else {
-    return {
-      name: 'night',
-      gradient: 'linear-gradient(135deg, #4B0082, #6A0DAD, #7B68EE)',
-      overlay: 'rgba(75, 0, 130, 0.1)'
-    };
+  // Get time-based theme - memoized with hour dependency
+  const timeTheme = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) {
+      return {
+        name: 'morning',
+        gradient: 'linear-gradient(135deg, #F5C99B, #F0B88A, #EBAD7A)',
+        overlay: 'rgba(245, 201, 155, 0.1)'
+      };
+    } else if (hour >= 12 && hour < 17) {
+      return {
+        name: 'afternoon',
+        gradient: 'linear-gradient(135deg, #6BB6E3, #7AC5EA, #89D0EE)',
+        overlay: 'rgba(107, 182, 227, 0.1)'
+      };
+    } else if (hour >= 17 && hour < 20) {
+      return {
+        name: 'evening',
+        gradient: 'linear-gradient(135deg, #FFB347, #FF8C42, #FF6B35)',
+        overlay: 'rgba(255, 140, 66, 0.1)'
+      };
+    } else {
+      return {
+        name: 'night',
+        gradient: 'linear-gradient(135deg, #4B0082, #6A0DAD, #7B68EE)',
+        overlay: 'rgba(75, 0, 130, 0.1)'
+      };
+    }
+  }, [Math.floor(new Date().getHours() / 6)])
+
+  // Lux Libris Classic Theme with time-based adjustments
+  const luxTheme = useMemo(() => ({
+    primary: '#ADD4EA',
+    secondary: '#C3E0DE',
+    accent: '#A1E5DB',
+    background: '#FFFCF5',
+    surface: '#FFFFFF',
+    textPrimary: '#223848',
+    textSecondary: '#556B7A',
+    timeOverlay: timeTheme.overlay
+  }), [timeTheme])
+
+  // Helper function to load linked students data
+  const loadLinkedStudentsData = async (linkedStudentIds) => {
+    try {
+      const students = []
+      const entitiesSnapshot = await getDocs(collection(db, 'entities'))
+      
+      for (const entityDoc of entitiesSnapshot.docs) {
+        const entityId = entityDoc.id
+        const schoolsSnapshot = await getDocs(collection(db, `entities/${entityId}/schools`))
+        
+        for (const schoolDoc of schoolsSnapshot.docs) {
+          const schoolId = schoolDoc.id
+          const schoolData = schoolDoc.data()
+          const studentsSnapshot = await getDocs(collection(db, `entities/${entityId}/schools/${schoolId}/students`))
+          
+          for (const studentDoc of studentsSnapshot.docs) {
+            if (linkedStudentIds.includes(studentDoc.id)) {
+              const studentData = {
+                id: studentDoc.id,
+                entityId,
+                schoolId,
+                schoolName: schoolData.name,
+                ...studentDoc.data()
+              }
+              students.push(studentData)
+            }
+          }
+        }
+      }
+      
+
+      return students
+      
+    } catch (error) {
+      console.error('❌ Error loading linked students:', error)
+      return []
+    }
   }
-}, [Math.floor(new Date().getHours() / 6)]); // Only recalc every 6 hours
 
-// Lux Libris Classic Theme with time-based adjustments
-const luxTheme = useMemo(() => ({
-  primary: '#ADD4EA',
-  secondary: '#C3E0DE',
-  accent: '#A1E5DB',
-  background: '#FFFCF5',
-  surface: '#FFFFFF',
-  textPrimary: '#223848',
-  textSecondary: '#556B7A',
-  timeOverlay: timeTheme.overlay
-}), [timeTheme]);
-
-// Load family battle data - FIXED to use parentData.familyId
-const loadFamilyBattleData = useCallback(async () => {
+  // Load family battle data - FIXED with loading flag
+  const loadFamilyBattleData = useCallback(async () => {
     if (!user?.uid || !linkedStudents.length || !parentData?.familyId) return;
+    if (isLoadingBattleData.current) return; // Prevent concurrent loads
+    
+    isLoadingBattleData.current = true;
     
     try {
-      console.log('🏆 Loading family battle data for family:', parentData.familyId)
-      
       // Get current battle data using family ID
       const battleData = await calculateFamilyBattleData(parentData.familyId, linkedStudents);
       setFamilyBattleData(battleData);
@@ -227,14 +276,29 @@ const loadFamilyBattleData = useCallback(async () => {
       
     } catch (error) {
       console.error('❌ Error loading family battle data:', error);
+    } finally {
+      isLoadingBattleData.current = false;
     }
-  }, [user?.uid, linkedStudents, parentData?.familyId]);
+  }, [user?.uid, linkedStudents.length, parentData?.familyId]) // Use length instead of array
 
-  // Load initial data
-  const loadInitialData = useCallback(async () => {
+  // Load parent victories for the victory modal
+  const loadParentVictories = useCallback(async () => {
+    if (!parentData?.familyId) return;
+    
     try {
-      console.log('🏆 Loading initial family battle data...')
-      
+      const victories = await getParentVictories(parentData.familyId);
+      setParentVictories(victories);
+    } catch (error) {
+      console.error('Error loading parent victories:', error);
+    }
+  }, [parentData?.familyId])
+
+  // Load initial data - only once
+  const loadInitialData = useCallback(async () => {
+    if (hasLoadedInitialData.current) return; // Prevent multiple loads
+    hasLoadedInitialData.current = true;
+    
+    try {
       // Load parent profile
       const parentRef = doc(db, 'parents', user.uid)
       const parentDoc = await getDoc(parentRef)
@@ -258,50 +322,29 @@ const loadFamilyBattleData = useCallback(async () => {
     setLoading(false)
   }, [user?.uid])
 
-  const loadLinkedStudentsData = async (linkedStudentIds) => {
-    try {
-      const students = []
-      const entitiesSnapshot = await getDocs(collection(db, 'entities'))
-      
-      for (const entityDoc of entitiesSnapshot.docs) {
-        const entityId = entityDoc.id
-        const schoolsSnapshot = await getDocs(collection(db, `entities/${entityId}/schools`))
-        
-        for (const schoolDoc of schoolsSnapshot.docs) {
-          const schoolId = schoolDoc.id
-          const schoolData = schoolDoc.data()
-          const studentsSnapshot = await getDocs(collection(db, `entities/${entityId}/schools/${schoolId}/students`))
-          
-          for (const studentDoc of studentsSnapshot.docs) {
-            if (linkedStudentIds.includes(studentDoc.id)) {
-              const studentData = {
-                id: studentDoc.id,
-                entityId,
-                schoolId,
-                schoolName: schoolData.name,
-                ...studentDoc.data()
-              }
-              students.push(studentData)
-            }
-          }
-        }
-      }
-      
-      console.log('✅ Linked students loaded:', students.length)
-      return students
-      
-    } catch (error) {
-      console.error('❌ Error loading linked students:', error)
-      return []
-    }
-  }
-
   // Load family battle data when students are loaded
   useEffect(() => {
     if (linkedStudents.length > 0 && parentData?.familyBattleSettings?.enabled && parentData?.familyId) {
       loadFamilyBattleData();
     }
-  }, [linkedStudents, parentData, loadFamilyBattleData]);
+  }, [linkedStudents.length, parentData?.familyBattleSettings?.enabled, parentData?.familyId, loadFamilyBattleData])
+
+  // Load parent victories when family data is loaded
+  useEffect(() => {
+    if (parentData?.familyId && familyStats) {
+      loadParentVictories();
+    }
+  }, [parentData?.familyId, familyStats, loadParentVictories])
+
+  // Auto-show results modal on Sunday
+  useEffect(() => {
+    const today = new Date();
+    const isSunday = today.getDay() === 0;
+    
+    if (isSunday && familyBattleData && familyBattleData.winner && familyBattleData.winner !== 'ongoing') {
+      setShowResultsModal(true);
+    }
+  }, [familyBattleData])
 
   // Load initial data with premium check
   useEffect(() => {
@@ -312,7 +355,7 @@ const loadFamilyBattleData = useCallback(async () => {
     } else if (!authLoading && userProfile?.accountType !== 'parent') {
       router.push('/student-dashboard')
     }
-  }, [authLoading, isAuthenticated, user, userProfile, loadInitialData])
+  }, [authLoading, isAuthenticated, user?.uid, userProfile?.accountType, router, loadInitialData])
 
   // Close nav menu when clicking outside
   useEffect(() => {
@@ -356,7 +399,7 @@ const loadFamilyBattleData = useCallback(async () => {
 
   const handleDataUpdate = () => {
     // Reload all data when family battle manager updates something
-    loadInitialData();
+    loadFamilyBattleData();
   }
 
   // Show loading while data loads
@@ -439,35 +482,35 @@ const loadFamilyBattleData = useCallback(async () => {
   }
 
   return (
-  <>
-    <Head>
-      <title>Family Battle - Lux Libris Parent</title>
-      <meta name="description" content="Compete with your children in weekly family reading battles" />
-      <link rel="icon" href="/images/lux_libris_logo.png" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-    </Head>
+    <>
+      <Head>
+        <title>Family Battle - Lux Libris Parent</title>
+        <meta name="description" content="Compete with your children in weekly family reading battles" />
+        <link rel="icon" href="/images/lux_libris_logo.png" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+      </Head>
 
-    <div style={{
-      backgroundColor: luxTheme.background,
-      minHeight: '100vh',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
-      paddingBottom: '100px',
-      position: 'relative'
-    }}>
-      {/* Time-based overlay */}
       <div style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: timeTheme.overlay,
-        pointerEvents: 'none',
-        zIndex: 1
-      }} />
-      
-      {/* Family Streak Tracker - Fixed Position */}
-      <FamilyStreakTracker
+        backgroundColor: luxTheme.background,
+        minHeight: '100vh',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        paddingBottom: '100px',
+        position: 'relative'
+      }}>
+        {/* Time-based overlay */}
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: timeTheme.overlay,
+          pointerEvents: 'none',
+          zIndex: 1
+        }} />
+        
+        {/* Family Streak Tracker - Fixed Position */}
+        <FamilyStreakTracker
           streakDays={familyStreakData.streakDays}
           theme={luxTheme}
           onStreakClick={handleStreakClick}
@@ -475,18 +518,18 @@ const loadFamilyBattleData = useCallback(async () => {
         />
         
         {/* Header */}
-<div style={{
-  background: timeTheme.gradient,
-  backdropFilter: 'blur(20px)',
-  padding: '30px 20px 12px',
-  position: 'relative',
-  borderRadius: '0 0 25px 25px',
-  boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-  zIndex: 100,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center'
-}}>
+        <div style={{
+          background: timeTheme.gradient,
+          backdropFilter: 'blur(20px)',
+          padding: '30px 20px 12px',
+          position: 'relative',
+          borderRadius: '0 0 25px 25px',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+          zIndex: 100,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
           {/* Back Button */}
           <button
             onClick={() => router.push('/parent/dashboard')}
@@ -766,6 +809,32 @@ const loadFamilyBattleData = useCallback(async () => {
             </div>
           </div>
         )}
+
+        {/* Victory Modal */}
+        <FamilyBattleVictoryModal
+          show={showVictoryModal}
+          onClose={() => setShowVictoryModal(false)}
+          victories={parentVictories}
+          theme={luxTheme}
+        />
+
+        {/* Family Battle Results Modal - USING REAL DATA */}
+        <FamilyBattleResultsModal
+          show={showResultsModal}
+          onClose={() => {
+            setShowResultsModal(false);
+            // Reload the real data after closing
+            loadFamilyBattleData();
+            // If parents won, optionally show victory archive
+            if (familyBattleData?.winner === 'parents') {
+              setTimeout(() => setShowVictoryModal(true), 500);
+            }
+          }}
+          battleData={familyBattleData}
+          isStudent={false}
+          currentUserId={user?.uid}
+          theme={luxTheme}
+        />
 
         <style jsx>{`
           @keyframes spin {

@@ -29,6 +29,7 @@ export default function ParentDashboard() {
   const [dailySuggestions, setDailySuggestions] = useState({})
   const [dailyAdvice, setDailyAdvice] = useState({})
   const [showAllAchievements, setShowAllAchievements] = useState(false)
+  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 768)
   
   // Navigation menu state
   const [showNavMenu, setShowNavMenu] = useState(false)
@@ -50,6 +51,16 @@ export default function ParentDashboard() {
     newCount,
     loading: notificationsLoading
   } = useUnlockNotifications()
+
+  // Track window width for responsive layout
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth)
+    }
+    
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   // Get time-based theme with smoother transitions
   const timeTheme = useMemo(() => {
@@ -146,7 +157,7 @@ export default function ParentDashboard() {
 
   // Bottom navigation items
   const bottomNavItems = useMemo(() => {
-    const isMobile = typeof window !== 'undefined' && window.innerWidth < 400;
+    const isMobile = windowWidth < 400;
     
     return [
       { name: isMobile ? 'Home' : 'Dashboard', path: '/parent/dashboard', icon: '⌂', current: true },
@@ -162,7 +173,7 @@ export default function ParentDashboard() {
       { name: 'Battle', path: '/parent/family-battle', icon: '⚔️' },
       { name: 'DNA', path: '/parent/dna-lab', icon: '⬢' }
     ];
-  }, [totalCount, newCount])
+  }, [totalCount, newCount, windowWidth])
 
   // Reading advice for active readers
   const readingAdviceList = [
@@ -812,6 +823,7 @@ export default function ParentDashboard() {
   }
 
   const { displayed: displayedAchievements, hidden: hiddenAchievements } = getFilteredAchievements()
+  const isMobile = windowWidth <= 480
 
   return (
     <>
@@ -1161,7 +1173,7 @@ export default function ParentDashboard() {
                         color: '#A16207',
                         wordBreak: 'break-word'
                       }}>
-                        &quot;{approval.bookTitle}&quot;
+                        "{approval.bookTitle}"
                       </div>
                     </div>
                     <button
@@ -1344,7 +1356,7 @@ export default function ParentDashboard() {
               {familyParents.length > 0 && (
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: familyParents.length > 1 ? 'repeat(2, 1fr)' : '1fr',
+                  gridTemplateColumns: familyParents.length > 1 && windowWidth > 400 ? 'repeat(2, 1fr)' : '1fr',
                   gap: '12px'
                 }}>
                   {familyParents.map((parent) => (
@@ -1405,7 +1417,7 @@ export default function ParentDashboard() {
                 </div>
               )}
               
-              {/* Children - Side by Side with Enhanced Visual Appeal */}
+              {/* Children - Responsive Grid */}
               {linkedStudents.length > 0 && (
                 <div style={{
                   backgroundColor: `${luxTheme.primary}05`,
@@ -1415,7 +1427,7 @@ export default function ParentDashboard() {
                 }}>
                   <div style={{
                     display: 'grid',
-                    gridTemplateColumns: linkedStudents.length > 1 ? 'repeat(2, 1fr)' : '1fr',
+                    gridTemplateColumns: linkedStudents.length > 1 && !isMobile ? 'repeat(2, 1fr)' : '1fr',
                     gap: '12px',
                     marginBottom: '16px'
                   }}>
@@ -1506,47 +1518,55 @@ export default function ParentDashboard() {
                             fontSize: 'clamp(11px, 3vw, 13px)',
                             color: luxTheme.textPrimary,
                             textAlign: 'center',
-                            padding: '8px',
+                            padding: '10px',
                             backgroundColor: `${childColor}10`,
                             borderRadius: '8px',
-                            marginBottom: '8px'
+                            marginBottom: '8px',
+                            minHeight: '60px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
                           }}>
-                            {hasStarted ? (
-                              readingBooks.length > 0 ? (
+                            <div style={{ width: '100%' }}>
+                              {hasStarted ? (
+                                readingBooks.length > 0 ? (
+                                  <div>
+                                    📖 <strong>{readingBooks.length}</strong> book{readingBooks.length > 1 ? 's' : ''} in progress
+                                    {adviceText && (
+                                      <div style={{
+                                        marginTop: '6px',
+                                        fontSize: 'clamp(9px, 2.5vw, 11px)',
+                                        fontStyle: 'italic',
+                                        color: childColor,
+                                        opacity: 0.9,
+                                        lineHeight: '1.4'
+                                      }}>
+                                        💡 {adviceText}
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div>
+                                    ✅ <strong>{student.booksSubmittedThisYear || 0}</strong> books completed
+                                  </div>
+                                )
+                              ) : (
                                 <div>
-                                  📖 <strong>{readingBooks.length}</strong> book{readingBooks.length > 1 ? 's' : ''} in progress
-                                  {adviceText && (
+                                  📚 Ready to start reading!
+                                  {suggestion && (
                                     <div style={{
-                                      marginTop: '6px',
-                                      fontSize: 'clamp(9px, 2.5vw, 11px)',
+                                      marginTop: '8px',
+                                      fontSize: 'clamp(10px, 2.8vw, 12px)',
                                       fontStyle: 'italic',
                                       color: childColor,
-                                      opacity: 0.9
+                                      wordWrap: 'break-word'
                                     }}>
-                                      💡 {adviceText.substring(0, 50)}...
+                                      Try: "{suggestion.title}"
                                     </div>
                                   )}
                                 </div>
-                              ) : (
-                                <div>
-                                  ✅ <strong>{student.booksSubmittedThisYear || 0}</strong> books completed
-                                </div>
-                              )
-                            ) : (
-                              <div>
-                                📚 Ready to start reading!
-                                {suggestion && (
-                                  <div style={{
-                                    marginTop: '8px',
-                                    fontSize: 'clamp(10px, 2.8vw, 12px)',
-                                    fontStyle: 'italic',
-                                    color: childColor
-                                  }}>
-                                    Try: &quot;{suggestion.title}&quot;
-                                  </div>
-                                )}
-                              </div>
-                            )}
+                              )}
+                            </div>
                           </div>
                           
                           <div style={{
@@ -1695,7 +1715,7 @@ export default function ParentDashboard() {
                                 color: '#92400E',
                                 marginBottom: '4px'
                               }}>
-                                &quot;{recommendedBook.title}&quot;
+                                "{recommendedBook.title}"
                               </div>
                               <div style={{
                                 fontSize: 'clamp(10px, 3vw, 12px)',
@@ -1745,7 +1765,7 @@ export default function ParentDashboard() {
                               }}>
                                 ASK YOUR KIDS
                               </span>
-                              💬 &quot;{recommendedBook.discussionQuestions[0]}&quot;
+                              💬 "{recommendedBook.discussionQuestions[0]}"
                             </div>
                           )}
                           
@@ -1811,7 +1831,7 @@ export default function ParentDashboard() {
                         lineHeight: '1.5'
                       }}>
                         Visit the library together and look for books from the Lux Libris list. Let your child browse all 20 nominees 
-                        and pick the one that excites them most! Remember, they need to read 5 books to earn their Literacy Luminary award.
+                        and pick the one that excites them most!
                       </div>
                     </div>
                   )}

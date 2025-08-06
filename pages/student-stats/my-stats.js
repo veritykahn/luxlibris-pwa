@@ -278,6 +278,42 @@ export default function MyStats() {
       console.log('Audio notification not supported');
     }
   }, []);
+  
+  // CHECK FOR NEW CONTENT BADGES FUNCTION
+const checkForNewContentBadges = useCallback(async () => {
+  if (!studentData) return;
+  
+  const contentBadgeWeeks = [1, 6, 16, 24, 33, 43, 44];
+  const newBadges = [];
+  
+  for (const week of contentBadgeWeeks) {
+    const badge = BADGE_CALENDAR[week]; // Get badge for specific week
+    if (badge && studentData[`badgeEarnedWeek${week}`]) {
+      // Check if this badge was earned recently (within last hour)
+      const lastBadgeEarned = studentData.lastBadgeEarned?.toDate?.() || 
+                             studentData.lastBadgeEarned ? new Date(studentData.lastBadgeEarned) : null;
+      
+      if (lastBadgeEarned) {
+        const hoursSince = (new Date() - lastBadgeEarned) / (1000 * 60 * 60);
+        
+        if (hoursSince < 1 && (badge.type === 'content' || badge.type === 'voting')) {
+          newBadges.push({ ...badge, week });
+        }
+      }
+    }
+  }
+  
+  // Show notification for new badges
+  if (newBadges.length > 0) {
+    const latestBadge = newBadges[newBadges.length - 1];
+    badgeUnlockFeedback();
+    sendBadgeNotification(latestBadge.name, latestBadge.xp);
+    
+    // Update earned badges list
+    const updatedBadges = getEarnedBadges(studentData);
+    setEarnedBadges(updatedBadges);
+  }
+}, [studentData, badgeUnlockFeedback, sendBadgeNotification]);
 
   // UPDATED: Load leaderboard data based on active tab
   const loadLeaderboardData = useCallback(async () => {
@@ -764,6 +800,435 @@ export default function MyStats() {
     }
   }, []);
 
+  // Fixed calculateChallengeProgress function with all badge cases
+  const calculateChallengeProgress = useCallback(async (studentData, weekBadge) => {
+    if (!weekBadge || !studentData) return null;
+    
+    try {
+      const sessionsRef = collection(db, `entities/${studentData.entityId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
+      
+      // Get current week's sessions (aligned with badge week system)
+      const today = new Date();
+      const currentYear = today.getFullYear();
+      const june1 = new Date(currentYear, 5, 1); // June 1st this year
+
+      // Calculate days since June 1st
+      let daysSinceJune1;
+      if (today < june1) {
+        const previousJune1 = new Date(currentYear - 1, 5, 1);
+        daysSinceJune1 = Math.floor((today.getTime() - previousJune1.getTime()) / (1000 * 60 * 60 * 24));
+      } else {
+        daysSinceJune1 = Math.floor((today.getTime() - june1.getTime()) / (1000 * 60 * 60 * 24));
+      }
+
+      // Calculate the start of the current badge week
+      const weekNumber = Math.floor(daysSinceJune1 / 7);
+      const weekStartDays = weekNumber * 7;
+
+      const weekStart = new Date(today < june1 ? new Date(currentYear - 1, 5, 1) : june1);
+      weekStart.setDate(weekStart.getDate() + weekStartDays);
+      weekStart.setHours(0, 0, 0, 0);
+
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      weekEnd.setHours(23, 59, 59, 999);
+      
+      // Format dates for Firestore query
+      const getLocalDateString = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+      
+      const startDateStr = getLocalDateString(weekStart);
+      const endDateStr = getLocalDateString(weekEnd);
+      
+      // Get this week's sessions
+      const weekQuery = query(
+        sessionsRef,
+        where('date', '>=', startDateStr),
+        where('date', '<=', endDateStr)
+      );
+      const weekSnapshot = await getDocs(weekQuery);
+      
+      const sessions = [];
+      const dailySessions = {};
+      const dailyMinutes = {};
+      let totalMinutes = 0;
+      let completedSessions = 0;
+      let longSessions30 = 0;
+      let longSessions45 = 0;
+      let longSessions60 = 0;
+      let longSessions90 = 0;
+      let morningSessions = 0;
+      let eveningSessions = 0;
+      let weekendSessions = 0;
+      
+      weekSnapshot.forEach(doc => {
+        const session = doc.data();
+        sessions.push(session);
+        totalMinutes += session.duration || 0;
+        
+        if (session.completed) {
+          completedSessions++;
+          dailySessions[session.date] = true;
+          
+          // Track daily minutes
+          if (!dailyMinutes[session.date]) {
+            dailyMinutes[session.date] = 0;
+          }
+          dailyMinutes[session.date] += session.duration || 0;
+          
+          // Track long sessions
+          if (session.duration >= 30) longSessions30++;
+          if (session.duration >= 45) longSessions45++;
+          if (session.duration >= 60) longSessions60++;
+          if (session.duration >= 90) longSessions90++;
+          
+          // Track time-based sessions
+          const sessionHour = new Date(session.startTime).getHours();
+          if (sessionHour < 9) morningSessions++;
+          if (sessionHour >= 19) eveningSessions++;
+          
+          // Track weekend sessions
+          const sessionDay = new Date(session.date).getDay();
+          if (sessionDay === 0 || sessionDay === 6) weekendSessions++;
+        }
+      });
+      
+      const daysWithReading = Object.keys(dailySessions).length;
+      const todayStr = getLocalDateString(today);
+      const hasReadToday = dailySessions[todayStr] || false;
+      
+      // Check if all days have 20+ or 30+ minutes
+      let daysWithMin20 = 0;
+      let daysWithMin30 = 0;
+      Object.values(dailyMinutes).forEach(minutes => {
+        if (minutes >= 20) daysWithMin20++;
+        if (minutes >= 30) daysWithMin30++;
+      });
+      
+      // Calculate progress based on badge type and requirements
+      let progress = null;
+      
+      switch (weekBadge.name) {
+        // CONTENT BADGES (shouldn't be in timer progress)
+        case "Hummingbird Herald":
+        case "Peacock Pride":
+        case "Woodpecker Wisdom":
+        case "Raven Ratings":
+        case "Spoonbill Scholar":
+        case "Gannet Sprint":
+        case "Cormorant Democracy":
+          // These are content badges, not timer badges
+          progress = {
+            type: 'content_badge',
+            current: 0,
+            target: 1,
+            percentage: 0,
+            description: 'This is a content badge, not a timer badge',
+            completed: false
+          };
+          break;
+        
+        // FIRST SESSION BADGES
+        case "Kingfisher Kickoff":
+        case "Pigeon Starter":
+          progress = {
+            type: 'first_session',
+            current: completedSessions,
+            target: 1,
+            percentage: Math.min(100, (completedSessions / 1) * 100),
+            description: 'Complete any reading session',
+            completed: completedSessions >= 1
+          };
+          break;
+        
+        // 30+ MINUTE SESSION BADGES
+        case "Cardinal Courage":
+          progress = {
+            type: 'long_session_30',
+            current: longSessions30,
+            target: 1,
+            percentage: Math.min(100, (longSessions30 / 1) * 100),
+            description: 'Complete a 30+ minute session',
+            completed: longSessions30 >= 1
+          };
+          break;
+        
+        // 45+ MINUTE SESSION BADGES
+        case "Toucan Triumph":
+        case "Ostrich Odyssey":
+          progress = {
+            type: 'long_session_45',
+            current: longSessions45,
+            target: 1,
+            percentage: Math.min(100, (longSessions45 / 1) * 100),
+            description: 'Complete a 45+ minute session',
+            completed: longSessions45 >= 1
+          };
+          break;
+        
+        // 60+ MINUTE SESSION BADGES
+        case "Bird of Paradise Performance":
+          progress = {
+            type: 'long_session_60',
+            current: longSessions60,
+            target: 1,
+            percentage: Math.min(100, (longSessions60 / 1) * 100),
+            description: 'Complete a 60+ minute session',
+            completed: longSessions60 >= 1
+          };
+          break;
+          
+        // 90+ MINUTE SESSION BADGES
+        case "Horned Owl Summit":
+          progress = {
+            type: 'long_session_90',
+            current: longSessions90,
+            target: 1,
+            percentage: Math.min(100, (longSessions90 / 1) * 100),
+            description: 'Complete a 90+ minute session',
+            completed: longSessions90 >= 1
+          };
+          break;
+        
+        // WEEKEND READING BADGES
+        case "Puffin Power":
+          progress = {
+            type: 'weekend_reading',
+            current: weekendSessions,
+            target: 1,
+            percentage: Math.min(100, (weekendSessions / 1) * 100),
+            description: 'Read on Saturday or Sunday',
+            completed: weekendSessions >= 1
+          };
+          break;
+          
+        case "Secretary Bird Weekend":
+          progress = {
+            type: 'both_weekend_days',
+            current: weekendSessions,
+            target: 2,
+            percentage: Math.min(100, (weekendSessions / 2) * 100),
+            description: 'Read both Saturday AND Sunday',
+            completed: weekendSessions >= 2
+          };
+          break;
+        
+        // MORNING SESSION BADGES
+        case "Macaw Motivation":
+        case "Pheasant Focus":
+          progress = {
+            type: 'morning_sessions',
+            current: morningSessions,
+            target: 2,
+            percentage: Math.min(100, (morningSessions / 2) * 100),
+            description: 'Complete 2 morning sessions (before 9am)',
+            completed: morningSessions >= 2
+          };
+          break;
+          
+        case "Booby Morning":
+          progress = {
+            type: 'morning_sessions',
+            current: morningSessions,
+            target: 4,
+            percentage: Math.min(100, (morningSessions / 4) * 100),
+            description: 'Complete 4 morning sessions',
+            completed: morningSessions >= 4
+          };
+          break;
+        
+        // EVENING SESSION BADGES
+        case "Barn Owl Night Reader":
+          progress = {
+            type: 'evening_sessions',
+            current: eveningSessions,
+            target: 2,
+            percentage: Math.min(100, (eveningSessions / 2) * 100),
+            description: 'Complete 2 evening sessions (after 7pm)',
+            completed: eveningSessions >= 2
+          };
+          break;
+        
+        // DAYS WITH READING BADGES
+        case "Flamingo Focus":
+          progress = {
+            type: 'reading_days',
+            current: daysWithReading,
+            target: 4,
+            percentage: Math.min(100, (daysWithReading / 4) * 100),
+            description: 'Read on 4 different days',
+            completed: daysWithReading >= 4
+          };
+          break;
+        
+        case "Heron Habits":
+          progress = {
+            type: 'consecutive_20min_days',
+            current: daysWithMin20,
+            target: 5,
+            percentage: Math.min(100, (daysWithMin20 / 5) * 100),
+            description: 'Read 20+ min for 5 days',
+            completed: daysWithMin20 >= 5
+          };
+          break;
+        
+        case "Duck Dedication":
+        case "Oystercatcher Streak":
+        case "Grebe Streak":
+        case "Kiwi Consistency":
+          progress = {
+            type: 'daily_reading',
+            current: daysWithReading,
+            target: 7,
+            percentage: Math.min(100, (daysWithReading / 7) * 100),
+            description: 'Read every day this week',
+            completed: daysWithReading >= 7
+          };
+          break;
+          
+        case "Lyre Bird Perfection":
+        case "Hornbill Champion":
+          progress = {
+            type: 'daily_30min',
+            current: daysWithMin30,
+            target: 7,
+            percentage: Math.min(100, (daysWithMin30 / 7) * 100),
+            description: 'Read 30+ min every day',
+            completed: daysWithMin30 >= 7
+          };
+          break;
+        
+        // TOTAL MINUTES BADGES
+        case "Pelican Persistence":
+        case "Cassowary Challenge":
+        case "Sandgrouse Summer":
+          progress = {
+            type: 'total_minutes_180',
+            current: totalMinutes,
+            target: 180,
+            percentage: Math.min(100, (totalMinutes / 180) * 100),
+            description: 'Read 180+ minutes total (3 hours)',
+            completed: totalMinutes >= 180
+          };
+          break;
+        
+        case "Bald Eagle Excellence":
+        case "Crow Marathon":
+          progress = {
+            type: 'total_minutes_240',
+            current: totalMinutes,
+            target: 240,
+            percentage: Math.min(100, (totalMinutes / 240) * 100),
+            description: 'Read 240+ minutes total (4 hours)',
+            completed: totalMinutes >= 240
+          };
+          break;
+        
+        // SPECIAL SESSION REQUIREMENTS
+        case "Albatross Adventure":
+          progress = {
+            type: 'sessions_with_total',
+            current: completedSessions,
+            target: 3,
+            percentage: Math.min(100, (completedSessions / 3) * 100),
+            description: 'Complete 3 sessions (60+ min total)',
+            completed: completedSessions >= 3 && totalMinutes >= 60
+          };
+          break;
+          
+        case "Frigate Lightning":
+          const sessions30Plus = sessions.filter(s => s.duration >= 30 && s.completed).length;
+          progress = {
+            type: 'multiple_30min_sessions',
+            current: sessions30Plus,
+            target: 3,
+            percentage: Math.min(100, (sessions30Plus / 3) * 100),
+            description: 'Complete 3 sessions of 30+ minutes',
+            completed: sessions30Plus >= 3
+          };
+          break;
+          
+        case "Roadrunner Speed":
+          progress = {
+            type: 'multiple_45min_sessions',
+            current: longSessions45,
+            target: 3,
+            percentage: Math.min(100, (longSessions45 / 3) * 100),
+            description: 'Complete 3 sessions of 45+ minutes',
+            completed: longSessions45 >= 3
+          };
+          break;
+        
+        // SEASONAL/HOLIDAY BADGES - Just need any session
+        case "Quetzal Quest":
+        case "Vulture Victory":
+        case "Penguin Thanksgiving":
+        case "Swan Serenity":
+        case "Snowy Owl Scholar":
+        case "Ibis Inspiration":
+        case "Seagull Sweetheart":
+        case "Hoopoe Luck":
+        case "Jacana Journey":
+        case "Loon Library":
+          progress = {
+            type: 'seasonal',
+            current: completedSessions,
+            target: 1,
+            percentage: Math.min(100, (completedSessions / 1) * 100),
+            description: 'Complete any reading session this week',
+            completed: completedSessions >= 1
+          };
+          break;
+        
+        // IMPROVEMENT BADGES (need special logic)
+        case "Goose Goals":
+        case "Roller Progress":
+        case "Avocet Achievement":
+        case "Turnstone Variety":
+          // These need comparison with previous week or special calculations
+          progress = {
+            type: 'special',
+            current: 0,
+            target: 1,
+            percentage: 0,
+            description: 'Special requirements - check badge description',
+            completed: false
+          };
+          break;
+        
+        default:
+          console.warn(`Unknown badge in progress calculation: ${weekBadge.name}`);
+          progress = {
+            type: 'unknown',
+            current: 0,
+            target: 1,
+            percentage: 0,
+            description: 'Unknown badge type',
+            completed: false
+          };
+          break;
+      }
+      
+      return {
+        ...progress,
+        sessionsThisWeek: sessions.length,
+        daysWithReading,
+        totalMinutes,
+        hasReadToday,
+        weekStart: weekStart.toLocaleDateString(),
+        weekEnd: weekEnd.toLocaleDateString()
+      };
+      
+    } catch (error) {
+      console.error('Error calculating challenge progress:', error);
+      return null;
+    }
+  }, []);
+
   // UPDATED awardBadgeIfComplete function with notifications
   const awardBadgeIfComplete = async (progress, weekBadge) => {
     if (!progress || !progress.completed || !weekBadge || !studentData) return false;
@@ -941,6 +1406,13 @@ export default function MyStats() {
       router.push('/role-selector');
     }
   }, [loading, isAuthenticated, user, loadStatsData]);
+  
+  // Check for new content badges after data loads
+  useEffect(() => {
+    if (studentData && !isLoading) {
+      checkForNewContentBadges();
+    }
+  }, [studentData, isLoading, checkForNewContentBadges]);
 
   if (loading || isLoading || !studentData || !currentTheme) {
     return (

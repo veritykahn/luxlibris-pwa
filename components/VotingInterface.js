@@ -1,7 +1,9 @@
 // components/VotingInterface.js - PERMANENT VOTING: Vote once, no changes, celebration
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useVoting } from '../hooks/useVoting';
+import { checkContentBadgeEligibility, getCurrentWeek } from '../lib/badge-system-content';
+import { updateStudentDataEntities } from '../lib/firebase';
 
 export default function VotingInterface({ studentData, currentTheme }) {
   const router = useRouter();
@@ -15,17 +17,114 @@ export default function VotingInterface({ studentData, currentTheme }) {
   } = useVoting(studentData);
 
   const [message, setMessage] = useState('');
+  const [showBadgeNotification, setShowBadgeNotification] = useState(false);
+  const [badgeNotificationData, setBadgeNotificationData] = useState(null);
 
-  // Handle voting (PERMANENT - no changes allowed)
+  // Check if we're in the voting week and badge is available
+  const currentWeek = getCurrentWeek();
+  const isVotingWeek = currentWeek === 44;
+  const canEarnVotingBadge = isVotingWeek && !studentData.badgeEarnedWeek44;
+
+  // Handle voting with badge checking
   const handleVote = async (bookId, bookTitle) => {
     try {
       await submitVote(bookId);
+      
+      // Check for Cormorant Democracy badge (Week 44)
+      const currentWeek = getCurrentWeek();
+      if (currentWeek === 44 && !studentData.badgeEarnedWeek44) {
+        const badgeCheck = checkContentBadgeEligibility(studentData, 'voting');
+        
+        if (badgeCheck.eligible) {
+          // Award the badge
+          const currentTotalXP = studentData.totalXP || 0;
+          const newTotalXP = currentTotalXP + 120; // Cormorant Democracy is worth 120 XP
+          
+          await updateStudentDataEntities(
+            studentData.id, 
+            studentData.entityId, 
+            studentData.schoolId, 
+            {
+              badgeEarnedWeek44: true,
+              lastBadgeEarned: new Date(),
+              totalXP: newTotalXP
+            }
+          );
+          
+          // Show badge notification
+          setBadgeNotificationData({
+            name: 'Cormorant Democracy',
+            xp: 120,
+            description: 'Cast your vote for favorite book!'
+          });
+          setShowBadgeNotification(true);
+          
+          // Auto-hide after 5 seconds
+          setTimeout(() => {
+            setShowBadgeNotification(false);
+          }, 5000);
+        }
+      }
+      
       setMessage(`✅ Vote locked in for "${bookTitle}"!`);
       setTimeout(() => setMessage(''), 3000);
     } catch (error) {
       setMessage(`❌ ${error.message}`);
       setTimeout(() => setMessage(''), 5000);
     }
+  };
+
+  // Badge notification component
+  const BadgeNotificationPopup = () => {
+    if (!showBadgeNotification || !badgeNotificationData) return null;
+    
+    return (
+      <div style={{
+        position: 'fixed',
+        top: '20px',
+        right: '20px',
+        backgroundColor: '#10B981',
+        color: 'white',
+        borderRadius: '16px',
+        padding: '16px 20px',
+        boxShadow: '0 8px 32px rgba(16, 185, 129, 0.4)',
+        zIndex: 10001,
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        maxWidth: '320px',
+        animation: 'slideInRight 0.5s ease-out, fadeOut 0.5s ease-in 4.5s forwards'
+      }}>
+        <div style={{
+          fontSize: '32px',
+          animation: 'bounce 1s infinite'
+        }}>
+          🏆
+        </div>
+        <div>
+          <div style={{
+            fontSize: '14px',
+            fontWeight: '600',
+            marginBottom: '4px'
+          }}>
+            New Badge Unlocked!
+          </div>
+          <div style={{
+            fontSize: '12px',
+            opacity: 0.9
+          }}>
+            {badgeNotificationData.name} • +{badgeNotificationData.xp} XP
+          </div>
+          <div style={{
+            fontSize: '11px',
+            opacity: 0.8,
+            marginTop: '2px'
+          }}>
+            {badgeNotificationData.description}
+          </div>
+        </div>
+      </div>
+    );
   };
 
   if (votingData.loading) {
@@ -345,6 +444,9 @@ export default function VotingInterface({ studentData, currentTheme }) {
             Thank you for making your choice count!
           </p>
         </div>
+
+        {/* Badge Notification Popup */}
+        <BadgeNotificationPopup />
       </div>
     );
   }
@@ -394,6 +496,37 @@ export default function VotingInterface({ studentData, currentTheme }) {
           ⚠️ You can only vote once - choose wisely!
         </p>
       </div>
+
+      {/* Badge availability indicator */}
+      {canEarnVotingBadge && !votingData.hasVoted && (
+        <div style={{
+          backgroundColor: `${currentTheme.primary}20`,
+          borderRadius: '12px',
+          padding: '12px',
+          marginBottom: '16px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          border: `1px solid ${currentTheme.primary}40`
+        }}>
+          <span style={{ fontSize: '20px' }}>🏆</span>
+          <div style={{ flex: 1 }}>
+            <div style={{
+              fontSize: '12px',
+              fontWeight: '600',
+              color: currentTheme.textPrimary
+            }}>
+              Badge Available This Week!
+            </div>
+            <div style={{
+              fontSize: '11px',
+              color: currentTheme.textSecondary
+            }}>
+              Vote to earn the Cormorant Democracy badge (+120 XP)
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Voting Progress */}
       <div style={{
@@ -626,6 +759,9 @@ export default function VotingInterface({ studentData, currentTheme }) {
         </div>
       )}
 
+      {/* Badge Notification Popup */}
+      <BadgeNotificationPopup />
+
       <style jsx>{`
         @keyframes spin {
           from { transform: rotate(0deg); }
@@ -652,6 +788,26 @@ export default function VotingInterface({ studentData, currentTheme }) {
           }
           60% {
             transform: translateY(-4px);
+          }
+        }
+        
+        @keyframes slideInRight {
+          from {
+            opacity: 0;
+            transform: translateX(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+        
+        @keyframes fadeOut {
+          from {
+            opacity: 1;
+          }
+          to {
+            opacity: 0;
           }
         }
       `}</style>

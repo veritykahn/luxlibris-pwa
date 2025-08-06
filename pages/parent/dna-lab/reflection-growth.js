@@ -128,7 +128,7 @@ export default function ReflectionGrowth() {
       }
       
       // Load journal entries
-      const journalRef = collection(db, `users/${user.uid}/reading-journal`);
+      const journalRef = collection(db, `parents/${user.uid}/reading-journal`);
       const journalQuery = query(journalRef, orderBy('createdAt', 'desc'), limit(50));
       const journalSnapshot = await getDocs(journalQuery);
       const entries = [];
@@ -138,7 +138,7 @@ export default function ReflectionGrowth() {
       setJournalEntries(entries);
       
       // Load reading goals
-      const goalsRef = collection(db, `users/${user.uid}/reading-goals`);
+      const goalsRef = collection(db, `parents/${user.uid}/reading-goals`);
       const goalsQuery = query(goalsRef, orderBy('createdAt', 'desc'));
       const goalsSnapshot = await getDocs(goalsQuery);
       const goals = [];
@@ -148,7 +148,7 @@ export default function ReflectionGrowth() {
       setReadingGoals(goals);
       
       // Load reading wins
-      const winsRef = collection(db, `users/${user.uid}/reading-wins`);
+      const winsRef = collection(db, `parents/${user.uid}/reading-wins`);
       const winsQuery = query(winsRef, orderBy('createdAt', 'desc'), limit(50));
       const winsSnapshot = await getDocs(winsQuery);
       const wins = [];
@@ -191,7 +191,7 @@ export default function ReflectionGrowth() {
           break;
       }
       
-      await addDoc(collection(db, `users/${user.uid}/${collectionName}`), entryData);
+      await addDoc(collection(db, `parents/${user.uid}/${collectionName}`), entryData);
       
       // Refresh data
       await loadData();
@@ -212,7 +212,7 @@ export default function ReflectionGrowth() {
     if (!user?.uid) return;
     
     try {
-      const goalRef = doc(db, `users/${user.uid}/reading-goals`, goalId);
+      const goalRef = doc(db, `parents/${user.uid}/reading-goals`, goalId);
       await updateDoc(goalRef, {
         progress: Number(progress), // Ensure progress is a number
         updatedAt: new Date(),
@@ -230,7 +230,7 @@ export default function ReflectionGrowth() {
     if (!user?.uid || !confirm('Are you sure you want to delete this journal entry?')) return;
     
     try {
-      await deleteDoc(doc(db, `users/${user.uid}/reading-journal`, entryId));
+      await deleteDoc(doc(db, `parents/${user.uid}/reading-journal`, entryId));
       await loadData();
     } catch (error) {
       console.error('❌ Error deleting journal entry:', error);
@@ -242,7 +242,7 @@ export default function ReflectionGrowth() {
     if (!user?.uid || !confirm('Are you sure you want to delete this goal?')) return;
     
     try {
-      await deleteDoc(doc(db, `users/${user.uid}/reading-goals`, goalId));
+      await deleteDoc(doc(db, `parents/${user.uid}/reading-goals`, goalId));
       await loadData();
     } catch (error) {
       console.error('❌ Error deleting goal:', error);
@@ -254,7 +254,7 @@ export default function ReflectionGrowth() {
     if (!user?.uid || !confirm('Are you sure you want to delete this win?')) return;
     
     try {
-      await deleteDoc(doc(db, `users/${user.uid}/reading-wins`, winId));
+      await deleteDoc(doc(db, `parents/${user.uid}/reading-wins`, winId));
       await loadData();
     } catch (error) {
       console.error('❌ Error deleting win:', error);
@@ -1160,7 +1160,10 @@ export default function ReflectionGrowth() {
                   fontSize: '14px',
                   fontFamily: 'inherit',
                   resize: 'vertical',
-                  lineHeight: '1.5'
+                  lineHeight: '1.5',
+                  // FIX: Add these two lines for text visibility
+                  color: luxTheme.textPrimary,
+                  backgroundColor: luxTheme.surface
                 }}
               />
               
@@ -1251,6 +1254,32 @@ export default function ReflectionGrowth() {
           /* Hide scrollbar for tab navigation */
           div::-webkit-scrollbar {
             display: none;
+          }
+          
+          /* Placeholder text styling for better visibility */
+          textarea::placeholder {
+            color: ${luxTheme.textSecondary};
+            opacity: 0.6;
+          }
+          
+          textarea::-webkit-input-placeholder {
+            color: ${luxTheme.textSecondary};
+            opacity: 0.6;
+          }
+          
+          textarea::-moz-placeholder {
+            color: ${luxTheme.textSecondary};
+            opacity: 0.6;
+          }
+          
+          textarea:-ms-input-placeholder {
+            color: ${luxTheme.textSecondary};
+            opacity: 0.6;
+          }
+          
+          textarea:-moz-placeholder {
+            color: ${luxTheme.textSecondary};
+            opacity: 0.6;
           }
         `}</style>
       </div>
