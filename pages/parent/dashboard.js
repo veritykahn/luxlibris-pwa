@@ -1348,7 +1348,7 @@ export default function ParentDashboard() {
                 }}>
                   Your family is made up of {familyParents.find(p => p.isCurrentUser) ? 'you' : 'parents'}
                   {familyParents.length > 1 && `, ${familyParents.filter(p => !p.isCurrentUser).map(p => p.firstName).join(' & ')}`}
-                  {linkedStudents.length > 0 && ` with ${linkedStudents.map(s => s.firstName).join(linkedStudents.length === 2 ? ' and ' : ', ')}`}
+                  {linkedStudents.length > 0 && ` and ${linkedStudents.map(s => s.firstName).join(linkedStudents.length === 2 ? ' and ' : ', ')}`}
                 </p>
               </div>
               
