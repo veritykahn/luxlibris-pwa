@@ -61,16 +61,16 @@ export default function StudentStatsMain() {
       textSecondary: '#5D4037'
     },
     lavender_space: {
-      name: 'Cosmic Explorer',
-      assetPrefix: 'lavender_space',
-      primary: '#9C88C4',
-      secondary: '#B19CD9',
-      accent: '#E1D5F7',
-      background: '#2A1B3D',
-      surface: '#3D2B54',
-      textPrimary: '#E1D5F7',
-      textSecondary: '#B19CD9'
-    },
+  name: 'Cosmic Explorer',
+  assetPrefix: 'lavender_space',
+  primary: '#8B7AA8',      // Darkened from #9C88C4
+  secondary: '#9B85C4',    // Darkened from #B19CD9
+  accent: '#C8B3E8',       // Darkened from #E1D5F7
+  background: '#2A1B3D',   // Keep dark background
+  surface: '#3D2B54',      // Keep
+  textPrimary: '#E8DEFF',  // Slightly brightened for dark bg
+  textSecondary: '#B8A6D9' // Slightly adjusted
+},
     mint_music: {
       name: 'Musical Harmony',
       assetPrefix: 'mint_music',
@@ -116,16 +116,16 @@ export default function StudentStatsMain() {
       textSecondary: '#556B2F'
     },
     little_luminaries: {
-      name: 'Luxlings™',
-      assetPrefix: 'little_luminaries',
-      primary: '#666666',
-      secondary: '#000000',
-      accent: '#E8E8E8',
-      background: '#FFFFFF',
-      surface: '#FAFAFA',
-      textPrimary: '#B8860B',
-      textSecondary: '#AAAAAA'
-    }
+  name: 'Luxlings™',
+  assetPrefix: 'little_luminaries',
+  primary: '#000000',      // Lightened grey from #666666
+  secondary: '#000000',    // Keep black
+  accent: '#E8E8E8',       // Keep
+  background: '#FFFFFF',   // Keep white
+  surface: '#FAFAFA',      // Keep
+  textPrimary: '#8B6914',  // Darkened gold from #B8860B
+  textSecondary: '#606060' // Darkened from #AAAAAA for better contrast
+}
   }), []);
   const navMenuItems = useMemo(() => [
     { name: 'Dashboard', path: '/student-dashboard', icon: '⌂' },

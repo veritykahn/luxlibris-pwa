@@ -56,13 +56,13 @@ export default function StudentOnboarding() {
     {
       name: 'Cosmic Explorer',
       assetPrefix: 'lavender_space',
-      primary: '#9C88C4',
-      secondary: '#B19CD9',
-      accent: '#E1D5F7',
-      background: '#2A1B3D',
-      surface: '#3D2B54',
-      textPrimary: '#E1D5F7'
-    },
+  primary: '#8B7AA8',
+  secondary: '#9B85C4',
+  accent: '#C8B3E8',
+  background: '#2A1B3D',
+  surface: '#3D2B54',
+  textPrimary: '#E8DEFF',
+},
     {
       name: 'Musical Harmony',
       assetPrefix: 'mint_music',
@@ -104,15 +104,15 @@ export default function StudentOnboarding() {
       textPrimary: '#2F4F2F'
     },
     {
-      name: 'Luxlings™',
-      assetPrefix: 'little_luminaries',
-      primary: '#666666',
-      secondary: '#000000',
-      accent: '#E8E8E8',
-      background: '#FFFFFF',
-      surface: '#FAFAFA',
-      textPrimary: '#B8860B',
-    }
+  name: 'Luxlings™',
+  assetPrefix: 'little_luminaries',
+  primary: '#000000',      // Lightened grey from #666666
+  secondary: '#000000',    // Keep black
+  accent: '#E8E8E8',       // Keep
+  background: '#FFFFFF',   // Keep white
+  surface: '#FAFAFA',      // Keep
+  textPrimary: '#8B6914',  // Darkened gold from #B8860B
+}
   ];
 
   const grades = [4, 5, 6, 7, 8];

@@ -51,15 +51,15 @@ export default function GradeStats() {
       textSecondary: '#5D4037'
     },
     lavender_space: {
-      name: 'Cosmic Explorer',
-      primary: '#9C88C4',
-      secondary: '#B19CD9',
-      accent: '#E1D5F7',
-      background: '#2A1B3D',
-      surface: '#3D2B54',
-      textPrimary: '#E1D5F7',
-      textSecondary: '#B19CD9'
-    },
+  name: 'Cosmic Explorer',
+  primary: '#8B7AA8',
+  secondary: '#9B85C4',
+  accent: '#C8B3E8',
+  background: '#2A1B3D',
+  surface: '#3D2B54',
+  textPrimary: '#E8DEFF',
+  textSecondary: '#B8A6D9'
+},
     mint_music: {
       name: 'Musical Harmony',
       primary: '#B8E6B8',
@@ -101,15 +101,15 @@ export default function GradeStats() {
       textSecondary: '#556B2F'
     },
     little_luminaries: {
-      name: 'Luxlings™',
-      primary: '#666666',
-      secondary: '#000000',
-      accent: '#E8E8E8',
-      background: '#FFFFFF',
-      surface: '#FAFAFA',
-      textPrimary: '#B8860B',
-      textSecondary: '#AAAAAA'
-    }
+  name: 'Luxlings™',
+  primary: '#000000',      // Lightened grey from #666666
+  secondary: '#000000',    // Keep black
+  accent: '#E8E8E8',       // Keep
+  background: '#FFFFFF',   // Keep white
+  surface: '#FAFAFA',      // Keep
+  textPrimary: '#8B6914',  // Darkened gold from #B8860B
+  textSecondary: '#606060' // Darkened from #AAAAAA for better contrast
+}
   }), []);
 
   // UPDATED: Navigation menu items with phase-aware locking
