@@ -1,4 +1,4 @@
-// pages/parent/family-battle.js - FIXED VERSION with Parent Battle Streak
+// pages/parent/family-battle.js - FIXED VERSION with proper modal handling
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
@@ -129,13 +129,16 @@ export default function ParentFamilyBattle() {
   const [linkedStudents, setLinkedStudents] = useState([])
   const [familyBattleData, setFamilyBattleData] = useState(null)
   const [familyStats, setFamilyStats] = useState(null)
-  const [parentStreakDays, setParentStreakDays] = useState(0) // UPDATED: Changed to parent's personal streak
+  const [parentStreakDays, setParentStreakDays] = useState(0)
   const [showNavMenu, setShowNavMenu] = useState(false)
   const [showSuccess, setShowSuccess] = useState('')
   const [showStreakModal, setShowStreakModal] = useState(false)
   const [showVictoryModal, setShowVictoryModal] = useState(false)
   const [showResultsModal, setShowResultsModal] = useState(false)
   const [parentVictories, setParentVictories] = useState([])
+  
+  // FIXED: Track if results modal has been shown this week
+  const [resultsShownForWeek, setResultsShownForWeek] = useState(null)
   
   // Add loading flag to prevent concurrent loads
   const isLoadingBattleData = useRef(false)
@@ -297,7 +300,6 @@ export default function ParentFamilyBattle() {
         }
       }
       
-
       return students
       
     } catch (error) {
@@ -306,7 +308,7 @@ export default function ParentFamilyBattle() {
     }
   }
 
-  // Load family battle data - UPDATED: Removed broken streak calculation
+  // Load family battle data
   const loadFamilyBattleData = useCallback(async () => {
     if (!user?.uid || !linkedStudents.length || !parentData?.familyId) return;
     if (isLoadingBattleData.current) return; // Prevent concurrent loads
@@ -321,9 +323,6 @@ export default function ParentFamilyBattle() {
       // Get family statistics
       const stats = await getFamilyBattleStats(parentData.familyId);
       setFamilyStats(stats);
-      
-      // REMOVED: The broken family streak calculation
-      // Now we load parent's personal streak instead
       
     } catch (error) {
       console.error('❌ Error loading family battle data:', error);
@@ -394,15 +393,27 @@ export default function ParentFamilyBattle() {
     }
   }, [user?.uid, authLoading, loadParentStreak])
 
-  // Auto-show results modal on Sunday
+  // FIXED: Auto-show results modal on Sunday - only once per week
   useEffect(() => {
     const today = new Date();
     const isSunday = today.getDay() === 0;
     
-    if (isSunday && familyBattleData && familyBattleData.winner && familyBattleData.winner !== 'ongoing') {
+    // Only show if:
+    // 1. It's Sunday
+    // 2. We have battle data with a winner
+    // 3. The winner is not 'ongoing' 
+    // 4. We haven't shown it for this week yet
+    if (isSunday && 
+        familyBattleData && 
+        familyBattleData.winner && 
+        familyBattleData.winner !== 'ongoing' &&
+        familyBattleData.weekNumber !== resultsShownForWeek) {
+      
+      console.log('📊 Auto-showing results modal for week:', familyBattleData.weekNumber);
       setShowResultsModal(true);
+      setResultsShownForWeek(familyBattleData.weekNumber); // Mark as shown for this week
     }
-  }, [familyBattleData])
+  }, [familyBattleData, resultsShownForWeek])
 
   // Load initial data with premium check
   useEffect(() => {
@@ -568,7 +579,7 @@ export default function ParentFamilyBattle() {
           zIndex: 1
         }} />
         
-        {/* Family Streak Tracker - UPDATED to use parent's personal streak */}
+        {/* Family Streak Tracker */}
         <FamilyStreakTracker
           streakDays={parentStreakDays}
           theme={luxTheme}
@@ -781,7 +792,7 @@ export default function ParentFamilyBattle() {
           </div>
         </PremiumGate>
 
-        {/* Streak Detail Modal - UPDATED with battle participation theming */}
+        {/* Streak Detail Modal */}
         {showStreakModal && (
           <div style={{
             position: 'fixed',
@@ -902,19 +913,19 @@ export default function ParentFamilyBattle() {
           theme={luxTheme}
         />
 
-        {/* Family Battle Results Modal - USING REAL DATA */}
+        {/* FIXED: Family Battle Results Modal - pass real data directly */}
         <FamilyBattleResultsModal
           show={showResultsModal}
           onClose={() => {
             setShowResultsModal(false);
-            // Reload the real data after closing
+            // Reload the data after closing
             loadFamilyBattleData();
             // If parents won, optionally show victory archive
             if (familyBattleData?.winner === 'parents') {
               setTimeout(() => setShowVictoryModal(true), 500);
             }
           }}
-          battleData={familyBattleData}
+          battleData={familyBattleData} // Pass the real battle data directly
           isStudent={false}
           currentUserId={user?.uid}
           theme={luxTheme}

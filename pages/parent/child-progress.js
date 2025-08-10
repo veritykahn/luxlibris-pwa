@@ -1,4 +1,4 @@
-// pages/parent/child-progress.js - UPDATED to use lifetimeBooksSubmitted for progress tracking
+// pages/parent/child-progress.js - FIXED achievement tiers (yearly vs lifetime)
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
@@ -48,7 +48,7 @@ const getBookTitle = (bookId, nominees) => {
   return book ? book.title : 'Unknown Book';
 };
 
-// 🔧 UPDATED: Child Detail Modal Component - Now uses lifetimeBooksSubmitted
+// 🔧 FIXED: Child Detail Modal Component - Uses current year for all tiers except final
 function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees, readingStats, onApproveUnlock, initialTab = 'reading', showComingSoon, setShowComingSoon, teacherData }) {
   // ✅ FIXED: Move all hooks to the top, before any conditional returns
   const [activeTab, setActiveTab] = useState(initialTab)
@@ -64,16 +64,27 @@ function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees,
     }
   }, [isOpen, initialTab])
 
-  // Calculate real world achievements when child data changes - UPDATED to use lifetimeBooksSubmitted
+  // FIXED: Calculate real world achievements - use current year for all except final tier
   useEffect(() => {
     if (child && teacherData && teacherData.achievementTiers) {
       const calculateRealWorldAchievements = (studentData, achievementTiers) => {
-        const lifetimeBooks = studentData.lifetimeBooksSubmitted || 0
+        // Get current year books (completed books in bookshelf)
+        const currentYearBooks = studentData.booksSubmittedThisYear || 
+          (studentData.bookshelf?.filter(book => book.completed === true).length || 0);
+        
+        // Get lifetime books for the final tier only
+        const lifetimeBooks = studentData.lifetimeBooksSubmitted || 0;
+        
         const allAchievements = []
         
         achievementTiers.forEach((tier, index) => {
-          const isEarned = lifetimeBooks >= tier.books
-          const booksNeeded = isEarned ? 0 : tier.books - lifetimeBooks
+          // Check if this is the final tier (last one in the array)
+          const isFinalTier = index === achievementTiers.length - 1;
+          
+          // Use lifetime books for final tier, current year for all others
+          const booksToCheck = isFinalTier ? lifetimeBooks : currentYearBooks;
+          const isEarned = booksToCheck >= tier.books;
+          const booksNeeded = isEarned ? 0 : tier.books - booksToCheck;
           
           allAchievements.push({
             tier: index + 1,
@@ -82,7 +93,8 @@ function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees,
             type: tier.type,
             earned: isEarned,
             booksNeeded,
-            earnedDate: isEarned ? (studentData.lastAchievementUpdate || 'Achieved') : null
+            earnedDate: isEarned ? (studentData.lastAchievementUpdate || 'Achieved') : null,
+            isFinalTier // Keep track internally but don't show in UI
           })
         })
         
@@ -137,7 +149,7 @@ function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees,
     setTimeout(() => setShowComingSoon(''), 3000)
   }
 
-  // UPDATED: Use lifetimeBooksSubmitted for all calculations
+  // Use lifetimeBooksSubmitted for goal progress
   const lifetimeBooks = child.lifetimeBooksSubmitted || 0
   const personalGoal = child.personalGoal || 100
   const progressPercentage = Math.min(Math.round((lifetimeBooks / personalGoal) * 100), 100)
@@ -221,7 +233,7 @@ function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees,
             </div>
           </div>
 
-          {/* Quick Stats - UPDATED */}
+          {/* Quick Stats */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: '1fr 1fr 1fr',
@@ -293,7 +305,7 @@ function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees,
           {/* Reading Progress Tab */}
           {activeTab === 'reading' && (
             <div>
-              {/* Progress Bar - UPDATED */}
+              {/* Progress Bar */}
               <div style={{
                 backgroundColor: `${childColor}20`,
                 borderRadius: '12px',
@@ -625,7 +637,7 @@ function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees,
             </div>
           )}
 
-          {/* Achievements Tab - UPDATED to use lifetimeBooksSubmitted */}
+          {/* Achievements Tab - FIXED to use correct book counts */}
           {activeTab === 'achievements' && (
             <div>
               {/* Reading Goal Progress Overview */}
@@ -654,14 +666,14 @@ function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees,
                     fontWeight: 'bold',
                     color: childColor
                   }}>
-                    {lifetimeBooks}
+                    {child.booksSubmittedThisYear || (child.bookshelf?.filter(b => b.completed === true).length || 0)}
                   </span>
                   <span style={{
                     fontSize: '14px',
                     color: theme.textSecondary,
                     marginLeft: '4px'
                   }}>
-                    lifetime books read
+                    books this year
                   </span>
                 </div>
               </div>

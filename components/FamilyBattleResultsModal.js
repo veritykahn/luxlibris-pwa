@@ -1,3 +1,4 @@
+// components/FamilyBattleResultsModal.js - FIXED VERSION
 import React, { useState, useEffect } from 'react';
 
 // Championship Belt styles based on winner
@@ -199,26 +200,23 @@ export default function FamilyBattleResultsModal({
     }
   }, [show, battleData]);
   
-  // Create mock battle data if it's missing required fields (for testing)
-  const mockBattleData = battleData ? {
-    winner: battleData.winner || 'children',
-    margin: battleData.margin || 15,
-    childrenMinutes: battleData.childrenMinutes || battleData.children || 35,
-    parentMinutes: battleData.parentMinutes || battleData.parents || 20,
-    studentBreakdown: battleData.studentBreakdown || { 
-      'student1': { name: 'Jesse', minutes: 20 },
-      'student2': { name: 'Ariel', minutes: 15 }
-    },
+  // FIXED: Use real battle data directly without mock data
+  const processedBattleData = battleData ? {
+    winner: battleData.winner,
+    margin: battleData.margin || 0,
+    childrenMinutes: battleData.childrenMinutes || 0,
+    parentMinutes: battleData.parentMinutes || 0,
+    studentBreakdown: battleData.studentBreakdown || {},
     parentBreakdown: battleData.parentBreakdown || {},
-    weekNumber: battleData.weekNumber || 32,
+    weekNumber: battleData.weekNumber || 1,
     isResultsDay: battleData.isResultsDay || false
   } : null;
   
   // Calculate MVP from winning team
   const calculateMVP = () => {
-    if (!mockBattleData) return null;
+    if (!processedBattleData) return null;
     
-    const { winner, studentBreakdown, parentBreakdown, parentMinutes } = mockBattleData;
+    const { winner, studentBreakdown, parentBreakdown, parentMinutes } = processedBattleData;
     
     if (winner === 'children') {
       const students = Object.entries(studentBreakdown);
@@ -265,14 +263,14 @@ export default function FamilyBattleResultsModal({
   
   // Calculate XP for all students (if children won)
   const calculateStudentXP = () => {
-    if (!mockBattleData || mockBattleData.winner !== 'children') return {};
+    if (!processedBattleData || processedBattleData.winner !== 'children') return {};
     
     const BASE_XP = 25;
     const MVP_BONUS = 25;
     const xpRewards = {};
     const mvp = calculateMVP();
     
-    Object.entries(mockBattleData.studentBreakdown).forEach(([id, data]) => {
+    Object.entries(processedBattleData.studentBreakdown).forEach(([id, data]) => {
       const isMVP = mvp && mvp.id === id;
       xpRewards[id] = {
         ...data,
@@ -293,14 +291,14 @@ export default function FamilyBattleResultsModal({
   }, [isVisible, stage]);
   
   const handleNextStage = () => {
-    if (!mockBattleData) return;
+    if (!processedBattleData) return;
     
     if (stage === 'winner') {
       setStage('mvp');
     } else if (stage === 'mvp') {
-      if (mockBattleData.winner === 'children') {
+      if (processedBattleData.winner === 'children') {
         setStage('rewards');
-      } else if (mockBattleData.winner === 'parents') {
+      } else if (processedBattleData.winner === 'parents') {
         setStage('bragging');
       } else {
         setStage('summary');
@@ -314,7 +312,7 @@ export default function FamilyBattleResultsModal({
   };
   
   // Don't render if not visible or no data
-  if (!isVisible || !mockBattleData) return null;
+  if (!isVisible || !processedBattleData) return null;
   
   const { 
     winner, 
@@ -324,7 +322,7 @@ export default function FamilyBattleResultsModal({
     studentBreakdown,
     parentBreakdown,
     weekNumber 
-  } = mockBattleData;
+  } = processedBattleData;
   
   const colors = CHAMPIONSHIP_COLORS[winner] || CHAMPIONSHIP_COLORS.tie;
   const victoryMsg = getVictoryMessage(winner, margin);
