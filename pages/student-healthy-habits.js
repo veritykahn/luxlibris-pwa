@@ -1724,7 +1724,7 @@ export default function StudentHealthyHabits() {
                   margin: '0 0 12px 0',
                   lineHeight: '1.5'
                 }}>
-                  You've read <strong>{pendingBankMinutes} minutes</strong> so far. 
+                  You&apos;ve read <strong>{pendingBankMinutes} minutes</strong> so far. 
                   Reading sessions need to be at least <strong>20 minutes</strong> to count towards your daily streak.
                 </p>
                 
@@ -1753,7 +1753,7 @@ export default function StudentHealthyHabits() {
                   margin: 0,
                   lineHeight: '1.4'
                 }}>
-                  💡 <strong>Tip:</strong> You'll still earn {pendingBankMinutes} XP if you bank now, but it won&apos;t count as a streak session.
+                  💡 <strong>Tip:</strong> You&apos;ll still earn {pendingBankMinutes} XP if you bank now, but it won&apos;t count as a streak session.
                 </p>
               </div>
               

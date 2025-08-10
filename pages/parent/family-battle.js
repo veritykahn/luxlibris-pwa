@@ -821,8 +821,8 @@ export default function ParentFamilyBattle() {
                 marginBottom: '20px',
                 lineHeight: '1.5'
               }}>
-                You've been fighting in the family reading battle for <strong>{parentStreakDays} consecutive days</strong>! 
-                Every day you read, you're contributing to your team's victory and setting an amazing example!
+                You&apos;ve been fighting in the family reading battle for <strong>{parentStreakDays} consecutive days</strong>! 
+                Every day you read, you&apos;re contributing to your team&apos;s victory and setting an amazing example!
               </p>
               
               {/* Championship Status */}

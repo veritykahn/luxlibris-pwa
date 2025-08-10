@@ -1740,7 +1740,7 @@ export default function ParentHealthyHabits() {
                   margin: '0 0 12px 0',
                   lineHeight: '1.5'
                 }}>
-                  You've read <strong>{pendingBankMinutes} minutes</strong> so far. 
+                  You&apos;ve read <strong>{pendingBankMinutes} minutes</strong> so far. 
                   Reading sessions need to be at least <strong>20 minutes</strong> to count towards your daily streak. Banked sessions still count towards your Family Battle.
                 </p>
                 
