@@ -1,4 +1,4 @@
-// pages/parent/family-battle.js - FIXED VERSION with proper modal handling
+// pages/parent/family-battle.js - FIXED VERSION with localStorage for Sunday Results Modal
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
@@ -16,7 +16,80 @@ import {
   getFamilyBattleStats
 } from '../../lib/family-battle-system'
 
-// Family Streak Tracker Component - Updated with Battle Theming
+// Sunday Results Button Component
+function SundayResultsButton({ onClick, winner, margin }) {
+  const getResultText = () => {
+    if (winner === 'children') {
+      return `Kids Won +${margin}`;
+    } else if (winner === 'parents') {
+      return `Parents Won +${margin}`;
+    } else {
+      return 'Tie Battle';
+    }
+  };
+
+  const getResultEmoji = () => {
+    if (winner === 'children') return '😭';
+    if (winner === 'parents') return '🏆';
+    return '🤝';
+  };
+
+  return (
+    <div 
+      onClick={onClick}
+      style={{
+        position: 'fixed',
+        top: '20px',
+        right: '20px',
+        backgroundColor: '#FFD700',
+        borderRadius: '50px',
+        padding: '8px 16px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        boxShadow: '0 4px 12px rgba(255, 215, 0, 0.5)',
+        cursor: 'pointer',
+        transition: 'all 0.3s ease',
+        animation: 'pulse 2s infinite',
+        zIndex: 200,
+        border: '2px solid #FFC700'
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'scale(1.1)'
+        e.currentTarget.style.boxShadow = '0 6px 20px rgba(255, 215, 0, 0.7)'
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'scale(1)'
+        e.currentTarget.style.boxShadow = '0 4px 12px rgba(255, 215, 0, 0.5)'
+      }}
+    >
+      <span style={{ 
+        fontSize: '20px',
+        animation: 'bounce 1s infinite'
+      }}>
+        {getResultEmoji()}
+      </span>
+      <div style={{ color: '#000000' }}>
+        <div style={{
+          fontSize: '12px',
+          fontWeight: 'bold',
+          lineHeight: '1'
+        }}>
+          RESULTS
+        </div>
+        <div style={{
+          fontSize: '10px',
+          opacity: 0.8,
+          lineHeight: '1'
+        }}>
+          {getResultText()}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Regular Streak Tracker Component (Mon-Sat)
 function FamilyStreakTracker({ streakDays, theme, onStreakClick, currentStreak }) {
   const getStreakColor = (days) => {
     if (days >= 30) return '#FF4444'
@@ -137,12 +210,15 @@ export default function ParentFamilyBattle() {
   const [showResultsModal, setShowResultsModal] = useState(false)
   const [parentVictories, setParentVictories] = useState([])
   
-  // FIXED: Track if results modal has been shown this week
-  const [resultsShownForWeek, setResultsShownForWeek] = useState(null)
+  // FIXED: Use localStorage to persist which week's results have been shown
+  const [sundayBattleData, setSundayBattleData] = useState(null)
   
   // Add loading flag to prevent concurrent loads
   const isLoadingBattleData = useRef(false)
   const hasLoadedInitialData = useRef(false)
+
+  // Check if it's Sunday
+  const isSunday = new Date().getDay() === 0;
 
   // Navigation menu items
   const navMenuItems = useMemo(() => [
@@ -308,17 +384,49 @@ export default function ParentFamilyBattle() {
     }
   }
 
-  // Load family battle data
+  // Load family battle data - UPDATED VERSION
   const loadFamilyBattleData = useCallback(async () => {
     if (!user?.uid || !linkedStudents.length || !parentData?.familyId) return;
-    if (isLoadingBattleData.current) return; // Prevent concurrent loads
+    if (isLoadingBattleData.current) return;
     
     isLoadingBattleData.current = true;
     
     try {
       // Get current battle data using family ID
       const battleData = await calculateFamilyBattleData(parentData.familyId, linkedStudents);
-      setFamilyBattleData(battleData);
+      
+      // FIXED: On Sunday, check if we have stored completed week data
+      if (isSunday) {
+        // Try to get the stored completed week data from Firebase
+        const familyRef = doc(db, 'families', parentData.familyId);
+        const familyDoc = await getDoc(familyRef);
+        
+        if (familyDoc.exists()) {
+          const familyData = familyDoc.data();
+          const lastCompletedWeek = familyData.familyBattleSettings?.lastCompletedWeek;
+          
+          // Use the completed week data if available and has actual data
+          if (lastCompletedWeek && (lastCompletedWeek.parentMinutes > 0 || lastCompletedWeek.childrenMinutes > 0)) {
+            console.log('📊 Using stored Sunday Results Data:', lastCompletedWeek);
+            setSundayBattleData(lastCompletedWeek);
+            setFamilyBattleData(null); // Clear regular battle data on Sunday
+          } else if (battleData && (battleData.parentMinutes > 0 || battleData.childrenMinutes > 0)) {
+            // Use calculated data if it has values
+            console.log('📊 Using calculated Sunday Results Data:', battleData);
+            setSundayBattleData(battleData);
+            setFamilyBattleData(null);
+          } else {
+            // No data for Sunday - show empty state
+            console.log('📊 No battle data for Sunday');
+            setSundayBattleData(battleData);
+            setFamilyBattleData(null);
+          }
+        }
+      } else {
+        // Not Sunday - set as regular battle data
+        setFamilyBattleData(battleData);
+        setSundayBattleData(null);
+      }
       
       // Get family statistics
       const stats = await getFamilyBattleStats(parentData.familyId);
@@ -329,7 +437,7 @@ export default function ParentFamilyBattle() {
     } finally {
       isLoadingBattleData.current = false;
     }
-  }, [user?.uid, linkedStudents.length, parentData?.familyId])
+  }, [user?.uid, linkedStudents.length, parentData?.familyId, isSunday])
 
   // Load parent victories for the victory modal
   const loadParentVictories = useCallback(async () => {
@@ -393,27 +501,33 @@ export default function ParentFamilyBattle() {
     }
   }, [user?.uid, authLoading, loadParentStreak])
 
-  // FIXED: Auto-show results modal on Sunday - only once per week
+  // FIXED: Auto-show results modal on Sunday - only once per week using localStorage
   useEffect(() => {
-    const today = new Date();
-    const isSunday = today.getDay() === 0;
-    
     // Only show if:
     // 1. It's Sunday
-    // 2. We have battle data with a winner
-    // 3. The winner is not 'ongoing' 
-    // 4. We haven't shown it for this week yet
+    // 2. We have Sunday battle data with a winner
+    // 3. We haven't shown it for this week yet (check localStorage)
     if (isSunday && 
-        familyBattleData && 
-        familyBattleData.winner && 
-        familyBattleData.winner !== 'ongoing' &&
-        familyBattleData.weekNumber !== resultsShownForWeek) {
+        sundayBattleData && 
+        sundayBattleData.winner && 
+        sundayBattleData.winner !== 'ongoing' &&
+        sundayBattleData.weekNumber) {
       
-      console.log('📊 Auto-showing results modal for week:', familyBattleData.weekNumber);
-      setShowResultsModal(true);
-      setResultsShownForWeek(familyBattleData.weekNumber); // Mark as shown for this week
+      // Check localStorage for shown week
+      const localStorageKey = `familyBattleResultsShown_parent_${user?.uid}`;
+      const shownWeek = localStorage.getItem(localStorageKey);
+      const currentWeek = sundayBattleData.weekNumber.toString();
+      
+      if (shownWeek !== currentWeek) {
+        console.log('📊 Auto-showing results modal for week:', currentWeek);
+        setShowResultsModal(true);
+        // Store in localStorage that we've shown this week's results
+        localStorage.setItem(localStorageKey, currentWeek);
+      } else {
+        console.log('📊 Results already shown for week:', currentWeek);
+      }
     }
-  }, [familyBattleData, resultsShownForWeek])
+  }, [isSunday, sundayBattleData, user?.uid])
 
   // Load initial data with premium check
   useEffect(() => {
@@ -464,6 +578,10 @@ export default function ParentFamilyBattle() {
 
   const handleStreakClick = () => {
     setShowStreakModal(true)
+  }
+
+  const handleResultsClick = () => {
+    setShowResultsModal(true)
   }
 
   const handleDataUpdate = () => {
@@ -551,6 +669,9 @@ export default function ParentFamilyBattle() {
     )
   }
 
+  // Determine which battle data to show
+  const displayBattleData = isSunday ? sundayBattleData : familyBattleData;
+
   return (
     <>
       <Head>
@@ -579,13 +700,21 @@ export default function ParentFamilyBattle() {
           zIndex: 1
         }} />
         
-        {/* Family Streak Tracker */}
-        <FamilyStreakTracker
-          streakDays={parentStreakDays}
-          theme={luxTheme}
-          onStreakClick={handleStreakClick}
-          currentStreak={familyStats?.currentStreak}
-        />
+        {/* FIXED: Show Results button on Sunday, Streak tracker on other days */}
+        {isSunday && sundayBattleData ? (
+          <SundayResultsButton
+            onClick={handleResultsClick}
+            winner={sundayBattleData.winner}
+            margin={sundayBattleData.margin}
+          />
+        ) : (
+          <FamilyStreakTracker
+            streakDays={parentStreakDays}
+            theme={luxTheme}
+            onStreakClick={handleStreakClick}
+            currentStreak={familyStats?.currentStreak}
+          />
+        )}
         
         {/* Header */}
         <div style={{
@@ -644,7 +773,7 @@ export default function ParentFamilyBattle() {
               color: luxTheme.textSecondary,
               margin: '4px 0 0 0'
             }}>
-              WWE for Reading Champions
+              {isSunday ? '✨ Sunday Day of Rest ✨' : 'WWE for Reading Champions'}
             </p>
             {isPilotPhase && (
               <div style={{
@@ -782,12 +911,41 @@ export default function ParentFamilyBattle() {
               </div>
             )}
 
-            {/* Main Family Battle Manager Component */}
+            {/* Sunday Message */}
+            {isSunday && (
+              <div style={{
+                backgroundColor: '#FFD70020',
+                border: '2px solid #FFD700',
+                borderRadius: '12px',
+                padding: '16px',
+                marginBottom: '20px',
+                textAlign: 'center'
+              }}>
+                <div style={{
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  color: luxTheme.textPrimary,
+                  marginBottom: '8px'
+                }}>
+                  🙏 Sunday Day of Rest 🙏
+                </div>
+                <div style={{
+                  fontSize: '14px',
+                  color: luxTheme.textSecondary
+                }}>
+                  Reflect on this week&apos;s reading journey. The battle resumes tomorrow!
+                </div>
+              </div>
+            )}
+
+            {/* Main Family Battle Manager Component - Pass Sunday data on Sunday */}
             <ParentFamilyBattleManager
               theme={luxTheme}
               parentData={parentData}
               linkedStudents={linkedStudents}
               onUpdate={handleDataUpdate}
+              battleData={displayBattleData} // Pass the appropriate battle data
+              isSunday={isSunday}
             />
           </div>
         </PremiumGate>
@@ -913,19 +1071,22 @@ export default function ParentFamilyBattle() {
           theme={luxTheme}
         />
 
-        {/* FIXED: Family Battle Results Modal - pass real data directly */}
+        {/* FIXED: Family Battle Results Modal - use Sunday data on Sunday */}
         <FamilyBattleResultsModal
           show={showResultsModal}
           onClose={() => {
             setShowResultsModal(false);
-            // Reload the data after closing
-            loadFamilyBattleData();
+            // Also update localStorage when manually closed
+            if (sundayBattleData?.weekNumber) {
+              const localStorageKey = `familyBattleResultsShown_parent_${user?.uid}`;
+              localStorage.setItem(localStorageKey, sundayBattleData.weekNumber.toString());
+            }
             // If parents won, optionally show victory archive
-            if (familyBattleData?.winner === 'parents') {
+            if (sundayBattleData?.winner === 'parents') {
               setTimeout(() => setShowVictoryModal(true), 500);
             }
           }}
-          battleData={familyBattleData} // Pass the real battle data directly
+          battleData={sundayBattleData || displayBattleData} // Use Sunday data if available
           isStudent={false}
           currentUserId={user?.uid}
           theme={luxTheme}

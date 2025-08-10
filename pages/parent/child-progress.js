@@ -1,4 +1,4 @@
-// pages/parent/child-progress.js - FIXED achievement tiers (yearly vs lifetime)
+// pages/parent/child-progress.js - FIXED to show current year goals on cards
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
@@ -816,12 +816,15 @@ function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees,
   )
 }
 
-// 🆕 UPDATED: Child Progress Card Component - Now uses lifetimeBooksSubmitted
+// 🆕 FIXED: Child Progress Card Component - Now uses current year goals
 function ChildProgressCard({ child, theme, childColor, onViewDetails, onApproveUnlock, readingStats, onViewUnlocks, showComingSoon, setShowComingSoon, notifications }) {
-  // UPDATED: Calculate progress percentage using lifetimeBooksSubmitted
-  const lifetimeBooks = child.lifetimeBooksSubmitted || 0
-  const personalGoal = child.personalGoal || 100
-  const progressPercentage = Math.min(Math.round((lifetimeBooks / personalGoal) * 100), 100)
+  // FIXED: Calculate progress percentage using current year books
+  const currentYearBooks = child.booksSubmittedThisYear || 0
+  const personalGoal = child.personalGoal || 20
+  const progressPercentage = Math.min(Math.round((currentYearBooks / personalGoal) * 100), 100)
+  
+  // Format academic year (e.g., "2024-2025")
+  const academicYear = child.academicYear || getCurrentAcademicYear()
   
   // Use real-time notification data for this specific child
   const childNotifications = notifications?.getNotificationsByStudent(child.id) || []
@@ -876,7 +879,7 @@ function ChildProgressCard({ child, theme, childColor, onViewDetails, onApproveU
         </p>
       </div>
 
-      {/* Reading Goal Progress - UPDATED */}
+      {/* Reading Goal Progress - FIXED to show current year */}
       <div style={{
         backgroundColor: `${childColor}20`,
         borderRadius: '12px',
@@ -894,13 +897,13 @@ function ChildProgressCard({ child, theme, childColor, onViewDetails, onApproveU
             fontWeight: '600',
             color: theme.textPrimary
           }}>
-            📚 Lifetime Reading Goal
+            📚 Book Goal for {academicYear}
           </span>
           <span style={{
             fontSize: 'clamp(11px, 3vw, 12px)',
             color: theme.textSecondary
           }}>
-            {lifetimeBooks} / {personalGoal}
+            {currentYearBooks} / {personalGoal}
           </span>
         </div>
         <div style={{

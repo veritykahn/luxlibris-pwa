@@ -536,8 +536,8 @@ const loadLinkedStudentsData = async (linkedStudentIds) => {
   }
 };
 
-// Main Parent Family Battle Manager Component
-export default function ParentFamilyBattleManager({ theme, parentData, linkedStudents, onUpdate }) {
+// Main Parent Family Battle Manager Component - UPDATED WITH NEW PROPS
+export default function ParentFamilyBattleManager({ theme, parentData, linkedStudents, onUpdate, battleData, isSunday }) {
   const { user } = useAuth();
   const { hasFeature, isPilotPhase } = usePremiumFeatures();
   
@@ -545,6 +545,14 @@ export default function ParentFamilyBattleManager({ theme, parentData, linkedStu
   const [familyStats, setFamilyStats] = useState(null);
   const [currentBattle, setCurrentBattle] = useState(null);
   const [invitedStudents, setInvitedStudents] = useState(new Set());
+  
+  // Use passed battle data on Sunday instead of loading fresh
+  useEffect(() => {
+    if (isSunday && battleData) {
+      console.log('📊 Using passed Sunday battle data:', battleData);
+      setCurrentBattle(battleData);
+    }
+  }, [isSunday, battleData]);
   
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState('');
@@ -556,6 +564,13 @@ export default function ParentFamilyBattleManager({ theme, parentData, linkedStu
 
   // Load family battle data using sync system
   const loadFamilyBattleData = useCallback(async () => {
+    // Don't load fresh data on Sunday if we have passed data
+    if (isSunday && battleData) {
+      console.log('📊 Skipping fresh load on Sunday, using passed data');
+      setCurrentBattle(battleData);
+      return;
+    }
+    
     if (!user?.uid || !familyId) return;
     
     try {
@@ -610,7 +625,7 @@ export default function ParentFamilyBattleManager({ theme, parentData, linkedStu
     } finally {
       setIsLoading(false);
     }
-  }, [user?.uid, familyId, linkedStudents]);
+  }, [user?.uid, familyId, linkedStudents, isSunday, battleData]);
 
   // Check family battle status and auto-invite students
   useEffect(() => {

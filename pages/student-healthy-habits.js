@@ -14,6 +14,8 @@ import {
   checkTimerBadgeProgress,
   getLevelProgress 
 } from '../lib/badge-system';
+// NEW XP MANAGEMENT IMPORTS
+import { awardReadingXP, awardBadgeXP } from '../lib/xp-management';
 
 export default function StudentHealthyHabits() {
   const router = useRouter();
@@ -589,16 +591,13 @@ export default function StudentHealthyHabits() {
     }
   }, [studentData, loadStreakData]);
 
-  // UPDATED SAVE READING SESSION WITH NEW XP SYSTEM
+  // UPDATED SAVE READING SESSION WITH NEW XP MANAGEMENT SYSTEM
   const saveReadingSession = useCallback(async (duration, completed) => {
     try {
       if (!studentData) return;
-
       const today = getLocalDateString(new Date());
       
-      // NEW: 1 XP per minute system
-      const sessionXP = duration; // Simple: 1 XP per minute
-      
+      // Save the session first
       const sessionData = {
         date: today,
         startTime: new Date(),
@@ -606,53 +605,82 @@ export default function StudentHealthyHabits() {
         targetDuration: Math.floor(timerDuration / 60),
         completed: completed,
         bookId: currentBookId || null,
-        xpEarned: sessionXP, // Track XP per session
+        // Remove xpEarned from here - it will be in xpHistory
       };
-
+      
       const sessionsRef = collection(db, `entities/${studentData.entityId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
       const docRef = await addDoc(sessionsRef, sessionData);
       const newSession = { id: docRef.id, ...sessionData };
-
+      
       setTodaysSessions(prev => [newSession, ...prev]);
       setTodaysMinutes(prev => prev + duration);
-
-      // Update student's total XP
-      const currentTotalXP = studentData.totalXP || 0;
-      const newTotalXP = currentTotalXP + sessionXP;
       
-      // Check for badges
+      // Award reading XP using the new system
+      const xpResult = await awardReadingXP(studentData, duration, docRef.id);
+      
+      if (!xpResult.success) {
+        console.error('Failed to award reading XP:', xpResult.error);
+        setShowSuccess('❌ Error awarding XP. Please try again.');
+        setTimeout(() => setShowSuccess(''), 3000);
+        return;
+      }
+      
+      // Check for badge completion
       const currentWeek = getCurrentWeekBadge();
-      const badgeResult = currentWeek ? await checkTimerBadgeProgress(studentData, sessionData, currentWeek.week) : null;
+      let totalXPAwarded = xpResult.xpAwarded;
+      let finalTotal = xpResult.newTotal;
       
-      if (badgeResult && badgeResult.earned) {
-        // Award badge XP too
-        const totalXP = newTotalXP + badgeResult.badge.xp;
+      if (currentWeek) {
+        const badgeResult = await checkTimerBadgeProgress(studentData, sessionData, currentWeek.week);
         
-        await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
-          totalXP: totalXP,
-          [`badgeEarnedWeek${currentWeek.week}`]: true,
-          lastBadgeEarned: new Date()
-        });
-        
-        // Show XP popup (simple)
-        setXPReward({
-          amount: sessionXP + badgeResult.badge.xp,
-          reason: `${sessionXP} XP + ${badgeResult.badge.xp} bonus XP!`,
-          total: totalXP
-        });
+        if (badgeResult && badgeResult.earned) {
+          // Award badge XP using the new system
+          const badgeXPResult = await awardBadgeXP(studentData, currentWeek.week, 'healthy-habits');
+          
+          if (badgeXPResult.success) {
+            totalXPAwarded += badgeXPResult.xpAwarded;
+            finalTotal = badgeXPResult.newTotal;
+            
+            setXPReward({
+              amount: totalXPAwarded,
+              reason: `${duration} min + ${currentWeek.name} badge!`,
+              total: finalTotal
+            });
+            
+            // Update local state
+            setStudentData(prev => ({
+              ...prev,
+              totalXP: finalTotal,
+              [`badgeEarnedWeek${currentWeek.week}`]: true
+            }));
+          }
+        } else {
+          // Just reading XP
+          setXPReward({
+            amount: xpResult.xpAwarded,
+            reason: completed ? `${duration} minute session completed!` : `${duration} minutes of reading!`,
+            total: xpResult.newTotal
+          });
+          
+          // Update local state
+          setStudentData(prev => ({
+            ...prev,
+            totalXP: xpResult.newTotal
+          }));
+        }
       } else {
-        // Update XP without badge
-        await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
-          totalXP: newTotalXP,
-          lastXPUpdate: new Date()
+        // No current week badge, just reading XP
+        setXPReward({
+          amount: xpResult.xpAwarded,
+          reason: completed ? `${duration} minute session completed!` : `${duration} minutes of reading!`,
+          total: xpResult.newTotal
         });
         
-        // Show regular XP popup
-        setXPReward({
-          amount: sessionXP,
-          reason: completed ? `${duration} minute session completed!` : `${duration} minutes of reading!`,
-          total: newTotalXP
-        });
+        // Update local state
+        setStudentData(prev => ({
+          ...prev,
+          totalXP: xpResult.newTotal
+        }));
       }
       
       setShowXPReward(true);
@@ -664,8 +692,8 @@ export default function StudentHealthyHabits() {
       }
 
       setShowSuccess(completed ? 
-        `🎉 Reading session completed! +${sessionXP} XP earned!` : 
-        `📖 Progress saved! +${sessionXP} XP earned!`
+        `🎉 Reading session completed! +${totalXPAwarded} XP earned!` : 
+        `📖 Progress saved! +${totalXPAwarded} XP earned!`
       );
       setTimeout(() => setShowSuccess(''), 3000);
     } catch (error) {

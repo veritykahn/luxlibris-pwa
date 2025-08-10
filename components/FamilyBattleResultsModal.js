@@ -1,4 +1,4 @@
-// components/FamilyBattleResultsModal.js - FIXED VERSION
+// components/FamilyBattleResultsModal.js - COMPLETE FIXED VERSION
 import React, { useState, useEffect } from 'react';
 
 // Championship Belt styles based on winner
@@ -212,43 +212,51 @@ export default function FamilyBattleResultsModal({
     isResultsDay: battleData.isResultsDay || false
   } : null;
   
-  // Calculate MVP from winning team
+  // Calculate MVP from winning team - UPDATED TO HANDLE PARENT NAMES
   const calculateMVP = () => {
     if (!processedBattleData) return null;
     
-    const { winner, studentBreakdown, parentBreakdown, parentMinutes } = processedBattleData;
+    const { winner, studentBreakdown, parentBreakdown, parentMinutes, childrenMinutes } = processedBattleData;
+    
+    // If it's a tie or no minutes recorded, no MVP
+    if (winner === 'tie' || (childrenMinutes === 0 && parentMinutes === 0)) {
+      return null;
+    }
     
     if (winner === 'children') {
-      const students = Object.entries(studentBreakdown);
+      const students = Object.entries(studentBreakdown || {});
       if (students.length === 0) return null;
       
-      const mvp = students.reduce((max, [id, data]) => {
+      // Find the student with most minutes
+      let mvp = null;
+      let maxMinutes = 0;
+      
+      students.forEach(([id, data]) => {
         const minutes = data.minutes || 0;
-        return minutes > (max.minutes || 0) ? { id, ...data, minutes } : max;
-      }, {});
+        if (minutes > maxMinutes) {
+          maxMinutes = minutes;
+          mvp = { 
+            id, 
+            name: data.name || 'Student',
+            minutes,
+            isStudentMVP: true
+          };
+        }
+      });
       
-      const BASE_XP = 25;
-      const MVP_BONUS = 25;
-      mvp.xpEarned = BASE_XP + MVP_BONUS;
-      mvp.isStudentMVP = true;
+      if (mvp && mvp.minutes > 0) {
+        const BASE_XP = 25;
+        const MVP_BONUS = 25;
+        mvp.xpEarned = BASE_XP + MVP_BONUS;
+        return mvp;
+      }
       
-      return mvp.name ? mvp : null;
+      return null;
     } else if (winner === 'parents') {
       const parents = Object.entries(parentBreakdown || {});
       
-      if (parents.length > 1) {
-        const mvpParent = parents.reduce((max, [uid, minutes]) => {
-          return minutes > max.minutes ? { uid, minutes } : max;
-        }, { uid: null, minutes: 0 });
-        
-        return {
-          name: isStudent ? "Parent Champion" : (currentUserId === mvpParent.uid ? "You" : "Your Partner"),
-          minutes: mvpParent.minutes,
-          isParent: true,
-          isCurrentUser: !isStudent && currentUserId === mvpParent.uid,
-          multipleParents: true
-        };
-      } else {
+      if (parents.length === 0 && parentMinutes > 0) {
+        // Fallback if breakdown is missing
         return {
           name: isStudent ? "Your Parents" : "You",
           minutes: parentMinutes,
@@ -257,7 +265,48 @@ export default function FamilyBattleResultsModal({
           multipleParents: false
         };
       }
+      
+      if (parents.length > 1) {
+        // Multiple parents - find MVP - UPDATED TO HANDLE NAMES
+        let mvpParent = null;
+        let maxMinutes = 0;
+        
+        parents.forEach(([uid, data]) => {
+          const minutes = typeof data === 'number' ? data : (data.minutes || 0);
+          const name = typeof data === 'object' ? data.name : null;
+          if (minutes > maxMinutes) {
+            maxMinutes = minutes;
+            mvpParent = { uid, minutes, name };
+          }
+        });
+        
+        if (mvpParent && mvpParent.minutes > 0) {
+          return {
+            name: mvpParent.name || (isStudent ? "Parent Champion" : (currentUserId === mvpParent.uid ? "You" : "Your Partner")),
+            minutes: mvpParent.minutes,
+            isParent: true,
+            isCurrentUser: !isStudent && currentUserId === mvpParent.uid,
+            multipleParents: true
+          };
+        }
+      } else if (parents.length === 1) {
+        // Single parent - UPDATED TO HANDLE NAMES
+        const [uid, data] = parents[0];
+        const minutes = typeof data === 'number' ? data : (data.minutes || 0);
+        const name = typeof data === 'object' ? data.name : null;
+        
+        if (minutes > 0) {
+          return {
+            name: name || (isStudent ? "Your Parent" : "You"),
+            minutes: minutes,
+            isParent: true,
+            isCurrentUser: !isStudent,
+            multipleParents: false
+          };
+        }
+      }
     }
+    
     return null;
   };
   
@@ -282,7 +331,7 @@ export default function FamilyBattleResultsModal({
     return xpRewards;
   };
   
-  // Stage progression
+  // Stage progression - UPDATED TO SKIP MVP IF NO MVP
   useEffect(() => {
     if (isVisible && stage === 'intro') {
       const timer = setTimeout(() => setStage('winner'), 2000);
@@ -293,8 +342,19 @@ export default function FamilyBattleResultsModal({
   const handleNextStage = () => {
     if (!processedBattleData) return;
     
+    const mvp = calculateMVP();
+    
     if (stage === 'winner') {
-      setStage('mvp');
+      // Skip MVP stage if no MVP (tie or no data)
+      if (mvp) {
+        setStage('mvp');
+      } else if (processedBattleData.winner === 'children') {
+        setStage('rewards');
+      } else if (processedBattleData.winner === 'parents') {
+        setStage('bragging');
+      } else {
+        setStage('summary');
+      }
     } else if (stage === 'mvp') {
       if (processedBattleData.winner === 'children') {
         setStage('rewards');
@@ -476,7 +536,7 @@ export default function FamilyBattleResultsModal({
                   animation: 'pulse 2s infinite'
                 }}
               >
-                {winner !== 'tie' ? 'See MVP →' : 'Continue →'}
+                {winner !== 'tie' && mvp ? 'See MVP →' : 'Continue →'}
               </button>
             </div>
           )}
@@ -731,7 +791,7 @@ export default function FamilyBattleResultsModal({
                 Week {weekNumber} Complete!
               </h2>
               
-              {winner !== 'tie' && (Object.keys(studentBreakdown).length > 1 || Object.keys(parentBreakdown || {}).length > 1) && (
+              {winner !== 'tie' && (Object.keys(studentBreakdown).length > 0 || Object.keys(parentBreakdown || {}).length > 0) && (
                 <div style={{
                   backgroundColor: `${theme.primary}10`,
                   borderRadius: '12px',
@@ -772,7 +832,7 @@ export default function FamilyBattleResultsModal({
                     </div>
                   )}
                   
-                  {Object.keys(parentBreakdown || {}).length > 1 && (
+                  {Object.keys(parentBreakdown || {}).length > 0 && (
                     <div>
                       <div style={{
                         fontSize: '12px',
@@ -782,18 +842,24 @@ export default function FamilyBattleResultsModal({
                       }}>
                         Team Parents:
                       </div>
-                      {Object.entries(parentBreakdown).map(([uid, minutes], index) => (
-                        <div key={uid} style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          padding: '2px 8px',
-                          fontSize: '11px',
-                          color: theme.textSecondary
-                        }}>
-                          <span>Parent {index + 1}</span>
-                          <span>{minutes} min</span>
-                        </div>
-                      ))}
+                      {Object.entries(parentBreakdown).map(([uid, data]) => {
+                        // Handle both old format (just minutes) and new format (object with name and minutes)
+                        const minutes = typeof data === 'number' ? data : (data.minutes || 0);
+                        const name = typeof data === 'object' ? data.name : `Parent ${Object.keys(parentBreakdown).indexOf(uid) + 1}`;
+                        
+                        return (
+                          <div key={uid} style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            padding: '2px 8px',
+                            fontSize: '11px',
+                            color: theme.textSecondary
+                          }}>
+                            <span>{name}</span>
+                            <span>{minutes} min</span>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>

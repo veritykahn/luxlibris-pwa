@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePhaseAccess } from '../../hooks/usePhaseAccess';
 import { getStudentDataEntities, updateStudentDataEntities } from '../../lib/firebase';
+import { awardBadgeXP } from '../../lib/xp-management'; // ADD THIS LINE
 import { getCurrentWeekBadge, getBadgeProgress, getEarnedBadges, getLevelProgress, BADGE_CALENDAR } from '../../lib/badge-system';
 import { calculateReadingPersonality, shouldShowFirstBookCelebration, unlockCertificate } from '../../lib/reading-personality';
 import { collection, getDocs, query, where } from 'firebase/firestore';
@@ -268,44 +269,44 @@ const checkForNewContentBadges = useCallback(async () => {
     }
   }, [studentData, badgeUnlockFeedback, sendBadgeNotification]);
   
-  // FIXED BADGE AWARD LOGIC
+  // FIXED BADGE AWARD LOGIC with XP management system
   const awardBadgeIfComplete = async (progress, weekBadge) => {
     if (!progress || !progress.completed || !weekBadge || !studentData) return false;
     
-    // Check if badge already earned
+    // Check if already earned using the flag
     if (studentData[`badgeEarnedWeek${weekBadge.week}`]) return false;
     
     try {
-      // Award the badge!
-      const currentTotalXP = studentData.totalXP || 0;
-      const newTotalXP = currentTotalXP + weekBadge.xp;
+      // Use the new XP management system
+      const result = await awardBadgeXP(studentData, weekBadge.week, 'stats-dashboard');
       
-      await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
-        [`badgeEarnedWeek${weekBadge.week}`]: true,
-        lastBadgeEarned: new Date(),
-        totalXP: newTotalXP
-      });
+      if (result.success) {
+        // Update local state
+        setStudentData(prev => ({
+          ...prev,
+          [`badgeEarnedWeek${weekBadge.week}`]: true,
+          totalXP: result.newTotal
+        }));
+        
+        // Trigger notifications
+        badgeUnlockFeedback();
+        sendBadgeNotification(weekBadge.name, weekBadge.xp);
+        
+        // Show success message
+        setShowSuccess(`🏆 ${weekBadge.name} badge earned! +${result.xpAwarded} XP!`);
+        setTimeout(() => setShowSuccess(''), 4000);
+        
+        // Reload badge data
+        const badges = getEarnedBadges({...studentData, [`badgeEarnedWeek${weekBadge.week}`]: true});
+        setEarnedBadges(badges);
+        
+        return true;
+      } else if (result.duplicate) {
+        console.log('Badge already awarded - race condition prevented');
+        return false;
+      }
       
-      // Update local state
-      setStudentData(prev => ({
-        ...prev,
-        [`badgeEarnedWeek${weekBadge.week}`]: true,
-        totalXP: newTotalXP
-      }));
-      
-      // TRIGGER ALL NOTIFICATIONS
-      badgeUnlockFeedback();
-      sendBadgeNotification(weekBadge.name, weekBadge.xp);
-      
-      // Show success message
-      setShowSuccess(`🏆 ${weekBadge.name} badge earned! +${weekBadge.xp} XP!`);
-      setTimeout(() => setShowSuccess(''), 4000);
-      
-      // Reload badge data
-      const badges = getEarnedBadges({...studentData, [`badgeEarnedWeek${weekBadge.week}`]: true});
-      setEarnedBadges(badges);
-      
-      return true;
+      return false;
     } catch (error) {
       console.error('Error awarding badge:', error);
       return false;

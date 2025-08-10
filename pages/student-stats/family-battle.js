@@ -1,6 +1,6 @@
-// pages/student-stats/family-battle.js - SIMPLIFIED: No Challenges, Just Battle
+// pages/student-stats/family-battle.js - FIXED: Student contribution & Sunday messaging
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePhaseAccess } from '../../hooks/usePhaseAccess';
@@ -15,15 +15,91 @@ import FamilyBattleResultsModal from '../../components/FamilyBattleResultsModal'
 // Import sync functions
 import {
   getStudentFamilyBattleStatus,
-  getFamilyBattleDataForStudent
+  getFamilyBattleDataForStudent,
+  getStudentBattleContribution,
+  awardFamilyBattleXP
 } from '../../lib/family-battle-sync';
 
 // Import simplified battle system
 import { 
   getJaneAustenQuote,
   getProgramWeekNumber,
-  getLocalDateString 
+  getLocalDateString,
+  getProgramWeekStart 
 } from '../../lib/family-battle-system';
+
+// Sunday Results Button Component
+function SundayResultsButton({ onClick, winner, margin, weekNumber }) {
+  const getResultText = () => {
+    if (winner === 'children') {
+      return `Kids Won +${margin}`;
+    } else if (winner === 'parents') {
+      return `Parents Won +${margin}`;
+    } else {
+      return 'Tie Battle';
+    }
+  };
+
+  const getResultEmoji = () => {
+    if (winner === 'children') return '🏆';
+    if (winner === 'parents') return '😭';
+    return '🤝';
+  };
+
+  return (
+    <div 
+      onClick={onClick}
+      style={{
+        position: 'fixed',
+        top: '20px',
+        right: '20px',
+        backgroundColor: '#FFD700',
+        borderRadius: '50px',
+        padding: '8px 16px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        boxShadow: '0 4px 12px rgba(255, 215, 0, 0.5)',
+        cursor: 'pointer',
+        transition: 'all 0.3s ease',
+        animation: 'pulse 2s infinite',
+        zIndex: 200,
+        border: '2px solid #FFC700'
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'scale(1.1)';
+        e.currentTarget.style.boxShadow = '0 6px 20px rgba(255, 215, 0, 0.7)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'scale(1)';
+        e.currentTarget.style.boxShadow = '0 4px 12px rgba(255, 215, 0, 0.5)';
+      }}
+    >
+      <span style={{ 
+        fontSize: '20px',
+        animation: 'bounce 1s infinite'
+      }}>
+        {getResultEmoji()}
+      </span>
+      <div style={{ color: '#000000' }}>
+        <div style={{
+          fontSize: '12px',
+          fontWeight: 'bold',
+          lineHeight: '1'
+        }}>
+          WEEK {weekNumber}
+        </div>
+        <div style={{
+          fontSize: '10px',
+          opacity: 0.8,
+          lineHeight: '1'
+        }}>
+          {getResultText()}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // Stone Cold Jane Austen Helper
 function StoneColdjaneAustenHelper({ show, battleState, winner, onClose, currentTheme, familyBattleData }) {
@@ -175,8 +251,8 @@ function StoneColdjaneAustenHelper({ show, battleState, winner, onClose, current
   );
 }
 
-// Battle Arena Component
-function BattleArena({ battleData, currentTheme, studentContribution }) {
+// Battle Arena Component - FIXED to show correct student contribution
+function BattleArena({ battleData, currentTheme, studentData }) {
   if (!battleData) return null;
 
   const childrenWinning = battleData.winner === 'children';
@@ -184,6 +260,27 @@ function BattleArena({ battleData, currentTheme, studentContribution }) {
   const isTie = battleData.winner === 'tie' || battleData.childrenMinutes === battleData.parentMinutes;
   const dayOfWeek = new Date().getDay();
   const isSunday = dayOfWeek === 0;
+
+  // FIXED: Find student contribution from breakdown
+  const getStudentContribution = () => {
+    if (!battleData.studentBreakdown) return 0;
+    
+    // Try multiple ways to match the student
+    // First check for a direct match by any linked student IDs in the family
+    const linkedStudents = studentData.familyBattleSettings?.linkedStudentIds || [];
+    
+    for (const [id, data] of Object.entries(battleData.studentBreakdown)) {
+      // Match by name (most reliable for display)
+      if (data.name === studentData.firstName) {
+        return data.minutes || 0;
+      }
+    }
+    
+    // If no match found, return 0
+    return 0;
+  };
+
+  const studentContribution = getStudentContribution();
 
   // Dynamic messaging based on day and status
   const getBattleStatusMessage = () => {
@@ -457,6 +554,7 @@ export default function StudentFamilyBattleSimplified() {
   const [currentTheme, setCurrentTheme] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showSuccess, setShowSuccess] = useState('');
   
   // Battle states
   const [familyBattleUnlocked, setFamilyBattleUnlocked] = useState(false);
@@ -470,6 +568,8 @@ export default function StudentFamilyBattleSimplified() {
   const [showJaneAusten, setShowJaneAusten] = useState(true);
   const [showResultsModal, setShowResultsModal] = useState(false);
 
+  // Check if it's Sunday
+  const isSunday = new Date().getDay() === 0;
 
   // Theme definitions
   const themes = useMemo(() => ({
@@ -496,16 +596,16 @@ export default function StudentFamilyBattleSimplified() {
       textSecondary: '#5D4037'
     },
     lavender_space: {
-  name: 'Cosmic Explorer',
-  assetPrefix: 'lavender_space',
-  primary: '#8B7AA8',      // Darkened from #9C88C4
-  secondary: '#9B85C4',    // Darkened from #B19CD9
-  accent: '#C8B3E8',       // Darkened from #E1D5F7
-  background: '#2A1B3D',   // Keep dark background
-  surface: '#3D2B54',      // Keep
-  textPrimary: '#E8DEFF',  // Slightly brightened for dark bg
-  textSecondary: '#B8A6D9' // Slightly adjusted
-},
+      name: 'Cosmic Explorer',
+      assetPrefix: 'lavender_space',
+      primary: '#8B7AA8',
+      secondary: '#9B85C4',
+      accent: '#C8B3E8',
+      background: '#2A1B3D',
+      surface: '#3D2B54',
+      textPrimary: '#E8DEFF',
+      textSecondary: '#B8A6D9'
+    },
     mint_music: {
       name: 'Musical Harmony',
       assetPrefix: 'mint_music',
@@ -551,16 +651,16 @@ export default function StudentFamilyBattleSimplified() {
       textSecondary: '#556B2F'
     },
     little_luminaries: {
-  name: 'Luxlings™',
-  assetPrefix: 'little_luminaries',
-  primary: '#000000',     // Lightened grey from #666666
-  secondary: '#000000',    // Keep black
-  accent: '#E8E8E8',       // Keep
-  background: '#FFFFFF',   // Keep white
-  surface: '#FAFAFA',      // Keep
-  textPrimary: '#8B6914',  // Darkened gold from #B8860B
-  textSecondary: '#606060' // Darkened from #AAAAAA for better contrast
-}
+      name: 'Luxlings™',
+      assetPrefix: 'little_luminaries',
+      primary: '#000000',
+      secondary: '#000000',
+      accent: '#E8E8E8',
+      background: '#FFFFFF',
+      surface: '#FAFAFA',
+      textPrimary: '#8B6914',
+      textSecondary: '#606060'
+    }
   }), []);
 
   // Navigation menu items
@@ -590,23 +690,22 @@ export default function StudentFamilyBattleSimplified() {
   ], [hasAccess, phaseData.currentPhase]);
 
   // Stats navigation options
-  // Stats navigation options
-const statsNavOptions = useMemo(() => [
-  { name: 'Stats Dashboard', path: '/student-stats', icon: '📊', description: 'Fun overview' },
-  { name: 'My Stats', path: '/student-stats/my-stats', icon: '📈', description: 'Personal deep dive' },
-  { name: 'Grade Stats', path: '/student-stats/grade-stats', icon: '🎓', description: 'Compare with classmates' },
-  { name: 'School Stats', path: '/student-stats/school-stats', icon: '🏫', description: 'School-wide progress' },
-  { name: 'Diocese Stats', path: '/student-stats/diocese-stats', icon: '⛪', description: 'Coming soon!', disabled: true },
-  { name: 'Global Stats', path: '/student-stats/global-stats', icon: '🌎', description: 'Coming soon!', disabled: true },
-  { 
-    name: 'Lux DNA Lab', 
-    path: '/student-stats/lux-dna-lab', 
-    icon: '🧬', 
-    description: phaseData.currentPhase === 'RESULTS' ? 'Nominees DNA locked for year' : 'Discover your reading personality',
-    phaseNote: phaseData.currentPhase === 'RESULTS' ? 'Nominees DNA analysis is closed for this academic year' : null
-  },
-  { name: 'Family Battle', path: '/student-stats/family-battle', icon: '🥊', description: 'WWE-style reading showdown!', current: true }
-], [phaseData.currentPhase]);
+  const statsNavOptions = useMemo(() => [
+    { name: 'Stats Dashboard', path: '/student-stats', icon: '📊', description: 'Fun overview' },
+    { name: 'My Stats', path: '/student-stats/my-stats', icon: '📈', description: 'Personal deep dive' },
+    { name: 'Grade Stats', path: '/student-stats/grade-stats', icon: '🎓', description: 'Compare with classmates' },
+    { name: 'School Stats', path: '/student-stats/school-stats', icon: '🏫', description: 'School-wide progress' },
+    { name: 'Diocese Stats', path: '/student-stats/diocese-stats', icon: '⛪', description: 'Coming soon!', disabled: true },
+    { name: 'Global Stats', path: '/student-stats/global-stats', icon: '🌎', description: 'Coming soon!', disabled: true },
+    { 
+      name: 'Lux DNA Lab', 
+      path: '/student-stats/lux-dna-lab', 
+      icon: '🧬', 
+      description: phaseData.currentPhase === 'RESULTS' ? 'Nominees DNA locked for year' : 'Discover your reading personality',
+      phaseNote: phaseData.currentPhase === 'RESULTS' ? 'Nominees DNA analysis is closed for this academic year' : null
+    },
+    { name: 'Family Battle', path: '/student-stats/family-battle', icon: '🥊', description: 'WWE-style reading showdown!', current: true }
+  ], [phaseData.currentPhase]);
 
   // Handle stats navigation
   const handleStatsNavigation = (option) => {
@@ -625,52 +724,50 @@ const statsNavOptions = useMemo(() => [
   };
 
   // Load initial data
-const loadData = useCallback(async () => {
-  try {
-    // First get the basic student data
-    const firebaseStudentData = await getStudentDataEntities(user.uid);
-    if (!firebaseStudentData) {
-      router.push('/student-onboarding');
-      return;
+  const loadData = useCallback(async () => {
+    try {
+      const firebaseStudentData = await getStudentDataEntities(user.uid);
+      if (!firebaseStudentData) {
+        router.push('/student-onboarding');
+        return;
+      }
+      
+      const studentRef = doc(
+        db, 
+        `entities/${firebaseStudentData.entityId}/schools/${firebaseStudentData.schoolId}/students/${user.uid}`
+      );
+      const freshStudentDoc = await getDoc(studentRef);
+      
+      if (freshStudentDoc.exists()) {
+        const freshData = freshStudentDoc.data();
+        const completeStudentData = {
+          ...firebaseStudentData,
+          ...freshData,
+          familyBattleSettings: freshData.familyBattleSettings || null
+        };
+        
+        setStudentData(completeStudentData);
+        
+        const selectedThemeKey = completeStudentData.selectedTheme || 'classic_lux';
+        const selectedTheme = themes[selectedThemeKey];
+        setCurrentTheme(selectedTheme);
+      } else {
+        setStudentData(firebaseStudentData);
+        
+        const selectedThemeKey = firebaseStudentData.selectedTheme || 'classic_lux';
+        const selectedTheme = themes[selectedThemeKey];
+        setCurrentTheme(selectedTheme);
+      }
+      
+    } catch (error) {
+      console.error('Error loading data:', error);
+      setError('Failed to load family battle data. Please try again.');
     }
     
-    // IMPORTANT: Fetch fresh student data to ensure we have familyBattleSettings
-    const studentRef = doc(
-      db, 
-      `entities/${firebaseStudentData.entityId}/schools/${firebaseStudentData.schoolId}/students/${user.uid}`
-    );
-    const freshStudentDoc = await getDoc(studentRef);
-    
-    if (freshStudentDoc.exists()) {
-      const freshData = freshStudentDoc.data();
-      const completeStudentData = {
-        ...firebaseStudentData,
-        ...freshData,
-        familyBattleSettings: freshData.familyBattleSettings || null
-      };
-      
-      setStudentData(completeStudentData);
-      
-      const selectedThemeKey = completeStudentData.selectedTheme || 'classic_lux';
-      const selectedTheme = themes[selectedThemeKey];
-      setCurrentTheme(selectedTheme);
-    } else {
-      setStudentData(firebaseStudentData);
-      
-      const selectedThemeKey = firebaseStudentData.selectedTheme || 'classic_lux';
-      const selectedTheme = themes[selectedThemeKey];
-      setCurrentTheme(selectedTheme);
-    }
-    
-  } catch (error) {
-    console.error('Error loading data:', error);
-    setError('Failed to load family battle data. Please try again.');
-  }
-  
-  setIsLoading(false);
-}, [user?.uid, router, themes]);
+    setIsLoading(false);
+  }, [user?.uid, router, themes]);
 
-  // New useEffect for loading family battle status
+  // Load family battle status
   useEffect(() => {
     const loadFamilyBattleStatus = async () => {
       if (!user?.uid || !studentData) return;
@@ -678,14 +775,12 @@ const loadData = useCallback(async () => {
       try {
         console.log('🥊 Loading family battle status for student...');
         
-        // Use the sync function that handles all the complexity
         const battleStatus = await getStudentFamilyBattleStatus(studentData);
         
         if (battleStatus.enabled) {
           console.log('✅ Family battle is enabled!');
           setFamilyBattleUnlocked(true);
           
-          // Set the battle data
           if (battleStatus.battleData) {
             setFamilyBattleData({
               weekNumber: battleStatus.battleData.weekNumber,
@@ -694,14 +789,26 @@ const loadData = useCallback(async () => {
               winner: battleStatus.battleData.winner,
               margin: battleStatus.battleData.margin,
               battleStatus: battleStatus.battleData.battleStatus,
-              isResultsDay: battleStatus.battleData.isResultsDay
+              isResultsDay: battleStatus.battleData.isResultsDay,
+              totalMinutes: battleStatus.battleData.totalMinutes,
+              studentBreakdown: battleStatus.battleData.studentBreakdown,
+              parentBreakdown: battleStatus.battleData.parentBreakdown
             });
           }
           
-          // Set student's contribution
-          setStudentContribution(battleStatus.studentContribution || 0);
+          // FIXED: Get contribution from battle data directly
+          let contribution = 0;
+          if (battleStatus.battleData?.studentBreakdown) {
+            for (const [id, data] of Object.entries(battleStatus.battleData.studentBreakdown)) {
+              if (data.name === studentData.firstName) {
+                contribution = data.minutes || 0;
+                break;
+              }
+            }
+          }
           
-          // Set family stats if available
+          setStudentContribution(contribution);
+          
           if (battleStatus.familyStats) {
             const stats = battleStatus.familyStats;
             setFamilyStats({
@@ -719,7 +826,6 @@ const loadData = useCallback(async () => {
           console.log('❌ Family battle not enabled:', battleStatus.reason);
           setFamilyBattleUnlocked(false);
           
-          // Set appropriate error message based on the reason
           if (battleStatus.reason === 'No parent account linked') {
             setError('No parent account linked. Ask your parent to connect with your invite code!');
           } else if (battleStatus.reason === 'Family battle not enabled by parent') {
@@ -737,9 +843,9 @@ const loadData = useCallback(async () => {
     };
     
     loadFamilyBattleStatus();
-  }, [user?.uid, studentData]);
+  }, [user?.uid, studentData, isSunday]);
 
-  // Add auto-refresh effect
+  // Auto-refresh effect
   useEffect(() => {
     if (!familyBattleUnlocked || !studentData) return;
     
@@ -756,9 +862,23 @@ const loadData = useCallback(async () => {
             winner: battleStatus.battleData.winner,
             margin: battleStatus.battleData.margin,
             battleStatus: battleStatus.battleData.battleStatus,
-            isResultsDay: battleStatus.battleData.isResultsDay
+            isResultsDay: battleStatus.battleData.isResultsDay,
+            totalMinutes: battleStatus.battleData.totalMinutes,
+            studentBreakdown: battleStatus.battleData.studentBreakdown,
+            parentBreakdown: battleStatus.battleData.parentBreakdown
           });
-          setStudentContribution(battleStatus.studentContribution || 0);
+          
+          // FIXED: Get contribution from breakdown
+          let contribution = 0;
+          if (battleStatus.battleData?.studentBreakdown) {
+            for (const [id, data] of Object.entries(battleStatus.battleData.studentBreakdown)) {
+              if (data.name === studentData.firstName) {
+                contribution = data.minutes || 0;
+                break;
+              }
+            }
+          }
+          setStudentContribution(contribution);
         }
       } catch (error) {
         console.error('❌ Error refreshing battle data:', error);
@@ -766,18 +886,78 @@ const loadData = useCallback(async () => {
     }, 30000); // Refresh every 30 seconds
     
     return () => clearInterval(refreshInterval);
-  }, [familyBattleUnlocked, studentData]);
+  }, [familyBattleUnlocked, studentData, isSunday]);
 
-  // Auto-show results modal on Sunday
+  // Auto-show results modal on Sunday with XP awarding
   useEffect(() => {
     const today = new Date();
     const isSunday = today.getDay() === 0;
     
-    // Only show if it's Sunday and we have a winner (not 'ongoing')
-    if (isSunday && familyBattleData && familyBattleData.winner && familyBattleData.winner !== 'ongoing') {
-      setShowResultsModal(true);
+    if (isSunday && 
+        familyBattleData && 
+        familyBattleData.winner && 
+        familyBattleData.winner !== 'ongoing' &&
+        familyBattleData.weekNumber) {
+      
+      const localStorageKey = `familyBattleResultsShown_student_${user?.uid}`;
+      const shownWeek = localStorage.getItem(localStorageKey);
+      const currentWeek = familyBattleData.weekNumber.toString();
+      
+      if (shownWeek !== currentWeek) {
+        console.log('📊 Auto-showing results modal for week:', currentWeek);
+        
+        // Award XP if children won
+        if (familyBattleData.winner === 'children' && 
+            studentData &&
+            !studentData[`familyBattleWeek${familyBattleData.weekNumber}XPAwarded`]) {
+          
+          // Check if current student is MVP
+          let isStudentMVP = false;
+          let maxMinutes = 0;
+          let mvpId = null;
+          
+          Object.entries(familyBattleData.studentBreakdown || {}).forEach(([id, data]) => {
+            if ((data.minutes || 0) > maxMinutes) {
+              maxMinutes = data.minutes || 0;
+              mvpId = id;
+            }
+          });
+          
+          // Check if MVP by name match
+          if (familyBattleData.studentBreakdown[mvpId]?.name === studentData.firstName) {
+            isStudentMVP = true;
+          }
+          
+          console.log('🎮 Awarding Family Battle XP...');
+          awardFamilyBattleXP(studentData, familyBattleData.weekNumber, isStudentMVP)
+            .then(result => {
+              if (result.success) {
+                console.log(`✅ XP Awarded: ${result.xpAwarded} XP! New total: ${result.newTotal}`);
+                
+                setStudentData(prev => ({
+                  ...prev,
+                  totalXP: result.newTotal,
+                  [`familyBattleWeek${familyBattleData.weekNumber}XPAwarded`]: true
+                }));
+                
+                setShowSuccess(`🎉 Victory XP awarded! +${result.xpAwarded} XP!`);
+                setTimeout(() => setShowSuccess(''), 4000);
+              } else {
+                console.error('❌ Failed to award XP:', result.error);
+              }
+            })
+            .catch(error => {
+              console.error('❌ Error awarding XP:', error);
+            });
+        }
+        
+        setShowResultsModal(true);
+        localStorage.setItem(localStorageKey, currentWeek);
+      } else {
+        console.log('📊 Results already shown for week:', currentWeek);
+      }
     }
-  }, [familyBattleData]);
+  }, [isSunday, familyBattleData, user?.uid, studentData]);
 
   useEffect(() => {
     if (!loading && isAuthenticated && user) {
@@ -830,6 +1010,11 @@ const loadData = useCallback(async () => {
     }
   };
 
+  // Handle results button click
+  const handleResultsClick = () => {
+    setShowResultsModal(true);
+  };
+
   if (loading || isLoading || !studentData || !currentTheme) {
     return (
       <div style={{
@@ -871,6 +1056,37 @@ const loadData = useCallback(async () => {
         paddingBottom: '100px'
       }}>
         
+        {/* Show success message when XP is awarded */}
+        {showSuccess && (
+          <div style={{
+            position: 'fixed',
+            top: '80px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: '#4CAF50',
+            color: 'white',
+            padding: '12px 24px',
+            borderRadius: '8px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+            zIndex: 1000,
+            fontSize: '14px',
+            fontWeight: '600',
+            animation: 'slideInDown 0.3s ease-out'
+          }}>
+            {showSuccess}
+          </div>
+        )}
+        
+        {/* Sunday Results Button */}
+        {isSunday && familyBattleData && familyBattleData.winner && familyBattleData.winner !== 'ongoing' && (
+          <SundayResultsButton
+            onClick={handleResultsClick}
+            winner={familyBattleData.winner}
+            margin={familyBattleData.margin}
+            weekNumber={familyBattleData.weekNumber}
+          />
+        )}
+        
         {/* HEADER */}
         <div style={{
           background: `linear-gradient(135deg, ${currentTheme.primary}F0, ${currentTheme.secondary}F0)`,
@@ -882,7 +1098,8 @@ const loadData = useCallback(async () => {
           zIndex: 100,
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between'
+          justifyContent: 'space-between',
+          paddingTop: isSunday && familyBattleData ? '70px' : '30px'
         }}>
           <button
             onClick={() => router.push('/student-stats')}
@@ -1012,12 +1229,12 @@ const loadData = useCallback(async () => {
                         {option.name}
                       </div>
                       <div style={{
-  fontSize: '11px',
-  color: option.phaseNote ? '#FF9800' : currentTheme.textSecondary,
-  opacity: 0.8
-}}>
-  {option.phaseNote || option.description}
-</div>
+                        fontSize: '11px',
+                        color: option.phaseNote ? '#FF9800' : currentTheme.textSecondary,
+                        opacity: 0.8
+                      }}>
+                        {option.phaseNote || option.description}
+                      </div>
                     </div>
                     {option.current && (
                       <span style={{ fontSize: '12px', color: currentTheme.primary }}>●</span>
@@ -1144,7 +1361,7 @@ const loadData = useCallback(async () => {
           </div>
         </div>
 
-        {/* TEACHER_SELECTION: Show only messaging box like index */}
+        {/* TEACHER_SELECTION: Show only messaging box */}
         {phaseData.currentPhase === 'TEACHER_SELECTION' ? (
           <div style={{ padding: 'clamp(40px, 10vw, 60px) clamp(20px, 5vw, 40px)', textAlign: 'center' }}>
             <div style={{
@@ -1234,7 +1451,7 @@ const loadData = useCallback(async () => {
         ) : (
           /* ALL OTHER PHASES: Show normal family battle */
           <>
-            {/* Phase-specific alert like index page */}
+            {/* Phase-specific alert */}
             {getPhaseSpecificMessage() && (
               <div style={{
                 background: phaseData.currentPhase === 'VOTING' ? 'linear-gradient(135deg, #8b5cf6, #a855f7)' : 
@@ -1308,14 +1525,14 @@ const loadData = useCallback(async () => {
                 </div>
               ) : familyBattleUnlocked && familyBattleData ? (
                 <>
-                  {/* Battle Arena */}
+                  {/* Battle Arena - Pass studentData for name matching */}
                   <BattleArena 
                     battleData={familyBattleData}
                     currentTheme={currentTheme}
-                    studentContribution={studentContribution}
+                    studentData={studentData}
                   />
 
-                  {/* Start Reading Button */}
+                  {/* Start Reading Button - FIXED for Sunday */}
                   <div className="motivational-section" style={{
                     backgroundColor: currentTheme.surface,
                     borderRadius: '16px',
@@ -1324,41 +1541,85 @@ const loadData = useCallback(async () => {
                     boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                     border: `2px solid ${currentTheme.accent}60`
                   }}>
-                    <h3 style={{
-                      fontSize: 'clamp(16px, 4.5vw, 18px)',
-                      fontWeight: '600',
-                      color: currentTheme.textPrimary,
-                      marginBottom: '8px'
-                    }}>
-                      Time to Read & Conquer!
-                    </h3>
-                    <p style={{
-                      fontSize: 'clamp(12px, 3.5vw, 14px)',
-                      color: currentTheme.textSecondary,
-                      marginBottom: '16px'
-                    }}>
-                      Every minute helps your team dominate the family battle!
-                    </p>
-                    <button
-                      onClick={() => router.push('/student-healthy-habits')}
-                      style={{
-                        backgroundColor: currentTheme.accent,
-                        color: currentTheme.textPrimary,
-                        border: 'none',
-                        borderRadius: '16px',
-                        padding: '16px 24px',
-                        fontSize: 'clamp(14px, 4vw, 16px)',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '8px',
-                        margin: '0 auto'
-                      }}
-                    >
-                      🤼 Enter the Reading Ring
-                    </button>
+                    {isSunday ? (
+                      <>
+                        <h3 style={{
+                          fontSize: 'clamp(16px, 4.5vw, 18px)',
+                          fontWeight: '600',
+                          color: currentTheme.textPrimary,
+                          marginBottom: '8px'
+                        }}>
+                          🙏 Sunday Day of Rest 🙏
+                        </h3>
+                        <p style={{
+                          fontSize: 'clamp(12px, 3.5vw, 14px)',
+                          color: currentTheme.textSecondary,
+                          marginBottom: '16px',
+                          lineHeight: '1.5'
+                        }}>
+                          Reflect on this week's reading journey and celebrate your accomplishments. 
+                          The battle resumes tomorrow with renewed spirit!
+                        </p>
+                        <button
+                          onClick={() => router.push('/student-saints')}
+                          style={{
+                            backgroundColor: currentTheme.accent,
+                            color: currentTheme.textPrimary,
+                            border: 'none',
+                            borderRadius: '16px',
+                            padding: '16px 24px',
+                            fontSize: 'clamp(14px, 4vw, 16px)',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            margin: '0 auto'
+                          }}
+                        >
+                          ♔ Visit Saints for Inspiration
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <h3 style={{
+                          fontSize: 'clamp(16px, 4.5vw, 18px)',
+                          fontWeight: '600',
+                          color: currentTheme.textPrimary,
+                          marginBottom: '8px'
+                        }}>
+                          Time to Read & Conquer!
+                        </h3>
+                        <p style={{
+                          fontSize: 'clamp(12px, 3.5vw, 14px)',
+                          color: currentTheme.textSecondary,
+                          marginBottom: '16px'
+                        }}>
+                          Every minute helps your team dominate the family battle!
+                        </p>
+                        <button
+                          onClick={() => router.push('/student-healthy-habits')}
+                          style={{
+                            backgroundColor: currentTheme.accent,
+                            color: currentTheme.textPrimary,
+                            border: 'none',
+                            borderRadius: '16px',
+                            padding: '16px 24px',
+                            fontSize: 'clamp(14px, 4vw, 16px)',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            margin: '0 auto'
+                          }}
+                        >
+                          🤼 Enter the Reading Ring
+                        </button>
+                      </>
+                    )}
                   </div>
                 </>
               ) : (
@@ -1397,7 +1658,7 @@ const loadData = useCallback(async () => {
           </>
         )}
 
-        {/* Stone Cold Jane Austen Helper - only show during normal phases */}
+        {/* Stone Cold Jane Austen Helper */}
         {phaseData.currentPhase !== 'TEACHER_SELECTION' && (
           <StoneColdjaneAustenHelper
             show={showJaneAusten && familyBattleUnlocked}
@@ -1412,7 +1673,13 @@ const loadData = useCallback(async () => {
         {/* Family Battle Results Modal */}
         <FamilyBattleResultsModal
           show={showResultsModal && familyBattleUnlocked}
-          onClose={() => setShowResultsModal(false)}
+          onClose={() => {
+            setShowResultsModal(false);
+            if (familyBattleData?.weekNumber) {
+              const localStorageKey = `familyBattleResultsShown_student_${user?.uid}`;
+              localStorage.setItem(localStorageKey, familyBattleData.weekNumber.toString());
+            }
+          }}
           battleData={familyBattleData}
           isStudent={true}
           theme={currentTheme}
@@ -1450,6 +1717,11 @@ const loadData = useCallback(async () => {
             0%, 20%, 50%, 80%, 100% { transform: translateX(-50%) translateY(0); }
             40% { transform: translateX(-50%) translateY(-10px); }
             60% { transform: translateX(-50%) translateY(-5px); }
+          }
+          
+          @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.8; }
           }
           
           button {
