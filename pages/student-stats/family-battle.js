@@ -1557,7 +1557,7 @@ export default function StudentFamilyBattleSimplified() {
                           marginBottom: '16px',
                           lineHeight: '1.5'
                         }}>
-                          Reflect on this week's reading journey and celebrate your accomplishments. 
+                          Reflect on this week&apos;s reading journey and celebrate your accomplishments. 
                           The battle resumes tomorrow with renewed spirit!
                         </p>
                         <button
