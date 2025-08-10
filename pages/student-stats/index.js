@@ -403,8 +403,11 @@ const checkForNewContentBadges = useCallback(async () => {
           if (sessionHour >= 19) eveningSessions++;
           
           // Track weekend sessions
-          const sessionDay = new Date(session.date).getDay();
-          if (sessionDay === 0 || sessionDay === 6) weekendSessions++;
+// Parse date string as local time, not UTC
+const [year, month, day] = session.date.split('-').map(Number);
+const sessionDate = new Date(year, month - 1, day); // month is 0-indexed
+const sessionDay = sessionDate.getDay();
+if (sessionDay === 0 || sessionDay === 6) weekendSessions++;
         }
       });
       
@@ -518,15 +521,15 @@ const checkForNewContentBadges = useCallback(async () => {
           break;
           
         case "Secretary Bird Weekend":
-          progress = {
-            type: 'both_weekend_days',
-            current: weekendSessions,
-            target: 2,
-            percentage: Math.min(100, (weekendSessions / 2) * 100),
-            description: 'Read both Saturday AND Sunday',
-            completed: weekendSessions >= 2
-          };
-          break;
+  progress = {
+    type: 'both_weekend_days',
+    current: weekendSessions,
+    target: 2,
+    percentage: Math.min(100, (weekendSessions / 2) * 100),
+    description: 'Complete 2 reading sessions on weekend days', // Changed description
+    completed: weekendSessions >= 2
+  };
+  break;
         
         // MORNING SESSION BADGES
         case "Macaw Motivation":

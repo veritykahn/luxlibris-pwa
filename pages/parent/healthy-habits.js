@@ -1,4 +1,4 @@
-// pages/parent/healthy-habits.js - Fixed with Direct Family Battle Updates (No Sync Loop)
+// pages/parent/healthy-habits.js - Fixed with Banking Warning Modal
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
@@ -191,6 +191,10 @@ export default function ParentHealthyHabits() {
   const [showCompletionCelebration, setShowCompletionCelebration] = useState(false)
   const [showNavMenu, setShowNavMenu] = useState(false)
   const [showReadingTips, setShowReadingTips] = useState(false)
+  
+  // Banking warning modal state (ADDED)
+  const [showBankingWarning, setShowBankingWarning] = useState(false)
+  const [pendingBankMinutes, setPendingBankMinutes] = useState(0)
 
   // Lux Libris Classic Theme
   const luxTheme = {
@@ -745,8 +749,8 @@ export default function ParentHealthyHabits() {
     resumeTimer()
   }
 
-  // Handle banking session - ENHANCED with direct battle updates
-  const handleBankSession = async () => {
+  // Handle banking session with warning for sessions under 20 minutes (UPDATED)
+  const handleBankSession = () => {
     const minutesRead = getMinutesRead()
     
     if (minutesRead < 5) {
@@ -755,15 +759,58 @@ export default function ParentHealthyHabits() {
       return
     }
 
-    resetTimer()
-    const isCompleted = minutesRead >= 20
-    await saveReadingSession(minutesRead, isCompleted)
+    // Show warning if under 20 minutes (ADDED)
+    if (minutesRead < 20) {
+      setPendingBankMinutes(minutesRead)
+      setShowBankingWarning(true)
+      return
+    }
 
-    setShowSuccess(isCompleted ?
-      `🎉 Session banked! ${minutesRead} minutes completed - amazing example for your children!` :
-      `📖 ${minutesRead} minutes banked! Keep showing your children how important reading is!`
-    )
+    // If 20+ minutes, bank normally
+    const performBanking = async () => {
+      resetTimer()
+      const isCompleted = minutesRead >= 20
+      await saveReadingSession(minutesRead, isCompleted)
+
+      setShowSuccess(isCompleted ?
+        `🎉 Session banked! ${minutesRead} minutes completed + streak earned!` :
+        `📖 ${minutesRead} minutes banked! Keep modeling great habits!`
+      )
+      setTimeout(() => setShowSuccess(''), 4000)
+    }
+    
+    performBanking()
+  }
+
+  // Handle confirmed banking after warning (ADDED)
+  const handleConfirmBanking = async () => {
+    console.log('handleConfirmBanking called, minutes:', pendingBankMinutes)
+    const minutesToBank = pendingBankMinutes
+    
+    // Close modal first
+    setShowBankingWarning(false)
+    setPendingBankMinutes(0)
+    
+    // Reset timer
+    resetTimer()
+    
+    // Bank the session (will NOT count for streak since < 20 min)
+    await saveReadingSession(minutesToBank, false)
+
+    setShowSuccess(`📖 ${minutesToBank} minutes banked! Keep showing your children the importance of reading!`)
     setTimeout(() => setShowSuccess(''), 4000)
+  }
+
+  // Handle continuing to read (ADDED)
+  const handleContinueReading = () => {
+    console.log('handleContinueReading called, isTimerPaused:', isTimerPaused)
+    // Close modal
+    setShowBankingWarning(false)
+    setPendingBankMinutes(0)
+    // Resume timer if it was paused
+    if (isTimerPaused) {
+      resumeTimer()
+    }
   }
 
   // Get timer status display
@@ -1363,7 +1410,8 @@ export default function ParentHealthyHabits() {
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          boxShadow: '0 4px 12px rgba(76, 175, 80, 0.3)'
+                          boxShadow: '0 4px 12px rgba(76, 175, 80, 0.3)',
+                          animation: 'pulse 2s infinite'
                         }}
                       >
                         💾 Bank Session
@@ -1635,6 +1683,165 @@ export default function ParentHealthyHabits() {
           </div>
         </PremiumGate>
 
+        {/* BANKING WARNING MODAL (ADDED) */}
+        {showBankingWarning && (
+          <div 
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                console.log('Clicked modal backdrop')
+              }
+            }}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0,0,0,0.8)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1003,
+              padding: '20px'
+            }}>
+            <div 
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                backgroundColor: luxTheme.surface,
+                borderRadius: '20px',
+                padding: 'clamp(24px, 6vw, 32px)',
+                textAlign: 'center',
+                maxWidth: '380px',
+                width: '90%',
+                border: `3px solid ${luxTheme.secondary}`
+              }}>
+              <div style={{ fontSize: 'clamp(36px, 10vw, 48px)', marginBottom: '16px' }}>
+                ⚠️
+              </div>
+              
+              <h2 style={{
+                fontSize: 'clamp(18px, 5vw, 22px)',
+                fontWeight: 'bold',
+                color: luxTheme.textPrimary,
+                margin: '0 0 12px 0'
+              }}>
+                Complete Your 20-Minute Goal!
+              </h2>
+              
+              <div style={{
+                backgroundColor: `${luxTheme.secondary}20`,
+                borderRadius: '12px',
+                padding: '16px',
+                marginBottom: '20px'
+              }}>
+                <p style={{
+                  fontSize: 'clamp(13px, 3.5vw, 15px)',
+                  color: luxTheme.textPrimary,
+                  margin: '0 0 12px 0',
+                  lineHeight: '1.5'
+                }}>
+                  You've read <strong>{pendingBankMinutes} minutes</strong> so far. 
+                  Reading sessions need to be at least <strong>20 minutes</strong> to count towards your daily streak. Banked sessions still count towards your Family Battle.
+                </p>
+                
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  fontSize: 'clamp(12px, 3vw, 14px)',
+                  color: luxTheme.textSecondary
+                }}>
+                  <span>🔥</span>
+                  <span>Only <strong style={{ color: luxTheme.primary }}>{20 - pendingBankMinutes} more minutes</strong> to earn your streak!</span>
+                </div>
+              </div>
+
+              <div style={{
+                marginBottom: '20px',
+                padding: '12px',
+                backgroundColor: `${luxTheme.primary}15`,
+                borderRadius: '8px'
+              }}>
+                <p style={{
+                  fontSize: 'clamp(11px, 3vw, 13px)',
+                  color: luxTheme.textSecondary,
+                  margin: 0,
+                  lineHeight: '1.4'
+                }}>
+                  💡 <strong>Parent Tip:</strong> Your children are watching! Show them that reading goals matter by completing your full session.
+                </p>
+              </div>
+              
+              <div style={{
+                display: 'flex',
+                gap: '12px',
+                justifyContent: 'center',
+                flexWrap: 'wrap'
+              }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    console.log('Continue reading button clicked!')
+                    handleContinueReading()
+                  }}
+                  style={{
+                    backgroundColor: luxTheme.primary,
+                    color: luxTheme.textPrimary,
+                    border: 'none',
+                    borderRadius: '16px',
+                    padding: '14px 24px',
+                    fontSize: 'clamp(13px, 3.5vw, 15px)',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    minHeight: '48px',
+                    flex: '1 1 140px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    boxShadow: `0 4px 12px ${luxTheme.primary}40`,
+                    WebkitTapHighlightColor: 'transparent',
+                    touchAction: 'manipulation',
+                    pointerEvents: 'auto'
+                  }}
+                >
+                  📖 Continue Reading
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={() => {
+                    console.log('Bank button clicked!')
+                    handleConfirmBanking()
+                  }}
+                  style={{
+                    backgroundColor: 'transparent',
+                    color: luxTheme.textSecondary,
+                    border: `2px solid ${luxTheme.textSecondary}40`,
+                    borderRadius: '16px',
+                    padding: '14px 24px',
+                    fontSize: 'clamp(13px, 3.5vw, 15px)',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    minHeight: '48px',
+                    flex: '1 1 140px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    WebkitTapHighlightColor: 'transparent',
+                    touchAction: 'manipulation',
+                    pointerEvents: 'auto'
+                  }}
+                >
+                  💾 Bank {pendingBankMinutes} min
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Completion Celebration - UPDATED messaging */}
         {showCompletionCelebration && (
           <div style={{
@@ -1707,6 +1914,17 @@ export default function ParentHealthyHabits() {
           @keyframes spin {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
+          }
+          
+          @keyframes pulse {
+            0%, 100% {
+              opacity: 1;
+              transform: scale(1);
+            }
+            50% {
+              opacity: 0.8;
+              transform: scale(1.02);
+            }
           }
           
           @keyframes slideIn {

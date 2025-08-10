@@ -64,6 +64,10 @@ export default function StudentHealthyHabits() {
   const [showSuccess, setShowSuccess] = useState('');
   const [showCompletionCelebration, setShowCompletionCelebration] = useState(false);
   const [showBookProgressModal, setShowBookProgressModal] = useState(false);
+  
+  // Banking warning modal state
+  const [showBankingWarning, setShowBankingWarning] = useState(false);
+  const [pendingBankMinutes, setPendingBankMinutes] = useState(0);
 
   // XP SYSTEM STATE VARIABLES
   const [showXPReward, setShowXPReward] = useState(false);
@@ -172,16 +176,16 @@ export default function StudentHealthyHabits() {
       textSecondary: '#5D4037'
     },
     lavender_space: {
-  name: 'Cosmic Explorer',
-  assetPrefix: 'lavender_space',
-  primary: '#8B7AA8',      // Darkened from #9C88C4
-  secondary: '#9B85C4',    // Darkened from #B19CD9
-  accent: '#C8B3E8',       // Darkened from #E1D5F7
-  background: '#2A1B3D',   // Keep dark background
-  surface: '#3D2B54',      // Keep
-  textPrimary: '#E8DEFF',  // Slightly brightened for dark bg
-  textSecondary: '#B8A6D9' // Slightly adjusted
-},
+      name: 'Cosmic Explorer',
+      assetPrefix: 'lavender_space',
+      primary: '#8B7AA8',
+      secondary: '#9B85C4',
+      accent: '#C8B3E8',
+      background: '#2A1B3D',
+      surface: '#3D2B54',
+      textPrimary: '#E8DEFF',
+      textSecondary: '#B8A6D9'
+    },
     mint_music: {
       name: 'Musical Harmony',
       assetPrefix: 'mint_music',
@@ -227,16 +231,16 @@ export default function StudentHealthyHabits() {
       textSecondary: '#556B2F'
     },
     little_luminaries: {
-  name: 'Luxlings™',
-  assetPrefix: 'little_luminaries',
-  primary: '#000000',      // Lightened grey from #666666
-  secondary: '#000000',    // Keep black
-  accent: '#E8E8E8',       // Keep
-  background: '#FFFFFF',   // Keep white
-  surface: '#FAFAFA',      // Keep
-  textPrimary: '#8B6914',  // Darkened gold from #B8860B
-  textSecondary: '#606060' // Darkened from #AAAAAA for better contrast
-}
+      name: 'Luxlings™',
+      assetPrefix: 'little_luminaries',
+      primary: '#000000',
+      secondary: '#000000',
+      accent: '#E8E8E8',
+      background: '#FFFFFF',
+      surface: '#FAFAFA',
+      textPrimary: '#8B6914',
+      textSecondary: '#606060'
+    }
   }), []);
 
   // Utility function to get local date string with consistent timezone handling
@@ -328,7 +332,8 @@ export default function StudentHealthyHabits() {
       console.log('Browser notifications not supported');
     }
   };
-// 🍔 useEFFECTS for hamburger menu
+
+  // 🍔 useEFFECTS for hamburger menu
   // Check notification permission on load
   useEffect(() => {
     if ('Notification' in window && Notification.permission === 'granted') {
@@ -522,7 +527,7 @@ export default function StudentHealthyHabits() {
         currentReadingLevel: newLevel,
         daysAtCurrentLevel: newDaysAtLevel,
         daysBelowThresholdCount: newDaysBelowCount,
-        lastReadingLevelCalculation: today  // Add this line
+        lastReadingLevelCalculation: today
       });
 
       setReadingLevel(levels[newLevel]);
@@ -750,8 +755,8 @@ export default function StudentHealthyHabits() {
     resumeTimer();
   };
 
-  // Handle banking session
-  const handleBankSession = async () => {
+  // Handle banking session with warning for sessions under 20 minutes
+  const handleBankSession = () => {
     const minutesRead = getMinutesRead();
     
     if (minutesRead < 5) {
@@ -760,19 +765,66 @@ export default function StudentHealthyHabits() {
       return;
     }
 
+    // Show warning if under 20 minutes
+    if (minutesRead < 20) {
+      setPendingBankMinutes(minutesRead);
+      setShowBankingWarning(true);
+      return;
+    }
+
+    // If 20+ minutes, bank normally
+    const performBanking = async () => {
+      resetTimer();
+      const isCompleted = minutesRead >= 20;
+      await saveReadingSession(minutesRead, isCompleted);
+
+      if (currentBookId && currentBookTitle) {
+        setShowBookProgressModal(true);
+      }
+
+      setShowSuccess(isCompleted ?
+        `🎉 Session banked! +${minutesRead} XP + streak earned!` :
+        `📖 ${minutesRead} minutes banked! +${minutesRead} XP earned`
+      );
+      setTimeout(() => setShowSuccess(''), 4000);
+    };
+    
+    performBanking();
+  };
+
+  // Handle confirmed banking after warning
+  const handleConfirmBanking = async () => {
+    console.log('handleConfirmBanking called, minutes:', pendingBankMinutes);
+    const minutesToBank = pendingBankMinutes;
+    
+    // Close modal first
+    setShowBankingWarning(false);
+    setPendingBankMinutes(0);
+    
+    // Reset timer
     resetTimer();
-    const isCompleted = minutesRead >= 20;
-    await saveReadingSession(minutesRead, isCompleted);
+    
+    // Bank the session (will NOT count for streak since < 20 min)
+    await saveReadingSession(minutesToBank, false);
 
     if (currentBookId && currentBookTitle) {
       setShowBookProgressModal(true);
     }
 
-    setShowSuccess(isCompleted ?
-      `🎉 Session banked! +${minutesRead} XP + streak earned!` :
-      `📖 ${minutesRead} minutes banked! +${minutesRead} XP earned`
-    );
+    setShowSuccess(`📖 ${minutesToBank} minutes banked! +${minutesToBank} XP earned (no streak)`);
     setTimeout(() => setShowSuccess(''), 4000);
+  };
+
+  // Handle continuing to read
+  const handleContinueReading = () => {
+    console.log('handleContinueReading called, isTimerPaused:', isTimerPaused);
+    // Close modal
+    setShowBankingWarning(false);
+    setPendingBankMinutes(0);
+    // Resume timer if it was paused
+    if (isTimerPaused) {
+      resumeTimer();
+    }
   };
 
   // Get timer status display
@@ -794,7 +846,7 @@ export default function StudentHealthyHabits() {
 
   const svgSize = getSvgSize();
 
-  // GET PHASE-AWARE MESSAGING - Keep all the beautiful content, just smaller!
+  // GET PHASE-AWARE MESSAGING
   const getPhaseAwareMessage = () => {
     const currentPhase = phaseData.currentPhase;
     
@@ -838,66 +890,6 @@ export default function StudentHealthyHabits() {
       default:
         return null;
     }
-  };
-
-  // SIMPLE XP REWARD POPUP COMPONENT
-  const XPRewardPopup = ({ show, xpData, onClose }) => {
-    if (!show) return null;
-    
-    return (
-      <div style={{
-        position: 'fixed',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-        backgroundColor: currentTheme.surface,
-        borderRadius: '20px',
-        padding: '24px',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
-        zIndex: 1001,
-        textAlign: 'center',
-        border: `3px solid ${currentTheme.primary}`,
-        minWidth: '280px',
-        maxWidth: '90vw'
-      }}>
-        <div style={{ fontSize: '48px', marginBottom: '12px' }}>
-          ⚡
-        </div>
-        
-        <div style={{
-          fontSize: '24px',
-          fontWeight: 'bold',
-          color: currentTheme.primary,
-          marginBottom: '8px'
-        }}>
-          +{xpData.amount} XP!
-        </div>
-        
-        <div style={{
-          fontSize: '14px',
-          color: currentTheme.textPrimary,
-          marginBottom: '16px'
-        }}>
-          {xpData.reason}
-        </div>
-        
-        <button
-          onClick={onClose}
-          style={{
-            backgroundColor: currentTheme.primary,
-            color: currentTheme.textPrimary,
-            border: 'none',
-            borderRadius: '12px',
-            padding: '12px 24px',
-            fontSize: '14px',
-            fontWeight: '600',
-            cursor: 'pointer'
-          }}
-        >
-          Awesome! 🎯
-        </button>
-      </div>
-    );
   };
 
   // Show loading
@@ -1180,7 +1172,7 @@ export default function StudentHealthyHabits() {
         {/* MAIN CONTENT */}
         <div className="healthy-habits-main" style={{ padding: 'clamp(16px, 5vw, 20px)', maxWidth: '400px', margin: '0 auto' }}>
 
-          {/* PHASE-AWARE MESSAGE - Beautiful but more compact! */}
+          {/* PHASE-AWARE MESSAGE */}
           {phaseMessage && (
             <div style={{
               background: phaseMessage.bgGradient,
@@ -1619,12 +1611,220 @@ export default function StudentHealthyHabits() {
           </div>
         </div>
 
-        {/* XP REWARD POPUP */}
-        <XPRewardPopup 
-          show={showXPReward}
-          xpData={xpReward}
-          onClose={() => setShowXPReward(false)}
-        />
+        {/* XP REWARD POPUP - directly in JSX */}
+        {showXPReward && (
+          <div style={{
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            backgroundColor: currentTheme.surface,
+            borderRadius: '20px',
+            padding: '24px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+            zIndex: 1001,
+            textAlign: 'center',
+            border: `3px solid ${currentTheme.primary}`,
+            minWidth: '280px',
+            maxWidth: '90vw'
+          }}>
+            <div style={{ fontSize: '48px', marginBottom: '12px' }}>
+              ⚡
+            </div>
+            
+            <div style={{
+              fontSize: '24px',
+              fontWeight: 'bold',
+              color: currentTheme.primary,
+              marginBottom: '8px'
+            }}>
+              +{xpReward.amount} XP!
+            </div>
+            
+            <div style={{
+              fontSize: '14px',
+              color: currentTheme.textPrimary,
+              marginBottom: '16px'
+            }}>
+              {xpReward.reason}
+            </div>
+            
+            <button
+              onClick={() => setShowXPReward(false)}
+              style={{
+                backgroundColor: currentTheme.primary,
+                color: currentTheme.textPrimary,
+                border: 'none',
+                borderRadius: '12px',
+                padding: '12px 24px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
+              Awesome! 🎯
+            </button>
+          </div>
+        )}
+
+        {/* BANKING WARNING MODAL - directly in JSX */}
+        {showBankingWarning && (
+          <div 
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                console.log('Clicked modal backdrop');
+              }
+            }}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0,0,0,0.8)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1003,
+              padding: '20px'
+            }}>
+            <div 
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                backgroundColor: currentTheme.surface,
+                borderRadius: '20px',
+                padding: 'clamp(24px, 6vw, 32px)',
+                textAlign: 'center',
+                maxWidth: '380px',
+                width: '90%',
+                border: `3px solid ${currentTheme.secondary}`
+              }}>
+              <div style={{ fontSize: 'clamp(36px, 10vw, 48px)', marginBottom: '16px' }}>
+                ⚠️
+              </div>
+              
+              <h2 style={{
+                fontSize: 'clamp(18px, 5vw, 22px)',
+                fontWeight: 'bold',
+                color: currentTheme.textPrimary,
+                margin: '0 0 12px 0'
+              }}>
+                Almost at Your Streak Goal!
+              </h2>
+              
+              <div style={{
+                backgroundColor: `${currentTheme.secondary}20`,
+                borderRadius: '12px',
+                padding: '16px',
+                marginBottom: '20px'
+              }}>
+                <p style={{
+                  fontSize: 'clamp(13px, 3.5vw, 15px)',
+                  color: currentTheme.textPrimary,
+                  margin: '0 0 12px 0',
+                  lineHeight: '1.5'
+                }}>
+                  You've read <strong>{pendingBankMinutes} minutes</strong> so far. 
+                  Reading sessions need to be at least <strong>20 minutes</strong> to count towards your daily streak.
+                </p>
+                
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  fontSize: 'clamp(12px, 3vw, 14px)',
+                  color: currentTheme.textSecondary
+                }}>
+                  <span>🔥</span>
+                  <span>Only <strong style={{ color: currentTheme.primary }}>{20 - pendingBankMinutes} more minutes</strong> to earn your streak!</span>
+                </div>
+              </div>
+
+              <div style={{
+                marginBottom: '20px',
+                padding: '12px',
+                backgroundColor: `${currentTheme.primary}15`,
+                borderRadius: '8px'
+              }}>
+                <p style={{
+                  fontSize: 'clamp(11px, 3vw, 13px)',
+                  color: currentTheme.textSecondary,
+                  margin: 0,
+                  lineHeight: '1.4'
+                }}>
+                  💡 <strong>Tip:</strong> You'll still earn {pendingBankMinutes} XP if you bank now, but it won&apos;t count as a streak session.
+                </p>
+              </div>
+              
+              <div style={{
+                display: 'flex',
+                gap: '12px',
+                justifyContent: 'center',
+                flexWrap: 'wrap'
+              }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    console.log('Continue reading button clicked!');
+                    handleContinueReading();
+                  }}
+                  style={{
+                    backgroundColor: currentTheme.primary,
+                    color: currentTheme.textPrimary,
+                    border: 'none',
+                    borderRadius: '16px',
+                    padding: '14px 24px',
+                    fontSize: 'clamp(13px, 3.5vw, 15px)',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    minHeight: '48px',
+                    flex: '1 1 140px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    boxShadow: `0 4px 12px ${currentTheme.primary}40`,
+                    WebkitTapHighlightColor: 'transparent',
+                    touchAction: 'manipulation',
+                    pointerEvents: 'auto'
+                  }}
+                >
+                  📖 Continue Reading
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={() => {
+                    console.log('Bank button clicked!');
+                    handleConfirmBanking();
+                  }}
+                  style={{
+                    backgroundColor: 'transparent',
+                    color: currentTheme.textSecondary,
+                    border: `2px solid ${currentTheme.textSecondary}40`,
+                    borderRadius: '16px',
+                    padding: '14px 24px',
+                    fontSize: 'clamp(13px, 3.5vw, 15px)',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    minHeight: '48px',
+                    flex: '1 1 140px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    WebkitTapHighlightColor: 'transparent',
+                    touchAction: 'manipulation',
+                    pointerEvents: 'auto'
+                  }}
+                >
+                  💾 Bank {pendingBankMinutes} min
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* COMPLETION CELEBRATION */}
         {showCompletionCelebration && (

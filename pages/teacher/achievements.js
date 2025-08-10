@@ -136,21 +136,26 @@ export default function TeacherAchievements() {
       // Load all students (app + manual)
       const students = []
 
-      // Load app students
-      const appStudentsRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/students`)
-      const appStudentsQuery = query(appStudentsRef, where('currentTeacherId', '==', teacherId))
-      const appStudentsSnapshot = await getDocs(appStudentsQuery)
-      
-      appStudentsSnapshot.forEach(doc => {
-        const studentData = { id: doc.id, ...doc.data() }
-        if (studentData.status !== 'deleted') {
-          students.push({
-            ...studentData,
-            type: 'app',
-            booksCompleted: studentData.booksSubmittedThisYear || 0
-          })
-        }
-      })
+      // Find the highest book requirement from achievement tiers
+const maxBookRequirement = Math.max(...tiers.map(tier => tier.books))
+
+// Load app students
+const appStudentsRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/students`)
+const appStudentsQuery = query(appStudentsRef, where('currentTeacherId', '==', teacherId))
+const appStudentsSnapshot = await getDocs(appStudentsQuery)
+
+appStudentsSnapshot.forEach(doc => {
+  const studentData = { id: doc.id, ...doc.data() }
+  if (studentData.status !== 'deleted') {
+    students.push({
+      ...studentData,
+      type: 'app',
+      booksCompleted: studentData.booksSubmittedThisYear || 0,
+      lifetimeBooksCompleted: studentData.lifetimeBooksSubmitted || 0,
+      maxBookRequirement // Pass this through for the calculation
+    })
+  }
+})
 
       // Load manual students
       const manualStudentsRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers/${teacherId}/manualStudents`)
@@ -162,13 +167,15 @@ export default function TeacherAchievements() {
       }
 
       manualStudentsSnapshot.forEach(doc => {
-        const studentData = { id: doc.id, ...doc.data() }
-        students.push({
-          ...studentData,
-          type: 'manual',
-          booksCompleted: studentData.totalBooksThisYear || 0
-        })
-      })
+  const studentData = { id: doc.id, ...doc.data() }
+  students.push({
+    ...studentData,
+    type: 'manual',
+    booksCompleted: studentData.totalBooksThisYear || 0,
+    lifetimeBooksCompleted: studentData.lifetimeBooksSubmitted || studentData.totalBooksThisYear || 0,
+    maxBookRequirement // Pass this through for the calculation
+  })
+})
 
       console.log('📚 All students loaded:', students.length)
       setAllStudents(students)
@@ -185,11 +192,18 @@ export default function TeacherAchievements() {
   }
 
   // Calculate which students achieved which tiers
-  const calculateAchievements = (tiers, students) => {
-    const achievements = tiers.map(tier => {
-      const achievedStudents = students.filter(student => 
-        student.booksCompleted >= tier.books
-      ).sort((a, b) => {
+const calculateAchievements = (tiers, students) => {
+  // Find the highest book requirement
+  const maxBookRequirement = Math.max(...tiers.map(t => t.books))
+  
+  const achievements = tiers.map(tier => {
+    const achievedStudents = students.filter(student => {
+      // Use lifetime books for the highest tier, yearly for all others
+      const booksToCheck = tier.books === maxBookRequirement 
+        ? student.lifetimeBooksCompleted 
+        : student.booksCompleted
+      return booksToCheck >= tier.books
+    }).sort((a, b) => {
         // Sort by books completed (highest first), then by name
         if (b.booksCompleted !== a.booksCompleted) {
           return b.booksCompleted - a.booksCompleted

@@ -240,19 +240,28 @@ export default function GradeStats() {
         }
       });
       
-      // Count how many students in this grade have reached each tier
-      let totalGradeStudents = 0;
-      const studentBooks = studentData.booksSubmittedThisYear || 0;
-      let studentEarnedTiers = [];
-      
-      gradeSnapshot.forEach(studentDoc => {
-        const student = studentDoc.data();
-        totalGradeStudents++;
-        const studentBooksCount = student.booksSubmittedThisYear || 0;
-        
-        // Check which tiers this student has achieved
-        allAchievementTiers.forEach((tier, key) => {
-          if (studentBooksCount >= tier.books) {
+      // Find the highest book requirement (this is the lifetime achievement)
+const maxBookRequirement = Math.max(...Array.from(allAchievementTiers.values()).map(tier => tier.books));
+
+// Count how many students in this grade have reached each tier
+let totalGradeStudents = 0;
+const studentBooksThisYear = studentData.booksSubmittedThisYear || 0;
+const studentBooksLifetime = studentData.lifetimeBooksSubmitted || 0;
+const studentBooks = studentBooksThisYear; // Keep for display
+let studentEarnedTiers = [];
+
+gradeSnapshot.forEach(studentDoc => {
+  const student = studentDoc.data();
+  totalGradeStudents++;
+  const studentBooksThisYear = student.booksSubmittedThisYear || 0;
+  const studentBooksLifetime = student.lifetimeBooksSubmitted || 0;
+  
+  // Check which tiers this student has achieved
+  allAchievementTiers.forEach((tier, key) => {
+    // Use lifetime books ONLY for the highest tier
+    const booksToCheck = tier.books === maxBookRequirement ? studentBooksLifetime : studentBooksThisYear;
+    
+    if (booksToCheck >= tier.books) {
             tier.count++;
             
             // Track what the current student has earned

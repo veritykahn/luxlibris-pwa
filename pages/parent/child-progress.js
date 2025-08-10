@@ -1,4 +1,4 @@
-// pages/parent/child-progress.js - UPDATED with real world achievements, better contrast, and expandable sections
+// pages/parent/child-progress.js - UPDATED to use lifetimeBooksSubmitted for progress tracking
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
@@ -42,18 +42,13 @@ const extractUnlockRequests = (student) => {
   return unlockRequests;
 };
 
-// Note: Notifications are automatically cleared by the useUnlockNotifications hook when:
-// - leaderboardUnlockRequested changes to false (after approval)
-// - A book's status changes from 'pending_parent_quiz_unlock' to 'quiz_unlocked'
-// This ensures notifications don't persist forever and are removed once handled
-
 // Helper to get book title from nominees if not stored in student data
 const getBookTitle = (bookId, nominees) => {
   const book = nominees.find(nominee => nominee.id === bookId);
   return book ? book.title : 'Unknown Book';
 };
 
-// 🔧 FIXED: Child Detail Modal Component - hooks moved to top + real-time updates + expandable books + real world achievements
+// 🔧 UPDATED: Child Detail Modal Component - Now uses lifetimeBooksSubmitted
 function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees, readingStats, onApproveUnlock, initialTab = 'reading', showComingSoon, setShowComingSoon, teacherData }) {
   // ✅ FIXED: Move all hooks to the top, before any conditional returns
   const [activeTab, setActiveTab] = useState(initialTab)
@@ -69,16 +64,16 @@ function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees,
     }
   }, [isOpen, initialTab])
 
-  // Calculate real world achievements when child data changes
+  // Calculate real world achievements when child data changes - UPDATED to use lifetimeBooksSubmitted
   useEffect(() => {
     if (child && teacherData && teacherData.achievementTiers) {
       const calculateRealWorldAchievements = (studentData, achievementTiers) => {
-        const booksThisYear = studentData.booksSubmittedThisYear || 0
+        const lifetimeBooks = studentData.lifetimeBooksSubmitted || 0
         const allAchievements = []
         
         achievementTiers.forEach((tier, index) => {
-          const isEarned = booksThisYear >= tier.books
-          const booksNeeded = isEarned ? 0 : tier.books - booksThisYear
+          const isEarned = lifetimeBooks >= tier.books
+          const booksNeeded = isEarned ? 0 : tier.books - lifetimeBooks
           
           allAchievements.push({
             tier: index + 1,
@@ -87,7 +82,7 @@ function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees,
             type: tier.type,
             earned: isEarned,
             booksNeeded,
-            earnedDate: isEarned ? (studentData.lastAchievementUpdate || 'This year') : null
+            earnedDate: isEarned ? (studentData.lastAchievementUpdate || 'Achieved') : null
           })
         })
         
@@ -141,6 +136,11 @@ function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees,
     
     setTimeout(() => setShowComingSoon(''), 3000)
   }
+
+  // UPDATED: Use lifetimeBooksSubmitted for all calculations
+  const lifetimeBooks = child.lifetimeBooksSubmitted || 0
+  const personalGoal = child.personalGoal || 100
+  const progressPercentage = Math.min(Math.round((lifetimeBooks / personalGoal) * 100), 100)
 
   return (
     <div style={{
@@ -221,7 +221,7 @@ function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees,
             </div>
           </div>
 
-          {/* Quick Stats */}
+          {/* Quick Stats - UPDATED */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: '1fr 1fr 1fr',
@@ -229,13 +229,13 @@ function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees,
           }}>
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: '18px', fontWeight: 'bold' }}>
-                {child.booksSubmittedThisYear || 0}
+                {lifetimeBooks}
               </div>
-              <div style={{ fontSize: '11px', opacity: 0.9 }}>Books Read</div>
+              <div style={{ fontSize: '11px', opacity: 0.9 }}>Lifetime Books</div>
             </div>
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: '18px', fontWeight: 'bold' }}>
-                {child.personalGoal || 20}
+                {personalGoal}
               </div>
               <div style={{ fontSize: '11px', opacity: 0.9 }}>Goal</div>
             </div>
@@ -293,7 +293,7 @@ function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees,
           {/* Reading Progress Tab */}
           {activeTab === 'reading' && (
             <div>
-              {/* Progress Bar */}
+              {/* Progress Bar - UPDATED */}
               <div style={{
                 backgroundColor: `${childColor}20`,
                 borderRadius: '12px',
@@ -307,10 +307,10 @@ function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees,
                   marginBottom: '8px'
                 }}>
                   <span style={{ fontSize: '14px', fontWeight: '600', color: theme.textPrimary }}>
-                    Reading Goal Progress
+                    Lifetime Reading Goal Progress
                   </span>
                   <span style={{ fontSize: '12px', color: theme.textSecondary }}>
-                    {Math.round(((child.booksSubmittedThisYear || 0) / (child.personalGoal || 20)) * 100)}%
+                    {progressPercentage}%
                   </span>
                 </div>
                 <div style={{
@@ -322,9 +322,22 @@ function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees,
                   <div style={{
                     backgroundColor: childColor,
                     height: '100%',
-                    width: `${Math.min(((child.booksSubmittedThisYear || 0) / (child.personalGoal || 20)) * 100, 100)}%`,
+                    width: `${progressPercentage}%`,
                     transition: 'width 0.3s ease'
                   }} />
+                </div>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  marginTop: '8px',
+                  fontSize: '12px'
+                }}>
+                  <span style={{ color: theme.textSecondary }}>
+                    {lifetimeBooks} books read
+                  </span>
+                  <span style={{ color: theme.textSecondary }}>
+                    {Math.max(0, personalGoal - lifetimeBooks)} to go
+                  </span>
                 </div>
               </div>
 
@@ -612,7 +625,7 @@ function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees,
             </div>
           )}
 
-          {/* Achievements Tab - COMPLETELY REPLACED WITH REAL WORLD ACHIEVEMENTS */}
+          {/* Achievements Tab - UPDATED to use lifetimeBooksSubmitted */}
           {activeTab === 'achievements' && (
             <div>
               {/* Reading Goal Progress Overview */}
@@ -641,14 +654,14 @@ function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees,
                     fontWeight: 'bold',
                     color: childColor
                   }}>
-                    {child.booksSubmittedThisYear || 0}
+                    {lifetimeBooks}
                   </span>
                   <span style={{
                     fontSize: '14px',
                     color: theme.textSecondary,
                     marginLeft: '4px'
                   }}>
-                    books read this year
+                    lifetime books read
                   </span>
                 </div>
               </div>
@@ -791,10 +804,12 @@ function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees,
   )
 }
 
-// 🆕 FIXED: Child Progress Card Component - clickable pending unlocks
+// 🆕 UPDATED: Child Progress Card Component - Now uses lifetimeBooksSubmitted
 function ChildProgressCard({ child, theme, childColor, onViewDetails, onApproveUnlock, readingStats, onViewUnlocks, showComingSoon, setShowComingSoon, notifications }) {
-  // Calculate progress percentage
-  const progressPercentage = Math.round(((child.booksSubmittedThisYear || 0) / (child.personalGoal || 20)) * 100)
+  // UPDATED: Calculate progress percentage using lifetimeBooksSubmitted
+  const lifetimeBooks = child.lifetimeBooksSubmitted || 0
+  const personalGoal = child.personalGoal || 100
+  const progressPercentage = Math.min(Math.round((lifetimeBooks / personalGoal) * 100), 100)
   
   // Use real-time notification data for this specific child
   const childNotifications = notifications?.getNotificationsByStudent(child.id) || []
@@ -849,7 +864,7 @@ function ChildProgressCard({ child, theme, childColor, onViewDetails, onApproveU
         </p>
       </div>
 
-      {/* Reading Goal Progress */}
+      {/* Reading Goal Progress - UPDATED */}
       <div style={{
         backgroundColor: `${childColor}20`,
         borderRadius: '12px',
@@ -867,13 +882,13 @@ function ChildProgressCard({ child, theme, childColor, onViewDetails, onApproveU
             fontWeight: '600',
             color: theme.textPrimary
           }}>
-            📚 Reading Goal
+            📚 Lifetime Reading Goal
           </span>
           <span style={{
             fontSize: 'clamp(11px, 3vw, 12px)',
             color: theme.textSecondary
           }}>
-            {child.booksSubmittedThisYear || 0} / {child.personalGoal || 20}
+            {lifetimeBooks} / {personalGoal}
           </span>
         </div>
         <div style={{
@@ -885,7 +900,7 @@ function ChildProgressCard({ child, theme, childColor, onViewDetails, onApproveU
           <div style={{
             backgroundColor: childColor,
             height: '100%',
-            width: `${Math.min(progressPercentage, 100)}%`,
+            width: `${progressPercentage}%`,
             transition: 'width 1s ease'
           }} />
         </div>
@@ -1452,10 +1467,6 @@ export default function ChildProgress() {
       
       console.log('✅ Unlock approved successfully')
       
-      // Notifications are automatically cleared by the useUnlockNotifications hook
-      // when it detects the status change in the database (real-time listeners).
-      // No manual notification clearing needed here.
-      
     } catch (error) {
       console.error('❌ Error approving unlock:', error)
       setShowComingSoon('❌ Failed to approve unlock. Please try again.')
@@ -1479,7 +1490,7 @@ export default function ChildProgress() {
     }
   }
 
-  // UPDATED: Navigation handler - all pages are now built
+  // UPDATED: Navigation handler
   const handleNavigation = (item) => {
     if (item.current) return
     
@@ -1493,7 +1504,7 @@ export default function ChildProgress() {
 
   const handleViewDetails = (child) => {
     setSelectedChild(child)
-    setModalInitialTab('reading') // Default to reading tab
+    setModalInitialTab('reading')
     
     // Check if in voting phase - show bragging rights instead
     if (permissions.currentPhase === 'VOTING') {
@@ -1989,9 +2000,9 @@ export default function ChildProgress() {
           )}
         </div>
 
-        {/* 🆕 FIXED: Child Detail Modal with real-time updates + notifications + real world achievements */}
+        {/* 🆕 UPDATED: Child Detail Modal with lifetime books support */}
         <ChildDetailModal
-          child={modalChild} // Use modalChild for real-time updates
+          child={modalChild}
           isOpen={showDetailModal}
           onClose={() => {
             setShowDetailModal(false)
@@ -2003,10 +2014,10 @@ export default function ChildProgress() {
           nominees={nominees}
           readingStats={modalChild ? readingStats[modalChild.id] || {} : {}}
           onApproveUnlock={handleApproveUnlock}
-          initialTab={modalInitialTab} // 🆕 NEW: Pass initial tab
-          showComingSoon={showComingSoon} // 🆕 NEW: Pass notifications
-          setShowComingSoon={setShowComingSoon} // 🆕 NEW: Pass notifications
-          teacherData={teacherData} // 🆕 NEW: Pass teacher data for achievement tiers
+          initialTab={modalInitialTab}
+          showComingSoon={showComingSoon}
+          setShowComingSoon={setShowComingSoon}
+          teacherData={teacherData}
         />
 
         {/* Bragging Rights Modal for Voting Phase */}
@@ -2025,7 +2036,7 @@ export default function ChildProgress() {
           />
         )}
 
-        {/* 🆕 NEW: Coming Soon Message */}
+        {/* Coming Soon Message */}
         {showComingSoon && (
           <div style={{
             position: 'fixed',

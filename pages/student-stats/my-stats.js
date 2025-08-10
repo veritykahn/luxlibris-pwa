@@ -773,32 +773,38 @@ const checkForNewContentBadges = useCallback(async () => {
   }, []);
 
   // Calculate real world achievements earned with EXPANDABLE view
-  const calculateRealWorldAchievements = useCallback((studentData) => {
-    try {
-      const achievementTiers = studentData.achievementTiers || [];
-      const booksThisYear = studentData.booksSubmittedThisYear || 0;
-      const allAchievements = [];
+const calculateRealWorldAchievements = useCallback((studentData) => {
+  try {
+    const achievementTiers = studentData.achievementTiers || [];
+    const booksThisYear = studentData.booksSubmittedThisYear || 0;
+    const lifetimeBooks = studentData.lifetimeBooksSubmitted || 0;
+    const allAchievements = [];
+    
+    // Find the highest book requirement (this is the lifetime achievement)
+    const maxBookRequirement = Math.max(...achievementTiers.map(tier => tier.books));
+    
+    achievementTiers.forEach((tier, index) => {
+      // Use lifetime books ONLY for the highest tier, yearly for all others
+      const booksToCheck = tier.books === maxBookRequirement ? lifetimeBooks : booksThisYear;
+      const isEarned = booksToCheck >= tier.books;
+      const booksNeeded = isEarned ? 0 : tier.books - booksToCheck;
       
-      achievementTiers.forEach((tier, index) => {
-        const isEarned = booksThisYear >= tier.books;
-        const booksNeeded = isEarned ? 0 : tier.books - booksThisYear;
-        
-        allAchievements.push({
-          tier: index + 1,
-          books: tier.books,
-          reward: tier.reward,
-          type: tier.type,
-          earned: isEarned,
-          booksNeeded,
-          earnedDate: isEarned ? (studentData.lastAchievementUpdate || 'This year') : null
-        });
+      allAchievements.push({
+        tier: index + 1,
+        books: tier.books,
+        reward: tier.reward,
+        type: tier.type,
+        earned: isEarned,
+        booksNeeded,
+        earnedDate: isEarned ? (studentData.lastAchievementUpdate || 'This year') : null
       });
-      
-      setRealWorldAchievements(allAchievements);
-    } catch (error) {
-      console.error('Error calculating real world achievements:', error);
-    }
-  }, []);
+    });
+    
+    setRealWorldAchievements(allAchievements);
+  } catch (error) {
+    console.error('Error calculating real world achievements:', error);
+  }
+}, []);
 
   // Fixed calculateChallengeProgress function with all badge cases
   const calculateChallengeProgress = useCallback(async (studentData, weekBadge) => {
@@ -892,8 +898,11 @@ const checkForNewContentBadges = useCallback(async () => {
           if (sessionHour >= 19) eveningSessions++;
           
           // Track weekend sessions
-          const sessionDay = new Date(session.date).getDay();
-          if (sessionDay === 0 || sessionDay === 6) weekendSessions++;
+// Parse date string as local time, not UTC
+const [year, month, day] = session.date.split('-').map(Number);
+const sessionDate = new Date(year, month - 1, day); // month is 0-indexed
+const sessionDay = sessionDate.getDay();
+if (sessionDay === 0 || sessionDay === 6) weekendSessions++;
         }
       });
       
@@ -1007,15 +1016,15 @@ const checkForNewContentBadges = useCallback(async () => {
           break;
           
         case "Secretary Bird Weekend":
-          progress = {
-            type: 'both_weekend_days',
-            current: weekendSessions,
-            target: 2,
-            percentage: Math.min(100, (weekendSessions / 2) * 100),
-            description: 'Read both Saturday AND Sunday',
-            completed: weekendSessions >= 2
-          };
-          break;
+  progress = {
+    type: 'both_weekend_days',
+    current: weekendSessions,
+    target: 2,
+    percentage: Math.min(100, (weekendSessions / 2) * 100),
+    description: 'Complete 2 reading sessions on weekend days', // Changed description
+    completed: weekendSessions >= 2
+  };
+  break;
         
         // MORNING SESSION BADGES
         case "Macaw Motivation":

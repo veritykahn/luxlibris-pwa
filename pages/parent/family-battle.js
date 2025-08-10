@@ -1,4 +1,4 @@
-// pages/parent/family-battle.js - FIXED VERSION
+// pages/parent/family-battle.js - FIXED VERSION with Parent Battle Streak
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
@@ -16,7 +16,7 @@ import {
   getFamilyBattleStats
 } from '../../lib/family-battle-system'
 
-// Family Streak Tracker Component
+// Family Streak Tracker Component - Updated with Battle Theming
 function FamilyStreakTracker({ streakDays, theme, onStreakClick, currentStreak }) {
   const getStreakColor = (days) => {
     if (days >= 30) return '#FF4444'
@@ -30,18 +30,18 @@ function FamilyStreakTracker({ streakDays, theme, onStreakClick, currentStreak }
     if (days >= 30) return '🔥'
     if (days >= 14) return '🔥'
     if (days >= 7) return '🔥'
-    if (days >= 3) return '⭐'
-    return '📚'
+    if (days >= 3) return '⚔️'
+    return '⚔️'
   }
 
   const getStreakMessage = (days) => {
-    if (days >= 100) return "LEGENDARY!"
-    if (days >= 30) return "On Fire!"
-    if (days >= 14) return "Hot Streak!"
-    if (days >= 7) return "One Week!"
-    if (days >= 3) return "Building!"
-    if (days >= 1) return "Started!"
-    return "Start Streak!"
+    if (days >= 100) return "LEGENDARY WARRIOR!"
+    if (days >= 30) return "Battle Master!"
+    if (days >= 14) return "Battle Veteran!"
+    if (days >= 7) return "Week Warrior!"
+    if (days >= 3) return "In the Fight!"
+    if (days >= 1) return "Battle On!"
+    return "Join Battle!"
   }
 
   return (
@@ -129,7 +129,7 @@ export default function ParentFamilyBattle() {
   const [linkedStudents, setLinkedStudents] = useState([])
   const [familyBattleData, setFamilyBattleData] = useState(null)
   const [familyStats, setFamilyStats] = useState(null)
-  const [familyStreakData, setFamilyStreakData] = useState({ streakDays: 0, lastReadingDate: null })
+  const [parentStreakDays, setParentStreakDays] = useState(0) // UPDATED: Changed to parent's personal streak
   const [showNavMenu, setShowNavMenu] = useState(false)
   const [showSuccess, setShowSuccess] = useState('')
   const [showStreakModal, setShowStreakModal] = useState(false)
@@ -194,6 +194,79 @@ export default function ParentFamilyBattle() {
     timeOverlay: timeTheme.overlay
   }), [timeTheme])
 
+  // Utility function for local date
+  const getLocalDateString = (date = new Date()) => {
+    const d = new Date(date)
+    const year = d.getFullYear()
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  // Smart streak calculation (same as healthy habits)
+  const calculateSmartStreak = useCallback((completedSessionsByDate, todayStr) => {
+    const today = new Date()
+    const yesterday = new Date(today)
+    yesterday.setDate(today.getDate() - 1)
+    const yesterdayStr = getLocalDateString(yesterday)
+
+    let streakCount = 0
+    let checkDate
+
+    if (completedSessionsByDate[todayStr]) {
+      checkDate = new Date(today)
+    } else if (completedSessionsByDate[yesterdayStr]) {
+      checkDate = new Date(yesterday)
+    } else {
+      return 0
+    }
+
+    while (streakCount < 365) {
+      const dateStr = getLocalDateString(checkDate)
+      if (completedSessionsByDate[dateStr]) {
+        streakCount++
+        checkDate.setDate(checkDate.getDate() - 1)
+      } else {
+        break
+      }
+    }
+
+    return streakCount
+  }, [])
+
+  // Load parent's reading streak
+  const loadParentStreak = useCallback(async () => {
+    if (!user?.uid) return
+    
+    try {
+      const sixWeeksAgo = new Date()
+      sixWeeksAgo.setDate(sixWeeksAgo.getDate() - 42)
+      const sessionsRef = collection(db, `parents/${user.uid}/readingSessions`)
+      const recentQuery = query(
+        sessionsRef,
+        where('date', '>=', getLocalDateString(sixWeeksAgo))
+      )
+      const recentSnapshot = await getDocs(recentQuery)
+      const completedSessionsByDate = {}
+
+      recentSnapshot.forEach(docSnap => {
+        const session = docSnap.data()
+        if (session.completed === true) {
+          completedSessionsByDate[session.date] = true
+        }
+      })
+
+      const todayStr = getLocalDateString(new Date())
+      const streakCount = calculateSmartStreak(completedSessionsByDate, todayStr)
+      
+      setParentStreakDays(streakCount)
+      console.log('📊 Parent battle streak loaded:', streakCount, 'days')
+    } catch (error) {
+      console.error('Error loading parent streak:', error)
+      setParentStreakDays(0)
+    }
+  }, [user?.uid, calculateSmartStreak])
+
   // Helper function to load linked students data
   const loadLinkedStudentsData = async (linkedStudentIds) => {
     try {
@@ -233,7 +306,7 @@ export default function ParentFamilyBattle() {
     }
   }
 
-  // Load family battle data - FIXED with loading flag
+  // Load family battle data - UPDATED: Removed broken streak calculation
   const loadFamilyBattleData = useCallback(async () => {
     if (!user?.uid || !linkedStudents.length || !parentData?.familyId) return;
     if (isLoadingBattleData.current) return; // Prevent concurrent loads
@@ -249,37 +322,15 @@ export default function ParentFamilyBattle() {
       const stats = await getFamilyBattleStats(parentData.familyId);
       setFamilyStats(stats);
       
-      // Calculate streak
-      const familyRef = doc(db, 'families', parentData.familyId);
-      const familyDoc = await getDoc(familyRef);
-      
-      if (familyDoc.exists()) {
-        const familyData = familyDoc.data();
-        
-        // Simple streak calculation
-        const today = new Date();
-        const lastRead = familyData.lastFamilyReadingDate ? new Date(familyData.lastFamilyReadingDate) : null;
-        let streakDays = 0;
-        
-        if (lastRead) {
-          const daysDiff = Math.floor((today - lastRead) / (1000 * 60 * 60 * 24));
-          if (daysDiff <= 1) {
-            streakDays = (familyData.familyStreakDays || 0) + (daysDiff === 1 ? 1 : 0);
-          }
-        }
-        
-        setFamilyStreakData({ 
-          streakDays: streakDays,
-          lastReadingDate: lastRead 
-        });
-      }
+      // REMOVED: The broken family streak calculation
+      // Now we load parent's personal streak instead
       
     } catch (error) {
       console.error('❌ Error loading family battle data:', error);
     } finally {
       isLoadingBattleData.current = false;
     }
-  }, [user?.uid, linkedStudents.length, parentData?.familyId]) // Use length instead of array
+  }, [user?.uid, linkedStudents.length, parentData?.familyId])
 
   // Load parent victories for the victory modal
   const loadParentVictories = useCallback(async () => {
@@ -335,6 +386,13 @@ export default function ParentFamilyBattle() {
       loadParentVictories();
     }
   }, [parentData?.familyId, familyStats, loadParentVictories])
+
+  // Load parent's reading streak when component mounts
+  useEffect(() => {
+    if (user?.uid && !authLoading) {
+      loadParentStreak()
+    }
+  }, [user?.uid, authLoading, loadParentStreak])
 
   // Auto-show results modal on Sunday
   useEffect(() => {
@@ -400,6 +458,7 @@ export default function ParentFamilyBattle() {
   const handleDataUpdate = () => {
     // Reload all data when family battle manager updates something
     loadFamilyBattleData();
+    loadParentStreak(); // Also refresh the parent's streak
   }
 
   // Show loading while data loads
@@ -509,9 +568,9 @@ export default function ParentFamilyBattle() {
           zIndex: 1
         }} />
         
-        {/* Family Streak Tracker - Fixed Position */}
+        {/* Family Streak Tracker - UPDATED to use parent's personal streak */}
         <FamilyStreakTracker
-          streakDays={familyStreakData.streakDays}
+          streakDays={parentStreakDays}
           theme={luxTheme}
           onStreakClick={handleStreakClick}
           currentStreak={familyStats?.currentStreak}
@@ -722,7 +781,7 @@ export default function ParentFamilyBattle() {
           </div>
         </PremiumGate>
 
-        {/* Streak Detail Modal */}
+        {/* Streak Detail Modal - UPDATED with battle participation theming */}
         {showStreakModal && (
           <div style={{
             position: 'fixed',
@@ -747,14 +806,14 @@ export default function ParentFamilyBattle() {
               textAlign: 'center'
             }}
             onClick={e => e.stopPropagation()}>
-              <div style={{ fontSize: '60px', marginBottom: '16px' }}>🔥</div>
+              <div style={{ fontSize: '60px', marginBottom: '16px' }}>⚔️</div>
               <h2 style={{
                 fontSize: '24px',
                 fontWeight: 'bold',
                 color: luxTheme.textPrimary,
                 marginBottom: '12px'
               }}>
-                {familyStreakData.streakDays} Day Family Streak!
+                {parentStreakDays} Day Battle Streak!
               </h2>
               <p style={{
                 fontSize: '16px',
@@ -762,8 +821,8 @@ export default function ParentFamilyBattle() {
                 marginBottom: '20px',
                 lineHeight: '1.5'
               }}>
-                Your family has been reading together for <strong>{familyStreakData.streakDays} consecutive days</strong>. 
-                Keep the championship spirit alive by reading every day!
+                You've been fighting in the family reading battle for <strong>{parentStreakDays} consecutive days</strong>! 
+                Every day you read, you're contributing to your team's victory and setting an amazing example!
               </p>
               
               {/* Championship Status */}
@@ -791,6 +850,31 @@ export default function ParentFamilyBattle() {
                 </div>
               )}
               
+              {/* Motivational message based on streak length */}
+              {parentStreakDays >= 30 && (
+                <div style={{
+                  backgroundColor: '#FF444420',
+                  borderRadius: '12px',
+                  padding: '12px',
+                  marginBottom: '20px'
+                }}>
+                  <div style={{ fontSize: '20px', marginBottom: '4px' }}>🏆</div>
+                  <div style={{
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: luxTheme.textPrimary
+                  }}>
+                    BATTLE MASTER STATUS!
+                  </div>
+                  <div style={{
+                    fontSize: '12px',
+                    color: luxTheme.textSecondary
+                  }}>
+                    Your dedication is legendary! Keep leading the charge!
+                  </div>
+                </div>
+              )}
+              
               <button
                 onClick={() => setShowStreakModal(false)}
                 style={{
@@ -804,7 +888,7 @@ export default function ParentFamilyBattle() {
                   cursor: 'pointer'
                 }}
               >
-                Keep the Battle Going! ⚔️
+                Continue the Battle! 🔥
               </button>
             </div>
           </div>

@@ -495,14 +495,27 @@ const shouldShowSubmissionButton = (book) => {
   const total = getBookTotal(book);
   const isAt100Percent = book.currentProgress >= total && total > 0;
   
+  // NEVER show submit button if book is completed
+  if (state === 'completed') {
+    return false;
+  }
+  
+  // NEVER show submit button during ANY cooldown period
+  if (state === 'quiz_cooldown' || state === 'admin_cooldown' || state === 'revision_cooldown') {
+    return false;
+  }
+  
+  // NEVER show submit button during pending states
+  if (state === 'pending_admin_approval' || state === 'pending_parent_quiz_unlock') {
+    return false;
+  }
+  
   // Show submit button if:
   // 1. Book is at 100% but not submitted/completed
   // 2. Book is in revision_ready state (after cooldown)
-  // 3. Slider is locked at 100%
-  // 4. 🔧 NEW: Quiz is unlocked by parent
+  // 3. Quiz is unlocked by parent
   return (isAt100Percent && state === 'in_progress') || 
          state === 'revision_ready' || 
-         isSliderLocked ||
          state === 'quiz_unlocked';
 };
 
@@ -528,6 +541,13 @@ const handleDirectSubmission = () => {
   const total = getBookTotal(selectedBook);
   const isAt100Percent = tempProgress >= total && total > 0;
   const bookState = getBookState(selectedBook);
+  
+  // PREVENT submission if book is already completed
+  if (bookState === 'completed') {
+    setShowSuccess('✅ This book is already completed!');
+    setTimeout(() => setShowSuccess(''), 3000);
+    return;
+  }
   
   // 🔧 NEW: If quiz was unlocked by parent, go straight to quiz
   if (bookState === 'quiz_unlocked') {
@@ -835,9 +855,11 @@ const openBookModal = (bookshelfBook) => {
   setTempRating(bookshelfBook.rating || 0);
   setTempNotes(bookshelfBook.notes || '');
   
-  // Set lock state based on whether book is actually at 100%
-  const isAt100Percent = bookshelfBook.currentProgress >= total && total > 0;
-  setIsSliderLocked(isAt100Percent);
+  // Set lock state - keep locked at 100% for ALL states (including completed and cooldowns)
+const isAt100Percent = bookshelfBook.currentProgress >= total && total > 0;
+const bookState = getBookState(bookshelfBook);
+// Lock slider if at 100% regardless of state - no unlocking for completed or cooldown books
+setIsSliderLocked(isAt100Percent);
   
   // Calculate initial textarea height for existing content
   const notesContent = bookshelfBook.notes || '';
@@ -1493,6 +1515,7 @@ const handleQuizSubmission = async () => {
       
       setStudentData({ ...studentData, bookshelf: updatedBookshelf });
       setShowSubmissionPopup(false);
+      closeBookModal(); // Close the book modal to prevent multiple submissions
       setShowSuccess(`📤 Book submitted for ${submissionType} approval!`);
       setTimeout(() => setShowSuccess(''), 3000);
       
@@ -2924,17 +2947,19 @@ const handleQuizComplete = async (answers) => {
                       letterSpacing: '0.3px'
                     }}>
                       {selectedBook.format === 'audiobook' ? 'Minutes' : 'Pages'}: {tempProgress}/{total}
-                      {!canEdit && <span style={{ color: colorPalette.textSecondary, fontStyle: 'italic' }}> (view only)</span>}
-                      {canEdit && isSliderLocked && <span style={{ color: '#4CAF50', fontStyle: 'italic' }}> (🔒 locked at 100%)</span>}
+{!canEdit && <span style={{ color: colorPalette.textSecondary, fontStyle: 'italic' }}> (view only)</span>}
+{canEdit && isSliderLocked && bookState === 'completed' && <span style={{ color: '#4CAF50', fontStyle: 'italic' }}> (✅ completed)</span>}
+{canEdit && isSliderLocked && bookState.includes('cooldown') && <span style={{ color: '#FF9800', fontStyle: 'italic' }}> (⏳ locked - cooldown)</span>}
+{canEdit && isSliderLocked && !bookState.includes('cooldown') && bookState !== 'completed' && <span style={{ color: '#4CAF50', fontStyle: 'italic' }}> (🔒 locked at 100%)</span>}
                     </label>
                     
                     <div 
-                      onClick={isSliderLocked ? () => setShowUnlockWarning(true) : undefined}
-                      style={{ 
-                        cursor: isSliderLocked ? 'pointer' : 'default',
-                        position: 'relative'
-                      }}
-                    >
+  onClick={isSliderLocked && bookState !== 'completed' && !bookState.includes('cooldown') ? () => setShowUnlockWarning(true) : undefined}
+  style={{ 
+    cursor: isSliderLocked && bookState !== 'completed' && !bookState.includes('cooldown') ? 'pointer' : 'default',
+    position: 'relative'
+  }}
+>
                       <input
                         type="range"
                         min="0"
@@ -3097,36 +3122,61 @@ const handleQuizComplete = async (answers) => {
                   </div>
 
                   {/* ENHANCED Action buttons - CONDITIONAL based on phase and lock state */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {canEdit ? (
-                      // EDITING ALLOWED - Show buttons based on slider lock state
-                      <>
-                        {isSliderLocked ? (
-                          // SLIDER IS LOCKED AT 100% - Show BOTH Save and Submit buttons
-                          <>
-                            <button
-                              onClick={handleDirectSubmission}
-                              disabled={isSaving}
-                              style={{
-                                backgroundColor: '#4CAF50',
-                                color: 'white',
-                                border: 'none',
-                                padding: '12px 16px',
-                                borderRadius: '16px',
-                                fontSize: '12px',
-                                fontWeight: '600',
-                                cursor: 'pointer',
-                                opacity: isSaving ? 0.7 : 1,
-                                minHeight: '44px',
-                                fontFamily: 'system-ui, -apple-system, sans-serif',
-                                marginBottom: '4px'
-                              }}
-                            >
-                              {getBookState(selectedBook) === 'revision_ready' ? 
-                                '📝 Resubmit Book' : 
-                                '✅ Submit Book'
-                              }
-                            </button>
+<div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+  {canEdit ? (
+    // EDITING ALLOWED - Show buttons based on slider lock state
+    <>
+      {/* NEW: Show completed message for finished books */}
+      {getBookState(selectedBook) === 'completed' && (
+        <div style={{
+          backgroundColor: '#4CAF50',
+          color: 'white',
+          padding: '14px',
+          borderRadius: '16px',
+          fontSize: '14px',
+          fontWeight: '600',
+          textAlign: 'center',
+          marginBottom: '8px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px'
+        }}>
+          ✅ Book Completed & Approved!
+        </div>
+      )}
+      
+      {isSliderLocked ? (
+  // SLIDER IS LOCKED AT 100% - Show BOTH Save and Submit buttons
+  <>
+    {/* Only show submit button if NOT in cooldown or pending states */}
+    {!['quiz_cooldown', 'admin_cooldown', 'revision_cooldown', 'pending_admin_approval', 'pending_parent_quiz_unlock', 'completed'].includes(getBookState(selectedBook)) && (
+      <button
+        onClick={handleDirectSubmission}
+        disabled={isSaving}
+        style={{
+          backgroundColor: '#4CAF50',
+          color: 'white',
+          border: 'none',
+          padding: '12px 16px',
+          borderRadius: '16px',
+          fontSize: '12px',
+          fontWeight: '600',
+          cursor: 'pointer',
+          opacity: isSaving ? 0.7 : 1,
+          minHeight: '44px',
+          fontFamily: 'system-ui, -apple-system, sans-serif',
+          marginBottom: '4px'
+        }}
+      >
+        {getBookState(selectedBook) === 'revision_ready' ? 
+          '📝 Resubmit Book' : 
+          getBookState(selectedBook) === 'quiz_unlocked' ?
+          '🎉 Take Quiz Now' :
+          '✅ Submit Book'
+        }
+      </button>
+    )}
                             
                             <button
                               onClick={saveBookProgress}
