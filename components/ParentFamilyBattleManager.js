@@ -22,81 +22,112 @@ import {
 } from '../lib/family-battle-system';
 
 // Stone Cold Jane Austen Helper
-function StoneColdjaneAustenHelper({ show, onClose, theme, familyBattleData }) {
+function StoneColdjaneAustenHelper({ show, battleState, winner, onClose, currentTheme, familyBattleData }) {
   const [currentQuote, setCurrentQuote] = useState('');
   const [isVisible, setIsVisible] = useState(false);
   const [imageError, setImageError] = useState(false);
 
-  // Get mode based on day of week
+  // Get quote type and image based on day and battle state
   const getQuoteTypeAndImage = () => {
-    const dayMode = getJaneAustenModeByDay();
+    const dayOfWeek = new Date().getDay();
     
-    // On Sunday (results day), check who won
-    if (familyBattleData?.isResultsDay) {
-      if (familyBattleData.winner === 'parents') {
-        return { type: 'victorious', image: '/images/jane-austen-victorious.png' };
-      } else {
-        // Kids won or tie - use encouraging
-        return { type: 'encouraging', image: '/images/jane-austen-encouraging.png' };
-      }
+    // Sunday - Prayerful Day of Rest
+    if (dayOfWeek === 0) {
+      return { 
+        type: 'prayerful', 
+        image: '/images/jane-austen-prayerful.png',
+        tagline: "Stone Cold Jane Austen's Sunday Reflection:"
+      };
     }
     
-    // Use day-based mode
-    switch (dayMode) {
-      case 'victorious':
-        return { type: 'victorious', image: '/images/jane-austen-victorious.png' };
-      case 'battleReady':
-        return { type: 'battleReady', image: '/images/jane-austen-battle-ready.png' };
-      case 'encouraging':
-      default:
-        return { type: 'encouraging', image: '/images/jane-austen-encouraging.png' };
+    // Monday-Tuesday - Encouraging
+    if (dayOfWeek >= 1 && dayOfWeek <= 2) {
+      return { 
+        type: 'encouraging', 
+        image: '/images/jane-austen-encouraging.png',
+        tagline: "Because Stone Cold Jane Austen sayeth so:"
+      };
     }
+    
+    // Wednesday-Thursday - Battle Ready
+    if (dayOfWeek >= 3 && dayOfWeek <= 4) {
+      return { 
+        type: 'battleReady', 
+        image: '/images/jane-austen-battle-ready.png',
+        tagline: "Because Stone Cold Jane Austen sayeth so:"
+      };
+    }
+    
+    // Friday-Saturday - Victorious
+    if (dayOfWeek >= 5 && dayOfWeek <= 6) {
+      return { 
+        type: 'victorious', 
+        image: '/images/jane-austen-victorious.png',
+        tagline: "Because Stone Cold Jane Austen sayeth so:"
+      };
+    }
+    
+    // Default fallback (shouldn't happen)
+    return { 
+      type: 'encouraging', 
+      image: '/images/jane-austen-encouraging.png',
+      tagline: "Because Stone Cold Jane Austen sayeth so:"
+    };
   };
 
   useEffect(() => {
     const { type } = getQuoteTypeAndImage();
     setCurrentQuote(getJaneAustenQuote(type));
-  }, [familyBattleData]);
+  }, [battleState, winner, familyBattleData]);
 
   useEffect(() => {
     if (show && !isVisible) {
       setIsVisible(true);
-      const timer = setTimeout(() => setIsVisible(false), 12000);
+      // Show for 15 seconds on Sunday (longer for reflection), 12 seconds other days
+      const duration = new Date().getDay() === 0 ? 15000 : 12000;
+      const timer = setTimeout(() => setIsVisible(false), duration);
       return () => clearTimeout(timer);
     }
   }, [show]);
 
   useEffect(() => {
-    if (familyBattleData && show) {
+    if (show) {
+      // Reappear every 45 seconds
       const interval = setInterval(() => setIsVisible(true), 45000);
       return () => clearInterval(interval);
     }
-  }, [familyBattleData, show]);
+  }, [show]);
 
   if (!isVisible) return null;
 
-  const { image } = getQuoteTypeAndImage();
+  const { image, type, tagline } = getQuoteTypeAndImage();
+  const isPrayerful = type === 'prayerful';
 
   return (
     <div style={{
       position: 'fixed',
       bottom: '20px',
       right: '20px',
-      background: `linear-gradient(135deg, ${theme.primary}F0, ${theme.secondary}F0)`,
+      background: isPrayerful 
+        ? `linear-gradient(135deg, #E6E6FA, #F0E6FF, #FFFFFF)` // Softer purple gradient for prayerful
+        : `linear-gradient(135deg, ${currentTheme.primary}F0, ${currentTheme.secondary}F0)`,
       borderRadius: '16px',
       padding: '12px 16px',
       maxWidth: '320px',
       width: '90vw',
       animation: 'slideInUp 0.5s ease-out',
-      boxShadow: `0 8px 32px rgba(0,0,0,0.25), 0 0 0 2px ${theme.accent}`,
-      border: `3px solid ${theme.primary}`,
+      boxShadow: isPrayerful
+        ? `0 8px 32px rgba(138, 43, 226, 0.2), 0 0 0 2px #E6E6FA`
+        : `0 8px 32px rgba(0,0,0,0.25), 0 0 0 2px ${currentTheme.accent}`,
+      border: isPrayerful 
+        ? `3px solid #DDA0DD`
+        : `3px solid ${currentTheme.primary}`,
       zIndex: 1000,
       display: 'flex',
       alignItems: 'flex-start',
       gap: '12px',
       backdropFilter: 'blur(10px)'
     }}>
-      {/* Jane Austen Portrait */}
       <div style={{
         width: '80px',
         height: '80px',
@@ -109,54 +140,66 @@ function StoneColdjaneAustenHelper({ show, onClose, theme, familyBattleData }) {
           <img 
             src={image}
             alt="Stone Cold Jane Austen"
-            style={{ width: '80px', height: '80px', objectFit: 'contain' }}
+            style={{ 
+              width: '80px', 
+              height: '80px', 
+              objectFit: 'contain',
+              filter: isPrayerful ? 'brightness(1.05)' : 'none'
+            }}
             onError={() => setImageError(true)}
           />
         ) : (
           <div style={{
             width: '80px',
             height: '80px',
-            backgroundColor: theme.accent,
+            backgroundColor: isPrayerful ? '#E6E6FA' : currentTheme.accent,
             borderRadius: '8px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             fontSize: '28px',
-            border: `2px solid ${theme.primary}`
+            border: isPrayerful 
+              ? `2px solid #DDA0DD`
+              : `2px solid ${currentTheme.primary}`
           }}>
-            👩‍🎓
+            {isPrayerful ? '🙏' : '👩‍🎓'}
           </div>
         )}
       </div>
-
-      {/* Content */}
+      
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
           fontSize: '12px',
           fontWeight: 'bold',
-          color: theme.textPrimary,
+          color: isPrayerful ? '#4B0082' : currentTheme.textPrimary,
           marginBottom: '6px',
           fontFamily: 'Didot, "Times New Roman", serif'
         }}>
-          Because Stone Cold Jane Austen sayeth so:
+          {tagline}
         </div>
         <div style={{
           fontSize: '11px',
-          color: theme.textPrimary,
+          color: isPrayerful ? '#4B0082' : currentTheme.textPrimary,
           lineHeight: '1.4',
-          fontStyle: 'italic',
-          fontFamily: 'Didot, "Times New Roman", serif'
+          fontStyle: isPrayerful ? 'normal' : 'italic',
+          fontFamily: isPrayerful ? 'Georgia, serif' : 'Didot, "Times New Roman", serif',
+          fontWeight: isPrayerful ? '500' : 'normal'
         }}>
-          &quot;{currentQuote}&quot;
+          {isPrayerful ? (
+            // For Bible verses, no extra quotes needed as they're in the string
+            <span>{currentQuote}</span>
+          ) : (
+            // For regular quotes, wrap in quotes
+            <span>&quot;{currentQuote}&quot;</span>
+          )}
         </div>
       </div>
-
-      {/* Close button */}
+      
       <button
         onClick={() => setIsVisible(false)}
         style={{
-          backgroundColor: theme.primary,
-          color: theme.textPrimary,
+          backgroundColor: isPrayerful ? '#DDA0DD' : currentTheme.primary,
+          color: isPrayerful ? '#FFFFFF' : currentTheme.textPrimary,
           border: 'none',
           borderRadius: '50%',
           width: '22px',
@@ -753,6 +796,11 @@ export default function ParentFamilyBattleManager({ theme, parentData, linkedStu
 
   const hasUninvitedStudents = linkedStudents && linkedStudents.some(student => !invitedStudents.has(student.id));
 
+  // Extract battle state and winner from currentBattle for Jane Austen component
+  const battleState = currentBattle?.childrenMinutes > currentBattle?.parentMinutes ? 'childrenLead' : 
+                      currentBattle?.parentMinutes > currentBattle?.childrenMinutes ? 'parentsLead' : 'tie';
+  const winner = currentBattle?.winner || null;
+
   if (!hasFeature('familyBattle')) {
     return (
       <div style={{
@@ -985,8 +1033,10 @@ export default function ParentFamilyBattleManager({ theme, parentData, linkedStu
       {/* Stone Cold Jane Austen Helper */}
       <StoneColdjaneAustenHelper
         show={showJaneAusten && familyBattleEnabled}
+        battleState={battleState}
+        winner={winner}
         onClose={() => setShowJaneAusten(false)}
-        theme={theme}
+        currentTheme={theme}
         familyBattleData={currentBattle}
       />
 

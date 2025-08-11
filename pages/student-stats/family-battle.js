@@ -1,4 +1,5 @@
-// pages/student-stats/family-battle.js - FIXED: Student contribution & Sunday messaging
+// pages/student-stats/family-battle.js - UPDATED: Removed client-side XP awarding
+// Key changes: No client-side XP, just check server data
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/router';
@@ -16,8 +17,7 @@ import FamilyBattleResultsModal from '../../components/FamilyBattleResultsModal'
 import {
   getStudentFamilyBattleStatus,
   getFamilyBattleDataForStudent,
-  getStudentBattleContribution,
-  awardFamilyBattleXP
+  getStudentBattleContribution
 } from '../../lib/family-battle-sync';
 
 // Import simplified battle system
@@ -107,30 +107,52 @@ function StoneColdjaneAustenHelper({ show, battleState, winner, onClose, current
   const [isVisible, setIsVisible] = useState(false);
   const [imageError, setImageError] = useState(false);
 
-  // Get quote type based on battle state and day
+  // Get quote type and image based on day and battle state
   const getQuoteTypeAndImage = () => {
     const dayOfWeek = new Date().getDay();
     
-    // Sunday - Results day
-    if (dayOfWeek === 0 && familyBattleData) {
-      if (familyBattleData.winner === 'children') {
-        return { type: 'victorious', image: '/images/jane-austen-victorious.png' };
-      } else {
-        return { type: 'encouraging', image: '/images/jane-austen-encouraging.png' };
-      }
+    // Sunday - Prayerful Day of Rest
+    if (dayOfWeek === 0) {
+      return { 
+        type: 'prayerful', 
+        image: '/images/jane-austen-prayerful.png',
+        tagline: "Stone Cold Jane Austen's Sunday Reflection:"
+      };
     }
     
-    // Monday-Wednesday - Encouraging
-    if (dayOfWeek >= 1 && dayOfWeek <= 3) {
-      return { type: 'encouraging', image: '/images/jane-austen-encouraging.png' };
+    // Monday-Tuesday - Encouraging
+    if (dayOfWeek >= 1 && dayOfWeek <= 2) {
+      return { 
+        type: 'encouraging', 
+        image: '/images/jane-austen-encouraging.png',
+        tagline: "Because Stone Cold Jane Austen sayeth so:"
+      };
     }
     
-    // Thursday-Saturday - Battle Ready
-    if (dayOfWeek >= 4 && dayOfWeek <= 6) {
-      return { type: 'battleReady', image: '/images/jane-austen-battle-ready.png' };
+    // Wednesday-Thursday - Battle Ready
+    if (dayOfWeek >= 3 && dayOfWeek <= 4) {
+      return { 
+        type: 'battleReady', 
+        image: '/images/jane-austen-battle-ready.png',
+        tagline: "Because Stone Cold Jane Austen sayeth so:"
+      };
     }
     
-    return { type: 'encouraging', image: '/images/jane-austen-encouraging.png' };
+    // Friday-Saturday - Victorious
+    if (dayOfWeek >= 5 && dayOfWeek <= 6) {
+      return { 
+        type: 'victorious', 
+        image: '/images/jane-austen-victorious.png',
+        tagline: "Because Stone Cold Jane Austen sayeth so:"
+      };
+    }
+    
+    // Default fallback (shouldn't happen)
+    return { 
+      type: 'encouraging', 
+      image: '/images/jane-austen-encouraging.png',
+      tagline: "Because Stone Cold Jane Austen sayeth so:"
+    };
   };
 
   useEffect(() => {
@@ -141,13 +163,16 @@ function StoneColdjaneAustenHelper({ show, battleState, winner, onClose, current
   useEffect(() => {
     if (show && !isVisible) {
       setIsVisible(true);
-      const timer = setTimeout(() => setIsVisible(false), 12000);
+      // Show for 15 seconds on Sunday (longer for reflection), 12 seconds other days
+      const duration = new Date().getDay() === 0 ? 15000 : 12000;
+      const timer = setTimeout(() => setIsVisible(false), duration);
       return () => clearTimeout(timer);
     }
   }, [show]);
 
   useEffect(() => {
     if (show) {
+      // Reappear every 45 seconds
       const interval = setInterval(() => setIsVisible(true), 45000);
       return () => clearInterval(interval);
     }
@@ -155,21 +180,28 @@ function StoneColdjaneAustenHelper({ show, battleState, winner, onClose, current
 
   if (!isVisible) return null;
 
-  const { image } = getQuoteTypeAndImage();
+  const { image, type, tagline } = getQuoteTypeAndImage();
+  const isPrayerful = type === 'prayerful';
 
   return (
     <div style={{
       position: 'fixed',
       bottom: '20px',
       right: '20px',
-      background: `linear-gradient(135deg, ${currentTheme.primary}F0, ${currentTheme.secondary}F0)`,
+      background: isPrayerful 
+        ? `linear-gradient(135deg, #E6E6FA, #F0E6FF, #FFFFFF)` // Softer purple gradient for prayerful
+        : `linear-gradient(135deg, ${currentTheme.primary}F0, ${currentTheme.secondary}F0)`,
       borderRadius: '16px',
       padding: '12px 16px',
       maxWidth: '320px',
       width: '90vw',
       animation: 'slideInUp 0.5s ease-out',
-      boxShadow: `0 8px 32px rgba(0,0,0,0.25), 0 0 0 2px ${currentTheme.accent}`,
-      border: `3px solid ${currentTheme.primary}`,
+      boxShadow: isPrayerful
+        ? `0 8px 32px rgba(138, 43, 226, 0.2), 0 0 0 2px #E6E6FA`
+        : `0 8px 32px rgba(0,0,0,0.25), 0 0 0 2px ${currentTheme.accent}`,
+      border: isPrayerful 
+        ? `3px solid #DDA0DD`
+        : `3px solid ${currentTheme.primary}`,
       zIndex: 1000,
       display: 'flex',
       alignItems: 'flex-start',
@@ -188,50 +220,66 @@ function StoneColdjaneAustenHelper({ show, battleState, winner, onClose, current
           <img 
             src={image}
             alt="Stone Cold Jane Austen"
-            style={{ width: '80px', height: '80px', objectFit: 'contain' }}
+            style={{ 
+              width: '80px', 
+              height: '80px', 
+              objectFit: 'contain',
+              filter: isPrayerful ? 'brightness(1.05)' : 'none'
+            }}
             onError={() => setImageError(true)}
           />
         ) : (
           <div style={{
             width: '80px',
             height: '80px',
-            backgroundColor: currentTheme.accent,
+            backgroundColor: isPrayerful ? '#E6E6FA' : currentTheme.accent,
             borderRadius: '8px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             fontSize: '28px',
-            border: `2px solid ${currentTheme.primary}`
+            border: isPrayerful 
+              ? `2px solid #DDA0DD`
+              : `2px solid ${currentTheme.primary}`
           }}>
-            👩‍🎓
+            {isPrayerful ? '🙏' : '👩‍🎓'}
           </div>
         )}
       </div>
+      
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
           fontSize: '12px',
           fontWeight: 'bold',
-          color: currentTheme.textPrimary,
+          color: isPrayerful ? '#4B0082' : currentTheme.textPrimary,
           marginBottom: '6px',
           fontFamily: 'Didot, "Times New Roman", serif'
         }}>
-          Because Stone Cold Jane Austen sayeth so:
+          {tagline}
         </div>
         <div style={{
           fontSize: '11px',
-          color: currentTheme.textPrimary,
+          color: isPrayerful ? '#4B0082' : currentTheme.textPrimary,
           lineHeight: '1.4',
-          fontStyle: 'italic',
-          fontFamily: 'Didot, "Times New Roman", serif'
+          fontStyle: isPrayerful ? 'normal' : 'italic',
+          fontFamily: isPrayerful ? 'Georgia, serif' : 'Didot, "Times New Roman", serif',
+          fontWeight: isPrayerful ? '500' : 'normal'
         }}>
-          &quot;{currentQuote}&quot;
+          {isPrayerful ? (
+            // For Bible verses, no extra quotes needed as they're in the string
+            <span>{currentQuote}</span>
+          ) : (
+            // For regular quotes, wrap in quotes
+            <span>&quot;{currentQuote}&quot;</span>
+          )}
         </div>
       </div>
+      
       <button
         onClick={() => setIsVisible(false)}
         style={{
-          backgroundColor: currentTheme.primary,
-          color: currentTheme.textPrimary,
+          backgroundColor: isPrayerful ? '#DDA0DD' : currentTheme.primary,
+          color: isPrayerful ? '#FFFFFF' : currentTheme.textPrimary,
           border: 'none',
           borderRadius: '50%',
           width: '22px',
@@ -767,7 +815,58 @@ export default function StudentFamilyBattleSimplified() {
     setIsLoading(false);
   }, [user?.uid, router, themes]);
 
-  // Load family battle status
+  // UPDATE: Simplified - Just show modal on Sunday, no XP awarding
+  useEffect(() => {
+    const today = new Date();
+    const isSunday = today.getDay() === 0;
+    
+    if (isSunday && 
+        familyBattleData && 
+        familyBattleData.winner && 
+        familyBattleData.winner !== 'ongoing' &&
+        familyBattleData.weekNumber) {
+      
+      const localStorageKey = `familyBattleResultsShown_student_${user?.uid}_week_${familyBattleData.weekNumber}`;
+      const hasSeenResults = localStorage.getItem(localStorageKey) === 'true';
+      
+      if (!hasSeenResults) {
+        console.log('📊 Auto-showing results modal for week:', familyBattleData.weekNumber);
+        
+        // UPDATE: Check if student got XP (will be in their data if sync already ran)
+        if (familyBattleData.winner === 'children' && 
+            studentData[`familyBattleWeek${familyBattleData.weekNumber}XPAwarded`]) {
+          
+          // XP was already awarded server-side, just show success message
+          console.log('✅ Student already received XP for Week', familyBattleData.weekNumber);
+          
+          // Calculate if student was MVP for display
+          let isStudentMVP = false;
+          let maxMinutes = 0;
+          
+          Object.entries(familyBattleData.studentBreakdown || {}).forEach(([id, data]) => {
+            if ((data.minutes || 0) > maxMinutes) {
+              maxMinutes = data.minutes || 0;
+              if (data.name === studentData.firstName) {
+                isStudentMVP = true;
+              }
+            }
+          });
+          
+          const xpAmount = isStudentMVP ? 50 : 25; // Base 25 + MVP bonus 25
+          setShowSuccess(`🎉 Victory! You earned ${xpAmount} XP for Week ${familyBattleData.weekNumber}!`);
+          setTimeout(() => setShowSuccess(''), 4000);
+        }
+        
+        // Show the modal
+        setShowResultsModal(true);
+        localStorage.setItem(localStorageKey, 'true');
+      } else {
+        console.log('📊 Results already shown for week:', familyBattleData.weekNumber);
+      }
+    }
+  }, [isSunday, familyBattleData, user?.uid, studentData]);
+
+  // UPDATE: Load family battle status - XP info will come from server
   useEffect(() => {
     const loadFamilyBattleStatus = async () => {
       if (!user?.uid || !studentData) return;
@@ -794,9 +893,16 @@ export default function StudentFamilyBattleSimplified() {
               studentBreakdown: battleStatus.battleData.studentBreakdown,
               parentBreakdown: battleStatus.battleData.parentBreakdown
             });
+            
+            // UPDATE: Check if XP was already awarded (comes from server data)
+            if (battleStatus.battleData.isResultsDay && 
+                battleStatus.battleData.winner === 'children' &&
+                studentData[`familyBattleWeek${battleStatus.battleData.weekNumber}XPAwarded`]) {
+              console.log('✅ XP already awarded for Week', battleStatus.battleData.weekNumber);
+            }
           }
           
-          // FIXED: Get contribution from battle data directly
+          // Get contribution from battle data
           let contribution = 0;
           if (battleStatus.battleData?.studentBreakdown) {
             for (const [id, data] of Object.entries(battleStatus.battleData.studentBreakdown)) {
@@ -887,77 +993,6 @@ export default function StudentFamilyBattleSimplified() {
     
     return () => clearInterval(refreshInterval);
   }, [familyBattleUnlocked, studentData, isSunday]);
-
-  // Auto-show results modal on Sunday with XP awarding
-  useEffect(() => {
-    const today = new Date();
-    const isSunday = today.getDay() === 0;
-    
-    if (isSunday && 
-        familyBattleData && 
-        familyBattleData.winner && 
-        familyBattleData.winner !== 'ongoing' &&
-        familyBattleData.weekNumber) {
-      
-      const localStorageKey = `familyBattleResultsShown_student_${user?.uid}`;
-      const shownWeek = localStorage.getItem(localStorageKey);
-      const currentWeek = familyBattleData.weekNumber.toString();
-      
-      if (shownWeek !== currentWeek) {
-        console.log('📊 Auto-showing results modal for week:', currentWeek);
-        
-        // Award XP if children won
-        if (familyBattleData.winner === 'children' && 
-            studentData &&
-            !studentData[`familyBattleWeek${familyBattleData.weekNumber}XPAwarded`]) {
-          
-          // Check if current student is MVP
-          let isStudentMVP = false;
-          let maxMinutes = 0;
-          let mvpId = null;
-          
-          Object.entries(familyBattleData.studentBreakdown || {}).forEach(([id, data]) => {
-            if ((data.minutes || 0) > maxMinutes) {
-              maxMinutes = data.minutes || 0;
-              mvpId = id;
-            }
-          });
-          
-          // Check if MVP by name match
-          if (familyBattleData.studentBreakdown[mvpId]?.name === studentData.firstName) {
-            isStudentMVP = true;
-          }
-          
-          console.log('🎮 Awarding Family Battle XP...');
-          awardFamilyBattleXP(studentData, familyBattleData.weekNumber, isStudentMVP)
-            .then(result => {
-              if (result.success) {
-                console.log(`✅ XP Awarded: ${result.xpAwarded} XP! New total: ${result.newTotal}`);
-                
-                setStudentData(prev => ({
-                  ...prev,
-                  totalXP: result.newTotal,
-                  [`familyBattleWeek${familyBattleData.weekNumber}XPAwarded`]: true
-                }));
-                
-                setShowSuccess(`🎉 Victory XP awarded! +${result.xpAwarded} XP!`);
-                setTimeout(() => setShowSuccess(''), 4000);
-              } else {
-                console.error('❌ Failed to award XP:', result.error);
-              }
-            })
-            .catch(error => {
-              console.error('❌ Error awarding XP:', error);
-            });
-        }
-        
-        setShowResultsModal(true);
-        localStorage.setItem(localStorageKey, currentWeek);
-      } else {
-        console.log('📊 Results already shown for week:', currentWeek);
-      }
-    }
-  }, [isSunday, familyBattleData, user?.uid, studentData]);
 
   useEffect(() => {
     if (!loading && isAuthenticated && user) {
@@ -1056,7 +1091,7 @@ export default function StudentFamilyBattleSimplified() {
         paddingBottom: '100px'
       }}>
         
-        {/* Show success message when XP is awarded */}
+        {/* UPDATE: Success message now just displays, doesn't trigger XP award */}
         {showSuccess && (
           <div style={{
             position: 'fixed',
@@ -1670,14 +1705,14 @@ export default function StudentFamilyBattleSimplified() {
           />
         )}
 
-        {/* Family Battle Results Modal */}
+        {/* UPDATE: Modal just displays results, no XP logic */}
         <FamilyBattleResultsModal
           show={showResultsModal && familyBattleUnlocked}
           onClose={() => {
             setShowResultsModal(false);
             if (familyBattleData?.weekNumber) {
-              const localStorageKey = `familyBattleResultsShown_student_${user?.uid}`;
-              localStorage.setItem(localStorageKey, familyBattleData.weekNumber.toString());
+              const localStorageKey = `familyBattleResultsShown_student_${user?.uid}_week_${familyBattleData.weekNumber}`;
+              localStorage.setItem(localStorageKey, 'true');
             }
           }}
           battleData={familyBattleData}

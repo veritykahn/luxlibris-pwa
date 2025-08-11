@@ -1,4 +1,4 @@
-// pages/parent/healthy-habits.js - Fixed with Banking Warning Modal
+// pages/parent/healthy-habits.js - Fixed with Banking Warning Modal and Sunday Rest Day
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
@@ -411,12 +411,14 @@ export default function ParentHealthyHabits() {
     }
   }, [user?.uid, loadStreakData, calculateParentReadingLevel])
 
-  // FIXED: Save reading session with direct family battle updates (no sync loop)
+  // FIXED: Save reading session with Sunday rest day logic
   const saveReadingSession = useCallback(async (duration, completed) => {
     try {
       if (!user?.uid) return
 
       const today = getLocalDateString(new Date())
+      const dayOfWeek = new Date().getDay()
+      const isSunday = dayOfWeek === 0
 
       const sessionData = {
         date: today,
@@ -428,6 +430,7 @@ export default function ParentHealthyHabits() {
         isWithChildren: false // TODO: Add toggle for this
       }
 
+      // Save session always (for personal tracking and modeling)
       const sessionsRef = collection(db, `parents/${user.uid}/readingSessions`)
       const docRef = await addDoc(sessionsRef, sessionData)
       const newSession = { id: docRef.id, ...sessionData }
@@ -436,16 +439,16 @@ export default function ParentHealthyHabits() {
       setTodaysMinutes(prev => prev + duration)
       setTotalSessions(prev => prev + 1)
 
-      // Show success messages focused on modeling behavior
+      // Show success messages with Sunday indicator
       setShowSuccess(completed ? 
-        `🎉 Reading session completed! You're setting an amazing example!` : 
-        `📖 Progress saved! ${duration} minutes of reading tracked!`
+        `🎉 Reading session completed! You're setting an amazing example!${isSunday ? ' (Sunday rest day - no battle points)' : ''}` : 
+        `📖 Progress saved! ${duration} minutes tracked!${isSunday ? ' (Personal progress only)' : ''}`
       )
       setTimeout(() => setShowSuccess(''), 3000)
 
-      // CRITICAL FIX: Direct update to family battle data (no sync loop)
-      if (parentData?.familyBattleSettings?.enabled && parentData?.familyId) {
-        console.log('⚔️ Updating family battle stats directly...')
+      // Only update family battle on Monday-Saturday
+      if (parentData?.familyBattleSettings?.enabled && parentData?.familyId && !isSunday) {
+        console.log('⚔️ Updating family battle stats (Mon-Sat only)...')
         try {
           const familyRef = doc(db, 'families', parentData.familyId)
           const weekStr = getLocalDateString(getProgramWeekStart())
@@ -474,38 +477,25 @@ export default function ParentHealthyHabits() {
               const parentTotal = currentWeek.parents || 0
               const childTotal = currentWeek.children || 0
               const margin = Math.abs(parentTotal - childTotal)
-              const dayOfWeek = new Date().getDay()
               
               let winner = 'tie'
               let battleStatus = 'The battle begins!'
               
-              if (dayOfWeek === 0) { // Sunday - results day
-                if (childTotal > parentTotal) {
-                  winner = 'children'
-                  battleStatus = `🏆 KIDS DOMINATED! Won by ${margin} minutes!`
-                } else if (parentTotal > childTotal) {
-                  winner = 'parents'
-                  battleStatus = `👑 PARENTS DOMINATED! Won by ${margin} minutes!`
-                } else if (parentTotal > 0 || childTotal > 0) {
-                  battleStatus = '🤝 EPIC TIE BATTLE! Both teams fought hard!'
-                }
-              } else {
-                // During the week
-                if (childTotal > parentTotal) {
-                  winner = 'children'
-                  battleStatus = `Kids leading by ${margin} minutes! Keep reading!`
-                } else if (parentTotal > childTotal) {
-                  winner = 'parents'
-                  battleStatus = `Parents leading by ${margin} minutes! Battle continues!`
-                } else if (parentTotal > 0 || childTotal > 0) {
-                  battleStatus = 'Tied up! Every minute counts!'
-                }
+              // During the week
+              if (childTotal > parentTotal) {
+                winner = 'children'
+                battleStatus = `Kids leading by ${margin} minutes! Keep reading!`
+              } else if (parentTotal > childTotal) {
+                winner = 'parents'
+                battleStatus = `Parents leading by ${margin} minutes! Battle continues!`
+              } else if (parentTotal > 0 || childTotal > 0) {
+                battleStatus = 'Tied up! Every minute counts!'
               }
               
               // Update just the calculated fields
               await updateDoc(familyRef, {
                 'familyBattleSettings.currentWeek.margin': margin,
-                'familyBattleSettings.currentWeek.winner': dayOfWeek === 0 ? winner : 'ongoing',
+                'familyBattleSettings.currentWeek.winner': 'ongoing',
                 'familyBattleSettings.currentWeek.battleStatus': battleStatus
               })
             }
@@ -513,15 +503,14 @@ export default function ParentHealthyHabits() {
           
           console.log('✅ Family battle stats updated directly (no sync loop)!')
           
-          // Show battle-specific success if in an active battle
-          const dayOfWeek = new Date().getDay()
-          if (dayOfWeek !== 0) { // Not Sunday (results day)
-            setShowSuccess(prev => prev + ' ⚔️ Battle stats updated!')
-          }
+          // Show battle-specific success
+          setShowSuccess(prev => prev + ' ⚔️ Battle stats updated!')
         } catch (updateError) {
           console.error('⚠️ Could not update family battle:', updateError)
           // Don't fail the whole save operation for battle update failure
         }
+      } else if (isSunday && parentData?.familyBattleSettings?.enabled) {
+        console.log('🙏 Sunday reading: Personal progress only - battle rests today')
       }
 
       // Update streaks and level if completed
@@ -1882,7 +1871,7 @@ export default function ParentHealthyHabits() {
                 lineHeight: '1.4'
               }}>
                 Excellent work leading by example! Your children are learning the value of reading by watching you.
-                {parentData?.familyBattleSettings?.enabled && ' ⚔️ Battle stats updated!'}
+                {parentData?.familyBattleSettings?.enabled && new Date().getDay() !== 0 && ' ⚔️ Battle stats updated!'}
               </p>
             </div>
           </div>
