@@ -1,6 +1,6 @@
-// components/ParentFamilyBattleManager.js - FIXED: Uses existing familyId
+// components/ParentFamilyBattleManager.js - FIXED VERSION
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { usePremiumFeatures } from '../hooks/usePremiumFeatures';
 import { doc, getDoc, updateDoc, collection, getDocs, query, where } from 'firebase/firestore';
@@ -88,7 +88,7 @@ function StoneColdjaneAustenHelper({ show, battleState, winner, onClose, current
       const timer = setTimeout(() => setIsVisible(false), duration);
       return () => clearTimeout(timer);
     }
-  }, [show]);
+  }, [show, isVisible]);
 
   useEffect(() => {
     if (show) {
@@ -579,7 +579,7 @@ const loadLinkedStudentsData = async (linkedStudentIds) => {
   }
 };
 
-// Main Parent Family Battle Manager Component - UPDATED WITH NEW PROPS
+// Main Parent Family Battle Manager Component
 export default function ParentFamilyBattleManager({ theme, parentData, linkedStudents, onUpdate, battleData, isSunday }) {
   const { user } = useAuth();
   const { hasFeature, isPilotPhase } = usePremiumFeatures();
@@ -588,7 +588,17 @@ export default function ParentFamilyBattleManager({ theme, parentData, linkedStu
   const [familyStats, setFamilyStats] = useState(null);
   const [currentBattle, setCurrentBattle] = useState(null);
   const [invitedStudents, setInvitedStudents] = useState(new Set());
+  const [isLoading, setIsLoading] = useState(false);
+  const [showSuccess, setShowSuccess] = useState('');
+  const [showJaneAusten, setShowJaneAusten] = useState(true);
+  const [showVictoryModal, setShowVictoryModal] = useState(false);
   
+  // Track last refresh time to prevent rapid refreshes
+  const lastRefreshTime = useRef(0);
+  const refreshIntervalRef = useRef(null);
+
+  const familyId = parentData?.familyId;
+
   // Use passed battle data on Sunday instead of loading fresh
   useEffect(() => {
     if (isSunday && battleData) {
@@ -596,16 +606,8 @@ export default function ParentFamilyBattleManager({ theme, parentData, linkedStu
       setCurrentBattle(battleData);
     }
   }, [isSunday, battleData]);
-  
-  const [isLoading, setIsLoading] = useState(false);
-  const [showSuccess, setShowSuccess] = useState('');
-  const [showJaneAusten, setShowJaneAusten] = useState(true);
-  const [showVictoryModal, setShowVictoryModal] = useState(false);
 
-  // FIXED: Use the actual familyId from parentData
-  const familyId = parentData?.familyId;
-
-  // Load family battle data using sync system
+  // Load family battle data using sync system - WITH THROTTLING
   const loadFamilyBattleData = useCallback(async () => {
     // Don't load fresh data on Sunday if we have passed data
     if (isSunday && battleData) {
@@ -615,6 +617,15 @@ export default function ParentFamilyBattleManager({ theme, parentData, linkedStu
     }
     
     if (!user?.uid || !familyId) return;
+    
+    // Throttle refreshes - minimum 10 seconds between loads
+    const now = Date.now();
+    if (now - lastRefreshTime.current < 10000) {
+      console.log('🚫 Throttling battle data load - too soon');
+      return;
+    }
+    
+    lastRefreshTime.current = now;
     
     try {
       setIsLoading(true);
@@ -631,7 +642,7 @@ export default function ParentFamilyBattleManager({ theme, parentData, linkedStu
         }
       }
       
-      // FIXED: Pass familyId instead of user.uid
+      // Use sync system to get battle data
       const battleData = await syncFamilyBattleData(familyId, studentsToUse || []);
       setCurrentBattle(battleData);
       
@@ -640,7 +651,7 @@ export default function ParentFamilyBattleManager({ theme, parentData, linkedStu
         onUpdate({ battleData });
       }
       
-      // FIXED: Use correct familyId for family document
+      // Get family statistics
       const familyRef = doc(db, 'families', familyId);
       const familyDoc = await getDoc(familyRef);
       
@@ -668,7 +679,7 @@ export default function ParentFamilyBattleManager({ theme, parentData, linkedStu
     } finally {
       setIsLoading(false);
     }
-  }, [user?.uid, familyId, linkedStudents, isSunday, battleData]);
+  }, [user?.uid, familyId, linkedStudents, isSunday, battleData, onUpdate]);
 
   // Check family battle status and auto-invite students
   useEffect(() => {
@@ -676,7 +687,6 @@ export default function ParentFamilyBattleManager({ theme, parentData, linkedStu
       if (!user?.uid || !familyId) return;
       
       try {
-        // FIXED: Use correct familyId
         const familyRef = doc(db, 'families', familyId);
         const familyDoc = await getDoc(familyRef);
         
@@ -699,7 +709,6 @@ export default function ParentFamilyBattleManager({ theme, parentData, linkedStu
               
               if (newStudents.length > 0) {
                 console.log('🚀 Auto-inviting new children to family battle:', newStudents.length);
-                // FIXED: Pass familyId instead of user.uid
                 await enableFamilyBattleForStudents(familyId, newStudents);
                 
                 const updatedInvited = new Set(alreadyInvited);
@@ -731,19 +740,32 @@ export default function ParentFamilyBattleManager({ theme, parentData, linkedStu
     if (user?.uid && familyId && linkedStudents) {
       checkFamilyBattleStatus();
     }
-  }, [user?.uid, familyId, linkedStudents, loadFamilyBattleData]);
+  }, [user?.uid, familyId, linkedStudents?.length]); // FIXED: Only depend on length, not full array
 
-  // Auto-refresh battle data every 30 seconds when enabled
+  // FIXED: Auto-refresh battle data every 30 seconds with proper cleanup
   useEffect(() => {
-    if (familyBattleEnabled && currentBattle) {
-      const interval = setInterval(() => {
+    // Clear any existing interval first
+    if (refreshIntervalRef.current) {
+      clearInterval(refreshIntervalRef.current);
+      refreshIntervalRef.current = null;
+    }
+    
+    if (familyBattleEnabled && currentBattle && !isSunday) {
+      console.log('⏰ Setting up 30-second auto-refresh');
+      refreshIntervalRef.current = setInterval(() => {
         console.log('🔄 Auto-refreshing battle data...');
         loadFamilyBattleData();
-      }, 30000); // Refresh every 30 seconds
-      
-      return () => clearInterval(interval);
+      }, 30000); // 30 seconds
     }
-  }, [familyBattleEnabled, currentBattle, loadFamilyBattleData]);
+    
+    // Cleanup on unmount or when dependencies change
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
+      }
+    };
+  }, [familyBattleEnabled, isSunday]); // FIXED: Removed currentBattle dependency to prevent loops
 
   // Initialize family battle
   const handleInitializeBattle = async () => {
@@ -760,18 +782,15 @@ export default function ParentFamilyBattleManager({ theme, parentData, linkedStu
     setIsLoading(true);
     
     try {
-      // FIXED: Pass familyId and parentData with uid
       await initializeFamilyBattle(familyId, { ...parentData, uid: user.uid });
       
       // Enable for all linked students
       if (linkedStudents && linkedStudents.length > 0) {
-        // FIXED: Pass familyId instead of user.uid
         await enableFamilyBattleForStudents(familyId, linkedStudents);
         
         const invitedIds = new Set(linkedStudents.map(student => student.id));
         setInvitedStudents(invitedIds);
         
-        // FIXED: Use correct familyId
         const familyRef = doc(db, 'families', familyId);
         await updateDoc(familyRef, {
           invitedStudents: Array.from(invitedIds)
@@ -956,14 +975,12 @@ export default function ParentFamilyBattleManager({ theme, parentData, linkedStu
                 if (uninvited.length > 0) {
                   setIsLoading(true);
                   try {
-                    // FIXED: Pass familyId instead of user.uid
                     await enableFamilyBattleForStudents(familyId, uninvited);
                     
                     const updatedInvited = new Set(invitedStudents);
                     uninvited.forEach(student => updatedInvited.add(student.id));
                     setInvitedStudents(updatedInvited);
                     
-                    // FIXED: Use correct familyId
                     const familyRef = doc(db, 'families', familyId);
                     await updateDoc(familyRef, {
                       invitedStudents: Array.from(updatedInvited)
