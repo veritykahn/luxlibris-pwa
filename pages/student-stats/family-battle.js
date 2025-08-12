@@ -1,6 +1,4 @@
-// pages/student-stats/family-battle.js - UPDATED: Removed client-side XP awarding
-// Key changes: No client-side XP, just check server data
-
+// pages/student-stats/family-battle.js - FIXED VERSION
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../contexts/AuthContext';
@@ -13,8 +11,9 @@ import Head from 'next/head';
 // Import modal component
 import FamilyBattleResultsModal from '../../components/FamilyBattleResultsModal';
 
-// Import sync functions
+// Import sync functions - UPDATED to include syncFamilyBattleData
 import {
+  syncFamilyBattleData,
   getStudentFamilyBattleStatus,
   getFamilyBattleDataForStudent,
   getStudentBattleContribution
@@ -147,7 +146,7 @@ function StoneColdjaneAustenHelper({ show, battleState, winner, onClose, current
       };
     }
     
-    // Default fallback (shouldn't happen)
+    // Default fallback
     return { 
       type: 'encouraging', 
       image: '/images/jane-austen-encouraging.png',
@@ -163,16 +162,14 @@ function StoneColdjaneAustenHelper({ show, battleState, winner, onClose, current
   useEffect(() => {
     if (show && !isVisible) {
       setIsVisible(true);
-      // Show for 15 seconds on Sunday (longer for reflection), 12 seconds other days
       const duration = new Date().getDay() === 0 ? 15000 : 12000;
       const timer = setTimeout(() => setIsVisible(false), duration);
       return () => clearTimeout(timer);
     }
-  }, [show]);
+  }, [show, isVisible]);
 
   useEffect(() => {
     if (show) {
-      // Reappear every 45 seconds
       const interval = setInterval(() => setIsVisible(true), 45000);
       return () => clearInterval(interval);
     }
@@ -189,7 +186,7 @@ function StoneColdjaneAustenHelper({ show, battleState, winner, onClose, current
       bottom: '20px',
       right: '20px',
       background: isPrayerful 
-        ? `linear-gradient(135deg, #E6E6FA, #F0E6FF, #FFFFFF)` // Softer purple gradient for prayerful
+        ? `linear-gradient(135deg, #E6E6FA, #F0E6FF, #FFFFFF)`
         : `linear-gradient(135deg, ${currentTheme.primary}F0, ${currentTheme.secondary}F0)`,
       borderRadius: '16px',
       padding: '12px 16px',
@@ -266,10 +263,8 @@ function StoneColdjaneAustenHelper({ show, battleState, winner, onClose, current
           fontWeight: isPrayerful ? '500' : 'normal'
         }}>
           {isPrayerful ? (
-            // For Bible verses, no extra quotes needed as they're in the string
             <span>{currentQuote}</span>
           ) : (
-            // For regular quotes, wrap in quotes
             <span>&quot;{currentQuote}&quot;</span>
           )}
         </div>
@@ -299,32 +294,37 @@ function StoneColdjaneAustenHelper({ show, battleState, winner, onClose, current
   );
 }
 
-// Battle Arena Component - FIXED to show correct student contribution
+// Battle Arena Component
 function BattleArena({ battleData, currentTheme, studentData }) {
   if (!battleData) return null;
 
-  const childrenWinning = battleData.winner === 'children';
-  const parentWinning = battleData.winner === 'parents';
-  const isTie = battleData.winner === 'tie' || battleData.childrenMinutes === battleData.parentMinutes;
+  // Debug logging
+  console.log('🎯 Battle Data:', {
+    childrenMinutes: battleData.childrenMinutes,
+    parentMinutes: battleData.parentMinutes,
+    winner: battleData.winner,
+    margin: battleData.margin
+  });
+
+  // Determine who's winning based on actual minutes (not just winner field which is 'ongoing' during week)
+  const childrenWinning = battleData.childrenMinutes > battleData.parentMinutes;
+  const parentWinning = battleData.parentMinutes > battleData.childrenMinutes;
+  const isTie = battleData.childrenMinutes === battleData.parentMinutes;
   const dayOfWeek = new Date().getDay();
   const isSunday = dayOfWeek === 0;
 
-  // FIXED: Find student contribution from breakdown
+  console.log('👑 Crown should show:', { childrenWinning, parentWinning, isTie });
+
+  // Find student contribution from breakdown
   const getStudentContribution = () => {
     if (!battleData.studentBreakdown) return 0;
     
-    // Try multiple ways to match the student
-    // First check for a direct match by any linked student IDs in the family
-    const linkedStudents = studentData.familyBattleSettings?.linkedStudentIds || [];
-    
     for (const [id, data] of Object.entries(battleData.studentBreakdown)) {
-      // Match by name (most reliable for display)
       if (data.name === studentData.firstName) {
         return data.minutes || 0;
       }
     }
     
-    // If no match found, return 0
     return 0;
   };
 
@@ -333,7 +333,7 @@ function BattleArena({ battleData, currentTheme, studentData }) {
   // Dynamic messaging based on day and status
   const getBattleStatusMessage = () => {
     if (isSunday) {
-      // Sunday - Results day
+      // Sunday - Results day (Monday-Saturday totals)
       if (childrenWinning && battleData.margin >= 30) {
         return `🏆 TOTAL DOMINATION! Kids crushed parents by ${battleData.margin} minutes! You have bragging rights until next week! 🎉👑`;
       } else if (childrenWinning && battleData.margin > 0) {
@@ -348,7 +348,7 @@ function BattleArena({ battleData, currentTheme, studentData }) {
         return 'No reading this week? The battle awaits next week! 💪';
       }
     } else {
-      // During the week
+      // During the week (Monday-Saturday)
       if (childrenWinning && battleData.margin > 0) {
         return `🔥 Kids leading by ${battleData.margin} minutes! Keep reading to stay ahead!`;
       } else if (parentWinning && battleData.margin > 0) {
@@ -375,10 +375,12 @@ function BattleArena({ battleData, currentTheme, studentData }) {
       backgroundColor: currentTheme.surface,
       borderRadius: '20px',
       padding: '24px',
+      paddingTop: '10px',
       marginBottom: '20px',
+      marginTop: '20px',
       boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
       position: 'relative',
-      overflow: 'hidden'
+      overflow: 'visible'
     }}>
       {/* Battle Title */}
       <div style={{
@@ -409,7 +411,9 @@ function BattleArena({ battleData, currentTheme, studentData }) {
         display: 'grid',
         gridTemplateColumns: '1fr 1fr',
         gap: '16px',
-        marginBottom: '20px'
+        marginBottom: '20px',
+        marginTop: '50px', // Extra space for crown floating above cards
+        position: 'relative'
       }}>
         {/* KIDS CORNER */}
         <div style={{
@@ -425,22 +429,36 @@ function BattleArena({ battleData, currentTheme, studentData }) {
             : '0 2px 8px rgba(0,0,0,0.1)',
           position: 'relative',
           transform: childrenWinning ? 'scale(1.02)' : 'scale(1)',
-          transition: 'all 0.3s ease'
+          transition: 'all 0.3s ease',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '280px'
         }}>
-          {childrenWinning && battleData.margin > 0 && (
+          {/* CROWN FOR WINNING TEAM - FLOATING ABOVE */}
+          {childrenWinning && (
             <div style={{
               position: 'absolute',
-              top: '-10px',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              fontSize: '28px',
-              animation: 'bounce 2s infinite'
+              top: '-38px',
+              left: '0',
+              right: '0',
+              display: 'flex',
+              justifyContent: 'center',
+              zIndex: 10
             }}>
-              {isSunday ? '👑' : '🔥'}
+              <div style={{
+                fontSize: '54px',
+                animation: 'crownFloat 3s ease-in-out infinite',
+                lineHeight: '1'
+              }}>
+                👑
+              </div>
             </div>
           )}
           
           <div style={{ fontSize: '36px', marginBottom: '8px' }}>👧👦</div>
+          
           <h3 style={{
             fontSize: 'clamp(14px, 4vw, 16px)',
             fontWeight: '600',
@@ -503,22 +521,32 @@ function BattleArena({ battleData, currentTheme, studentData }) {
             : '0 2px 8px rgba(0,0,0,0.1)',
           position: 'relative',
           transform: parentWinning ? 'scale(1.02)' : 'scale(1)',
-          transition: 'all 0.3s ease'
+          transition: 'all 0.3s ease',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '280px'
         }}>
-          {parentWinning && battleData.margin > 0 && (
+          {/* CROWN FOR WINNING TEAM - ABOVE EVERYTHING */}
+          {parentWinning && (
             <div style={{
               position: 'absolute',
-              top: '-10px',
+              top: '-20px',
               left: '50%',
               transform: 'translateX(-50%)',
-              fontSize: '28px',
-              animation: 'bounce 2s infinite'
+              fontSize: '48px',
+              animation: 'crownFloat 3s ease-in-out infinite',
+              filter: 'drop-shadow(0 4px 8px rgba(255, 215, 0, 0.8))',
+              lineHeight: '1',
+              zIndex: 10
             }}>
-              {isSunday ? '👑' : '🔥'}
+              👑
             </div>
           )}
           
           <div style={{ fontSize: '36px', marginBottom: '8px' }}>👨‍👩</div>
+          
           <h3 style={{
             fontSize: 'clamp(14px, 4vw, 16px)',
             fontWeight: '600',
@@ -615,6 +643,10 @@ export default function StudentFamilyBattleSimplified() {
   const [showStatsDropdown, setShowStatsDropdown] = useState(false);
   const [showJaneAusten, setShowJaneAusten] = useState(true);
   const [showResultsModal, setShowResultsModal] = useState(false);
+  
+  // Refs to prevent rapid refreshes
+  const lastRefreshTime = useRef(0);
+  const refreshIntervalRef = useRef(null);
 
   // Check if it's Sunday
   const isSunday = new Date().getDay() === 0;
@@ -815,7 +847,7 @@ export default function StudentFamilyBattleSimplified() {
     setIsLoading(false);
   }, [user?.uid, router, themes]);
 
-  // UPDATE: Simplified - Just show modal on Sunday, no XP awarding
+  // Auto-show results modal on Sunday
   useEffect(() => {
     const today = new Date();
     const isSunday = today.getDay() === 0;
@@ -832,11 +864,10 @@ export default function StudentFamilyBattleSimplified() {
       if (!hasSeenResults) {
         console.log('📊 Auto-showing results modal for week:', familyBattleData.weekNumber);
         
-        // UPDATE: Check if student got XP (will be in their data if sync already ran)
+        // Check if student got XP (will be in their data if sync already ran)
         if (familyBattleData.winner === 'children' && 
             studentData[`familyBattleWeek${familyBattleData.weekNumber}XPAwarded`]) {
           
-          // XP was already awarded server-side, just show success message
           console.log('✅ Student already received XP for Week', familyBattleData.weekNumber);
           
           // Calculate if student was MVP for display
@@ -866,10 +897,19 @@ export default function StudentFamilyBattleSimplified() {
     }
   }, [isSunday, familyBattleData, user?.uid, studentData]);
 
-  // UPDATE: Load family battle status - XP info will come from server
+  // Load family battle status with throttling - UPDATED WITH SYNC
   useEffect(() => {
     const loadFamilyBattleStatus = async () => {
       if (!user?.uid || !studentData) return;
+      
+      // Throttle refreshes - minimum 10 seconds between loads
+      const now = Date.now();
+      if (now - lastRefreshTime.current < 10000) {
+        console.log('🚫 Throttling battle data load - too soon');
+        return;
+      }
+      
+      lastRefreshTime.current = now;
       
       try {
         console.log('🥊 Loading family battle status for student...');
@@ -880,7 +920,40 @@ export default function StudentFamilyBattleSimplified() {
           console.log('✅ Family battle is enabled!');
           setFamilyBattleUnlocked(true);
           
-          if (battleStatus.battleData) {
+          // CRITICAL FIX: Sync the battle data instead of just reading it
+          if (battleStatus.familyId) {
+            console.log('🔄 Syncing fresh battle data for family:', battleStatus.familyId);
+            
+            // We need to get linked students for the sync
+            // Since we're a student, we'll pass ourselves as the only student for now
+            const studentForSync = [{
+              id: studentData.id || user.uid,
+              entityId: studentData.entityId,
+              schoolId: studentData.schoolId,
+              firstName: studentData.firstName,
+              name: studentData.firstName || studentData.studentName
+            }];
+            
+            // Sync the data
+            const syncedData = await syncFamilyBattleData(battleStatus.familyId, studentForSync);
+            
+            console.log('🔍 SYNCED DATA:', syncedData);
+            
+            // Use the synced data
+            setFamilyBattleData({
+              weekNumber: syncedData.weekNumber,
+              childrenMinutes: syncedData.childrenMinutes,
+              parentMinutes: syncedData.parentMinutes,
+              winner: syncedData.winner,
+              margin: syncedData.margin,
+              battleStatus: syncedData.battleStatus,
+              isResultsDay: syncedData.isResultsDay,
+              totalMinutes: syncedData.totalMinutes,
+              studentBreakdown: syncedData.studentBreakdown,
+              parentBreakdown: syncedData.parentBreakdown
+            });
+          } else if (battleStatus.battleData) {
+            // Fallback to existing data if no familyId
             setFamilyBattleData({
               weekNumber: battleStatus.battleData.weekNumber,
               childrenMinutes: battleStatus.battleData.childrenMinutes,
@@ -893,13 +966,13 @@ export default function StudentFamilyBattleSimplified() {
               studentBreakdown: battleStatus.battleData.studentBreakdown,
               parentBreakdown: battleStatus.battleData.parentBreakdown
             });
-            
-            // UPDATE: Check if XP was already awarded (comes from server data)
-            if (battleStatus.battleData.isResultsDay && 
-                battleStatus.battleData.winner === 'children' &&
-                studentData[`familyBattleWeek${battleStatus.battleData.weekNumber}XPAwarded`]) {
-              console.log('✅ XP already awarded for Week', battleStatus.battleData.weekNumber);
-            }
+          }
+          
+          // Check if XP was already awarded
+          if (battleStatus.battleData?.isResultsDay && 
+              battleStatus.battleData?.winner === 'children' &&
+              studentData[`familyBattleWeek${battleStatus.battleData?.weekNumber}XPAwarded`]) {
+            console.log('✅ XP already awarded for Week', battleStatus.battleData?.weekNumber);
           }
           
           // Get contribution from battle data
@@ -951,13 +1024,20 @@ export default function StudentFamilyBattleSimplified() {
     loadFamilyBattleStatus();
   }, [user?.uid, studentData, isSunday]);
 
-  // Auto-refresh effect
+  // Auto-refresh with proper cleanup and throttling
   useEffect(() => {
-    if (!familyBattleUnlocked || !studentData) return;
+    // Clear any existing interval first
+    if (refreshIntervalRef.current) {
+      clearInterval(refreshIntervalRef.current);
+      refreshIntervalRef.current = null;
+    }
     
-    const refreshInterval = setInterval(async () => {
+    if (!familyBattleUnlocked || !studentData || isSunday) return;
+    
+    console.log('⏰ Setting up 30-second auto-refresh for student battle data');
+    refreshIntervalRef.current = setInterval(async () => {
       try {
-        console.log('🔄 Auto-refreshing battle data...');
+        console.log('🔄 Auto-refreshing student battle data...');
         const battleStatus = await getStudentFamilyBattleStatus(studentData);
         
         if (battleStatus.enabled && battleStatus.battleData) {
@@ -974,7 +1054,7 @@ export default function StudentFamilyBattleSimplified() {
             parentBreakdown: battleStatus.battleData.parentBreakdown
           });
           
-          // FIXED: Get contribution from breakdown
+          // Get contribution from breakdown
           let contribution = 0;
           if (battleStatus.battleData?.studentBreakdown) {
             for (const [id, data] of Object.entries(battleStatus.battleData.studentBreakdown)) {
@@ -989,9 +1069,15 @@ export default function StudentFamilyBattleSimplified() {
       } catch (error) {
         console.error('❌ Error refreshing battle data:', error);
       }
-    }, 30000); // Refresh every 30 seconds
+    }, 30000); // 30 seconds
     
-    return () => clearInterval(refreshInterval);
+    // Cleanup on unmount or when dependencies change
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
+      }
+    };
   }, [familyBattleUnlocked, studentData, isSunday]);
 
   useEffect(() => {
@@ -1091,7 +1177,7 @@ export default function StudentFamilyBattleSimplified() {
         paddingBottom: '100px'
       }}>
         
-        {/* UPDATE: Success message now just displays, doesn't trigger XP award */}
+        {/* Success message */}
         {showSuccess && (
           <div style={{
             position: 'fixed',
@@ -1112,7 +1198,7 @@ export default function StudentFamilyBattleSimplified() {
           </div>
         )}
         
-        {/* Sunday Results Button */}
+        {/* Sunday Results Button - ONLY on Sunday when there are results */}
         {isSunday && familyBattleData && familyBattleData.winner && familyBattleData.winner !== 'ongoing' && (
           <SundayResultsButton
             onClick={handleResultsClick}
@@ -1134,7 +1220,7 @@ export default function StudentFamilyBattleSimplified() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          paddingTop: isSunday && familyBattleData ? '70px' : '30px'
+          paddingTop: (isSunday && familyBattleData) ? '70px' : '30px'
         }}>
           <button
             onClick={() => router.push('/student-stats')}
@@ -1396,7 +1482,7 @@ export default function StudentFamilyBattleSimplified() {
           </div>
         </div>
 
-        {/* TEACHER_SELECTION: Show only messaging box */}
+        {/* Main Content */}
         {phaseData.currentPhase === 'TEACHER_SELECTION' ? (
           <div style={{ padding: 'clamp(40px, 10vw, 60px) clamp(20px, 5vw, 40px)', textAlign: 'center' }}>
             <div style={{
@@ -1484,7 +1570,6 @@ export default function StudentFamilyBattleSimplified() {
             </div>
           </div>
         ) : (
-          /* ALL OTHER PHASES: Show normal family battle */
           <>
             {/* Phase-specific alert */}
             {getPhaseSpecificMessage() && (
@@ -1509,7 +1594,8 @@ export default function StudentFamilyBattleSimplified() {
               padding: 'clamp(16px, 5vw, 32px)', 
               maxWidth: '800px',
               margin: '0 auto',
-              paddingBottom: '120px'
+              paddingBottom: '120px',
+              overflow: 'visible' // Ensure crown is visible
             }}>
               
               {error && !familyBattleUnlocked ? (
@@ -1560,14 +1646,14 @@ export default function StudentFamilyBattleSimplified() {
                 </div>
               ) : familyBattleUnlocked && familyBattleData ? (
                 <>
-                  {/* Battle Arena - Pass studentData for name matching */}
+                  {/* Battle Arena */}
                   <BattleArena 
                     battleData={familyBattleData}
                     currentTheme={currentTheme}
                     studentData={studentData}
                   />
 
-                  {/* Start Reading Button - FIXED for Sunday */}
+                  {/* Start Reading Button */}
                   <div className="motivational-section" style={{
                     backgroundColor: currentTheme.surface,
                     borderRadius: '16px',
@@ -1705,7 +1791,7 @@ export default function StudentFamilyBattleSimplified() {
           />
         )}
 
-        {/* UPDATE: Modal just displays results, no XP logic */}
+        {/* Results Modal */}
         <FamilyBattleResultsModal
           show={showResultsModal && familyBattleUnlocked}
           onClose={() => {
@@ -1757,6 +1843,21 @@ export default function StudentFamilyBattleSimplified() {
           @keyframes pulse {
             0%, 100% { transform: scale(1); opacity: 1; }
             50% { transform: scale(1.05); opacity: 0.8; }
+          }
+          
+          @keyframes crownFloat {
+            0%, 100% { 
+              transform: translateY(0) rotate(-5deg) scale(1); 
+            }
+            25% { 
+              transform: translateY(-6px) rotate(0deg) scale(1.05); 
+            }
+            50% { 
+              transform: translateY(0) rotate(5deg) scale(1.1); 
+            }
+            75% { 
+              transform: translateY(-3px) rotate(0deg) scale(1.05); 
+            }
           }
           
           button {

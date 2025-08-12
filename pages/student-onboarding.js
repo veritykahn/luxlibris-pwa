@@ -1,4 +1,4 @@
-// pages/student-onboarding.js - Updated with Personal Password Step
+// pages/student-onboarding.js - Complete Fixed Version with Input Validation
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { db, getCurrentAcademicYear } from '../lib/firebase';
@@ -18,7 +18,7 @@ export default function StudentOnboarding() {
     firstName: '',
     lastInitial: '',
     grade: 4,
-    personalPassword: '', // NEW: Personal password field
+    personalPassword: '', 
     teacherId: '',
     entityId: '',
     schoolId: '',
@@ -56,13 +56,13 @@ export default function StudentOnboarding() {
     {
       name: 'Cosmic Explorer',
       assetPrefix: 'lavender_space',
-  primary: '#8B7AA8',
-  secondary: '#9B85C4',
-  accent: '#C8B3E8',
-  background: '#2A1B3D',
-  surface: '#3D2B54',
-  textPrimary: '#E8DEFF',
-},
+      primary: '#8B7AA8',
+      secondary: '#9B85C4',
+      accent: '#C8B3E8',
+      background: '#2A1B3D',
+      surface: '#3D2B54',
+      textPrimary: '#E8DEFF',
+    },
     {
       name: 'Musical Harmony',
       assetPrefix: 'mint_music',
@@ -104,15 +104,15 @@ export default function StudentOnboarding() {
       textPrimary: '#2F4F2F'
     },
     {
-  name: 'Luxlings™',
-  assetPrefix: 'little_luminaries',
-  primary: '#000000',      // Lightened grey from #666666
-  secondary: '#000000',    // Keep black
-  accent: '#E8E8E8',       // Keep
-  background: '#FFFFFF',   // Keep white
-  surface: '#FAFAFA',      // Keep
-  textPrimary: '#8B6914',  // Darkened gold from #B8860B
-}
+      name: 'Luxlings™',
+      assetPrefix: 'little_luminaries',
+      primary: '#000000',
+      secondary: '#000000',
+      accent: '#E8E8E8',
+      background: '#FFFFFF',
+      surface: '#FAFAFA',
+      textPrimary: '#8B6914',
+    }
   ];
 
   const grades = [4, 5, 6, 7, 8];
@@ -181,7 +181,7 @@ export default function StudentOnboarding() {
   };
 
   const handleNext = () => {
-    if (currentStep < 4) { // Updated: Now 5 steps (0-4)
+    if (currentStep < 4) {
       setCurrentStep(currentStep + 1);
     } else {
       completeOnboarding();
@@ -246,18 +246,18 @@ export default function StudentOnboarding() {
         authEmail: studentEmail,
         displayUsername: displayUsername,
         signInCode: formData.teacherJoinCode,
-        personalPassword: formData.personalPassword.toLowerCase(), // Store lowercase personal password
+        personalPassword: formData.personalPassword.toLowerCase(),
         
         // Personal info
-  firstName: formData.firstName,
-  lastInitial: formData.lastInitial,
-  
-  // ADD THESE TWO LINES:
-  academicYear: getCurrentAcademicYear(),
-  gradeHistory: [{ academicYear: getCurrentAcademicYear(), grade: parseInt(formData.grade), joinedAt: new Date() }],
-  
-  // Teacher & School linking
-  currentTeacherId: formData.teacherId,
+        firstName: formData.firstName,
+        lastInitial: formData.lastInitial,
+        
+        // Academic year info
+        academicYear: getCurrentAcademicYear(),
+        gradeHistory: [{ academicYear: getCurrentAcademicYear(), grade: parseInt(formData.grade), joinedAt: new Date() }],
+        
+        // Teacher & School linking
+        currentTeacherId: formData.teacherId,
         teacherHistory: [formData.teacherId],
         createdByTeacherId: formData.teacherId,
         
@@ -413,7 +413,7 @@ export default function StudentOnboarding() {
                 </p>
               </div>
               
-              {/* NEW: Personal Password Display */}
+              {/* Personal Password Display */}
               <div style={{
                 backgroundColor: `${selectedTheme.secondary}20`,
                 border: `1px solid ${selectedTheme.secondary}50`,
@@ -514,7 +514,7 @@ export default function StudentOnboarding() {
         {/* Progress Indicator */}
         <div style={{ padding: '16px 24px' }}>
           <div style={{ display: 'flex', gap: '8px' }}>
-            {[0, 1, 2, 3, 4].map(step => ( // Updated: Now 5 steps
+            {[0, 1, 2, 3, 4].map(step => (
               <div
                 key={step}
                 style={{
@@ -566,7 +566,6 @@ export default function StudentOnboarding() {
                 grades={grades} 
               />
             )}
-            {/* NEW: Personal Password Step */}
             {currentStep === 2 && (
               <PasswordPage 
                 formData={formData} 
@@ -696,7 +695,41 @@ function WelcomePage({ selectedTheme }) {
   );
 }
 
+// FIXED InfoPage with proper validation
 function InfoPage({ formData, setFormData, selectedTheme, grades }) {
+  const [firstNameError, setFirstNameError] = useState('');
+  const [lastInitialError, setLastInitialError] = useState('');
+  
+  const handleFirstNameChange = (e) => {
+    const input = e.target.value;
+    // Remove all non-letter characters and spaces
+    const cleaned = input.replace(/[^a-zA-Z]/g, '');
+    
+    // Set error if user tried to type invalid characters
+    if (input !== cleaned) {
+      setFirstNameError('Only letters allowed (no spaces or special characters)');
+    } else {
+      setFirstNameError('');
+    }
+    
+    setFormData({...formData, firstName: cleaned});
+  };
+  
+  const handleLastInitialChange = (e) => {
+    const input = e.target.value.toUpperCase();
+    // Only allow single letter
+    const cleaned = input.replace(/[^A-Z]/g, '').slice(0, 1);
+    
+    // Set error if user tried to type invalid characters
+    if (input.length > 0 && input !== cleaned) {
+      setLastInitialError('Only a single letter allowed');
+    } else {
+      setLastInitialError('');
+    }
+    
+    setFormData({...formData, lastInitial: cleaned});
+  };
+  
   return (
     <div style={{ maxWidth: '400px', margin: '0 auto' }}>
       <h2 style={{
@@ -753,18 +786,38 @@ function InfoPage({ formData, setFormData, selectedTheme, grades }) {
         <input
           type="text"
           value={formData.firstName}
-          onChange={(e) => setFormData({...formData, firstName: e.target.value})}
+          onChange={handleFirstNameChange}
           placeholder="Enter your first name"
           style={{
             width: '100%',
             padding: '12px',
             borderRadius: '12px',
-            border: 'none',
+            border: firstNameError ? '2px solid #ef4444' : 'none',
             backgroundColor: selectedTheme.surface,
             color: selectedTheme.textPrimary,
-            fontSize: '16px'
+            fontSize: '16px',
+            boxSizing: 'border-box',
+            transition: 'border-color 0.2s'
           }}
         />
+        {firstNameError && (
+          <p style={{
+            fontSize: '12px',
+            color: '#ef4444',
+            marginTop: '4px',
+            marginBottom: 0
+          }}>
+            ⚠️ {firstNameError}
+          </p>
+        )}
+        <p style={{
+          fontSize: '12px',
+          color: `${selectedTheme.textPrimary}60`,
+          marginTop: '4px',
+          marginBottom: 0
+        }}>
+          Letters only - no spaces or special characters
+        </p>
       </div>
 
       {/* Last Initial */}
@@ -781,20 +834,40 @@ function InfoPage({ formData, setFormData, selectedTheme, grades }) {
         <input
           type="text"
           value={formData.lastInitial}
-          onChange={(e) => setFormData({...formData, lastInitial: e.target.value.toUpperCase().slice(0,1)})}
+          onChange={handleLastInitialChange}
           placeholder="Just one letter (like &quot;S&quot;)"
           maxLength={1}
           style={{
             width: '100%',
             padding: '12px',
             borderRadius: '12px',
-            border: 'none',
+            border: lastInitialError ? '2px solid #ef4444' : 'none',
             backgroundColor: selectedTheme.surface,
             color: selectedTheme.textPrimary,
             fontSize: '16px',
-            textTransform: 'uppercase'
+            textTransform: 'uppercase',
+            boxSizing: 'border-box',
+            transition: 'border-color 0.2s'
           }}
         />
+        {lastInitialError && (
+          <p style={{
+            fontSize: '12px',
+            color: '#ef4444',
+            marginTop: '4px',
+            marginBottom: 0
+          }}>
+            ⚠️ {lastInitialError}
+          </p>
+        )}
+        <p style={{
+          fontSize: '12px',
+          color: `${selectedTheme.textPrimary}60`,
+          marginTop: '4px',
+          marginBottom: 0
+        }}>
+          Single letter only (A-Z)
+        </p>
       </div>
 
       {/* Grade Selection */}
@@ -840,9 +913,49 @@ function InfoPage({ formData, setFormData, selectedTheme, grades }) {
   );
 }
 
-// NEW: Personal Password Page
+// ENHANCED PasswordPage with better validation feedback
 function PasswordPage({ formData, setFormData, selectedTheme, isPasswordValid }) {
   const [showPassword, setShowPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [attemptedInvalidChars, setAttemptedInvalidChars] = useState(false);
+  
+  const handlePasswordChange = (e) => {
+    const input = e.target.value;
+    
+    // Check what invalid characters were attempted
+    const hasUppercase = /[A-Z]/.test(input);
+    const hasNumbers = /[0-9]/.test(input);
+    const hasSpecialChars = /[^a-z]/.test(input.toLowerCase());
+    const hasSpaces = /\s/.test(input);
+    
+    // Build error message based on what was attempted
+    let errorMsg = '';
+    const errors = [];
+    if (hasUppercase) errors.push('uppercase letters');
+    if (hasNumbers) errors.push('numbers');
+    if (hasSpaces) errors.push('spaces');
+    if (hasSpecialChars && !hasUppercase && !hasNumbers && !hasSpaces) errors.push('special characters');
+    
+    if (errors.length > 0) {
+      errorMsg = `Cannot use: ${errors.join(', ')}`;
+      setPasswordError(errorMsg);
+      setAttemptedInvalidChars(true);
+    } else {
+      setPasswordError('');
+      setAttemptedInvalidChars(false);
+    }
+    
+    // Clean the input - only allow lowercase letters
+    const cleaned = input.toLowerCase().replace(/[^a-z]/g, '');
+    
+    setFormData({
+      ...formData, 
+      personalPassword: cleaned
+    });
+  };
+  
+  const passwordValid = isPasswordValid(formData.personalPassword);
+  const tooShort = formData.personalPassword.length > 0 && formData.personalPassword.length < 5;
   
   return (
     <div style={{ maxWidth: '400px', margin: '0 auto', textAlign: 'center' }}>
@@ -881,10 +994,7 @@ function PasswordPage({ formData, setFormData, selectedTheme, isPasswordValid })
           <input
             type={showPassword ? "text" : "password"}
             value={formData.personalPassword}
-            onChange={(e) => setFormData({
-              ...formData, 
-              personalPassword: e.target.value.toLowerCase().replace(/[^a-z]/g, '')
-            })}
+            onChange={handlePasswordChange}
             placeholder="at least 5 letters"
             maxLength={20}
             style={{
@@ -892,13 +1002,20 @@ function PasswordPage({ formData, setFormData, selectedTheme, isPasswordValid })
               padding: '16px',
               paddingRight: '50px',
               borderRadius: '12px',
-              border: `2px solid ${isPasswordValid(formData.personalPassword) ? selectedTheme.primary : '#e5e7eb'}`,
+              border: `2px solid ${
+                passwordError || tooShort 
+                  ? '#ef4444' 
+                  : passwordValid 
+                    ? '#10b981' 
+                    : '#e5e7eb'
+              }`,
               backgroundColor: selectedTheme.surface,
               color: selectedTheme.textPrimary,
               fontSize: '18px',
               fontFamily: 'monospace',
               textAlign: 'center',
-              transition: 'border-color 0.2s ease'
+              transition: 'border-color 0.2s ease',
+              boxSizing: 'border-box'
             }}
           />
           
@@ -913,12 +1030,52 @@ function PasswordPage({ formData, setFormData, selectedTheme, isPasswordValid })
               background: 'none',
               border: 'none',
               fontSize: '20px',
-              cursor: 'pointer'
+              cursor: 'pointer',
+              padding: '4px'
             }}
           >
             {showPassword ? '🙈' : '👁️'}
           </button>
         </div>
+        
+        {/* Real-time error message */}
+        {passwordError && (
+          <div style={{
+            backgroundColor: '#fef2f2',
+            border: '1px solid #fca5a5',
+            borderRadius: '8px',
+            padding: '8px',
+            marginTop: '8px'
+          }}>
+            <p style={{
+              fontSize: '13px',
+              color: '#ef4444',
+              margin: 0,
+              fontWeight: '600'
+            }}>
+              ⚠️ {passwordError}
+            </p>
+          </div>
+        )}
+        
+        {/* Too short warning */}
+        {tooShort && !passwordError && (
+          <div style={{
+            backgroundColor: '#fef3c7',
+            border: '1px solid #fbbf24',
+            borderRadius: '8px',
+            padding: '8px',
+            marginTop: '8px'
+          }}>
+            <p style={{
+              fontSize: '13px',
+              color: '#d97706',
+              margin: 0
+            }}>
+              Password needs {5 - formData.personalPassword.length} more letter{5 - formData.personalPassword.length !== 1 ? 's' : ''}
+            </p>
+          </div>
+        )}
         
         {/* Password Rules */}
         <div style={{
@@ -941,24 +1098,45 @@ function PasswordPage({ formData, setFormData, selectedTheme, isPasswordValid })
             fontSize: '13px',
             color: `${selectedTheme.textPrimary}CC`,
             margin: 0,
-            paddingLeft: '16px'
+            paddingLeft: '16px',
+            listStyle: 'none'
           }}>
             <li style={{ 
-              color: formData.personalPassword.length >= 5 ? '#10b981' : `${selectedTheme.textPrimary}CC`,
+              color: formData.personalPassword.length >= 5 ? '#10b981' : tooShort ? '#ef4444' : `${selectedTheme.textPrimary}CC`,
               marginBottom: '4px'
             }}>
-              At least 5 letters {formData.personalPassword.length >= 5 ? '✓' : ''}
+              {formData.personalPassword.length >= 5 ? '✅' : tooShort ? '❌' : '⭕'} At least 5 letters
             </li>
             <li style={{ 
-              color: /^[a-z]*$/.test(formData.personalPassword) ? '#10b981' : `${selectedTheme.textPrimary}CC`,
+              color: /^[a-z]*$/.test(formData.personalPassword) && formData.personalPassword.length > 0 
+                ? '#10b981' 
+                : attemptedInvalidChars 
+                  ? '#ef4444' 
+                  : `${selectedTheme.textPrimary}CC`,
               marginBottom: '4px'
             }}>
-              Only lowercase letters (a-z) {/^[a-z]*$/.test(formData.personalPassword) ? '✓' : ''}
+              {/^[a-z]*$/.test(formData.personalPassword) && formData.personalPassword.length > 0 
+                ? '✅' 
+                : attemptedInvalidChars 
+                  ? '❌' 
+                  : '⭕'} Lowercase letters only (a-z)
+            </li>
+            <li style={{ 
+              color: `${selectedTheme.textPrimary}CC`,
+              marginBottom: '4px'
+            }}>
+              ❌ No numbers (0-9)
+            </li>
+            <li style={{ 
+              color: `${selectedTheme.textPrimary}CC`,
+              marginBottom: '4px'
+            }}>
+              ❌ No special characters (!@#$%^&*)
             </li>
             <li style={{ 
               color: `${selectedTheme.textPrimary}CC`
             }}>
-              Easy to remember (like &quot;books&quot; or &quot;reading&quot;)
+              ❌ No spaces
             </li>
           </ul>
         </div>
@@ -987,14 +1165,39 @@ function PasswordPage({ formData, setFormData, selectedTheme, isPasswordValid })
           fontSize: '13px',
           color: `${selectedTheme.textPrimary}CC`
         }}>
-          <span>books</span>
-          <span>reading</span>
-          <span>stories</span>
-          <span>adventure</span>
-          <span>dragons</span>
-          <span>unicorn</span>
+          <span style={{ fontFamily: 'monospace' }}>books</span>
+          <span style={{ fontFamily: 'monospace' }}>reading</span>
+          <span style={{ fontFamily: 'monospace' }}>stories</span>
+          <span style={{ fontFamily: 'monospace' }}>adventure</span>
+          <span style={{ fontFamily: 'monospace' }}>dragons</span>
+          <span style={{ fontFamily: 'monospace' }}>unicorn</span>
         </div>
       </div>
+      
+      {/* Success message when valid */}
+      {passwordValid && (
+        <div style={{
+          backgroundColor: '#d1fae5',
+          border: '1px solid #10b981',
+          borderRadius: '8px',
+          padding: '12px',
+          marginTop: '12px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px'
+        }}>
+          <span style={{ fontSize: '20px' }}>✅</span>
+          <p style={{
+            fontSize: '14px',
+            color: '#065f46',
+            margin: 0,
+            fontWeight: '600'
+          }}>
+            Perfect! Your password is ready.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

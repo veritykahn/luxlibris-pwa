@@ -1,22 +1,26 @@
-// pages/home/sign-in.js - FIXED: Import paths and restored full-screen design
+// pages/home/sign-in.js - FIXED: No spaces in usernames, capitalized codes
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { authHelpers, dbHelpers, auth } from '../../lib/firebase';  // FIXED: Correct path
-import { useAuth } from '../../contexts/AuthContext';  // FIXED: Correct path
-import { ForgotPasswordModal } from '../../components/ForgotPasswordModal';  // FIXED: Correct path
+import { authHelpers, dbHelpers, auth } from '../../lib/firebase';
+import { useAuth } from '../../contexts/AuthContext';
+import { ForgotPasswordModal } from '../../components/ForgotPasswordModal';
 
 export default function SignIn() {
   const router = useRouter();
-  const { userProfile, getDashboardUrl } = useAuth(); // Add AuthContext
+  const { userProfile, getDashboardUrl } = useAuth();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [waitingForProfile, setWaitingForProfile] = useState(false); // NEW STATE
+  const [waitingForProfile, setWaitingForProfile] = useState(false);
   const [error, setError] = useState('');
   const [showSessionExpiredMessage, setShowSessionExpiredMessage] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  
+  // Input validation errors
+  const [usernameError, setUsernameError] = useState('');
+  const [teacherCodeError, setTeacherCodeError] = useState('');
 
   const [formData, setFormData] = useState({
     accountType: '',
@@ -35,7 +39,7 @@ export default function SignIn() {
     }
   }, [router.query]);
 
-  // FIXED: Wait for userProfile to load, then redirect
+  // Wait for userProfile to load, then redirect
   useEffect(() => {
     if (waitingForProfile && userProfile) {
       console.log('✅ User profile loaded, redirecting...');
@@ -44,7 +48,7 @@ export default function SignIn() {
     }
   }, [waitingForProfile, userProfile, getDashboardUrl, router]);
 
-  // FIXED: Safety timeout if profile takes too long
+  // Safety timeout if profile takes too long
   useEffect(() => {
     if (waitingForProfile) {
       const timeout = setTimeout(() => {
@@ -56,7 +60,7 @@ export default function SignIn() {
         } else if (formData.accountType === 'parent') {
           router.push('/parent/dashboard');
         }
-      }, 8000); // 8 second timeout
+      }, 8000);
 
       return () => clearTimeout(timeout);
     }
@@ -93,12 +97,62 @@ export default function SignIn() {
     setStep(2);
   };
 
+  // Handle username input - remove spaces and special characters
+  const handleUsernameChange = (e) => {
+    const input = e.target.value;
+    // Remove all spaces and keep only alphanumeric characters
+    const cleaned = input.replace(/\s/g, '');
+    
+    // Set error if user tried to type spaces
+    if (input !== cleaned) {
+      setUsernameError('No spaces allowed in username');
+    } else {
+      setUsernameError('');
+    }
+    
+    setFormData(prev => ({ 
+      ...prev, 
+      username: cleaned 
+    }));
+  };
+
+  // Handle teacher code input - uppercase and remove spaces
+  const handleTeacherCodeChange = (e) => {
+    const input = e.target.value.toUpperCase();
+    // Remove all spaces
+    const cleaned = input.replace(/\s/g, '');
+    
+    // Set error if user tried to type spaces
+    if (input !== cleaned) {
+      setTeacherCodeError('No spaces allowed in teacher code');
+    } else {
+      setTeacherCodeError('');
+    }
+    
+    setFormData(prev => ({ 
+      ...prev, 
+      teacherCode: cleaned 
+    }));
+  };
+
+  // Handle educator teacher join code - uppercase and remove spaces
+  const handleEducatorJoinCodeChange = (e) => {
+    const input = e.target.value.toUpperCase();
+    // Remove all spaces
+    const cleaned = input.replace(/\s/g, '');
+    
+    setFormData(prev => ({ 
+      ...prev, 
+      teacherJoinCode: cleaned 
+    }));
+  };
+
   // Validate personal password
   const isPasswordValid = (password) => {
     return password && password.length >= 5 && /^[a-z]+$/.test(password);
   };
 
-  // FIXED: Perform student sign-in WITHOUT redirect
+  // Perform student sign-in WITHOUT redirect
   const performStudentSignIn = async () => {
     try {
       console.log('🔐 Attempting student sign-in with enhanced authentication...');
@@ -113,7 +167,6 @@ export default function SignIn() {
       );
       
       console.log('✅ Student sign-in successful - waiting for profile to load');
-      // REMOVED: router.push('/student-dashboard');
       
     } catch (error) {
       console.error('❌ Student sign-in error:', error);
@@ -121,7 +174,7 @@ export default function SignIn() {
     }
   };
 
-  // FIXED: Perform parent sign-in WITHOUT redirect
+  // Perform parent sign-in WITHOUT redirect
   const performParentSignIn = async () => {
     try {
       console.log('🔐 Starting parent sign-in process...');
@@ -135,8 +188,6 @@ export default function SignIn() {
       );
       
       console.log('✅ Firebase sign-in successful:', userCredential.user.uid);
-      
-      // REMOVED: router.push('/parent/dashboard');
 
     } catch (error) {
       console.error('❌ Parent sign-in error:', error);
@@ -204,7 +255,6 @@ export default function SignIn() {
         await authHelpers.signIn(formData.email, formData.password);
         
         console.log('✅ Educator sign-in successful - waiting for profile to load');
-        // REMOVED: router.push('/admin/school-dashboard');
         
       } else if (formData.accountType === 'parent') {
         if (!formData.email.trim() || !formData.password.trim()) {
@@ -217,7 +267,7 @@ export default function SignIn() {
         await performParentSignIn();
       }
 
-      // FIXED: After successful authentication, wait for profile
+      // After successful authentication, wait for profile
       setLoading(false);
       setWaitingForProfile(true);
 
@@ -225,7 +275,7 @@ export default function SignIn() {
       console.error('❌ Sign in error:', error);
       setError(error.message || 'Sign in failed. Please check your information and try again.');
       setLoading(false);
-      setWaitingForProfile(false); // Reset waiting state on error
+      setWaitingForProfile(false);
     }
   };
 
@@ -234,12 +284,14 @@ export default function SignIn() {
       setStep(1);
       setError('');
       setShowSessionExpiredMessage(false);
+      setUsernameError('');
+      setTeacherCodeError('');
     } else {
       router.push('/');
     }
   };
 
-  // FIXED: Show loading state while waiting for profile
+  // Show loading state while waiting for profile
   if (waitingForProfile) {
     return (
       <>
@@ -519,15 +571,12 @@ export default function SignIn() {
                     <input
                       type="text"
                       value={formData.username}
-                      onChange={(e) => setFormData(prev => ({ 
-                        ...prev, 
-                        username: e.target.value 
-                      }))}
+                      onChange={handleUsernameChange}
                       placeholder="EmmaK4SMIT"
                       style={{
                         width: '100%',
                         padding: '0.875rem',
-                        border: '2px solid #e5e7eb',
+                        border: usernameError ? '2px solid #ef4444' : '2px solid #e5e7eb',
                         borderRadius: '0.75rem',
                         fontSize: '1rem',
                         boxSizing: 'border-box',
@@ -539,9 +588,23 @@ export default function SignIn() {
                         color: '#223848',
                         backgroundColor: 'white'
                       }}
-                      onFocus={(e) => e.target.style.borderColor = '#ADD4EA'}
-                      onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+                      onFocus={(e) => {
+                        if (!usernameError) e.target.style.borderColor = '#ADD4EA';
+                      }}
+                      onBlur={(e) => {
+                        if (!usernameError) e.target.style.borderColor = '#e5e7eb';
+                      }}
                     />
+                    {usernameError && (
+                      <p style={{
+                        fontSize: '0.75rem',
+                        color: '#ef4444',
+                        margin: '0.25rem 0 0 0',
+                        textAlign: 'center'
+                      }}>
+                        ⚠️ {usernameError}
+                      </p>
+                    )}
                     <p style={{
                       fontSize: '0.75rem',
                       color: '#223848',
@@ -565,15 +628,12 @@ export default function SignIn() {
                     <input
                       type="text"
                       value={formData.teacherCode}
-                      onChange={(e) => setFormData(prev => ({ 
-                        ...prev, 
-                        teacherCode: e.target.value.toUpperCase() 
-                      }))}
+                      onChange={handleTeacherCodeChange}
                       placeholder="LUXLIB-SCHOOL-SMITH25-STUDENT"
                       style={{
                         width: '100%',
                         padding: '0.875rem',
-                        border: '2px solid #e5e7eb',
+                        border: teacherCodeError ? '2px solid #ef4444' : '2px solid #e5e7eb',
                         borderRadius: '0.75rem',
                         fontSize: '1rem',
                         boxSizing: 'border-box',
@@ -586,9 +646,23 @@ export default function SignIn() {
                         backgroundColor: 'white',
                         textTransform: 'uppercase'
                       }}
-                      onFocus={(e) => e.target.style.borderColor = '#ADD4EA'}
-                      onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+                      onFocus={(e) => {
+                        if (!teacherCodeError) e.target.style.borderColor = '#ADD4EA';
+                      }}
+                      onBlur={(e) => {
+                        if (!teacherCodeError) e.target.style.borderColor = '#e5e7eb';
+                      }}
                     />
+                    {teacherCodeError && (
+                      <p style={{
+                        fontSize: '0.75rem',
+                        color: '#ef4444',
+                        margin: '0.25rem 0 0 0',
+                        textAlign: 'center'
+                      }}>
+                        ⚠️ {teacherCodeError}
+                      </p>
+                    )}
                     <p style={{
                       fontSize: '0.75rem',
                       color: '#223848',
@@ -642,7 +716,7 @@ export default function SignIn() {
                       margin: '0.5rem 0 0 0',
                       textAlign: 'center'
                     }}>
-                      The simple password you chose when creating your account
+                      The simple password you chose (lowercase letters only)
                     </p>
                   </div>
 
@@ -785,10 +859,7 @@ export default function SignIn() {
                     <input
                       type="text"
                       value={formData.teacherJoinCode}
-                      onChange={(e) => setFormData(prev => ({ 
-                        ...prev, 
-                        teacherJoinCode: e.target.value.toUpperCase() 
-                      }))}
+                      onChange={handleEducatorJoinCodeChange}
                       placeholder="TXTEST-DEMO-TEACHER-2025"
                       style={{
                         width: '100%',
@@ -803,7 +874,8 @@ export default function SignIn() {
                         fontWeight: 'bold',
                         letterSpacing: '0.1em',
                         color: '#223848',
-                        backgroundColor: 'white'
+                        backgroundColor: 'white',
+                        textTransform: 'uppercase'
                       }}
                       onFocus={(e) => e.target.style.borderColor = '#ADD4EA'}
                       onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
@@ -814,7 +886,7 @@ export default function SignIn() {
                       margin: '0.5rem 0 0 0',
                       textAlign: 'center'
                     }}>
-                      The code you used when joining or given by your school administrator
+                      Use the code from your school administrator
                     </p>
                   </div>
 

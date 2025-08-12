@@ -1,10 +1,11 @@
-// pages/student-nominees.js - COMPLETE version with phase locking, circular navigation, hamburger menu, and interactive book added dialog
+// pages/student-nominees.js - COMPLETE version with phase locking, circular navigation, hamburger menu, interactive book added dialog, and book locking
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
 import { usePhaseAccess } from '../hooks/usePhaseAccess';
 import { getStudentDataEntities, getSchoolNomineesEntities, addBookToBookshelfEntities, addBookToBookshelfEntitiesWithYear, removeBookFromBookshelfEntities, getCurrentAcademicYear } from '../lib/firebase';
 import { checkSpecificContentBadge } from '../lib/badge-system-content';
+import { getBookState, getBookStateMessage } from '../lib/book-state-utils';
 import Head from 'next/head';
 
 export default function StudentNominees() {
@@ -212,6 +213,23 @@ export default function StudentNominees() {
 }
   };
 
+  // Helper function to check if a book is in a locked state
+  const isBookInLockedState = (bookshelfEntry) => {
+    if (!bookshelfEntry) return false;
+    
+    const lockedStatuses = [
+      'pending_approval',
+      'pending_parent_quiz_unlock', 
+      'quiz_unlocked',
+      'completed',
+      'quiz_failed',
+      'admin_rejected',
+      'revision_requested'
+    ];
+    
+    return lockedStatuses.includes(bookshelfEntry.status) || bookshelfEntry.completed === true;
+  };
+
   // NEW: Sorting function for nominees
   const sortNominees = (nominees) => {
     // Define category priority order based on exact Firebase displayCategory values
@@ -402,7 +420,7 @@ useEffect(() => {
     );
   }, [studentData?.bookshelf]);
 
-  // Smart format switching logic
+  // Replace the existing handleAddToBookshelf function with locked state checking
   const handleAddToBookshelf = useCallback(async (format) => {
     if (isAddingBook || !nominees.length) return;
 
@@ -412,6 +430,31 @@ useEffect(() => {
     console.log('📖 Current card index:', currentCardIndex);
     console.log('📖 Current book:', currentBook.title);
     console.log('📖 Adding format:', format);
+
+    // Get existing book entry if it exists
+    const existingBookEntry = getBookInBookshelf(currentBook.id);
+    
+    // NEW: Check if book is in a locked state
+    if (existingBookEntry && isBookInLockedState(existingBookEntry)) {
+      // Determine appropriate message based on status
+      let message = '🔒 This book cannot be modified';
+      
+      if (existingBookEntry.status === 'completed' || existingBookEntry.completed) {
+        message = '✅ This book has already been completed!';
+      } else if (existingBookEntry.status === 'pending_approval') {
+        message = '⏳ This book is pending teacher approval';
+      } else if (existingBookEntry.status === 'pending_parent_quiz_unlock') {
+        message = '🔒 This book is waiting for parent to unlock quiz';
+      } else if (existingBookEntry.status === 'quiz_unlocked') {
+        message = '🎉 Quiz unlocked! Go to bookshelf to take it';
+      } else if (existingBookEntry.status === 'revision_requested') {
+        message = '📝 Revisions requested - check your bookshelf';
+      }
+      
+      setShowAddMessage(message);
+      setTimeout(() => setShowAddMessage(''), 4000);
+      return;
+    }
 
     // Check if this exact format is already in bookshelf
     if (isBookFormatInBookshelf(currentBook.id, format)) {
@@ -423,9 +466,8 @@ useEffect(() => {
       return;
     }
 
-    // Check if book exists in any other format
-    const existingBookEntry = getBookInBookshelf(currentBook.id);
-    if (existingBookEntry && existingBookEntry.format !== format) {
+    // Check if book exists in any other format (and not locked)
+    if (existingBookEntry && existingBookEntry.format !== format && !isBookInLockedState(existingBookEntry)) {
       // Show format switch dialog
       setShowFormatSwitchDialog({
         book: currentBook,
@@ -1620,6 +1662,8 @@ setIsAddingBook(false);
               getBookInBookshelf={getBookInBookshelf}
               isBookFormatInBookshelf={isBookFormatInBookshelf}
               currentCardIndex={currentCardIndex}
+              router={router}
+              isBookInLockedState={isBookInLockedState}
             />
           </div>
 
@@ -2126,8 +2170,8 @@ setIsAddingBook(false);
   );
 }
 
-// BookCard component with updated logic for smart format switching
-function BookCard({ book, theme, onAddBook, isAddingBook, getBookInBookshelf, isBookFormatInBookshelf, currentCardIndex }) {
+// BookCard component with updated logic for smart format switching and locked states
+function BookCard({ book, theme, onAddBook, isAddingBook, getBookInBookshelf, isBookFormatInBookshelf, currentCardIndex, router, isBookInLockedState }) {
   const getCategoryColorPalette = (book) => {
     const category = book.displayCategory || book.internalCategory || '';
 
@@ -2300,6 +2344,14 @@ function BookCard({ book, theme, onAddBook, isAddingBook, getBookInBookshelf, is
   const existingBookEntry = getBookInBookshelf(book.id);
   const bookFormatExists = isBookFormatInBookshelf(book.id, 'book');
   const audiobookFormatExists = isBookFormatInBookshelf(book.id, 'audiobook');
+  
+  // NEW: Check if book is locked
+  const isLocked = existingBookEntry && isBookInLockedState(existingBookEntry);
+  const isCompleted = existingBookEntry && (existingBookEntry.status === 'completed' || existingBookEntry.completed === true);
+  const isPending = existingBookEntry && (
+    existingBookEntry.status === 'pending_approval' || 
+    existingBookEntry.status === 'pending_parent_quiz_unlock'
+  );
 
   return (
     <div style={{
@@ -2543,70 +2595,54 @@ function BookCard({ book, theme, onAddBook, isAddingBook, getBookInBookshelf, is
         )}
       </div>
 
-      {/* Action Buttons */}
+      {/* Action Buttons - UPDATED */}
       <div style={{
         padding: '12px 20px 20px',
         background: `linear-gradient(180deg, ${colorPalette.background}, ${colorPalette.surface})`
       }}>
-        <div className="action-buttons" style={{
-          display: 'flex',
-          gap: '10px'
-        }}>
-          <button
-            onClick={() => onAddBook('book')}
-            disabled={isAddingBook || bookFormatExists}
-            style={{
-              flex: 1,
-              background: bookFormatExists
-                ? 'linear-gradient(145deg, #E0E0E0, #C0C0C0)'
-                : `linear-gradient(145deg, ${colorPalette.surface}, ${colorPalette.background})`,
-              color: bookFormatExists ? '#666666' : colorPalette.textPrimary,
-              border: '3px solid #FFFFFF',
-              padding: '18px 20px',
-              borderRadius: '16px',
-              fontSize: '15px',
-              fontWeight: '700',
-              cursor: bookFormatExists ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-              opacity: isAddingBook ? 0.7 : 1,
-              transition: 'all 0.3s ease',
-              boxShadow: `
-                0 8px 16px rgba(0,0,0,0.1),
-                0 4px 8px ${colorPalette.primary}40,
-                inset 0 1px 0 rgba(255,255,255,0.8)
-              `,
-              textShadow: '0 1px 2px rgba(0,0,0,0.1)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px',
-              minHeight: '56px',
-              touchAction: 'manipulation',
-              transform: 'translateY(-2px)'
-            }}
-          >
-            {bookFormatExists ? '✓ Added' :
-              existingBookEntry && existingBookEntry.format === 'audiobook' ? '📖 Switch to Book' :
-              '📖 Add Book'}
-          </button>
+        {/* Show special message for locked books */}
+        {isLocked && (
+          <div style={{
+            backgroundColor: isCompleted ? '#4CAF50' : '#FF9800',
+            color: 'white',
+            padding: '14px',
+            borderRadius: '16px',
+            marginBottom: '12px',
+            fontSize: '14px',
+            fontWeight: '600',
+            textAlign: 'center',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px'
+          }}>
+            {isCompleted ? '✅ Book Completed' : 
+             isPending ? '⏳ Submission Pending' :
+             existingBookEntry.status === 'quiz_unlocked' ? '🎉 Quiz Ready in Bookshelf' :
+             existingBookEntry.status === 'revision_requested' ? '📝 Revisions Needed' :
+             '🔒 Book Locked'}
+          </div>
+        )}
 
-          {book.isAudiobook && (
+        {/* Only show action buttons if book is NOT locked */}
+        {!isLocked ? (
+          <div className="action-buttons" style={{
+            display: 'flex',
+            gap: '10px'
+          }}>
             <button
-              onClick={() => onAddBook('audiobook')}
-              disabled={isAddingBook || audiobookFormatExists}
+              onClick={() => onAddBook('book')}
+              disabled={isAddingBook || bookFormatExists}
               style={{
                 flex: 1,
-                background: audiobookFormatExists
+                background: bookFormatExists
                   ? 'linear-gradient(145deg, #E0E0E0, #C0C0C0)'
-                  : `linear-gradient(145deg, ${colorPalette.textPrimary}, ${colorPalette.textSecondary})`,
-                color: audiobookFormatExists ? '#666666' : '#FFFFFF',
+                  : `linear-gradient(145deg, ${colorPalette.surface}, ${colorPalette.background})`,
+                color: bookFormatExists ? '#666666' : colorPalette.textPrimary,
                 border: '3px solid #FFFFFF',
                 padding: '18px 20px',
                 borderRadius: '16px',
                 fontSize: '15px',
                 fontWeight: '700',
-                cursor: audiobookFormatExists ? 'not-allowed' : 'pointer',
+                cursor: bookFormatExists ? 'not-allowed' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -2614,11 +2650,11 @@ function BookCard({ book, theme, onAddBook, isAddingBook, getBookInBookshelf, is
                 opacity: isAddingBook ? 0.7 : 1,
                 transition: 'all 0.3s ease',
                 boxShadow: `
-                  0 8px 16px rgba(0,0,0,0.2),
+                  0 8px 16px rgba(0,0,0,0.1),
                   0 4px 8px ${colorPalette.primary}40,
-                  inset 0 1px 0 rgba(255,255,255,0.2)
+                  inset 0 1px 0 rgba(255,255,255,0.8)
                 `,
-                textShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                textShadow: '0 1px 2px rgba(0,0,0,0.1)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.5px',
                 minHeight: '56px',
@@ -2626,12 +2662,87 @@ function BookCard({ book, theme, onAddBook, isAddingBook, getBookInBookshelf, is
                 transform: 'translateY(-2px)'
               }}
             >
-              {audiobookFormatExists ? '✓ Added' :
-                existingBookEntry && existingBookEntry.format === 'book' ? '🎧 Switch to Audio' :
-                '🎧 Add Audio'}
+              {bookFormatExists ? '✓ Added' :
+                existingBookEntry && existingBookEntry.format === 'audiobook' ? '📖 Switch to Book' :
+                '📖 Add Book'}
             </button>
-          )}
-        </div>
+
+            {book.isAudiobook && (
+              <button
+                onClick={() => onAddBook('audiobook')}
+                disabled={isAddingBook || audiobookFormatExists}
+                style={{
+                  flex: 1,
+                  background: audiobookFormatExists
+                    ? 'linear-gradient(145deg, #E0E0E0, #C0C0C0)'
+                    : `linear-gradient(145deg, ${colorPalette.textPrimary}, ${colorPalette.textSecondary})`,
+                  color: audiobookFormatExists ? '#666666' : '#FFFFFF',
+                  border: '3px solid #FFFFFF',
+                  padding: '18px 20px',
+                  borderRadius: '16px',
+                  fontSize: '15px',
+                  fontWeight: '700',
+                  cursor: audiobookFormatExists ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  opacity: isAddingBook ? 0.7 : 1,
+                  transition: 'all 0.3s ease',
+                  boxShadow: `
+                    0 8px 16px rgba(0,0,0,0.2),
+                    0 4px 8px ${colorPalette.primary}40,
+                    inset 0 1px 0 rgba(255,255,255,0.2)
+                  `,
+                  textShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  minHeight: '56px',
+                  touchAction: 'manipulation',
+                  transform: 'translateY(-2px)'
+                }}
+              >
+                {audiobookFormatExists ? '✓ Added' :
+                  existingBookEntry && existingBookEntry.format === 'book' ? '🎧 Switch to Audio' :
+                  '🎧 Add Audio'}
+              </button>
+            )}
+          </div>
+        ) : (
+          // Show "View in Bookshelf" button for locked books
+          <button
+            onClick={() => router.push('/student-bookshelf')}
+            style={{
+              width: '100%',
+              background: `linear-gradient(145deg, ${colorPalette.primary}, ${colorPalette.secondary})`,
+              color: '#FFFFFF',
+              border: '3px solid #FFFFFF',
+              padding: '18px 20px',
+              borderRadius: '16px',
+              fontSize: '15px',
+              fontWeight: '700',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              transition: 'all 0.3s ease',
+              boxShadow: `
+                0 8px 16px rgba(0,0,0,0.2),
+                0 4px 8px ${colorPalette.primary}40,
+                inset 0 1px 0 rgba(255,255,255,0.2)
+              `,
+              textShadow: '0 1px 2px rgba(0,0,0,0.3)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              minHeight: '56px',
+              touchAction: 'manipulation',
+              transform: 'translateY(-2px)'
+            }}
+          >
+            📚 View in Bookshelf
+          </button>
+        )}
       </div>
     </div>
   );
