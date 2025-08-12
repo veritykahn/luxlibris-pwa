@@ -1,5 +1,5 @@
-// pages/teacher/students.js - Complete Student Management System with Voting and Historical Completions
-import { useState, useEffect, useCallback } from 'react'
+// pages/teacher/students.js - Complete Student Management System with Compact View and Login Info
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
@@ -30,6 +30,827 @@ const GRADE_SAINT_MAPPINGS = {
     marian: 'saint_135'    // Our Lady of Sorrows
   }
 };
+
+// Constants
+const STUDENTS_PER_PAGE = 50;
+const VIEW_MODES = {
+  COMPACT: 'compact',
+  CARDS: 'cards'
+};
+
+// Login Credentials Modal Component
+function LoginCredentialsModal({ student, onClose }) {
+  const [copiedField, setCopiedField] = useState('');
+  
+  const copyToClipboard = (text, fieldName) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(fieldName);
+    setTimeout(() => setCopiedField(''), 2000);
+  };
+  
+  const copyAllForEmail = () => {
+    const emailText = `Student Login Information
+Name: ${student.firstName} ${student.lastInitial}.
+Username: ${student.displayUsername || 'Not set'}
+Sign-in Code: ${student.signInCode || 'Not set'}
+Password: ${student.personalPassword || 'Not set'}
+
+Please keep this information secure.`;
+    
+    navigator.clipboard.writeText(emailText);
+    setCopiedField('all');
+    setTimeout(() => setCopiedField(''), 2000);
+  };
+  
+  if (student.type === 'manual') {
+    return (
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 10001,
+        padding: '1rem'
+      }}>
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '1rem',
+          padding: '1.5rem',
+          maxWidth: '400px',
+          width: '100%',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '1rem'
+          }}>
+            <h3 style={{
+              fontSize: '1.25rem',
+              fontWeight: 'bold',
+              color: '#223848',
+              margin: 0
+            }}>
+              🔑 Login Information
+            </h3>
+            <button
+              onClick={onClose}
+              style={{
+                background: 'none',
+                border: 'none',
+                fontSize: '1.5rem',
+                cursor: 'pointer',
+                color: '#6b7280'
+              }}
+            >
+              ✕
+            </button>
+          </div>
+          
+          <div style={{
+            background: '#FEF3C7',
+            border: '1px solid #F59E0B',
+            borderRadius: '0.5rem',
+            padding: '1rem',
+            textAlign: 'center'
+          }}>
+            <p style={{
+              color: '#92400E',
+              margin: 0,
+              fontSize: '0.875rem'
+            }}>
+              Manual students don't have login credentials.
+              They don't use the app directly.
+            </p>
+          </div>
+          
+          <button
+            onClick={onClose}
+            style={{
+              width: '100%',
+              marginTop: '1rem',
+              padding: '0.75rem',
+              background: 'linear-gradient(135deg, #ADD4EA, #C3E0DE)',
+              color: '#223848',
+              border: 'none',
+              borderRadius: '0.5rem',
+              fontWeight: '600',
+              cursor: 'pointer'
+            }}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 10001,
+      padding: '1rem'
+    }}>
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '1rem',
+        padding: '1.5rem',
+        maxWidth: '450px',
+        width: '100%',
+        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+      }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '1.5rem'
+        }}>
+          <h3 style={{
+            fontSize: '1.25rem',
+            fontWeight: 'bold',
+            color: '#223848',
+            margin: 0,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
+          }}>
+            🔑 Login Credentials
+          </h3>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              fontSize: '1.5rem',
+              cursor: 'pointer',
+              color: '#6b7280'
+            }}
+          >
+            ✕
+          </button>
+        </div>
+        
+        <div style={{
+          background: '#F0F9FF',
+          border: '1px solid #0EA5E9',
+          borderRadius: '0.5rem',
+          padding: '1rem',
+          marginBottom: '1rem'
+        }}>
+          <h4 style={{
+            fontSize: '1rem',
+            fontWeight: '600',
+            color: '#223848',
+            margin: '0 0 0.5rem 0'
+          }}>
+            {student.firstName} {student.lastInitial}.
+          </h4>
+          <p style={{
+            fontSize: '0.875rem',
+            color: '#6B7280',
+            margin: 0
+          }}>
+            Grade {student.grade} • {student.status === 'active' ? '✅ Active' : '⏸️ Inactive'}
+          </p>
+        </div>
+        
+        <div style={{ display: 'grid', gap: '1rem' }}>
+          {/* Username */}
+          <div style={{
+            border: '1px solid #E5E7EB',
+            borderRadius: '0.5rem',
+            padding: '0.75rem'
+          }}>
+            <label style={{
+              display: 'block',
+              fontSize: '0.75rem',
+              fontWeight: '600',
+              color: '#6B7280',
+              marginBottom: '0.25rem'
+            }}>
+              Username
+            </label>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '0.5rem'
+            }}>
+              <span style={{
+                fontSize: '1rem',
+                fontWeight: '500',
+                color: '#223848',
+                fontFamily: 'monospace'
+              }}>
+                {student.displayUsername || 'Not set'}
+              </span>
+              <button
+                onClick={() => copyToClipboard(student.displayUsername || '', 'username')}
+                disabled={!student.displayUsername}
+                style={{
+                  padding: '0.25rem 0.5rem',
+                  background: copiedField === 'username' ? '#10B981' : '#F3F4F6',
+                  color: copiedField === 'username' ? 'white' : '#374151',
+                  border: 'none',
+                  borderRadius: '0.25rem',
+                  fontSize: '0.75rem',
+                  cursor: student.displayUsername ? 'pointer' : 'not-allowed',
+                  opacity: student.displayUsername ? 1 : 0.5
+                }}
+              >
+                {copiedField === 'username' ? '✓ Copied' : '📋 Copy'}
+              </button>
+            </div>
+          </div>
+          
+          {/* Sign-in Code */}
+          <div style={{
+            border: '1px solid #E5E7EB',
+            borderRadius: '0.5rem',
+            padding: '0.75rem'
+          }}>
+            <label style={{
+              display: 'block',
+              fontSize: '0.75rem',
+              fontWeight: '600',
+              color: '#6B7280',
+              marginBottom: '0.25rem'
+            }}>
+              Sign-in Code
+            </label>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '0.5rem'
+            }}>
+              <span style={{
+                fontSize: '1rem',
+                fontWeight: '500',
+                color: '#223848',
+                fontFamily: 'monospace'
+              }}>
+                {student.signInCode || 'Not set'}
+              </span>
+              <button
+                onClick={() => copyToClipboard(student.signInCode || '', 'code')}
+                disabled={!student.signInCode}
+                style={{
+                  padding: '0.25rem 0.5rem',
+                  background: copiedField === 'code' ? '#10B981' : '#F3F4F6',
+                  color: copiedField === 'code' ? 'white' : '#374151',
+                  border: 'none',
+                  borderRadius: '0.25rem',
+                  fontSize: '0.75rem',
+                  cursor: student.signInCode ? 'pointer' : 'not-allowed',
+                  opacity: student.signInCode ? 1 : 0.5
+                }}
+              >
+                {copiedField === 'code' ? '✓ Copied' : '📋 Copy'}
+              </button>
+            </div>
+          </div>
+          
+          {/* Password */}
+          <div style={{
+            border: '1px solid #E5E7EB',
+            borderRadius: '0.5rem',
+            padding: '0.75rem'
+          }}>
+            <label style={{
+              display: 'block',
+              fontSize: '0.75rem',
+              fontWeight: '600',
+              color: '#6B7280',
+              marginBottom: '0.25rem'
+            }}>
+              Password
+            </label>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '0.5rem'
+            }}>
+              <span style={{
+                fontSize: '1rem',
+                fontWeight: '500',
+                color: '#223848',
+                fontFamily: 'monospace'
+              }}>
+                {student.personalPassword || 'Not set'}
+              </span>
+              <button
+                onClick={() => copyToClipboard(student.personalPassword || '', 'password')}
+                disabled={!student.personalPassword}
+                style={{
+                  padding: '0.25rem 0.5rem',
+                  background: copiedField === 'password' ? '#10B981' : '#F3F4F6',
+                  color: copiedField === 'password' ? 'white' : '#374151',
+                  border: 'none',
+                  borderRadius: '0.25rem',
+                  fontSize: '0.75rem',
+                  cursor: student.personalPassword ? 'pointer' : 'not-allowed',
+                  opacity: student.personalPassword ? 1 : 0.5
+                }}
+              >
+                {copiedField === 'password' ? '✓ Copied' : '📋 Copy'}
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        {/* Copy All Button */}
+        <button
+          onClick={copyAllForEmail}
+          style={{
+            width: '100%',
+            marginTop: '1rem',
+            padding: '0.75rem',
+            background: copiedField === 'all' 
+              ? 'linear-gradient(135deg, #10B981, #059669)' 
+              : 'linear-gradient(135deg, #ADD4EA, #C3E0DE)',
+            color: copiedField === 'all' ? 'white' : '#223848',
+            border: 'none',
+            borderRadius: '0.5rem',
+            fontWeight: '600',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.5rem'
+          }}
+        >
+          {copiedField === 'all' ? (
+            <>✓ Copied to Clipboard!</>
+          ) : (
+            <>📧 Copy All for Email</>
+          )}
+        </button>
+        
+        <button
+          onClick={onClose}
+          style={{
+            width: '100%',
+            marginTop: '0.5rem',
+            padding: '0.75rem',
+            backgroundColor: '#F3F4F6',
+            color: '#374151',
+            border: 'none',
+            borderRadius: '0.5rem',
+            fontWeight: '600',
+            cursor: 'pointer'
+          }}
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Grade Section Component with Collapsible Functionality
+function GradeSection({ 
+  grade, 
+  students, 
+  viewMode,
+  onToggleAppStatus,
+  onEditManualStudent,
+  onDeleteManualStudent,
+  onAddBookSubmission,
+  onViewDetails,
+  onViewBooks,
+  onViewLogin,
+  onOpenHistoricalModal,
+  isProcessing,
+  hasMaxHistoricalCompletions,
+  defaultExpanded = false,
+  searchTerm = ''
+}) {
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+  const [showMore, setShowMore] = useState(false);
+  
+  // Auto-expand if searching and has matching students
+  useEffect(() => {
+    if (searchTerm && students.length > 0) {
+      setIsExpanded(true);
+    }
+  }, [searchTerm, students.length]);
+  
+  const displayedStudents = showMore ? students : students.slice(0, STUDENTS_PER_PAGE);
+  const hasMore = students.length > STUDENTS_PER_PAGE;
+  
+  const activeCount = students.filter(s => s.status !== 'inactive').length;
+  const totalBooks = students.reduce((sum, s) => 
+    sum + (s.type === 'app' ? (s.booksSubmittedThisYear || 0) : (s.totalBooksThisYear || 0)), 0
+  );
+  
+  return (
+    <div style={{
+      background: 'white',
+      borderRadius: '1rem',
+      marginBottom: '1rem',
+      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+      overflow: 'hidden'
+    }}>
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        style={{
+          width: '100%',
+          padding: '1rem 1.5rem',
+          background: isExpanded ? 'linear-gradient(135deg, #F0F9FF, #E0F2FE)' : 'white',
+          border: 'none',
+          borderBottom: isExpanded ? '1px solid #E5E7EB' : 'none',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          transition: 'background 0.2s'
+        }}
+      >
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1rem'
+        }}>
+          <span style={{
+            fontSize: '1.5rem',
+            transition: 'transform 0.2s',
+            transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)'
+          }}>
+            ▶
+          </span>
+          <h3 style={{
+            fontSize: '1.25rem',
+            fontWeight: 'bold',
+            color: '#223848',
+            margin: 0
+          }}>
+            Grade {grade} ({students.length} student{students.length !== 1 ? 's' : ''})
+          </h3>
+          {students.length > 0 && (
+            <div style={{
+              display: 'flex',
+              gap: '0.75rem',
+              fontSize: '0.875rem'
+            }}>
+              <span style={{
+                padding: '0.25rem 0.75rem',
+                background: '#ECFDF5',
+                color: '#065F46',
+                borderRadius: '0.25rem',
+                fontWeight: '500'
+              }}>
+                {activeCount} active
+              </span>
+              <span style={{
+                padding: '0.25rem 0.75rem',
+                background: '#F0F9FF',
+                color: '#075985',
+                borderRadius: '0.25rem',
+                fontWeight: '500'
+              }}>
+                {totalBooks} books
+              </span>
+            </div>
+          )}
+        </div>
+      </button>
+      
+      {isExpanded && students.length > 0 && (
+        <div style={{ padding: '1rem' }}>
+          {viewMode === VIEW_MODES.COMPACT ? (
+            <CompactStudentTable
+              students={displayedStudents}
+              onToggleAppStatus={onToggleAppStatus}
+              onEditManualStudent={onEditManualStudent}
+              onDeleteManualStudent={onDeleteManualStudent}
+              onAddBookSubmission={onAddBookSubmission}
+              onViewBooks={onViewBooks}
+              onViewLogin={onViewLogin}
+              onOpenHistoricalModal={onOpenHistoricalModal}
+              isProcessing={isProcessing}
+              hasMaxHistoricalCompletions={hasMaxHistoricalCompletions}
+            />
+          ) : (
+            <div style={{ display: 'grid', gap: '1rem' }}>
+              {displayedStudents.map(student => (
+                <StudentCard
+                  key={`${student.type}-${student.id}`}
+                  student={student}
+                  type={student.type}
+                  onToggleStatus={() => onToggleAppStatus(student)}
+                  onViewDetails={() => onViewDetails(student)}
+                  onEditStudent={() => onEditManualStudent(student)}
+                  onDeleteStudent={() => onDeleteManualStudent(student)}
+                  onAddBookSubmission={() => onAddBookSubmission(student)}
+                  onViewBooks={() => onViewBooks(student)}
+                  onViewLogin={() => onViewLogin(student)}
+                  onOpenHistoricalModal={() => onOpenHistoricalModal(student)}
+                  isProcessing={isProcessing}
+                  hasMaxHistoricalCompletions={hasMaxHistoricalCompletions}
+                />
+              ))}
+            </div>
+          )}
+          
+          {hasMore && !showMore && (
+            <button
+              onClick={() => setShowMore(true)}
+              style={{
+                width: '100%',
+                marginTop: '1rem',
+                padding: '0.75rem',
+                background: 'linear-gradient(135deg, #F3F4F6, #E5E7EB)',
+                color: '#374151',
+                border: 'none',
+                borderRadius: '0.5rem',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
+              Show All {students.length} Students
+            </button>
+          )}
+          
+          {hasMore && showMore && (
+            <button
+              onClick={() => setShowMore(false)}
+              style={{
+                width: '100%',
+                marginTop: '1rem',
+                padding: '0.75rem',
+                background: 'linear-gradient(135deg, #F3F4F6, #E5E7EB)',
+                color: '#374151',
+                border: 'none',
+                borderRadius: '0.5rem',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
+              Show Less
+            </button>
+          )}
+        </div>
+      )}
+      
+      {isExpanded && students.length === 0 && (
+        <div style={{
+          padding: '2rem',
+          textAlign: 'center',
+          color: '#6B7280'
+        }}>
+          No students in Grade {grade}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Compact Table View Component
+function CompactStudentTable({ 
+  students, 
+  onToggleAppStatus,
+  onEditManualStudent,
+  onDeleteManualStudent,
+  onAddBookSubmission,
+  onViewBooks,
+  onViewLogin,
+  onOpenHistoricalModal,
+  isProcessing,
+  hasMaxHistoricalCompletions
+}) {
+  return (
+    <div style={{
+      overflowX: 'auto',
+      border: '1px solid #E5E7EB',
+      borderRadius: '0.5rem'
+    }}>
+      <table style={{
+        width: '100%',
+        borderCollapse: 'collapse',
+        fontSize: '0.875rem'
+      }}>
+        <thead>
+          <tr style={{
+            backgroundColor: '#F9FAFB',
+            borderBottom: '1px solid #E5E7EB'
+          }}>
+            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600', color: '#374151' }}>
+              Name
+            </th>
+            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600', color: '#374151' }}>
+              Type
+            </th>
+            <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600', color: '#374151' }}>
+              Username
+            </th>
+            <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: '600', color: '#374151' }}>
+              Books/Goal
+            </th>
+            <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: '600', color: '#374151' }}>
+              Status
+            </th>
+            <th style={{ padding: '0.75rem', textAlign: 'right', fontWeight: '600', color: '#374151' }}>
+              Actions
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {students.map((student, index) => (
+            <tr 
+              key={`${student.type}-${student.id}`}
+              style={{
+                backgroundColor: index % 2 === 0 ? 'white' : '#FAFAFA',
+                borderBottom: '1px solid #F3F4F6'
+              }}
+            >
+              <td style={{ padding: '0.75rem', fontWeight: '500', color: '#111827' }}>
+                {student.firstName} {student.lastInitial}.
+              </td>
+              <td style={{ padding: '0.75rem' }}>
+                <span style={{
+                  fontSize: '0.75rem',
+                  padding: '0.125rem 0.375rem',
+                  backgroundColor: student.type === 'app' ? '#ADD4EA' : '#C3E0DE',
+                  color: '#223848',
+                  borderRadius: '0.25rem',
+                  fontWeight: '600'
+                }}>
+                  {student.type === 'app' ? 'APP' : 'MANUAL'}
+                </span>
+              </td>
+              <td style={{ padding: '0.75rem', color: '#6B7280' }}>
+                {student.displayUsername || '-'}
+              </td>
+              <td style={{ padding: '0.75rem', textAlign: 'center', color: '#6B7280' }}>
+                {student.type === 'app' 
+                  ? `${student.booksSubmittedThisYear || 0}/${student.personalGoal}`
+                  : `${student.totalBooksThisYear || 0}/${student.personalGoal}`
+                }
+              </td>
+              <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                <span style={{
+                  fontSize: '0.75rem',
+                  padding: '0.125rem 0.5rem',
+                  backgroundColor: student.status === 'active' ? '#ECFDF5' : '#FEF2F2',
+                  color: student.status === 'active' ? '#065F46' : '#991B1B',
+                  borderRadius: '0.25rem',
+                  fontWeight: '500'
+                }}>
+                  {student.status === 'active' ? 'Active' : 'Inactive'}
+                </span>
+              </td>
+              <td style={{ padding: '0.75rem' }}>
+                <div style={{
+                  display: 'flex',
+                  gap: '0.25rem',
+                  justifyContent: 'flex-end'
+                }}>
+                  {student.type === 'app' && (
+                    <button
+                      onClick={() => onViewLogin(student)}
+                      title="View Login Info"
+                      style={{
+                        padding: '0.375rem',
+                        backgroundColor: '#FEF3C7',
+                        color: '#92400E',
+                        border: 'none',
+                        borderRadius: '0.25rem',
+                        fontSize: '0.875rem',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      🔑
+                    </button>
+                  )}
+                  
+                  <button
+                    onClick={() => onViewBooks(student)}
+                    title="View Books"
+                    style={{
+                      padding: '0.375rem',
+                      backgroundColor: '#E0F2FE',
+                      color: '#075985',
+                      border: 'none',
+                      borderRadius: '0.25rem',
+                      fontSize: '0.875rem',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    📖
+                  </button>
+                  
+                  {student.type === 'app' ? (
+                    <button
+                      onClick={() => onToggleAppStatus(student)}
+                      disabled={isProcessing}
+                      title={student.status === 'active' ? 'Deactivate' : 'Activate'}
+                      style={{
+                        padding: '0.375rem',
+                        backgroundColor: student.status === 'active' ? '#FEE2E2' : '#D1FAE5',
+                        color: student.status === 'active' ? '#991B1B' : '#065F46',
+                        border: 'none',
+                        borderRadius: '0.25rem',
+                        fontSize: '0.875rem',
+                        cursor: 'pointer',
+                        opacity: isProcessing ? 0.7 : 1
+                      }}
+                    >
+                      {student.status === 'active' ? '⏸' : '▶'}
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => onAddBookSubmission(student)}
+                        title="Add Book"
+                        style={{
+                          padding: '0.375rem',
+                          backgroundColor: '#D1FAE5',
+                          color: '#065F46',
+                          border: 'none',
+                          borderRadius: '0.25rem',
+                          fontSize: '0.875rem',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        ➕
+                      </button>
+                      <button
+                        onClick={() => onEditManualStudent(student)}
+                        title="Edit"
+                        style={{
+                          padding: '0.375rem',
+                          backgroundColor: '#E0F2FE',
+                          color: '#075985',
+                          border: 'none',
+                          borderRadius: '0.25rem',
+                          fontSize: '0.875rem',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        onClick={() => onDeleteManualStudent(student)}
+                        disabled={isProcessing}
+                        title="Delete"
+                        style={{
+                          padding: '0.375rem',
+                          backgroundColor: '#FEE2E2',
+                          color: '#991B1B',
+                          border: 'none',
+                          borderRadius: '0.25rem',
+                          fontSize: '0.875rem',
+                          cursor: 'pointer',
+                          opacity: isProcessing ? 0.7 : 1
+                        }}
+                      >
+                        🗑️
+                      </button>
+                    </>
+                  )}
+                  
+                  {!hasMaxHistoricalCompletions(student) && parseInt(student.grade) > 4 && (
+                    <button
+                      onClick={() => onOpenHistoricalModal(student)}
+                      title="Add Historical"
+                      style={{
+                        padding: '0.375rem',
+                        backgroundColor: '#F3E8FF',
+                        color: '#6B46C1',
+                        border: 'none',
+                        borderRadius: '0.25rem',
+                        fontSize: '0.875rem',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      🏆
+                    </button>
+                  )}
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 // Manual Student Voting Interface Component
 function ManualStudentVotingInterface({ 
@@ -441,6 +1262,7 @@ export default function TeacherStudents() {
   const [activeTab, setActiveTab] = useState('all') // 'all', 'app', or 'manual'
   const [searchTerm, setSearchTerm] = useState('')
   const [gradeFilter, setGradeFilter] = useState('all')
+  const [viewMode, setViewMode] = useState(VIEW_MODES.COMPACT) // 'compact' or 'cards'
   
   // Student data
   const [appStudents, setAppStudents] = useState([])
@@ -462,6 +1284,7 @@ export default function TeacherStudents() {
   const [showBookSubmissionModal, setShowBookSubmissionModal] = useState(false)
   const [showStudentDetailModal, setShowStudentDetailModal] = useState(false)
   const [showStudentBooksModal, setShowStudentBooksModal] = useState(false)
+  const [showLoginModal, setShowLoginModal] = useState(false)
   const [selectedStudent, setSelectedStudent] = useState(null)
   const [selectedStudentBooks, setSelectedStudentBooks] = useState([])
   const [isProcessing, setIsProcessing] = useState(false)
@@ -1453,6 +2276,25 @@ This action cannot be undone.`);
     await signOut({ redirectTo: '/sign-in?reason=session-expired' })
   }
 
+  // Open login modal
+  const openLoginModal = (student) => {
+    setSelectedStudent(student)
+    setShowLoginModal(true)
+  }
+
+  // Group students by grade
+  const getStudentsByGrade = useMemo(() => {
+    const allStudents = getAllStudents()
+    const filtered = filterStudents(allStudents)
+    
+    const byGrade = {}
+    for (let grade = 4; grade <= 8; grade++) {
+      byGrade[grade] = filtered.filter(s => parseInt(s.grade) === grade)
+    }
+    
+    return byGrade
+  }, [appStudents, manualStudents, searchTerm, gradeFilter])
+
   // Show loading
   if (authLoading || loading || phaseLoading || !userProfile) {
     return (
@@ -2133,7 +2975,7 @@ This action cannot be undone.`);
             )}
           </div>
 
-          {/* Search and Filter */}
+          {/* Search, Filter and View Mode Controls */}
           <div style={{
             background: 'white',
             borderRadius: '1rem',
@@ -2143,7 +2985,7 @@ This action cannot be undone.`);
           }}>
             <div style={{
               display: 'grid',
-              gridTemplateColumns: window.innerWidth < 768 ? '1fr' : '1fr auto',
+              gridTemplateColumns: window.innerWidth < 768 ? '1fr' : '1fr auto auto',
               gap: '1rem',
               alignItems: 'center'
             }}>
@@ -2183,133 +3025,138 @@ This action cannot be undone.`);
                 <option value="7">7th Grade</option>
                 <option value="8">8th Grade</option>
               </select>
+              <div style={{
+                display: 'flex',
+                gap: '0.25rem',
+                backgroundColor: '#F3F4F6',
+                borderRadius: '0.5rem',
+                padding: '0.25rem'
+              }}>
+                <button
+                  onClick={() => setViewMode(VIEW_MODES.COMPACT)}
+                  style={{
+                    padding: '0.5rem 0.75rem',
+                    background: viewMode === VIEW_MODES.COMPACT ? 'white' : 'transparent',
+                    border: 'none',
+                    borderRadius: '0.375rem',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem',
+                    fontWeight: viewMode === VIEW_MODES.COMPACT ? '600' : '400',
+                    color: viewMode === VIEW_MODES.COMPACT ? '#223848' : '#6B7280'
+                  }}
+                >
+                  📋 Table
+                </button>
+                <button
+                  onClick={() => setViewMode(VIEW_MODES.CARDS)}
+                  style={{
+                    padding: '0.5rem 0.75rem',
+                    background: viewMode === VIEW_MODES.CARDS ? 'white' : 'transparent',
+                    border: 'none',
+                    borderRadius: '0.375rem',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem',
+                    fontWeight: viewMode === VIEW_MODES.CARDS ? '600' : '400',
+                    color: viewMode === VIEW_MODES.CARDS ? '#223848' : '#6B7280'
+                  }}
+                >
+                  📇 Cards
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Tabs with All Students option */}
+          {/* Add Manual Student Button */}
           <div style={{
-            background: 'white',
-            borderRadius: '1rem',
-            padding: '0',
-            marginBottom: '1.5rem',
-            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
-            overflow: 'hidden'
+            display: 'flex',
+            justifyContent: 'flex-end',
+            marginBottom: '1rem'
           }}>
-            <div style={{ display: 'flex' }}>
-              <button
-                onClick={() => setActiveTab('all')}
-                style={{
-                  flex: 1,
-                  padding: '1rem',
-                  backgroundColor: activeTab === 'all' ? '#B6DFEB' : 'transparent',
-                  color: activeTab === 'all' ? '#223848' : '#6b7280',
-                  border: 'none',
-                  fontSize: '1rem',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem'
-                }}
-              >
-                👥 All Students ({filteredAllStudents.length})
-              </button>
-              <button
-                onClick={() => setActiveTab('app')}
-                style={{
-                  flex: 1,
-                  padding: '1rem',
-                  backgroundColor: activeTab === 'app' ? '#ADD4EA' : 'transparent',
-                  color: activeTab === 'app' ? '#223848' : '#6b7280',
-                  border: 'none',
-                  fontSize: '1rem',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem'
-                }}
-              >
-                📱 App Students ({filteredAppStudents.length})
-              </button>
-              <button
-                onClick={() => setActiveTab('manual')}
-                style={{
-                  flex: 1,
-                  padding: '1rem',
-                  backgroundColor: activeTab === 'manual' ? '#C3E0DE' : 'transparent',
-                  color: activeTab === 'manual' ? '#223848' : '#6b7280',
-                  border: 'none',
-                  fontSize: '1rem',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem'
-                }}
-              >
-                📝 Manual Students ({filteredManualStudents.length})
-              </button>
-            </div>
+            <button
+              onClick={() => setShowAddManualModal(true)}
+              style={{
+                background: 'linear-gradient(135deg, #C3E0DE, #A1E5DB)',
+                color: '#223848',
+                border: 'none',
+                borderRadius: '0.5rem',
+                padding: '0.75rem 1rem',
+                fontSize: '0.875rem',
+                fontWeight: '600',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              ➕ Add Manual Student
+            </button>
           </div>
 
-          {/* Content based on active tab */}
-          {activeTab === 'all' ? (
-            <AllStudentsSection 
-              students={filteredAllStudents}
-              onToggleAppStatus={toggleAppStudentStatus}
-              onEditManualStudent={(student) => {
-                setSelectedStudent(student)
-                setShowEditModal(true)
-              }}
-              onDeleteManualStudent={deleteManualStudent}
-              onAddBookSubmission={(student) => {
-                setSelectedStudent(student)
-                setShowBookSubmissionModal(true)
-              }}
-              onViewDetails={(student) => {
-                setSelectedStudent(student)
-                setShowStudentDetailModal(true)
-              }}
-              onViewBooks={loadStudentBooks}
-              onOpenHistoricalModal={openHistoricalModal}
-              isProcessing={isProcessing}
-              hasMaxHistoricalCompletions={hasMaxHistoricalCompletions}
-            />
-          ) : activeTab === 'app' ? (
-            <AppStudentsSection 
-              students={filteredAppStudents}
-              onToggleStatus={toggleAppStudentStatus}
-              onViewDetails={(student) => {
-                setSelectedStudent(student)
-                setShowStudentDetailModal(true)
-              }}
-              onViewBooks={loadStudentBooks}
-              onOpenHistoricalModal={openHistoricalModal}
-              isProcessing={isProcessing}
-              hasMaxHistoricalCompletions={hasMaxHistoricalCompletions}
-            />
-          ) : (
-            <ManualStudentsSection 
-              students={filteredManualStudents}
-              onAddStudent={() => setShowAddManualModal(true)}
-              onEditStudent={(student) => {
-                setSelectedStudent(student)
-                setShowEditModal(true)
-              }}
-              onDeleteStudent={deleteManualStudent}
-              onAddBookSubmission={(student) => {
-                setSelectedStudent(student)
-                setShowBookSubmissionModal(true)
-              }}
-              onViewBooks={loadStudentBooks}
-              onOpenHistoricalModal={openHistoricalModal}
-              isProcessing={isProcessing}
-              hasMaxHistoricalCompletions={hasMaxHistoricalCompletions}
-            />
+          {/* Students by Grade Sections */}
+          {[4, 5, 6, 7, 8].map(grade => {
+            const gradeStudents = getStudentsByGrade[grade]
+            if (gradeStudents.length === 0 && !searchTerm) return null
+            
+            return (
+              <GradeSection
+                key={grade}
+                grade={grade}
+                students={gradeStudents}
+                viewMode={viewMode}
+                onToggleAppStatus={toggleAppStudentStatus}
+                onEditManualStudent={(student) => {
+                  setSelectedStudent(student)
+                  setShowEditModal(true)
+                }}
+                onDeleteManualStudent={deleteManualStudent}
+                onAddBookSubmission={(student) => {
+                  setSelectedStudent(student)
+                  setShowBookSubmissionModal(true)
+                }}
+                onViewDetails={(student) => {
+                  setSelectedStudent(student)
+                  setShowStudentDetailModal(true)
+                }}
+                onViewBooks={loadStudentBooks}
+                onViewLogin={openLoginModal}
+                onOpenHistoricalModal={openHistoricalModal}
+                isProcessing={isProcessing}
+                hasMaxHistoricalCompletions={hasMaxHistoricalCompletions}
+                defaultExpanded={false}
+                searchTerm={searchTerm}
+              />
+            )
+          })}
+
+          {/* No students message */}
+          {filteredAllStudents.length === 0 && (
+            <div style={{
+              background: 'white',
+              borderRadius: '1rem',
+              padding: '3rem 2rem',
+              textAlign: 'center',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)'
+            }}>
+              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>
+                {searchTerm ? '🔍' : '👥'}
+              </div>
+              <h3 style={{
+                fontSize: '1.25rem',
+                fontWeight: 'bold',
+                color: '#223848',
+                marginBottom: '0.5rem'
+              }}>
+                {searchTerm ? 'No Students Found' : 'No Students Yet'}
+              </h3>
+              <p style={{
+                color: '#6b7280',
+                marginBottom: '1.5rem'
+              }}>
+                {searchTerm 
+                  ? 'Try adjusting your search or filters.'
+                  : 'Students will appear here when they join your class or you add them manually.'}
+              </p>
+            </div>
           )}
         </div>
 
@@ -2490,7 +3337,217 @@ This action cannot be undone.`);
           </Modal>
         )}
 
-        {/* Book Submission Modal with filtered dropdown and teacher submission options */}
+        {/* Edit Manual Student Modal */}
+        {showEditModal && selectedStudent && selectedStudent.type === 'manual' && (
+          <Modal
+            title="✏️ Edit Student"
+            onClose={() => setShowEditModal(false)}
+          >
+            <div style={{ display: 'grid', gap: '1rem' }}>
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  color: '#374151',
+                  marginBottom: '0.5rem'
+                }}>
+                  First Name *
+                </label>
+                <input
+                  type="text"
+                  value={selectedStudent.firstName}
+                  onChange={(e) => setSelectedStudent(prev => ({ ...prev, firstName: e.target.value }))}
+                  placeholder="Enter first name"
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '2px solid #d1d5db',
+                    borderRadius: '0.5rem',
+                    fontSize: '1rem',
+                    boxSizing: 'border-box',
+                    color: '#1f2937',
+                    backgroundColor: '#ffffff'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  color: '#374151',
+                  marginBottom: '0.5rem'
+                }}>
+                  Last Initial *
+                </label>
+                <input
+                  type="text"
+                  value={selectedStudent.lastInitial}
+                  onChange={(e) => setSelectedStudent(prev => ({ 
+                    ...prev, 
+                    lastInitial: e.target.value.toUpperCase().slice(0, 1) 
+                  }))}
+                  placeholder="Enter last initial"
+                  maxLength={1}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '2px solid #d1d5db',
+                    borderRadius: '0.5rem',
+                    fontSize: '1rem',
+                    boxSizing: 'border-box',
+                    textTransform: 'uppercase',
+                    color: '#1f2937',
+                    backgroundColor: '#ffffff'
+                  }}
+                />
+              </div>
+
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '1rem'
+              }}>
+                <div>
+                  <label style={{
+                    display: 'block',
+                    fontSize: '0.875rem',
+                    fontWeight: '600',
+                    color: '#374151',
+                    marginBottom: '0.5rem'
+                  }}>
+                    Grade
+                  </label>
+                  <select
+                    value={selectedStudent.grade}
+                    onChange={(e) => setSelectedStudent(prev => ({ ...prev, grade: parseInt(e.target.value) }))}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: '2px solid #d1d5db',
+                      borderRadius: '0.5rem',
+                      fontSize: '1rem',
+                      boxSizing: 'border-box',
+                      color: '#1f2937',
+                      backgroundColor: '#ffffff'
+                    }}
+                  >
+                    <option value={4}>4th Grade</option>
+                    <option value={5}>5th Grade</option>
+                    <option value={6}>6th Grade</option>
+                    <option value={7}>7th Grade</option>
+                    <option value={8}>8th Grade</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{
+                    display: 'block',
+                    fontSize: '0.875rem',
+                    fontWeight: '600',
+                    color: '#374151',
+                    marginBottom: '0.5rem'
+                  }}>
+                    Reading Goal
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="50"
+                    value={selectedStudent.personalGoal}
+                    onChange={(e) => setSelectedStudent(prev => ({ ...prev, personalGoal: parseInt(e.target.value) }))}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: '2px solid #d1d5db',
+                      borderRadius: '0.5rem',
+                      fontSize: '1rem',
+                      boxSizing: 'border-box',
+                      color: '#1f2937',
+                      backgroundColor: '#ffffff'
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div style={{
+                display: 'flex',
+                gap: '0.75rem',
+                justifyContent: 'flex-end',
+                marginTop: '1rem'
+              }}>
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    backgroundColor: '#f3f4f6',
+                    color: '#374151',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    setIsProcessing(true)
+                    try {
+                      // Find teacher document ID
+                      const teachersRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers`)
+                      const teacherQuery = query(teachersRef, where('uid', '==', userProfile.uid))
+                      const teacherSnapshot = await getDocs(teacherQuery)
+                      const teacherId = teacherSnapshot.docs[0].id
+
+                      const studentRef = doc(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers/${teacherId}/manualStudents`, selectedStudent.id)
+                      await updateDoc(studentRef, {
+                        firstName: selectedStudent.firstName,
+                        lastInitial: selectedStudent.lastInitial,
+                        grade: selectedStudent.grade,
+                        personalGoal: selectedStudent.personalGoal,
+                        lastModified: new Date()
+                      })
+
+                      setManualStudents(prev => 
+                        prev.map(s => 
+                          s.id === selectedStudent.id ? selectedStudent : s
+                        )
+                      )
+                      
+                      setShowEditModal(false)
+                      setShowSuccess(`✅ ${selectedStudent.firstName} updated successfully!`)
+                      setTimeout(() => setShowSuccess(''), 3000)
+
+                    } catch (error) {
+                      console.error('❌ Error updating student:', error)
+                      setShowSuccess('❌ Error updating student. Please try again.')
+                      setTimeout(() => setShowSuccess(''), 3000)
+                    } finally {
+                      setIsProcessing(false)
+                    }
+                  }}
+                  disabled={isProcessing}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    background: 'linear-gradient(135deg, #C3E0DE, #A1E5DB)',
+                    color: '#223848',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem',
+                    fontWeight: '600',
+                    opacity: isProcessing ? 0.7 : 1
+                  }}
+                >
+                  {isProcessing ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </div>
+          </Modal>
+        )}
         {showBookSubmissionModal && selectedStudent && (
           <Modal
             title={`📚 Add Book for ${selectedStudent.firstName}`}
@@ -2796,6 +3853,14 @@ This action cannot be undone.`);
               </div>
             </div>
           </Modal>
+        )}
+
+        {/* Login Credentials Modal */}
+        {showLoginModal && selectedStudent && (
+          <LoginCredentialsModal
+            student={selectedStudent}
+            onClose={() => setShowLoginModal(false)}
+          />
         )}
 
         {/* Historical Completion Modal */}
@@ -3185,16 +4250,17 @@ This action cannot be undone.`);
             bottom: '100px',
             left: '50%',
             transform: 'translateX(-50%)',
-            backgroundColor: '#4CAF50',
+            backgroundColor: showSuccess.includes('❌') ? '#EF4444' : '#4CAF50',
             color: 'white',
             padding: '12px 24px',
             borderRadius: '20px',
             boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
-            zIndex: 1001,
+            zIndex: 10002,
             fontSize: '14px',
             fontWeight: '500',
             maxWidth: '85vw',
-            textAlign: 'center'
+            textAlign: 'center',
+            animation: 'slideUp 0.3s ease-out'
           }}>
             {showSuccess}
           </div>
@@ -3204,6 +4270,17 @@ This action cannot be undone.`);
           @keyframes spin {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
+          }
+          
+          @keyframes slideUp {
+            from {
+              transform: translate(-50%, 20px);
+              opacity: 0;
+            }
+            to {
+              transform: translate(-50%, 0);
+              opacity: 1;
+            }
           }
         `}</style>
       </div>
@@ -3273,203 +4350,7 @@ function StatCard({ icon, title, value, subtitle, color }) {
   )
 }
 
-// All Students Section combining both types
-function AllStudentsSection({ students, onToggleAppStatus, onEditManualStudent, onDeleteManualStudent, onAddBookSubmission, onViewDetails, onViewBooks, onOpenHistoricalModal, isProcessing, hasMaxHistoricalCompletions }) {
-  if (students.length === 0) {
-    return (
-      <div style={{
-        background: 'white',
-        borderRadius: '1rem',
-        padding: '3rem 2rem',
-        textAlign: 'center',
-        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)'
-      }}>
-        <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>👥</div>
-        <h3 style={{
-          fontSize: '1.25rem',
-          fontWeight: 'bold',
-          color: '#223848',
-          marginBottom: '0.5rem'
-        }}>
-          No Students Yet
-        </h3>
-        <p style={{
-          color: '#6b7280',
-          marginBottom: '1.5rem'
-        }}>
-          Students will appear here when they join your class or you add them manually.
-        </p>
-      </div>
-    )
-  }
-
-  return (
-    <div style={{
-      background: 'white',
-      borderRadius: '1rem',
-      padding: '1.5rem',
-      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)'
-    }}>
-      <div style={{
-        display: 'grid',
-        gap: '1rem'
-      }}>
-        {students.map(student => (
-          <StudentCard
-            key={`${student.type}-${student.id}`}
-            student={student}
-            type={student.type}
-            onToggleStatus={() => onToggleAppStatus(student)}
-            onViewDetails={() => onViewDetails(student)}
-            onEditStudent={() => onEditManualStudent(student)}
-            onDeleteStudent={() => onDeleteManualStudent(student)}
-            onAddBookSubmission={() => onAddBookSubmission(student)}
-            onViewBooks={() => onViewBooks(student)}
-            onOpenHistoricalModal={() => onOpenHistoricalModal(student)}
-            isProcessing={isProcessing}
-            hasMaxHistoricalCompletions={hasMaxHistoricalCompletions}
-          />
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function AppStudentsSection({ students, onToggleStatus, onViewDetails, onViewBooks, onOpenHistoricalModal, isProcessing, hasMaxHistoricalCompletions }) {
-  if (students.length === 0) {
-    return (
-      <div style={{
-        background: 'white',
-        borderRadius: '1rem',
-        padding: '3rem 2rem',
-        textAlign: 'center',
-        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)'
-      }}>
-        <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📱</div>
-        <h3 style={{
-          fontSize: '1.25rem',
-          fontWeight: 'bold',
-          color: '#223848',
-          marginBottom: '0.5rem'
-        }}>
-          No App Students Yet
-        </h3>
-        <p style={{
-          color: '#6b7280',
-          marginBottom: '1.5rem'
-        }}>
-          Students will appear here when they sign up using your student join code.
-        </p>
-      </div>
-    )
-  }
-
-  return (
-    <div style={{
-      background: 'white',
-      borderRadius: '1rem',
-      padding: '1.5rem',
-      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)'
-    }}>
-      <div style={{
-        display: 'grid',
-        gap: '1rem'
-      }}>
-        {students.map(student => (
-          <StudentCard
-            key={student.id}
-            student={student}
-            type="app"
-            onToggleStatus={() => onToggleStatus(student)}
-            onViewDetails={() => onViewDetails(student)}
-            onViewBooks={() => onViewBooks(student)}
-            onOpenHistoricalModal={() => onOpenHistoricalModal(student)}
-            isProcessing={isProcessing}
-            hasMaxHistoricalCompletions={hasMaxHistoricalCompletions}
-          />
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function ManualStudentsSection({ students, onAddStudent, onEditStudent, onDeleteStudent, onAddBookSubmission, onViewBooks, onOpenHistoricalModal, isProcessing, hasMaxHistoricalCompletions }) {
-  return (
-    <div style={{
-      background: 'white',
-      borderRadius: '1rem',
-      padding: '1.5rem',
-      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)'
-    }}>
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: '1.5rem'
-      }}>
-        <h3 style={{
-          fontSize: '1.25rem',
-          fontWeight: 'bold',
-          color: '#223848',
-          margin: 0
-        }}>
-          Manual Students
-        </h3>
-        <button
-          onClick={onAddStudent}
-          style={{
-            background: 'linear-gradient(135deg, #C3E0DE, #A1E5DB)',
-            color: '#223848',
-            border: 'none',
-            borderRadius: '0.5rem',
-            padding: '0.75rem 1rem',
-            fontSize: '0.875rem',
-            fontWeight: '600',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem'
-          }}
-        >
-          ➕ Add Student
-        </button>
-      </div>
-
-      {students.length === 0 ? (
-        <div style={{
-          textAlign: 'center',
-          padding: '2rem',
-          color: '#6b7280'
-        }}>
-          <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>📝</div>
-          <p>No manual students yet. Add students who don&apos;t use the app!</p>
-        </div>
-      ) : (
-        <div style={{
-          display: 'grid',
-          gap: '1rem'
-        }}>
-          {students.map(student => (
-            <StudentCard
-              key={student.id}
-              student={student}
-              type="manual"
-              onEditStudent={() => onEditStudent(student)}
-              onDeleteStudent={() => onDeleteStudent(student)}
-              onAddBookSubmission={() => onAddBookSubmission(student)}
-              onViewBooks={() => onViewBooks(student)}
-              onOpenHistoricalModal={() => onOpenHistoricalModal(student)}
-              isProcessing={isProcessing}
-              hasMaxHistoricalCompletions={hasMaxHistoricalCompletions}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function StudentCard({ student, type, onToggleStatus, onViewDetails, onEditStudent, onDeleteStudent, onAddBookSubmission, onViewBooks, onOpenHistoricalModal, isProcessing, hasMaxHistoricalCompletions }) {
+function StudentCard({ student, type, onToggleStatus, onViewDetails, onEditStudent, onDeleteStudent, onAddBookSubmission, onViewBooks, onViewLogin, onOpenHistoricalModal, isProcessing, hasMaxHistoricalCompletions }) {
   const isActive = student.status !== 'inactive'
   
   return (
@@ -3556,6 +4437,22 @@ function StudentCard({ student, type, onToggleStatus, onViewDetails, onEditStude
                 }}
               >
                 {isActive ? 'Deactivate' : 'Activate'}
+              </button>
+              <button
+                onClick={onViewLogin}
+                style={{
+                  padding: '0.5rem 0.75rem',
+                  backgroundColor: '#FEF3C7',
+                  color: '#92400E',
+                  border: 'none',
+                  borderRadius: '0.375rem',
+                  fontSize: '0.75rem',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  minWidth: '80px'
+                }}
+              >
+                🔑 Login Info
               </button>
               <button
                 onClick={onViewBooks}

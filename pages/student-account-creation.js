@@ -1,4 +1,4 @@
-// pages/student-account-creation.js - FIXED: No Backwards Compatibility
+// pages/student-account-creation.js - FIXED: Teacher Code Input Validation
 import { useState } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
@@ -154,6 +154,28 @@ export default function StudentAccountCreation() {
     }
   }
 
+  // Handle teacher code input - only allow letters, numbers, and hyphens (no spaces)
+  const handleTeacherCodeChange = (e) => {
+    // Remove spaces and convert to uppercase
+    const value = e.target.value.replace(/\s/g, '').toUpperCase();
+    
+    // Only allow letters, numbers, and hyphens
+    const sanitizedValue = value.replace(/[^A-Z0-9-]/g, '');
+    
+    setStudentData(prev => ({ 
+      ...prev, 
+      teacherJoinCode: sanitizedValue
+    }));
+  };
+
+  // Handle key press to prevent spaces
+  const handleKeyPress = (e) => {
+    // Prevent space key
+    if (e.key === ' ') {
+      e.preventDefault();
+    }
+  };
+
   return (
     <>
       <Head>
@@ -292,11 +314,14 @@ export default function StudentAccountCreation() {
                   <input
                     type="text"
                     value={studentData.teacherJoinCode}
-                    onChange={(e) => setStudentData(prev => ({ 
-                      ...prev, 
-                      teacherJoinCode: e.target.value.toUpperCase() 
-                    }))}
+                    onChange={handleTeacherCodeChange}
+                    onKeyPress={handleKeyPress}
                     placeholder="LUXLIB-SCHOOL-SMITH25-STUDENT"
+                    maxLength="50"
+                    spellCheck="false"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="characters"
                     style={{
                       width: '100%',
                       padding: '0.875rem',
@@ -310,8 +335,9 @@ export default function StudentAccountCreation() {
                       fontWeight: 'bold',
                       letterSpacing: '0.05em',
                       fontFamily: 'monospace',
-                      color: '#223848',           // Add dark text color
-  backgroundColor: '#ffffff'  // Add white background
+                      color: '#223848',
+                      backgroundColor: '#ffffff',
+                      textTransform: 'uppercase'  // Force visual uppercase
                     }}
                     onFocus={(e) => e.target.style.borderColor = '#ADD4EA'}
                     onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
@@ -323,6 +349,15 @@ export default function StudentAccountCreation() {
                     textAlign: 'center'
                   }}>
                     Ask your teacher if you don&apos;t have this code
+                  </p>
+                  <p style={{
+                    fontSize: '0.7rem',
+                    color: '#9ca3af',
+                    margin: '0.25rem 0 0 0',
+                    textAlign: 'center',
+                    fontStyle: 'italic'
+                  }}>
+                    No spaces allowed • Letters will be capitalized automatically
                   </p>
                 </div>
 
