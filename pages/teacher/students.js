@@ -125,8 +125,8 @@ Please keep this information secure.`;
               margin: 0,
               fontSize: '0.875rem'
             }}>
-              Manual students don't have login credentials.
-              They don't use the app directly.
+              Manual students don&apos;t have login credentials.
+              They don&apos;t use the app directly.
             </p>
           </div>
           
