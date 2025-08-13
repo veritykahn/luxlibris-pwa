@@ -1,4 +1,4 @@
-// pages/parent/family-battle.js - FIXED VERSION
+// pages/parent/family-battle.js - FIXED VERSION WITH TIME-SENSITIVE THEMES
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
@@ -126,47 +126,59 @@ export default function ParentFamilyBattle() {
     { name: 'Settings', path: '/parent/settings', icon: '⚙' }
   ], [])
 
-  // Get time-based theme - memoized with hour dependency
+  // Get time-based theme with smoother transitions - UPDATED TO MATCH DASHBOARD
   const timeTheme = useMemo(() => {
     const hour = new Date().getHours();
     if (hour >= 5 && hour < 12) {
       return {
         name: 'morning',
         gradient: 'linear-gradient(135deg, #F5C99B, #F0B88A, #EBAD7A)',
-        overlay: 'rgba(245, 201, 155, 0.1)'
+        backgroundGradient: 'linear-gradient(to bottom, #FDF4E7, #FAE8D4, #F5DCC1)',
+        overlay: 'rgba(245, 201, 155, 0.1)',
+        glow: '#F5C99B'
       };
     } else if (hour >= 12 && hour < 17) {
       return {
         name: 'afternoon',
         gradient: 'linear-gradient(135deg, #6BB6E3, #7AC5EA, #89D0EE)',
-        overlay: 'rgba(107, 182, 227, 0.1)'
+        backgroundGradient: 'linear-gradient(to bottom, #E8F4FD, #D1E9FB, #B8DDF8)',
+        overlay: 'rgba(107, 182, 227, 0.1)',
+        glow: '#6BB6E3'
       };
     } else if (hour >= 17 && hour < 20) {
       return {
         name: 'evening',
         gradient: 'linear-gradient(135deg, #FFB347, #FF8C42, #FF6B35)',
-        overlay: 'rgba(255, 140, 66, 0.1)'
+        backgroundGradient: 'linear-gradient(to bottom, #FFF0E6, #FFE4D1, #FFD7BC)',
+        overlay: 'rgba(255, 140, 66, 0.1)',
+        glow: '#FF8C42'
       };
     } else {
       return {
         name: 'night',
         gradient: 'linear-gradient(135deg, #4B0082, #6A0DAD, #7B68EE)',
-        overlay: 'rgba(75, 0, 130, 0.1)'
+        backgroundGradient: 'linear-gradient(to bottom, #2D1B4E, #3D2B5E, #4D3B6E)',
+        overlay: 'rgba(75, 0, 130, 0.1)',
+        glow: '#7B68EE'
       };
     }
   }, [Math.floor(new Date().getHours() / 6)])
 
-  // Lux Libris Classic Theme with time-based adjustments
-  const luxTheme = useMemo(() => ({
-    primary: '#ADD4EA',
-    secondary: '#C3E0DE',
-    accent: '#A1E5DB',
-    background: '#FFFCF5',
-    surface: '#FFFFFF',
-    textPrimary: '#223848',
-    textSecondary: '#556B7A',
-    timeOverlay: timeTheme.overlay
-  }), [timeTheme])
+  // Lux Libris Classic Theme - adapted for time-based backgrounds
+  const luxTheme = useMemo(() => {
+    const isNight = timeTheme.name === 'night';
+    return {
+      primary: '#ADD4EA',
+      secondary: '#C3E0DE',
+      accent: '#A1E5DB',
+      background: timeTheme.backgroundGradient, // Now uses time-based gradient
+      surface: isNight ? 'rgba(255, 255, 255, 0.95)' : '#FFFFFF', // Slightly transparent for night mode
+      textPrimary: isNight ? '#1F2937' : '#223848', // Darker for night mode contrast
+      textSecondary: isNight ? '#374151' : '#556B7A',
+      timeOverlay: timeTheme.overlay,
+      timeGlow: timeTheme.glow
+    }
+  }, [timeTheme])
 
   // Utility function for local date
   const getLocalDateString = (date = new Date()) => {
@@ -421,7 +433,7 @@ export default function ParentFamilyBattle() {
           <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
         </Head>
         <div style={{
-          backgroundColor: luxTheme.background,
+          background: luxTheme.background,
           minHeight: '100vh',
           display: 'flex',
           alignItems: 'center',
@@ -460,7 +472,7 @@ export default function ParentFamilyBattle() {
           <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
         </Head>
         <div style={{
-          backgroundColor: luxTheme.background,
+          background: luxTheme.background,
           minHeight: '100vh',
           display: 'flex',
           alignItems: 'center',
@@ -502,7 +514,7 @@ export default function ParentFamilyBattle() {
       </Head>
 
       <div style={{
-        backgroundColor: luxTheme.background,
+        background: luxTheme.background,
         minHeight: '100vh',
         fontFamily: 'system-ui, -apple-system, sans-serif',
         paddingBottom: '100px',
@@ -515,7 +527,7 @@ export default function ParentFamilyBattle() {
           left: 0,
           right: 0,
           bottom: 0,
-          background: timeTheme.overlay,
+          background: luxTheme.timeOverlay,
           pointerEvents: 'none',
           zIndex: 1
         }} />
@@ -536,7 +548,7 @@ export default function ParentFamilyBattle() {
           padding: '30px 20px 12px',
           position: 'relative',
           borderRadius: '0 0 25px 25px',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+          boxShadow: `0 4px 20px rgba(0,0,0,0.1), 0 0 40px ${luxTheme.timeGlow}30`,
           zIndex: 100,
           display: 'flex',
           alignItems: 'center',
@@ -558,7 +570,7 @@ export default function ParentFamilyBattle() {
               justifyContent: 'center',
               fontSize: '18px',
               cursor: 'pointer',
-              color: luxTheme.textPrimary,
+              color: timeTheme.name === 'night' ? 'white' : luxTheme.textPrimary,
               backdropFilter: 'blur(10px)',
               flexShrink: 0,
               touchAction: 'manipulation',
@@ -574,16 +586,17 @@ export default function ParentFamilyBattle() {
             <h1 style={{
               fontSize: 'clamp(20px, 5vw, 24px)',
               fontWeight: '600',
-              color: luxTheme.textPrimary,
+              color: timeTheme.name === 'night' ? 'white' : luxTheme.textPrimary,
               margin: '0',
               letterSpacing: '1px',
-              fontFamily: 'Didot, "Times New Roman", serif'
+              fontFamily: 'Didot, "Times New Roman", serif',
+              textShadow: timeTheme.name === 'night' ? '0 2px 4px rgba(0,0,0,0.3)' : 'none'
             }}>
               Family Battle
             </h1>
             <p style={{
               fontSize: 'clamp(12px, 3vw, 14px)',
-              color: luxTheme.textSecondary,
+              color: timeTheme.name === 'night' ? 'rgba(255,255,255,0.8)' : luxTheme.textSecondary,
               margin: '4px 0 0 0'
             }}>
               {isSunday ? '✨ Sunday Day of Rest ✨' : 'WWE for Reading Champions'}
@@ -620,7 +633,7 @@ export default function ParentFamilyBattle() {
                 justifyContent: 'center',
                 fontSize: '18px',
                 cursor: 'pointer',
-                color: luxTheme.textPrimary,
+                color: timeTheme.name === 'night' ? 'white' : luxTheme.textPrimary,
                 backdropFilter: 'blur(10px)',
                 flexShrink: 0,
                 touchAction: 'manipulation',
@@ -706,7 +719,9 @@ export default function ParentFamilyBattle() {
             padding: '20px', 
             maxWidth: '600px', 
             margin: '0 auto',
-            paddingTop: '20px' // Reduced since no pill on Mon-Sat
+            paddingTop: '20px',
+            position: 'relative',
+            zIndex: 10
           }}>
 
             {/* Success Message */}
@@ -732,7 +747,8 @@ export default function ParentFamilyBattle() {
                 borderRadius: '12px',
                 padding: '16px',
                 marginBottom: '20px',
-                textAlign: 'center'
+                textAlign: 'center',
+                boxShadow: `0 4px 12px ${luxTheme.timeGlow}20`
               }}>
                 <div style={{
                   fontSize: '16px',

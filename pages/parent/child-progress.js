@@ -1,4 +1,4 @@
-// pages/parent/child-progress.js - FIXED to show current year goals on cards
+// pages/parent/child-progress.js - Enhanced with time-based themes
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
@@ -1086,9 +1086,22 @@ export default function ChildProgress() {
   const [modalInitialTab, setModalInitialTab] = useState('reading')
   const [showComingSoon, setShowComingSoon] = useState('')
   const [teacherData, setTeacherData] = useState(null)
+  const [currentHour, setCurrentHour] = useState(new Date().getHours())
   
   // Navigation menu state
   const [showNavMenu, setShowNavMenu] = useState(false)
+
+  // Update current hour every minute to ensure theme changes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const newHour = new Date().getHours()
+      if (newHour !== currentHour) {
+        setCurrentHour(newHour)
+      }
+    }, 60000) // Check every minute
+
+    return () => clearInterval(interval)
+  }, [currentHour])
 
   // 🆕 NEW: Notification integration
   const {
@@ -1098,16 +1111,58 @@ export default function ChildProgress() {
     newCount
   } = useUnlockNotifications()
 
-  // Lux Libris Classic Theme
-  const luxTheme = {
-    primary: '#ADD4EA',
-    secondary: '#C3E0DE',
-    accent: '#A1E5DB',
-    background: '#FFFCF5',
-    surface: '#FFFFFF',
-    textPrimary: '#223848',
-    textSecondary: '#556B7A'
-  }
+  // Get time-based theme with smoother transitions
+  const timeTheme = useMemo(() => {
+    if (currentHour >= 5 && currentHour < 12) {
+      return {
+        name: 'morning',
+        gradient: 'linear-gradient(135deg, #F5C99B, #F0B88A, #EBAD7A)',
+        backgroundGradient: 'linear-gradient(to bottom, #FDF4E7, #FAE8D4, #F5DCC1)',
+        overlay: 'rgba(245, 201, 155, 0.1)',
+        glow: '#F5C99B'
+      };
+    } else if (currentHour >= 12 && currentHour < 17) {
+      return {
+        name: 'afternoon',
+        gradient: 'linear-gradient(135deg, #6BB6E3, #7AC5EA, #89D0EE)',
+        backgroundGradient: 'linear-gradient(to bottom, #E8F4FD, #D1E9FB, #B8DDF8)',
+        overlay: 'rgba(107, 182, 227, 0.1)',
+        glow: '#6BB6E3'
+      };
+    } else if (currentHour >= 17 && currentHour < 20) {
+      return {
+        name: 'evening',
+        gradient: 'linear-gradient(135deg, #FFB347, #FF8C42, #FF6B35)',
+        backgroundGradient: 'linear-gradient(to bottom, #FFF0E6, #FFE4D1, #FFD7BC)',
+        overlay: 'rgba(255, 140, 66, 0.1)',
+        glow: '#FF8C42'
+      };
+    } else {
+      return {
+        name: 'night',
+        gradient: 'linear-gradient(135deg, #4B0082, #6A0DAD, #7B68EE)',
+        backgroundGradient: 'linear-gradient(to bottom, #2D1B4E, #3D2B5E, #4D3B6E)',
+        overlay: 'rgba(75, 0, 130, 0.1)',
+        glow: '#7B68EE'
+      };
+    }
+  }, [currentHour]);
+
+  // Lux Libris Classic Theme - adapted for time-based backgrounds
+  const luxTheme = useMemo(() => {
+    const isNight = timeTheme.name === 'night';
+    return {
+      primary: '#ADD4EA',
+      secondary: '#C3E0DE',
+      accent: '#A1E5DB',
+      background: timeTheme.backgroundGradient, // Now uses time-based gradient
+      surface: isNight ? 'rgba(255, 255, 255, 0.95)' : '#FFFFFF', // Slightly transparent for night mode
+      textPrimary: isNight ? '#1F2937' : '#223848', // Darker for night mode contrast
+      textSecondary: isNight ? '#374151' : '#556B7A',
+      timeOverlay: timeTheme.overlay,
+      timeGlow: timeTheme.glow
+    }
+  }, [timeTheme]);
 
   // Navigation menu items with notification badge
   const navMenuItems = useMemo(() => [
@@ -1533,7 +1588,7 @@ export default function ChildProgress() {
   if (authLoading || loading || !userProfile) {
     return (
       <div style={{
-        backgroundColor: luxTheme.background,
+        background: luxTheme.background,
         minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
@@ -1558,7 +1613,7 @@ export default function ChildProgress() {
   if (error) {
     return (
       <div style={{
-        backgroundColor: luxTheme.background,
+        background: luxTheme.background,
         minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
@@ -1596,44 +1651,70 @@ export default function ChildProgress() {
           <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
         </Head>
         <div style={{
-          backgroundColor: luxTheme.background,
+          background: luxTheme.background,
           minHeight: '100vh',
-          fontFamily: 'system-ui, -apple-system, sans-serif'
+          fontFamily: 'system-ui, -apple-system, sans-serif',
+          position: 'relative'
         }}>
+          {/* Time-based overlay */}
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: luxTheme.timeOverlay,
+            pointerEvents: 'none',
+            zIndex: 1
+          }} />
+          
           <div style={{
             padding: '40px 20px',
-            textAlign: 'center'
+            textAlign: 'center',
+            position: 'relative',
+            zIndex: 10
           }}>
-            <div style={{ fontSize: '64px', marginBottom: '20px' }}>👨‍👩‍👧‍👦</div>
-            <h2 style={{
-              fontSize: '24px',
-              color: luxTheme.textPrimary,
-              marginBottom: '12px'
+            <div style={{
+              backgroundColor: timeTheme.name === 'night' ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.9)',
+              backdropFilter: 'blur(10px)',
+              borderRadius: '20px',
+              padding: '40px 30px',
+              maxWidth: '400px',
+              margin: '0 auto',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+              border: `2px solid ${luxTheme.primary}30`
             }}>
-              No Children Linked
-            </h2>
-            <p style={{
-              fontSize: '16px',
-              color: luxTheme.textSecondary,
-              marginBottom: '24px'
-            }}>
-              Link your children&apos;s accounts to track their reading progress.
-            </p>
-            <button
-              onClick={() => router.push('/parent/dashboard')}
-              style={{
-                backgroundColor: luxTheme.primary,
+              <div style={{ fontSize: '64px', marginBottom: '20px' }}>👨‍👩‍👧‍👦</div>
+              <h2 style={{
+                fontSize: '24px',
                 color: luxTheme.textPrimary,
-                border: 'none',
-                padding: '12px 24px',
-                borderRadius: '12px',
+                marginBottom: '12px'
+              }}>
+                No Children Linked
+              </h2>
+              <p style={{
                 fontSize: '16px',
-                fontWeight: '600',
-                cursor: 'pointer'
-              }}
-            >
-              ← Back to Dashboard
-            </button>
+                color: luxTheme.textSecondary,
+                marginBottom: '24px'
+              }}>
+                Link your children&apos;s accounts to track their reading progress.
+              </p>
+              <button
+                onClick={() => router.push('/parent/dashboard')}
+                style={{
+                  backgroundColor: luxTheme.primary,
+                  color: luxTheme.textPrimary,
+                  border: 'none',
+                  padding: '12px 24px',
+                  borderRadius: '12px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                ← Back to Dashboard
+              </button>
+            </div>
           </div>
         </div>
       </>
@@ -1662,14 +1743,26 @@ export default function ChildProgress() {
       </Head>
       
       <div style={{
-        backgroundColor: luxTheme.background,
+        background: luxTheme.background,
         minHeight: '100vh',
-        fontFamily: 'system-ui, -apple-system, sans-serif'
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        position: 'relative'
       }}>
+        {/* Time-based overlay */}
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: luxTheme.timeOverlay,
+          pointerEvents: 'none',
+          zIndex: 1
+        }} />
         
         {/* Header */}
         <div style={{
-          background: `linear-gradient(135deg, ${luxTheme.primary}F0, ${luxTheme.secondary}F0)`,
+          background: timeTheme.gradient,
           backdropFilter: 'blur(20px)',
           padding: '30px 20px 12px',
           position: 'relative',
@@ -1696,7 +1789,7 @@ export default function ChildProgress() {
               justifyContent: 'center',
               fontSize: '18px',
               cursor: 'pointer',
-              color: luxTheme.textPrimary,
+              color: timeTheme.name === 'night' ? '#FFFFFF' : luxTheme.textPrimary,
               backdropFilter: 'blur(10px)',
               flexShrink: 0,
               touchAction: 'manipulation',
@@ -1710,11 +1803,12 @@ export default function ChildProgress() {
           <h1 style={{
             fontSize: 'clamp(20px, 5vw, 24px)',
             fontWeight: '400',
-            color: luxTheme.textPrimary,
+            color: timeTheme.name === 'night' ? '#FFFFFF' : luxTheme.textPrimary,
             margin: '0',
             letterSpacing: '1px',
             fontFamily: 'Didot, "Times New Roman", serif',
-            textAlign: 'center'
+            textAlign: 'center',
+            textShadow: timeTheme.name === 'night' ? '0 2px 4px rgba(0,0,0,0.3)' : 'none'
           }}>
             Child Progress
           </h1>
@@ -1734,7 +1828,7 @@ export default function ChildProgress() {
                 justifyContent: 'center',
                 fontSize: '18px',
                 cursor: 'pointer',
-                color: luxTheme.textPrimary,
+                color: timeTheme.name === 'night' ? '#FFFFFF' : luxTheme.textPrimary,
                 backdropFilter: 'blur(10px)',
                 flexShrink: 0,
                 touchAction: 'manipulation',
@@ -1832,13 +1926,21 @@ export default function ChildProgress() {
           flexDirection: 'column',
           alignItems: 'center',
           minHeight: 'calc(100vh - 120px)',
-          paddingTop: '20px'
+          paddingTop: '20px',
+          position: 'relative',
+          zIndex: 10
         }}>
           {/* Subtitle */}
           <div style={{
             textAlign: 'center',
             marginBottom: '20px',
-            maxWidth: '400px'
+            maxWidth: '400px',
+            backgroundColor: timeTheme.name === 'night' ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.9)',
+            backdropFilter: 'blur(10px)',
+            borderRadius: '16px',
+            padding: '16px 20px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+            border: `1px solid ${luxTheme.primary}20`
           }}>
             <h2 style={{
               fontSize: 'clamp(16px, 4vw, 18px)',
@@ -1875,7 +1977,7 @@ export default function ChildProgress() {
                   top: '50%',
                   transform: 'translateY(-50%)',
                   backgroundColor: childColor,
-                  border: `3px solid ${luxTheme.secondary}`,
+                  border: timeTheme.name === 'night' ? '3px solid rgba(255,255,255,0.5)' : `3px solid ${luxTheme.secondary}`,
                   borderRadius: '50%',
                   width: '48px',
                   height: '48px',
@@ -1907,7 +2009,7 @@ export default function ChildProgress() {
                   top: '50%',
                   transform: 'translateY(-50%)',
                   backgroundColor: childColor,
-                  border: `3px solid ${luxTheme.secondary}`,
+                  border: timeTheme.name === 'night' ? '3px solid rgba(255,255,255,0.5)' : `3px solid ${luxTheme.secondary}`,
                   borderRadius: '50%',
                   width: '48px',
                   height: '48px',
@@ -1947,9 +2049,14 @@ export default function ChildProgress() {
           {linkedStudents.length > 1 && (
             <div style={{
               fontSize: '12px',
-              color: luxTheme.textSecondary,
+              color: timeTheme.name === 'night' ? '#FFFFFF' : luxTheme.textSecondary,
               textAlign: 'center',
-              marginBottom: '20px'
+              marginBottom: '20px',
+              backgroundColor: timeTheme.name === 'night' ? 'rgba(123,104,238,0.3)' : 'rgba(255,255,255,0.7)',
+              backdropFilter: 'blur(8px)',
+              padding: '8px 16px',
+              borderRadius: '20px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
             }}>
               ← Swipe to see other children →
             </div>
@@ -1965,9 +2072,10 @@ export default function ChildProgress() {
               <h3 style={{
                 fontSize: '16px',
                 fontWeight: 'bold',
-                color: luxTheme.textPrimary,
+                color: timeTheme.name === 'night' ? '#FFFFFF' : luxTheme.textPrimary,
                 margin: '0 0 12px 0',
-                textAlign: 'center'
+                textAlign: 'center',
+                textShadow: timeTheme.name === 'night' ? '0 2px 4px rgba(0,0,0,0.3)' : 'none'
               }}>
                 Your Children
               </h3>
@@ -2003,7 +2111,8 @@ export default function ChildProgress() {
                         fontWeight: 'bold',
                         transition: 'all 0.2s ease',
                         transform: index === currentChildIndex ? 'scale(1.1)' : 'scale(1)',
-                        touchAction: 'manipulation'
+                        touchAction: 'manipulation',
+                        boxShadow: index === currentChildIndex ? `0 4px 12px ${color}40` : 'none'
                       }}
                     >
                       {child.firstName?.charAt(0) || '?'}

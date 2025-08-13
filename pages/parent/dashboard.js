@@ -1,4 +1,4 @@
-// pages/parent/dashboard.js - Enhanced with daily rotations, persistent colors, and visual flair
+// pages/parent/dashboard.js - Enhanced with daily rotations, persistent colors, and time-based background
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
@@ -69,6 +69,7 @@ export default function ParentDashboard() {
       return {
         name: 'morning',
         gradient: 'linear-gradient(135deg, #F5C99B, #F0B88A, #EBAD7A)',
+        backgroundGradient: 'linear-gradient(to bottom, #FDF4E7, #FAE8D4, #F5DCC1)',
         overlay: 'rgba(245, 201, 155, 0.1)',
         glow: '#F5C99B'
       };
@@ -76,6 +77,7 @@ export default function ParentDashboard() {
       return {
         name: 'afternoon',
         gradient: 'linear-gradient(135deg, #6BB6E3, #7AC5EA, #89D0EE)',
+        backgroundGradient: 'linear-gradient(to bottom, #E8F4FD, #D1E9FB, #B8DDF8)',
         overlay: 'rgba(107, 182, 227, 0.1)',
         glow: '#6BB6E3'
       };
@@ -83,6 +85,7 @@ export default function ParentDashboard() {
       return {
         name: 'evening',
         gradient: 'linear-gradient(135deg, #FFB347, #FF8C42, #FF6B35)',
+        backgroundGradient: 'linear-gradient(to bottom, #FFF0E6, #FFE4D1, #FFD7BC)',
         overlay: 'rgba(255, 140, 66, 0.1)',
         glow: '#FF8C42'
       };
@@ -90,24 +93,28 @@ export default function ParentDashboard() {
       return {
         name: 'night',
         gradient: 'linear-gradient(135deg, #4B0082, #6A0DAD, #7B68EE)',
+        backgroundGradient: 'linear-gradient(to bottom, #2D1B4E, #3D2B5E, #4D3B6E)',
         overlay: 'rgba(75, 0, 130, 0.1)',
         glow: '#7B68EE'
       };
     }
   }, [Math.floor(new Date().getHours() / 6)]);
 
-  // Lux Libris Classic Theme
-  const luxTheme = useMemo(() => ({
-    primary: '#ADD4EA',
-    secondary: '#C3E0DE',
-    accent: '#A1E5DB',
-    background: '#FFFCF5',
-    surface: '#FFFFFF',
-    textPrimary: '#223848',
-    textSecondary: '#556B7A',
-    timeOverlay: timeTheme.overlay,
-    timeGlow: timeTheme.glow
-  }), [timeTheme]);
+  // Lux Libris Classic Theme - adapted for time-based backgrounds
+  const luxTheme = useMemo(() => {
+    const isNight = timeTheme.name === 'night';
+    return {
+      primary: '#ADD4EA',
+      secondary: '#C3E0DE',
+      accent: '#A1E5DB',
+      background: timeTheme.backgroundGradient, // Now uses time-based gradient
+      surface: isNight ? 'rgba(255, 255, 255, 0.95)' : '#FFFFFF', // Slightly transparent for night mode
+      textPrimary: isNight ? '#1F2937' : '#223848', // Darker for night mode contrast
+      textSecondary: isNight ? '#374151' : '#556B7A',
+      timeOverlay: timeTheme.overlay,
+      timeGlow: timeTheme.glow
+    }
+  }, [timeTheme]);
 
   // Generate consistent color for each child (same as child-progress page)
   const getChildColor = (childName, childId) => {
@@ -769,7 +776,7 @@ export default function ParentDashboard() {
   if (authLoading || loading || !userProfile) {
     return (
       <div style={{
-        backgroundColor: luxTheme.background,
+        background: luxTheme.background,
         minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
@@ -794,7 +801,7 @@ export default function ParentDashboard() {
   if (error) {
     return (
       <div style={{
-        backgroundColor: luxTheme.background,
+        background: luxTheme.background,
         minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
@@ -835,7 +842,7 @@ export default function ParentDashboard() {
       </Head>
       
       <div style={{
-        backgroundColor: luxTheme.background,
+        background: luxTheme.background,
         minHeight: '100vh',
         fontFamily: 'system-ui, -apple-system, sans-serif',
         paddingBottom: '80px',
@@ -848,7 +855,7 @@ export default function ParentDashboard() {
           left: 0,
           right: 0,
           bottom: 0,
-          background: timeTheme.overlay,
+          background: luxTheme.timeOverlay,
           pointerEvents: 'none',
           zIndex: 1
         }} />
@@ -1025,7 +1032,7 @@ export default function ParentDashboard() {
         </div>
 
         {/* Main Content */}
-        <div style={{ padding: '20px' }}>
+        <div style={{ padding: '20px', position: 'relative', zIndex: 10 }}>
           {/* Welcome Section */}
           <div style={{
             background: timeTheme.gradient,

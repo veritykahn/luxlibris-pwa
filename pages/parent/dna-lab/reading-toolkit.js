@@ -1,4 +1,4 @@
-// pages/parent/dna-lab/reading-toolkit.js - Enhanced Reading Toolkit
+// pages/parent/dna-lab/reading-toolkit.js - Enhanced with Time-Based Themes
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -31,16 +31,59 @@ export default function ReadingToolkit() {
   // Ref for scrolling
   const strategyRefs = useRef({});
   
-  // Lux Libris Classic Theme
-  const luxTheme = {
-    primary: '#ADD4EA',
-    secondary: '#C3E0DE',
-    accent: '#A1E5DB',
-    background: '#FFFCF5',
-    surface: '#FFFFFF',
-    textPrimary: '#223848',
-    textSecondary: '#556B7A'
-  };
+  // Get time-based theme with smoother transitions
+  const timeTheme = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) {
+      return {
+        name: 'morning',
+        gradient: 'linear-gradient(135deg, #F5C99B, #F0B88A, #EBAD7A)',
+        backgroundGradient: 'linear-gradient(to bottom, #FDF4E7, #FAE8D4, #F5DCC1)',
+        overlay: 'rgba(245, 201, 155, 0.1)',
+        glow: '#F5C99B'
+      };
+    } else if (hour >= 12 && hour < 17) {
+      return {
+        name: 'afternoon',
+        gradient: 'linear-gradient(135deg, #6BB6E3, #7AC5EA, #89D0EE)',
+        backgroundGradient: 'linear-gradient(to bottom, #E8F4FD, #D1E9FB, #B8DDF8)',
+        overlay: 'rgba(107, 182, 227, 0.1)',
+        glow: '#6BB6E3'
+      };
+    } else if (hour >= 17 && hour < 20) {
+      return {
+        name: 'evening',
+        gradient: 'linear-gradient(135deg, #FFB347, #FF8C42, #FF6B35)',
+        backgroundGradient: 'linear-gradient(to bottom, #FFF0E6, #FFE4D1, #FFD7BC)',
+        overlay: 'rgba(255, 140, 66, 0.1)',
+        glow: '#FF8C42'
+      };
+    } else {
+      return {
+        name: 'night',
+        gradient: 'linear-gradient(135deg, #4B0082, #6A0DAD, #7B68EE)',
+        backgroundGradient: 'linear-gradient(to bottom, #2D1B4E, #3D2B5E, #4D3B6E)',
+        overlay: 'rgba(75, 0, 130, 0.1)',
+        glow: '#7B68EE'
+      };
+    }
+  }, [Math.floor(new Date().getHours() / 6)]);
+
+  // Lux Libris Classic Theme - adapted for time-based backgrounds
+  const luxTheme = useMemo(() => {
+    const isNight = timeTheme.name === 'night';
+    return {
+      primary: '#ADD4EA',
+      secondary: '#C3E0DE',
+      accent: '#A1E5DB',
+      background: timeTheme.backgroundGradient, // Now uses time-based gradient
+      surface: isNight ? 'rgba(255, 255, 255, 0.95)' : '#FFFFFF', // Slightly transparent for night mode
+      textPrimary: isNight ? '#1F2937' : '#223848', // Darker for night mode contrast
+      textSecondary: isNight ? '#374151' : '#556B7A',
+      timeOverlay: timeTheme.overlay,
+      timeGlow: timeTheme.glow
+    };
+  }, [timeTheme]);
 
   // DNA Lab navigation options
   const dnaNavOptions = useMemo(() => [
@@ -389,13 +432,26 @@ export default function ReadingToolkit() {
   if (authLoading || loading) {
     return (
       <div style={{
-        backgroundColor: luxTheme.background,
+        background: luxTheme.background,
         minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center'
+        justifyContent: 'center',
+        position: 'relative'
       }}>
-        <div style={{ textAlign: 'center' }}>
+        {/* Time-based overlay */}
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: luxTheme.timeOverlay,
+          pointerEvents: 'none',
+          zIndex: 1
+        }} />
+        
+        <div style={{ textAlign: 'center', position: 'relative', zIndex: 2 }}>
           <div style={{
             width: '40px',
             height: '40px',
@@ -415,13 +471,26 @@ export default function ReadingToolkit() {
   if (error || !parentDnaType) {
     return (
       <div style={{
-        backgroundColor: luxTheme.background,
+        background: luxTheme.background,
         minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center'
+        justifyContent: 'center',
+        position: 'relative'
       }}>
-        <div style={{ textAlign: 'center', padding: '2rem' }}>
+        {/* Time-based overlay */}
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: luxTheme.timeOverlay,
+          pointerEvents: 'none',
+          zIndex: 1
+        }} />
+        
+        <div style={{ textAlign: 'center', padding: '2rem', position: 'relative', zIndex: 2 }}>
           <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>😞</div>
           <h2 style={{ color: luxTheme.textPrimary, marginBottom: '1rem' }}>Oops!</h2>
           <p style={{ color: luxTheme.textSecondary, marginBottom: '1.5rem' }}>
@@ -455,19 +524,31 @@ export default function ReadingToolkit() {
       </Head>
       
       <div style={{
-        backgroundColor: luxTheme.background,
+        background: luxTheme.background,
         minHeight: '100vh',
-        fontFamily: 'system-ui, -apple-system, sans-serif'
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        position: 'relative'
       }}>
-        
-        {/* Header with DNA Lab Dropdown */}
+        {/* Time-based overlay */}
         <div style={{
-          background: `linear-gradient(135deg, ${luxTheme.primary}F0, ${luxTheme.secondary}F0)`,
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: luxTheme.timeOverlay,
+          pointerEvents: 'none',
+          zIndex: 1
+        }} />
+        
+        {/* Header with DNA Lab Dropdown - Now with time-based gradient */}
+        <div style={{
+          background: timeTheme.gradient,
           backdropFilter: 'blur(20px)',
           padding: '30px 20px 12px',
           position: 'relative',
           borderRadius: '0 0 25px 25px',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+          boxShadow: `0 4px 20px rgba(0,0,0,0.1), 0 0 40px ${luxTheme.timeGlow}30`,
           zIndex: 1000
         }}>
           {/* Back Button - Fixed with explicit handler */}
@@ -726,9 +807,9 @@ export default function ReadingToolkit() {
         {/* Main Content */}
         <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
           
-          {/* Toolkit Header */}
+          {/* Toolkit Header - Enhanced with time-based styling */}
           <div style={{
-            backgroundColor: parentDnaType.color || luxTheme.primary,
+            background: timeTheme.gradient,
             borderRadius: '20px',
             padding: '32px',
             marginBottom: '24px',
@@ -736,7 +817,7 @@ export default function ReadingToolkit() {
             textAlign: 'center',
             position: 'relative',
             overflow: 'hidden',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
+            boxShadow: `0 4px 20px rgba(0,0,0,0.15), 0 0 40px ${luxTheme.timeGlow}30`
           }}>
             <div style={{
               position: 'absolute',

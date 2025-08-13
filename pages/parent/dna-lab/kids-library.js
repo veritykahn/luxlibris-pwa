@@ -38,16 +38,59 @@ export default function KidsLibrary() {
     'social_connector': 'social_connector.png'
   };
   
-  // Lux Libris Classic Theme
-  const luxTheme = {
-    primary: '#ADD4EA',
-    secondary: '#C3E0DE',
-    accent: '#A1E5DB',
-    background: '#FFFCF5',
-    surface: '#FFFFFF',
-    textPrimary: '#223848',
-    textSecondary: '#556B7A'
-  };
+  // Get time-based theme with smoother transitions
+  const timeTheme = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) {
+      return {
+        name: 'morning',
+        gradient: 'linear-gradient(135deg, #F5C99B, #F0B88A, #EBAD7A)',
+        backgroundGradient: 'linear-gradient(to bottom, #FDF4E7, #FAE8D4, #F5DCC1)',
+        overlay: 'rgba(245, 201, 155, 0.1)',
+        glow: '#F5C99B'
+      };
+    } else if (hour >= 12 && hour < 17) {
+      return {
+        name: 'afternoon',
+        gradient: 'linear-gradient(135deg, #6BB6E3, #7AC5EA, #89D0EE)',
+        backgroundGradient: 'linear-gradient(to bottom, #E8F4FD, #D1E9FB, #B8DDF8)',
+        overlay: 'rgba(107, 182, 227, 0.1)',
+        glow: '#6BB6E3'
+      };
+    } else if (hour >= 17 && hour < 20) {
+      return {
+        name: 'evening',
+        gradient: 'linear-gradient(135deg, #FFB347, #FF8C42, #FF6B35)',
+        backgroundGradient: 'linear-gradient(to bottom, #FFF0E6, #FFE4D1, #FFD7BC)',
+        overlay: 'rgba(255, 140, 66, 0.1)',
+        glow: '#FF8C42'
+      };
+    } else {
+      return {
+        name: 'night',
+        gradient: 'linear-gradient(135deg, #4B0082, #6A0DAD, #7B68EE)',
+        backgroundGradient: 'linear-gradient(to bottom, #2D1B4E, #3D2B5E, #4D3B6E)',
+        overlay: 'rgba(75, 0, 130, 0.1)',
+        glow: '#7B68EE'
+      };
+    }
+  }, [Math.floor(new Date().getHours() / 6)]);
+
+  // Lux Libris Classic Theme - adapted for time-based backgrounds
+  const luxTheme = useMemo(() => {
+    const isNight = timeTheme.name === 'night';
+    return {
+      primary: '#ADD4EA',
+      secondary: '#C3E0DE',
+      accent: '#A1E5DB',
+      background: timeTheme.backgroundGradient, // Now uses time-based gradient
+      surface: isNight ? 'rgba(255, 255, 255, 0.95)' : '#FFFFFF', // Slightly transparent for night mode
+      textPrimary: isNight ? '#1F2937' : '#223848', // Darker for night mode contrast
+      textSecondary: isNight ? '#374151' : '#556B7A',
+      timeOverlay: timeTheme.overlay,
+      timeGlow: timeTheme.glow
+    }
+  }, [timeTheme]);
 
   // DNA Lab navigation options
   const dnaNavOptions = useMemo(() => [
@@ -256,13 +299,26 @@ export default function KidsLibrary() {
   if (authLoading || loading) {
     return (
       <div style={{
-        backgroundColor: luxTheme.background,
+        background: luxTheme.background,
         minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center'
+        justifyContent: 'center',
+        position: 'relative'
       }}>
-        <div style={{ textAlign: 'center' }}>
+        {/* Time-based overlay */}
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: luxTheme.timeOverlay,
+          pointerEvents: 'none',
+          zIndex: 1
+        }} />
+        
+        <div style={{ textAlign: 'center', position: 'relative', zIndex: 2 }}>
           <div style={{
             width: '40px',
             height: '40px',
@@ -300,19 +356,31 @@ export default function KidsLibrary() {
       </Head>
       
       <div style={{
-        backgroundColor: luxTheme.background,
+        background: luxTheme.background,
         minHeight: '100vh',
-        fontFamily: 'system-ui, -apple-system, sans-serif'
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        position: 'relative'
       }}>
+        {/* Time-based overlay */}
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: luxTheme.timeOverlay,
+          pointerEvents: 'none',
+          zIndex: 1
+        }} />
         
         {/* Header */}
         <div style={{
-          background: `linear-gradient(135deg, ${luxTheme.primary}F0, ${luxTheme.secondary}F0)`,
+          background: timeTheme.gradient,
           backdropFilter: 'blur(20px)',
           padding: '30px 20px 12px',
           position: 'relative',
           borderRadius: '0 0 25px 25px',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+          boxShadow: `0 4px 20px rgba(0,0,0,0.1), 0 0 40px ${luxTheme.timeGlow}30`,
           zIndex: 100
         }}>
           {/* Back Button - Fixed */}
@@ -333,9 +401,18 @@ export default function KidsLibrary() {
               justifyContent: 'center',
               fontSize: '18px',
               cursor: 'pointer',
-              color: luxTheme.textPrimary,
+              color: timeTheme.name === 'night' ? 'white' : luxTheme.textPrimary,
               backdropFilter: 'blur(10px)',
-              zIndex: 10
+              zIndex: 10,
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.4)';
+              e.currentTarget.style.transform = 'scale(1.05)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.3)';
+              e.currentTarget.style.transform = 'scale(1)';
             }}
           >
             ←
@@ -358,11 +435,20 @@ export default function KidsLibrary() {
                 alignItems: 'center',
                 gap: '8px',
                 cursor: 'pointer',
-                color: luxTheme.textPrimary,
+                color: timeTheme.name === 'night' ? 'white' : luxTheme.textPrimary,
                 backdropFilter: 'blur(10px)',
                 fontSize: '16px',
                 fontWeight: '500',
-                minHeight: '40px'
+                minHeight: '40px',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.4)';
+                e.currentTarget.style.transform = 'scale(1.02)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.3)';
+                e.currentTarget.style.transform = 'scale(1)';
               }}
             >
               <span style={{ fontSize: '18px' }}>👨‍👩‍👧‍👦</span>
@@ -390,7 +476,8 @@ export default function KidsLibrary() {
                 backdropFilter: 'blur(20px)',
                 border: `2px solid ${luxTheme.primary}60`,
                 overflow: 'hidden',
-                zIndex: 9999
+                zIndex: 9999,
+                animation: 'slideInDown 0.3s ease-out'
               }}>
                 <div style={{
                   padding: '16px',
@@ -479,8 +566,17 @@ export default function KidsLibrary() {
                 justifyContent: 'center',
                 fontSize: '18px',
                 cursor: 'pointer',
-                color: luxTheme.textPrimary,
-                backdropFilter: 'blur(10px)'
+                color: timeTheme.name === 'night' ? 'white' : luxTheme.textPrimary,
+                backdropFilter: 'blur(10px)',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.4)';
+                e.currentTarget.style.transform = 'scale(1.05)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.3)';
+                e.currentTarget.style.transform = 'scale(1)';
               }}
             >
               ☰
@@ -498,7 +594,8 @@ export default function KidsLibrary() {
                 backdropFilter: 'blur(20px)',
                 border: `2px solid ${luxTheme.primary}60`,
                 overflow: 'hidden',
-                zIndex: 9999
+                zIndex: 9999,
+                animation: 'slideInDown 0.3s ease-out'
               }}>
                 {navMenuItems.map((item, index) => (
                   <button
@@ -540,7 +637,7 @@ export default function KidsLibrary() {
         </div>
 
         {/* Main Content */}
-        <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
+        <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto', position: 'relative', zIndex: 10 }}>
           
           {/* Child Selector */}
           {linkedStudents.length > 0 ? (
@@ -550,8 +647,9 @@ export default function KidsLibrary() {
                 borderRadius: '16px',
                 padding: '24px',
                 marginBottom: '20px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                border: `2px solid ${luxTheme.primary}30`
+                boxShadow: `0 2px 8px rgba(0,0,0,0.1), 0 0 20px ${luxTheme.timeGlow}20`,
+                border: `2px solid ${luxTheme.primary}30`,
+                animation: 'slideInUp 0.6s ease-out'
               }}>
                 <h3 style={{
                   fontSize: '18px',
@@ -573,27 +671,46 @@ export default function KidsLibrary() {
                       key={child.id}
                       onClick={() => setSelectedChild(child)}
                       style={{
-                        backgroundColor: selectedChild?.id === child.id ? luxTheme.primary : `${luxTheme.primary}20`,
+                        backgroundColor: selectedChild?.id === child.id ? 
+                          `linear-gradient(135deg, ${luxTheme.primary}, ${luxTheme.secondary})` : 
+                          `${luxTheme.primary}20`,
+                        backgroundImage: selectedChild?.id === child.id ? 
+                          `linear-gradient(135deg, ${luxTheme.primary}, ${luxTheme.secondary})` : 
+                          'none',
                         border: selectedChild?.id === child.id ? `2px solid ${luxTheme.primary}` : `1px solid ${luxTheme.primary}40`,
                         borderRadius: '12px',
                         padding: '16px',
                         cursor: 'pointer',
                         textAlign: 'center',
-                        transition: 'all 0.2s ease'
+                        transition: 'all 0.2s ease',
+                        boxShadow: selectedChild?.id === child.id ? `0 4px 12px ${luxTheme.timeGlow}40` : 'none'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (selectedChild?.id !== child.id) {
+                          e.currentTarget.style.transform = 'translateY(-2px)';
+                          e.currentTarget.style.boxShadow = `0 4px 12px ${luxTheme.timeGlow}30`;
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (selectedChild?.id !== child.id) {
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.boxShadow = 'none';
+                        }
                       }}
                     >
                       <div style={{
                         width: '48px',
                         height: '48px',
                         borderRadius: '50%',
-                        background: `linear-gradient(135deg, ${luxTheme.primary}, ${luxTheme.secondary})`,
+                        background: timeTheme.gradient,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: luxTheme.textPrimary,
+                        color: 'white',
                         fontSize: '18px',
                         fontWeight: 'bold',
-                        margin: '0 auto 8px'
+                        margin: '0 auto 8px',
+                        boxShadow: `0 4px 12px ${luxTheme.timeGlow}50`
                       }}>
                         {child.firstName?.charAt(0) || '?'}
                       </div>
@@ -624,17 +741,18 @@ export default function KidsLibrary() {
                     borderRadius: '16px',
                     padding: '16px',
                     marginBottom: '20px',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                    boxShadow: `0 2px 8px rgba(0,0,0,0.1)`,
                     border: `2px solid ${luxTheme.primary}30`,
                     display: 'flex',
                     justifyContent: 'center',
-                    gap: '12px'
+                    gap: '12px',
+                    animation: 'slideInUp 0.7s ease-out 0.1s both'
                   }}>
                     <button
                       onClick={() => setViewMode('parent')}
                       style={{
                         backgroundColor: viewMode === 'parent' ? luxTheme.primary : 'transparent',
-                        color: viewMode === 'parent' ? luxTheme.textPrimary : luxTheme.textSecondary,
+                        color: viewMode === 'parent' ? 'white' : luxTheme.textSecondary,
                         border: `1px solid ${luxTheme.primary}`,
                         borderRadius: '8px',
                         padding: '8px 16px',
@@ -650,7 +768,7 @@ export default function KidsLibrary() {
                       onClick={() => setViewMode('student')}
                       style={{
                         backgroundColor: viewMode === 'student' ? luxTheme.primary : 'transparent',
-                        color: viewMode === 'student' ? luxTheme.textPrimary : luxTheme.textSecondary,
+                        color: viewMode === 'student' ? 'white' : luxTheme.textSecondary,
                         border: `1px solid ${luxTheme.primary}`,
                         borderRadius: '8px',
                         padding: '8px 16px',
@@ -674,10 +792,11 @@ export default function KidsLibrary() {
                         borderRadius: '16px',
                         padding: '24px',
                         marginBottom: '20px',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                        boxShadow: `0 2px 8px rgba(0,0,0,0.1), 0 0 20px ${luxTheme.timeGlow}20`,
                         border: `2px solid ${viewMode === 'student' && getChildDnaData(selectedChild).typeData?.color ? 
                           getChildDnaData(selectedChild).typeData.color : luxTheme.primary}30`,
-                        transition: 'all 0.3s ease'
+                        transition: 'all 0.3s ease',
+                        animation: 'slideInUp 0.8s ease-out 0.2s both'
                       }}>
                         <div style={{ textAlign: 'center', marginBottom: '20px' }}>
                           {viewMode === 'parent' ? (
@@ -691,7 +810,7 @@ export default function KidsLibrary() {
                               justifyContent: 'center',
                               fontSize: '36px',
                               margin: '0 auto 16px',
-                              boxShadow: '0 8px 20px rgba(0,0,0,0.2)'
+                              boxShadow: `0 8px 20px ${luxTheme.timeGlow}40`
                             }}>
                               {getChildDnaData(selectedChild).typeData?.emoji || '📚'}
                             </div>
@@ -705,7 +824,7 @@ export default function KidsLibrary() {
                               alignItems: 'center',
                               justifyContent: 'center',
                               margin: '0 auto 16px',
-                              boxShadow: '0 8px 20px rgba(0,0,0,0.2)',
+                              boxShadow: `0 8px 20px ${luxTheme.timeGlow}40`,
                               padding: '20px'
                             }}>
                               <img 
@@ -876,8 +995,9 @@ export default function KidsLibrary() {
                           borderRadius: '16px',
                           padding: '24px',
                           marginBottom: '20px',
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                          border: `2px solid ${luxTheme.primary}30`
+                          boxShadow: `0 2px 8px rgba(0,0,0,0.1)`,
+                          border: `2px solid ${luxTheme.primary}30`,
+                          animation: 'slideInUp 0.9s ease-out 0.3s both'
                         }}>
                           <button
                             onClick={() => toggleSection('modifiers')}
@@ -1033,8 +1153,9 @@ export default function KidsLibrary() {
                           borderRadius: '16px',
                           padding: '24px',
                           marginBottom: '20px',
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                          border: `2px solid ${luxTheme.primary}30`
+                          boxShadow: `0 2px 8px rgba(0,0,0,0.1)`,
+                          border: `2px solid ${luxTheme.primary}30`,
+                          animation: 'slideInUp 1s ease-out 0.4s both'
                         }}>
                           <button
                             onClick={() => toggleSection('books')}
@@ -1103,8 +1224,9 @@ export default function KidsLibrary() {
                       borderRadius: '16px',
                       padding: '40px',
                       textAlign: 'center',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                      border: `2px solid ${luxTheme.primary}30`
+                      boxShadow: `0 2px 8px rgba(0,0,0,0.1)`,
+                      border: `2px solid ${luxTheme.primary}30`,
+                      animation: 'slideInUp 0.8s ease-out 0.2s both'
                     }}>
                       <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏳</div>
                       <h3 style={{
@@ -1134,8 +1256,9 @@ export default function KidsLibrary() {
               borderRadius: '16px',
               padding: '40px',
               textAlign: 'center',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              border: `2px solid ${luxTheme.primary}30`
+              boxShadow: `0 2px 8px rgba(0,0,0,0.1), 0 0 20px ${luxTheme.timeGlow}20`,
+              border: `2px solid ${luxTheme.primary}30`,
+              animation: 'slideInUp 0.6s ease-out'
             }}>
               <div style={{ fontSize: '48px', marginBottom: '16px' }}>👨‍👩‍👧‍👦</div>
               <h3 style={{
@@ -1157,14 +1280,23 @@ export default function KidsLibrary() {
                 onClick={() => router.push('/parent/settings')}
                 style={{
                   backgroundColor: luxTheme.primary,
-                  color: luxTheme.textPrimary,
+                  color: 'white',
                   border: 'none',
                   borderRadius: '12px',
                   padding: '12px 24px',
                   fontSize: '14px',
                   fontWeight: '600',
                   cursor: 'pointer',
-                  marginTop: '20px'
+                  marginTop: '20px',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                  e.currentTarget.style.boxShadow = `0 4px 12px ${luxTheme.timeGlow}40`;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                  e.currentTarget.style.boxShadow = 'none';
                 }}
               >
                 Go to Settings
@@ -1177,6 +1309,28 @@ export default function KidsLibrary() {
           @keyframes spin {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
+          }
+          
+          @keyframes slideInUp {
+            from { 
+              opacity: 0; 
+              transform: translateY(30px); 
+            }
+            to { 
+              opacity: 1; 
+              transform: translateY(0); 
+            }
+          }
+          
+          @keyframes slideInDown {
+            from { 
+              opacity: 0; 
+              transform: translateY(-30px); 
+            }
+            to { 
+              opacity: 1; 
+              transform: translateY(0); 
+            }
           }
           
           button {

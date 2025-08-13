@@ -214,47 +214,59 @@ export default function ParentDnaLabDashboard() {
     return weeksSinceStart + 1; // 1-based week number
   }, []);
 
-  // Get time-based theme - memoized with hour dependency
-  const timeTheme = useMemo(() => {
-    const hour = new Date().getHours();
-    if (hour >= 5 && hour < 12) {
-      return {
-        name: 'morning',
-        gradient: 'linear-gradient(135deg, #F5C99B, #F0B88A, #EBAD7A)',
-        overlay: 'rgba(245, 201, 155, 0.1)'
-      };
-    } else if (hour >= 12 && hour < 17) {
-      return {
-        name: 'afternoon',
-        gradient: 'linear-gradient(135deg, #6BB6E3, #7AC5EA, #89D0EE)',
-        overlay: 'rgba(107, 182, 227, 0.1)'
-      };
-    } else if (hour >= 17 && hour < 20) {
-      return {
-        name: 'evening',
-        gradient: 'linear-gradient(135deg, #FFB347, #FF8C42, #FF6B35)',
-        overlay: 'rgba(255, 140, 66, 0.1)'
-      };
-    } else {
-      return {
-        name: 'night',
-        gradient: 'linear-gradient(135deg, #4B0082, #6A0DAD, #7B68EE)',
-        overlay: 'rgba(75, 0, 130, 0.1)'
-      };
-    }
-  }, [Math.floor(new Date().getHours() / 6)]); // Only recalc every 6 hours
+  // Get time-based theme with smoother transitions
+const timeTheme = useMemo(() => {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) {
+    return {
+      name: 'morning',
+      gradient: 'linear-gradient(135deg, #F5C99B, #F0B88A, #EBAD7A)',
+      backgroundGradient: 'linear-gradient(to bottom, #FDF4E7, #FAE8D4, #F5DCC1)',
+      overlay: 'rgba(245, 201, 155, 0.1)',
+      glow: '#F5C99B'
+    };
+  } else if (hour >= 12 && hour < 17) {
+    return {
+      name: 'afternoon',
+      gradient: 'linear-gradient(135deg, #6BB6E3, #7AC5EA, #89D0EE)',
+      backgroundGradient: 'linear-gradient(to bottom, #E8F4FD, #D1E9FB, #B8DDF8)',
+      overlay: 'rgba(107, 182, 227, 0.1)',
+      glow: '#6BB6E3'
+    };
+  } else if (hour >= 17 && hour < 20) {
+    return {
+      name: 'evening',
+      gradient: 'linear-gradient(135deg, #FFB347, #FF8C42, #FF6B35)',
+      backgroundGradient: 'linear-gradient(to bottom, #FFF0E6, #FFE4D1, #FFD7BC)',
+      overlay: 'rgba(255, 140, 66, 0.1)',
+      glow: '#FF8C42'
+    };
+  } else {
+    return {
+      name: 'night',
+      gradient: 'linear-gradient(135deg, #4B0082, #6A0DAD, #7B68EE)',
+      backgroundGradient: 'linear-gradient(to bottom, #2D1B4E, #3D2B5E, #4D3B6E)',
+      overlay: 'rgba(75, 0, 130, 0.1)',
+      glow: '#7B68EE'
+    };
+  }
+}, [Math.floor(new Date().getHours() / 6)]);
   
-  // Lux Libris Classic Theme with time-based adjustments
-  const luxTheme = useMemo(() => ({
+  // Lux Libris Classic Theme - adapted for time-based backgrounds
+const luxTheme = useMemo(() => {
+  const isNight = timeTheme.name === 'night';
+  return {
     primary: '#ADD4EA',
     secondary: '#C3E0DE',
     accent: '#A1E5DB',
-    background: '#FFFCF5',
-    surface: '#FFFFFF',
-    textPrimary: '#223848',
-    textSecondary: '#556B7A',
-    timeOverlay: timeTheme.overlay
-  }), [timeTheme]);
+    background: timeTheme.backgroundGradient, // Now uses time-based gradient
+    surface: isNight ? 'rgba(255, 255, 255, 0.95)' : '#FFFFFF', // Slightly transparent for night mode
+    textPrimary: isNight ? '#1F2937' : '#223848', // Darker for night mode contrast
+    textSecondary: isNight ? '#374151' : '#556B7A',
+    timeOverlay: timeTheme.overlay,
+    timeGlow: timeTheme.glow
+  }
+}, [timeTheme]);
 
   // DNA Lab navigation options (7 pages)
   const dnaNavOptions = useMemo(() => [
@@ -961,14 +973,14 @@ export default function ParentDnaLabDashboard() {
 
   // Show loading
   if (authLoading || loading || !userProfile) {
-    return (
-      <div style={{
-        backgroundColor: luxTheme.background,
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}>
+  return (
+    <div style={{
+      background: luxTheme.background,  // Changed from backgroundColor to background
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{
             width: '40px',
@@ -987,14 +999,14 @@ export default function ParentDnaLabDashboard() {
 
   // Show error
   if (error) {
-    return (
-      <div style={{
-        backgroundColor: luxTheme.background,
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}>
+  return (
+    <div style={{
+      background: luxTheme.background,  // Changed from backgroundColor to background
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    }}>
         <div style={{ textAlign: 'center', padding: '2rem' }}>
           <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>😞</div>
           <h2 style={{ color: luxTheme.textPrimary, marginBottom: '1rem' }}>Oops!</h2>
@@ -1027,7 +1039,7 @@ export default function ParentDnaLabDashboard() {
       </Head>
       
       <div style={{
-        backgroundColor: luxTheme.background,
+        background: luxTheme.background,
         minHeight: '100vh',
         fontFamily: 'system-ui, -apple-system, sans-serif',
         position: 'relative'
@@ -1519,13 +1531,15 @@ export default function ParentDnaLabDashboard() {
             </div>
             
             {/* Family DNA Visualization - Redesigned Layout */}
-            <div style={{
-              background: `linear-gradient(180deg, transparent, ${luxTheme.primary}05)`,
-              borderRadius: '20px',
-              padding: '32px 20px',
-              marginBottom: '24px',
-              position: 'relative'
-            }}>
+<div style={{
+  backgroundColor: luxTheme.surface,  // Clean white/surface background
+  borderRadius: '20px',
+  padding: '32px 20px',
+  marginBottom: '24px',
+  position: 'relative',
+  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',  // Add subtle shadow for depth
+  border: `1px solid ${luxTheme.primary}20`  // Very light border
+}}>
               <h2 style={{
                 fontSize: '22px',
                 fontWeight: '700',

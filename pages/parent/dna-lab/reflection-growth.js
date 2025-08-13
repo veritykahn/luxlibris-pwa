@@ -29,16 +29,59 @@ export default function ReflectionGrowth() {
   const [expandedEntries, setExpandedEntries] = useState({});
   const [isMobile, setIsMobile] = useState(false);
   
-  // Lux Libris Classic Theme
-  const luxTheme = {
-    primary: '#ADD4EA',
-    secondary: '#C3E0DE',
-    accent: '#A1E5DB',
-    background: '#FFFCF5',
-    surface: '#FFFFFF',
-    textPrimary: '#223848',
-    textSecondary: '#556B7A'
-  };
+  // Get time-based theme with smoother transitions
+  const timeTheme = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) {
+      return {
+        name: 'morning',
+        gradient: 'linear-gradient(135deg, #F5C99B, #F0B88A, #EBAD7A)',
+        backgroundGradient: 'linear-gradient(to bottom, #FDF4E7, #FAE8D4, #F5DCC1)',
+        overlay: 'rgba(245, 201, 155, 0.1)',
+        glow: '#F5C99B'
+      };
+    } else if (hour >= 12 && hour < 17) {
+      return {
+        name: 'afternoon',
+        gradient: 'linear-gradient(135deg, #6BB6E3, #7AC5EA, #89D0EE)',
+        backgroundGradient: 'linear-gradient(to bottom, #E8F4FD, #D1E9FB, #B8DDF8)',
+        overlay: 'rgba(107, 182, 227, 0.1)',
+        glow: '#6BB6E3'
+      };
+    } else if (hour >= 17 && hour < 20) {
+      return {
+        name: 'evening',
+        gradient: 'linear-gradient(135deg, #FFB347, #FF8C42, #FF6B35)',
+        backgroundGradient: 'linear-gradient(to bottom, #FFF0E6, #FFE4D1, #FFD7BC)',
+        overlay: 'rgba(255, 140, 66, 0.1)',
+        glow: '#FF8C42'
+      };
+    } else {
+      return {
+        name: 'night',
+        gradient: 'linear-gradient(135deg, #4B0082, #6A0DAD, #7B68EE)',
+        backgroundGradient: 'linear-gradient(to bottom, #2D1B4E, #3D2B5E, #4D3B6E)',
+        overlay: 'rgba(75, 0, 130, 0.1)',
+        glow: '#7B68EE'
+      };
+    }
+  }, [Math.floor(new Date().getHours() / 6)]);
+
+  // Lux Libris Classic Theme - adapted for time-based backgrounds
+  const luxTheme = useMemo(() => {
+    const isNight = timeTheme.name === 'night';
+    return {
+      primary: '#ADD4EA',
+      secondary: '#C3E0DE',
+      accent: '#A1E5DB',
+      background: timeTheme.backgroundGradient, // Now uses time-based gradient
+      surface: isNight ? 'rgba(255, 255, 255, 0.95)' : '#FFFFFF', // Slightly transparent for night mode
+      textPrimary: isNight ? '#1F2937' : '#223848', // Darker for night mode contrast
+      textSecondary: isNight ? '#374151' : '#556B7A',
+      timeOverlay: timeTheme.overlay,
+      timeGlow: timeTheme.glow
+    }
+  }, [timeTheme]);
 
   // Check if mobile
   useEffect(() => {
@@ -214,7 +257,7 @@ export default function ReflectionGrowth() {
     try {
       const goalRef = doc(db, `parents/${user.uid}/reading-goals`, goalId);
       await updateDoc(goalRef, {
-        progress: Number(progress), // Ensure progress is a number
+        progress: Number(progress),
         updatedAt: new Date(),
         status: Number(progress) >= 100 ? 'completed' : 'active'
       });
@@ -326,13 +369,25 @@ export default function ReflectionGrowth() {
   if (authLoading || loading) {
     return (
       <div style={{
-        backgroundColor: luxTheme.background,
+        background: luxTheme.background,
         minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center'
+        justifyContent: 'center',
+        position: 'relative'
       }}>
-        <div style={{ textAlign: 'center' }}>
+        {/* Time-based overlay */}
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: luxTheme.timeOverlay,
+          pointerEvents: 'none',
+          zIndex: 1
+        }} />
+        <div style={{ textAlign: 'center', position: 'relative', zIndex: 10 }}>
           <div style={{
             width: '40px',
             height: '40px',
@@ -358,20 +413,33 @@ export default function ReflectionGrowth() {
       </Head>
       
       <div style={{
-        backgroundColor: luxTheme.background,
+        background: luxTheme.background,
         minHeight: '100vh',
-        fontFamily: 'system-ui, -apple-system, sans-serif'
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        position: 'relative'
       }}>
         
-        {/* Header */}
+        {/* Time-based overlay */}
         <div style={{
-          background: `linear-gradient(135deg, ${luxTheme.primary}F0, ${luxTheme.secondary}F0)`,
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: luxTheme.timeOverlay,
+          pointerEvents: 'none',
+          zIndex: 1
+        }} />
+        
+        {/* Header with time-based gradient */}
+        <div style={{
+          background: timeTheme.gradient,
           backdropFilter: 'blur(20px)',
           padding: '30px 20px 12px',
           position: 'relative',
           borderRadius: '0 0 25px 25px',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-          zIndex: 10000
+          boxShadow: `0 4px 20px rgba(0,0,0,0.1), 0 0 40px ${luxTheme.timeGlow}30`,
+          zIndex: 100
         }}>
           {/* Back Button */}
           <button
@@ -626,17 +694,18 @@ export default function ReflectionGrowth() {
         </div>
 
         {/* Main Content */}
-        <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
+        <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto', position: 'relative', zIndex: 10 }}>
           
-          {/* Hero Section */}
+          {/* Hero Section with time-based gradient */}
           <div style={{
-            backgroundColor: parentDnaType?.color || luxTheme.primary,
+            background: timeTheme.gradient,
             borderRadius: '16px',
             padding: '20px',
-            boxShadow: `0 8px 24px ${parentDnaType?.color || luxTheme.primary}30`,
+            boxShadow: `0 8px 24px rgba(0,0,0,0.15), 0 0 40px ${luxTheme.timeGlow}30`,
             marginBottom: '20px',
             color: 'white',
-            textAlign: 'center'
+            textAlign: 'center',
+            animation: 'slideInDown 0.8s ease-out'
           }}>
             <div style={{ fontSize: '48px', marginBottom: '12px' }}>🌱</div>
             <h2 style={{
@@ -677,7 +746,7 @@ export default function ReflectionGrowth() {
               emoji="💭"
               label="Reflect"
               theme={luxTheme}
-              color={parentDnaType?.color}
+              color={parentDnaType?.color || luxTheme.timeGlow}
               isMobile={isMobile}
             />
             <TabButton
@@ -686,7 +755,7 @@ export default function ReflectionGrowth() {
               emoji="📖"
               label="Journal"
               theme={luxTheme}
-              color={parentDnaType?.color}
+              color={parentDnaType?.color || luxTheme.timeGlow}
               isMobile={isMobile}
             />
             <TabButton
@@ -695,7 +764,7 @@ export default function ReflectionGrowth() {
               emoji="🎯"
               label="Goals"
               theme={luxTheme}
-              color={parentDnaType?.color}
+              color={parentDnaType?.color || luxTheme.timeGlow}
               isMobile={isMobile}
             />
             <TabButton
@@ -704,7 +773,7 @@ export default function ReflectionGrowth() {
               emoji="🎉"
               label="Wins"
               theme={luxTheme}
-              color={parentDnaType?.color}
+              color={parentDnaType?.color || luxTheme.timeGlow}
               isMobile={isMobile}
             />
           </div>
@@ -719,7 +788,7 @@ export default function ReflectionGrowth() {
                 padding: '24px',
                 marginBottom: '20px',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                border: `2px solid ${parentDnaType?.color || luxTheme.primary}30`
+                border: `2px solid ${parentDnaType?.color || luxTheme.timeGlow}30`
               }}>
                 <h3 style={{
                   fontSize: '18px',
@@ -751,7 +820,7 @@ export default function ReflectionGrowth() {
                         setShowNewEntry(true);
                       }}
                       onMouseOver={(e) => {
-                        e.currentTarget.style.backgroundColor = `${parentDnaType?.color || luxTheme.primary}20`;
+                        e.currentTarget.style.backgroundColor = `${parentDnaType?.color || luxTheme.timeGlow}20`;
                         e.currentTarget.style.transform = 'translateX(4px)';
                       }}
                       onMouseOut={(e) => {
@@ -850,7 +919,7 @@ export default function ReflectionGrowth() {
                     setShowNewEntry(true);
                   }}
                   style={{
-                    backgroundColor: parentDnaType?.color || luxTheme.primary,
+                    backgroundColor: parentDnaType?.color || luxTheme.timeGlow,
                     color: 'white',
                     border: 'none',
                     borderRadius: '12px',
@@ -1161,7 +1230,6 @@ export default function ReflectionGrowth() {
                   fontFamily: 'inherit',
                   resize: 'vertical',
                   lineHeight: '1.5',
-                  // FIX: Add these two lines for text visibility
                   color: luxTheme.textPrimary,
                   backgroundColor: luxTheme.surface
                 }}
@@ -1194,7 +1262,7 @@ export default function ReflectionGrowth() {
                   style={{
                     flex: 1,
                     backgroundColor: entryContent.trim() ? 
-                      (entryType === 'journal' ? parentDnaType?.color || luxTheme.primary :
+                      (entryType === 'journal' ? parentDnaType?.color || luxTheme.timeGlow :
                        entryType === 'goal' ? luxTheme.secondary :
                        luxTheme.accent) : '#ccc',
                     color: entryContent.trim() ? 'white' : '#666',
@@ -1223,6 +1291,17 @@ export default function ReflectionGrowth() {
             from { 
               opacity: 0; 
               transform: translateY(20px); 
+            }
+            to { 
+              opacity: 1; 
+              transform: translateY(0); 
+            }
+          }
+          
+          @keyframes slideInDown {
+            from { 
+              opacity: 0; 
+              transform: translateY(-30px); 
             }
             to { 
               opacity: 1; 
