@@ -631,7 +631,7 @@ export default function ReadingToolkit() {
           bottom: 0,
           background: luxTheme.timeOverlay,
           pointerEvents: 'none',  // This ensures it doesn't block clicks
-          zIndex: 0  // Lower z-index
+          zIndex: -1  // Negative z-index to ensure it's behind everything
         }} />
         
         {/* Header with DNA Lab Dropdown */}
@@ -639,11 +639,15 @@ export default function ReadingToolkit() {
           background: timeTheme.gradient,
           backdropFilter: 'blur(20px)',
           padding: '30px 20px 12px',
-          position: 'sticky',  // Changed from relative to sticky
+          position: 'fixed',  // Changed to fixed to ensure it's always on top
           top: 0,
+          left: 0,
+          right: 0,
           borderRadius: '0 0 25px 25px',
           boxShadow: `0 4px 20px rgba(0,0,0,0.1), 0 0 40px ${luxTheme.timeGlow}30`,
-          zIndex: 100  // Reduced from 1000
+          zIndex: 2147483647,  // Maximum z-index value to ensure it's ALWAYS on top
+          pointerEvents: 'auto',  // Ensure it can receive pointer events
+          isolation: 'isolate'  // Create new stacking context
         }}>
           {/* Back Button */}
           <button
@@ -666,7 +670,9 @@ export default function ReadingToolkit() {
               backdropFilter: 'blur(10px)',
               touchAction: 'manipulation',
               WebkitTapHighlightColor: 'transparent',
-              zIndex: 101
+              zIndex: 2147483645,  // Just below header and modal
+              isolation: 'isolate',
+              pointerEvents: 'auto'  // Ensure button is clickable
             }}
           >
             ←
@@ -677,7 +683,9 @@ export default function ReadingToolkit() {
             display: 'flex',
             justifyContent: 'center',
             position: 'relative',
-            zIndex: 102
+            zIndex: 10002,
+            isolation: 'isolate',
+            pointerEvents: 'auto'  // Ensure container is interactive
           }}>
             <button
               onClick={() => setShowDnaDropdown(!showDnaDropdown)}
@@ -695,7 +703,8 @@ export default function ReadingToolkit() {
                 fontSize: '16px',
                 fontWeight: '500',
                 position: 'relative',  // Ensure proper stacking
-                zIndex: 1
+                zIndex: 10003,
+                pointerEvents: 'auto'  // Ensure button is clickable
               }}
             >
               <span style={{ fontSize: '18px' }}>🧰</span>
@@ -723,7 +732,8 @@ export default function ReadingToolkit() {
                 backdropFilter: 'blur(20px)',
                 border: `2px solid ${luxTheme.primary}60`,
                 overflow: 'hidden',
-                zIndex: 1000  // High z-index for dropdown
+                zIndex: 2147483640,  // Very high but below header
+                pointerEvents: 'auto'  // Ensure dropdown is interactive
               }}>
                 <div style={{
                   padding: '16px',
@@ -783,7 +793,9 @@ export default function ReadingToolkit() {
             position: 'absolute', 
             right: '20px', 
             top: '30px',
-            zIndex: 102
+            zIndex: 10002,
+            isolation: 'isolate',
+            pointerEvents: 'auto'  // Ensure container is interactive
           }}>
             <button
               onClick={() => setShowNavMenu(!showNavMenu)}
@@ -801,7 +813,8 @@ export default function ReadingToolkit() {
                 color: luxTheme.textPrimary,
                 backdropFilter: 'blur(10px)',
                 position: 'relative',
-                zIndex: 1
+                zIndex: 10003,
+                pointerEvents: 'auto'  // Ensure button is clickable
               }}
             >
               ☰
@@ -819,7 +832,8 @@ export default function ReadingToolkit() {
                 backdropFilter: 'blur(20px)',
                 border: `2px solid ${luxTheme.primary}60`,
                 overflow: 'hidden',
-                zIndex: 1000  // High z-index for dropdown
+                zIndex: 2147483640,  // Very high but below header
+                pointerEvents: 'auto'  // Ensure dropdown is interactive
               }}>
                 {navMenuItems.map((item, index) => (
                   <button
@@ -858,13 +872,17 @@ export default function ReadingToolkit() {
           </div>
         </div>
 
+        {/* Spacer for fixed header */}
+        <div style={{ height: '80px' }} />
+
         {/* Main Content */}
         <div style={{ 
           padding: '20px', 
           maxWidth: '800px', 
           margin: '0 auto', 
           position: 'relative', 
-          zIndex: 1  // Reduced from 2
+          zIndex: 1,
+          isolation: 'isolate'  // Create new stacking context
         }}>
           
           {/* Toolkit Header */}
@@ -922,7 +940,7 @@ export default function ReadingToolkit() {
                 boxShadow: '0 6px 30px rgba(220, 20, 60, 0.5)',
                 animation: 'emergencyPulse 1.5s infinite',
                 position: 'relative',
-                zIndex: 1
+                zIndex: 5
               }}
               title="Reading Emergency Search"
             >
@@ -934,14 +952,14 @@ export default function ReadingToolkit() {
           {savingState && (
             <div style={{
               position: 'fixed',
-              top: '80px',
+              top: '100px',
               right: '20px',
               backgroundColor: luxTheme.primary,
               color: luxTheme.textPrimary,
               padding: '8px 16px',
               borderRadius: '8px',
               boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-              zIndex: 1001,
+              zIndex: 10001,
               fontSize: '14px',
               fontWeight: '600'
             }}>
@@ -960,7 +978,8 @@ export default function ReadingToolkit() {
             gap: '4px',
             overflowX: 'auto',
             position: 'relative',
-            zIndex: 1
+            zIndex: 5,
+            isolation: 'isolate'
           }}>
             {[
               { id: 'daily', label: 'Daily', icon: '📖' },
@@ -1008,7 +1027,14 @@ export default function ReadingToolkit() {
           </div>
 
           {/* Tab Content */}
-          <div style={{ position: 'relative', zIndex: 1 }}>
+          <div style={{ 
+            position: 'relative', 
+            zIndex: 1, 
+            isolation: 'isolate',
+            transform: 'translateZ(0)',  // Force hardware acceleration and new layer
+            pointerEvents: activeTab === 'strategies' ? 'auto' : 'auto',  // Ensure content is interactive
+            paddingBottom: '100px'  // Add some padding at the bottom
+          }}>
             {activeTab === 'daily' && (
               <DailyStrategiesTab
                 parentDnaType={parentDnaType}
@@ -1081,11 +1107,12 @@ export default function ReadingToolkit() {
             right: 0,
             bottom: 0,
             backgroundColor: 'rgba(0,0,0,0.8)',
-            zIndex: 2000,  // Very high z-index for modal
+            zIndex: 2147483646,  // One less than header but still extremely high
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: '20px'
+            padding: '20px',
+            pointerEvents: 'auto'  // Ensure modal is interactive
           }}>
             <div className="search-modal-container" style={{
               backgroundColor: luxTheme.surface,
@@ -1096,7 +1123,8 @@ export default function ReadingToolkit() {
               overflow: 'hidden',
               boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
               position: 'relative',
-              zIndex: 2001
+              zIndex: 2147483647,  // Same as header level
+              pointerEvents: 'auto'  // Ensure modal content is interactive
             }}>
               <div style={{
                 padding: '24px',
@@ -1260,6 +1288,17 @@ export default function ReadingToolkit() {
             -moz-osx-font-smoothing: grayscale;
             -webkit-overflow-scrolling: touch;
             scroll-behavior: smooth;
+          }
+          
+          /* Ensure all interactive elements can receive events */
+          button, a, input, select, textarea {
+            pointer-events: auto !important;
+          }
+          
+          /* Ensure dropdowns are always on top */
+          .dna-dropdown-container > div,
+          .nav-menu-container > div {
+            z-index: 2147483640 !important;
           }
         `}</style>
       </div>
