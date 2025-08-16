@@ -1323,9 +1323,9 @@ export default function ReadingToolkit() {
                 ) : searchQuery ? (
                   <div style={{ textAlign: 'center', color: luxTheme.textSecondary, padding: '40px' }}>
                     <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔍</div>
-                    <p>No strategies found for "{searchQuery}"</p>
+                    <p>No strategies found for &quot;{searchQuery}&quot;</p>
                     <p style={{ fontSize: '12px', marginTop: '8px' }}>
-                      Try different keywords like "won't read", "battles", or "pressure"
+                      Try different keywords like &quot;won&apos;t read&quot;, &quot;battles&quot;, or &quot;pressure&quot;
                     </p>
                   </div>
                 ) : (
@@ -2132,7 +2132,7 @@ function MyStrategiesSection({ parentDnaType, starredStrategies, triedStrategies
         
         {triedItems.length === 0 ? (
           <p style={{ color: theme.textSecondary, fontStyle: 'italic' }}>
-            No tried strategies yet. Mark strategies you've tested!
+            No tried strategies yet. Mark strategies you&apos;ve tested!
           </p>
         ) : (
           <div style={{ display: 'grid', gap: '12px' }}>
@@ -2482,7 +2482,7 @@ function ScenarioDetails({ scenario, scenarioId, starredStrategies, triedStrateg
                       color: '#4CAF50',
                       fontSize: '16px'
                     }}>•</span>
-                    "{script}"
+                    &quot;{script}&quot;
                   </div>
                 ))}
               </div>
@@ -2505,7 +2505,7 @@ function ScenarioDetails({ scenario, scenarioId, starredStrategies, triedStrateg
                   alignItems: 'center',
                   gap: '8px'
                 }}>
-                  <span style={{ fontSize: '20px' }}>❌</span> DON'T Say
+                  <span style={{ fontSize: '20px' }}>❌</span> DON&apos;T Say
                 </div>
                 {scenario.scripts.dontSay.map((script, index) => (
                   <div
@@ -2528,7 +2528,7 @@ function ScenarioDetails({ scenario, scenarioId, starredStrategies, triedStrateg
                       color: '#F44336',
                       fontSize: '16px'
                     }}>•</span>
-                    "{script}"
+                    &quot;{script}&quot;
                   </div>
                 ))}
               </div>
