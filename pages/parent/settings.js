@@ -1,4 +1,4 @@
-// pages/parent/settings.js - Enhanced with Timer Settings and Premium Features
+// pages/parent/settings.js - Enhanced with Time-Aware Colors
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
@@ -47,16 +47,59 @@ export default function ParentSettings() {
     success: ''
   })
 
-  // Lux Libris Classic Theme
-  const luxTheme = {
-    primary: '#ADD4EA',
-    secondary: '#C3E0DE',
-    accent: '#A1E5DB',
-    background: '#FFFCF5',
-    surface: '#FFFFFF',
-    textPrimary: '#223848',
-    textSecondary: '#556B7A'
-  }
+  // Get time-based theme with smoother transitions
+  const timeTheme = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) {
+      return {
+        name: 'morning',
+        gradient: 'linear-gradient(135deg, #F5C99B, #F0B88A, #EBAD7A)',
+        backgroundGradient: 'linear-gradient(to bottom, #FDF4E7, #FAE8D4, #F5DCC1)',
+        overlay: 'rgba(245, 201, 155, 0.1)',
+        glow: '#F5C99B'
+      };
+    } else if (hour >= 12 && hour < 17) {
+      return {
+        name: 'afternoon',
+        gradient: 'linear-gradient(135deg, #6BB6E3, #7AC5EA, #89D0EE)',
+        backgroundGradient: 'linear-gradient(to bottom, #E8F4FD, #D1E9FB, #B8DDF8)',
+        overlay: 'rgba(107, 182, 227, 0.1)',
+        glow: '#6BB6E3'
+      };
+    } else if (hour >= 17 && hour < 20) {
+      return {
+        name: 'evening',
+        gradient: 'linear-gradient(135deg, #FFB347, #FF8C42, #FF6B35)',
+        backgroundGradient: 'linear-gradient(to bottom, #FFF0E6, #FFE4D1, #FFD7BC)',
+        overlay: 'rgba(255, 140, 66, 0.1)',
+        glow: '#FF8C42'
+      };
+    } else {
+      return {
+        name: 'night',
+        gradient: 'linear-gradient(135deg, #4B0082, #6A0DAD, #7B68EE)',
+        backgroundGradient: 'linear-gradient(to bottom, #2D1B4E, #3D2B5E, #4D3B6E)',
+        overlay: 'rgba(75, 0, 130, 0.1)',
+        glow: '#7B68EE'
+      };
+    }
+  }, [Math.floor(new Date().getHours() / 6)]);
+
+  // Lux Libris Classic Theme - adapted for time-based backgrounds
+  const luxTheme = useMemo(() => {
+    const isNight = timeTheme.name === 'night';
+    return {
+      primary: '#ADD4EA',
+      secondary: '#C3E0DE',
+      accent: '#A1E5DB',
+      background: timeTheme.backgroundGradient, // Now uses time-based gradient
+      surface: isNight ? 'rgba(255, 255, 255, 0.95)' : '#FFFFFF', // Slightly transparent for night mode
+      textPrimary: isNight ? '#1F2937' : '#223848', // Darker for night mode contrast
+      textSecondary: isNight ? '#374151' : '#556B7A',
+      timeOverlay: timeTheme.overlay,
+      timeGlow: timeTheme.glow
+    }
+  }, [timeTheme]);
 
   // Updated Navigation menu items (matching healthy habits page)
   const navMenuItems = useMemo(() => [
@@ -334,25 +377,25 @@ export default function ParentSettings() {
   }
 
   const handleSignOut = async () => {
-  try {
-    console.log('🚪 Parent signing out...')
-    setIsSaving(true)
-    
-    // Use the same approach as student sign-out
-    await signOut() // Don't need redirectTo since it defaults to '/'
-    
-  } catch (error) {
-    console.error('❌ Sign out error:', error)
-    
-    // Fallback: If signOut fails, force redirect to homepage
-    if (typeof window !== 'undefined') {
-      console.log('🏠 Force redirect to homepage')
-      window.location.replace('/')
+    try {
+      console.log('🚪 Parent signing out...')
+      setIsSaving(true)
+      
+      // Use the same approach as student sign-out
+      await signOut() // Don't need redirectTo since it defaults to '/'
+      
+    } catch (error) {
+      console.error('❌ Sign out error:', error)
+      
+      // Fallback: If signOut fails, force redirect to homepage
+      if (typeof window !== 'undefined') {
+        console.log('🏠 Force redirect to homepage')
+        window.location.replace('/')
+      }
+      
+      setIsSaving(false)
     }
-    
-    setIsSaving(false)
   }
-}
 
   // Navigation handler
   const handleNavigation = (item) => {
@@ -431,13 +474,26 @@ export default function ParentSettings() {
   if (authLoading || loading || !userProfile) {
     return (
       <div style={{
-        backgroundColor: luxTheme.background,
+        background: luxTheme.background,
         minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center'
+        justifyContent: 'center',
+        position: 'relative'
       }}>
-        <div style={{ textAlign: 'center' }}>
+        {/* Time-based overlay */}
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: luxTheme.timeOverlay,
+          pointerEvents: 'none',
+          zIndex: 1
+        }} />
+        
+        <div style={{ textAlign: 'center', position: 'relative', zIndex: 10 }}>
           <div style={{
             width: '40px',
             height: '40px',
@@ -463,19 +519,31 @@ export default function ParentSettings() {
       </Head>
       
       <div style={{
-        backgroundColor: luxTheme.background,
+        background: luxTheme.background,
         minHeight: '100vh',
-        fontFamily: 'system-ui, -apple-system, sans-serif'
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        position: 'relative'
       }}>
-        
-        {/* Header - Updated to keep back button and hamburger menu */}
+        {/* Time-based overlay */}
         <div style={{
-          background: `linear-gradient(135deg, ${luxTheme.primary}F0, ${luxTheme.secondary}F0)`,
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: luxTheme.timeOverlay,
+          pointerEvents: 'none',
+          zIndex: 1
+        }} />
+        
+        {/* Header - Updated with time-aware gradient */}
+        <div style={{
+          background: timeTheme.gradient,
           backdropFilter: 'blur(20px)',
           padding: '30px 20px 12px',
           position: 'relative',
           borderRadius: '0 0 25px 25px',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+          boxShadow: `0 4px 20px rgba(0,0,0,0.1), 0 0 40px ${luxTheme.timeGlow}30`,
           zIndex: 100,
           display: 'flex',
           alignItems: 'center',
@@ -495,12 +563,13 @@ export default function ParentSettings() {
               justifyContent: 'center',
               fontSize: '18px',
               cursor: 'pointer',
-              color: luxTheme.textPrimary,
+              color: timeTheme.name === 'night' ? 'white' : luxTheme.textPrimary,
               backdropFilter: 'blur(10px)',
               flexShrink: 0,
               touchAction: 'manipulation',
               position: 'absolute',
-              left: '20px'
+              left: '20px',
+              transition: 'all 0.2s ease'
             }}
           >
             ←
@@ -510,11 +579,12 @@ export default function ParentSettings() {
           <h1 style={{
             fontSize: 'clamp(20px, 5vw, 24px)',
             fontWeight: '400',
-            color: luxTheme.textPrimary,
+            color: timeTheme.name === 'night' ? 'white' : luxTheme.textPrimary,
             margin: '0',
             letterSpacing: '1px',
             fontFamily: 'Didot, "Times New Roman", serif',
-            textAlign: 'center'
+            textAlign: 'center',
+            textShadow: timeTheme.name === 'night' ? '0 2px 4px rgba(0,0,0,0.3)' : 'none'
           }}>
             Settings
           </h1>
@@ -534,11 +604,12 @@ export default function ParentSettings() {
                 justifyContent: 'center',
                 fontSize: '18px',
                 cursor: 'pointer',
-                color: luxTheme.textPrimary,
+                color: timeTheme.name === 'night' ? 'white' : luxTheme.textPrimary,
                 backdropFilter: 'blur(10px)',
                 flexShrink: 0,
                 touchAction: 'manipulation',
-                WebkitTapHighlightColor: 'transparent'
+                WebkitTapHighlightColor: 'transparent',
+                transition: 'all 0.2s ease'
               }}
             >
               ☰
@@ -557,7 +628,8 @@ export default function ParentSettings() {
                 backdropFilter: 'blur(20px)',
                 border: `2px solid ${luxTheme.primary}60`,
                 overflow: 'hidden',
-                zIndex: 9999
+                zIndex: 9999,
+                animation: 'slideInDown 0.3s ease-out'
               }}>
                 {navMenuItems.map((item, index) => (
                   <button
@@ -613,7 +685,9 @@ export default function ParentSettings() {
           padding: '20px', 
           maxWidth: '600px', 
           margin: '0 auto',
-          paddingBottom: '100px'
+          paddingBottom: '100px',
+          position: 'relative',
+          zIndex: 10
         }}>
           
           {/* Success/Error Messages */}
@@ -625,7 +699,8 @@ export default function ParentSettings() {
               padding: '12px',
               marginBottom: '20px',
               color: '#065f46',
-              fontSize: 'clamp(12px, 3.5vw, 14px)'
+              fontSize: 'clamp(12px, 3.5vw, 14px)',
+              animation: 'slideInDown 0.3s ease-out'
             }}>
               ✅ {success}
             </div>
@@ -639,7 +714,8 @@ export default function ParentSettings() {
               padding: '12px',
               marginBottom: '20px',
               color: '#dc2626',
-              fontSize: 'clamp(12px, 3.5vw, 14px)'
+              fontSize: 'clamp(12px, 3.5vw, 14px)',
+              animation: 'slideInDown 0.3s ease-out'
             }}>
               ❌ {error}
             </div>
@@ -651,9 +727,10 @@ export default function ParentSettings() {
             borderRadius: '16px',
             padding: '20px',
             marginBottom: '20px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            boxShadow: `0 2px 8px rgba(0,0,0,0.1), 0 0 20px ${luxTheme.timeGlow}15`,
             border: `2px solid ${luxTheme.primary}30`,
-            position: 'relative'
+            position: 'relative',
+            animation: 'slideInUp 0.5s ease-out'
           }}>
             <h3 style={{
               fontSize: 'clamp(16px, 4vw, 18px)',
@@ -685,11 +762,21 @@ export default function ParentSettings() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '12px',
-                    touchAction: 'manipulation'
+                    touchAction: 'manipulation',
+                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'scale(1.02)'
+                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(16, 185, 129, 0.4)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)'
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)'
                   }}
                 >
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>🎉</div>
+                    <div style={{ fontSize: '32px', marginBottom: '8px', animation: 'bounce 2s infinite' }}>🎉</div>
                     <h4 style={{
                       fontSize: 'clamp(14px, 4vw, 16px)',
                       fontWeight: 'bold',
@@ -790,15 +877,18 @@ export default function ParentSettings() {
                             textAlign: 'left',
                             width: '100%',
                             touchAction: 'manipulation',
-                            transition: 'all 0.2s ease'
+                            transition: 'all 0.2s ease',
+                            animation: `slideInLeft 0.3s ease-out ${index * 0.05}s both`
                           }}
                           onMouseEnter={(e) => {
-                            e.target.style.backgroundColor = `${luxTheme.primary}20`
-                            e.target.style.transform = 'translateY(-1px)'
+                            e.currentTarget.style.backgroundColor = `${luxTheme.primary}20`
+                            e.currentTarget.style.transform = 'translateY(-1px)'
+                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'
                           }}
                           onMouseLeave={(e) => {
-                            e.target.style.backgroundColor = luxTheme.surface
-                            e.target.style.transform = 'translateY(0)'
+                            e.currentTarget.style.backgroundColor = luxTheme.surface
+                            e.currentTarget.style.transform = 'translateY(0)'
+                            e.currentTarget.style.boxShadow = 'none'
                           }}
                         >
                           <span style={{ fontSize: '20px' }}>{item.icon}</span>
@@ -962,8 +1052,9 @@ export default function ParentSettings() {
             borderRadius: '16px',
             padding: '20px',
             marginBottom: '20px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            border: `2px solid ${luxTheme.primary}30`
+            boxShadow: `0 2px 8px rgba(0,0,0,0.1), 0 0 20px ${luxTheme.timeGlow}15`,
+            border: `2px solid ${luxTheme.primary}30`,
+            animation: 'slideInUp 0.6s ease-out'
           }}>
             <h3 style={{
               fontSize: 'clamp(16px, 4vw, 18px)',
@@ -1010,7 +1101,17 @@ export default function ParentSettings() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    touchAction: 'manipulation'
+                    touchAction: 'manipulation',
+                    transition: 'all 0.2s ease',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.transform = 'scale(1.05)'
+                    e.target.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.transform = 'scale(1)'
+                    e.target.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'
                   }}
                 >
                   −
@@ -1024,7 +1125,8 @@ export default function ParentSettings() {
                   minWidth: '100px',
                   textAlign: 'center',
                   backgroundColor: luxTheme.background,
-                  color: luxTheme.textPrimary
+                  color: luxTheme.textPrimary,
+                  boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)'
                 }}>
                   {timerDuration} min
                 </div>
@@ -1043,7 +1145,17 @@ export default function ParentSettings() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    touchAction: 'manipulation'
+                    touchAction: 'manipulation',
+                    transition: 'all 0.2s ease',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.transform = 'scale(1.05)'
+                    e.target.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.transform = 'scale(1)'
+                    e.target.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'
                   }}
                 >
                   +
@@ -1093,7 +1205,20 @@ export default function ParentSettings() {
                   opacity: isSaving ? 0.7 : 1,
                   width: '100%',
                   minHeight: '48px',
-                  touchAction: 'manipulation'
+                  touchAction: 'manipulation',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  animation: 'pulseGlow 2s ease-in-out infinite'
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSaving) {
+                    e.target.style.transform = 'scale(1.02)'
+                    e.target.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.transform = 'scale(1)'
+                  e.target.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'
                 }}
               >
                 {isSaving ? 'Saving...' : `Save Timer Setting (${timerDuration} min)`}
@@ -1124,8 +1249,9 @@ export default function ParentSettings() {
             borderRadius: '16px',
             padding: '16px',
             marginBottom: '20px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            border: `2px solid ${luxTheme.primary}30`
+            boxShadow: `0 2px 8px rgba(0,0,0,0.1), 0 0 20px ${luxTheme.timeGlow}15`,
+            border: `2px solid ${luxTheme.primary}30`,
+            animation: 'slideInUp 0.7s ease-out'
           }}>
             <h3 style={{
               fontSize: 'clamp(14px, 4vw, 16px)',
@@ -1157,7 +1283,8 @@ export default function ParentSettings() {
                       backgroundColor: `${luxTheme.primary}10`,
                       borderRadius: '8px',
                       padding: '12px',
-                      border: `1px solid ${luxTheme.primary}30`
+                      border: `1px solid ${luxTheme.primary}30`,
+                      animation: `slideInLeft 0.3s ease-out ${index * 0.05}s both`
                     }}
                   >
                     <div style={{
@@ -1220,8 +1347,11 @@ export default function ParentSettings() {
                           cursor: 'pointer',
                           flexShrink: 0,
                           minHeight: '28px',
-                          touchAction: 'manipulation'
+                          touchAction: 'manipulation',
+                          transition: 'all 0.2s ease'
                         }}
+                        onMouseEnter={(e) => e.target.style.backgroundColor = luxTheme.accent}
+                        onMouseLeave={(e) => e.target.style.backgroundColor = luxTheme.primary}
                       >
                         Copy
                       </button>
@@ -1272,7 +1402,8 @@ export default function ParentSettings() {
             borderRadius: '16px',
             padding: '20px',
             marginBottom: '20px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+            boxShadow: `0 2px 8px rgba(0,0,0,0.1), 0 0 20px ${luxTheme.timeGlow}15`,
+            animation: 'slideInUp 0.8s ease-out'
           }}>
             <div style={{
               display: 'flex',
@@ -1307,8 +1438,11 @@ export default function ParentSettings() {
                     cursor: 'pointer',
                     flexShrink: 0,
                     minHeight: '32px',
-                    touchAction: 'manipulation'
+                    touchAction: 'manipulation',
+                    transition: 'all 0.2s ease'
                   }}
+                  onMouseEnter={(e) => e.target.style.backgroundColor = `${luxTheme.primary}30`}
+                  onMouseLeave={(e) => e.target.style.backgroundColor = `${luxTheme.primary}20`}
                 >
                   Edit
                 </button>
@@ -1489,7 +1623,8 @@ export default function ParentSettings() {
               borderRadius: '16px',
               padding: '20px',
               marginBottom: '20px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+              boxShadow: `0 2px 8px rgba(0,0,0,0.1), 0 0 20px ${luxTheme.timeGlow}15`,
+              animation: 'slideInUp 0.9s ease-out'
             }}>
               <div style={{
                 display: 'flex',
@@ -1524,8 +1659,11 @@ export default function ParentSettings() {
                       cursor: 'pointer',
                       flexShrink: 0,
                       minHeight: '32px',
-                      touchAction: 'manipulation'
+                      touchAction: 'manipulation',
+                      transition: 'all 0.2s ease'
                     }}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = `${luxTheme.primary}30`}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = `${luxTheme.primary}20`}
                   >
                     Edit
                   </button>
@@ -1654,7 +1792,8 @@ export default function ParentSettings() {
             borderRadius: '16px',
             padding: '20px',
             marginBottom: '20px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+            boxShadow: `0 2px 8px rgba(0,0,0,0.1), 0 0 20px ${luxTheme.timeGlow}15`,
+            animation: 'slideInUp 1s ease-out'
           }}>
             <h3 style={{
               fontSize: 'clamp(16px, 4vw, 18px)',
@@ -1693,7 +1832,8 @@ export default function ParentSettings() {
                           gap: '12px',
                           cursor: 'pointer',
                           transition: 'all 0.2s ease',
-                          border: `1px solid ${luxTheme.primary}30`
+                          border: `1px solid ${luxTheme.primary}30`,
+                          animation: `slideInLeft 0.3s ease-out ${index * 0.05}s both`
                         }}
                         onClick={() => handleStudentCredentialsTap(student.id)}
                         onMouseEnter={(e) => {
@@ -1754,7 +1894,8 @@ export default function ParentSettings() {
                           borderRadius: '8px',
                           padding: '16px',
                           marginTop: '8px',
-                          border: `1px solid ${luxTheme.secondary}40`
+                          border: `1px solid ${luxTheme.secondary}40`,
+                          animation: 'slideIn 0.3s ease-out'
                         }}>
                           <h4 style={{
                             fontSize: 'clamp(14px, 4vw, 16px)',
@@ -2038,7 +2179,8 @@ export default function ParentSettings() {
             borderRadius: '16px',
             padding: '20px',
             marginBottom: '40px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+            boxShadow: `0 2px 8px rgba(0,0,0,0.1), 0 0 20px ${luxTheme.timeGlow}15`,
+            animation: 'slideInUp 1.1s ease-out'
           }}>
             <h3 style={{
               fontSize: 'clamp(16px, 4vw, 18px)',
@@ -2138,7 +2280,8 @@ export default function ParentSettings() {
                 maxHeight: '90vh',
                 overflowY: 'auto',
                 position: 'relative',
-                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)'
+                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)',
+                animation: 'slideInUp 0.3s ease-out'
               }}
             >
               {/* Close Button */}
@@ -2184,7 +2327,8 @@ export default function ParentSettings() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   margin: '0 auto 16px',
-                  fontSize: '36px'
+                  fontSize: '36px',
+                  animation: 'bounce 2s infinite'
                 }}>
                   👨‍👩‍👧‍👦
                 </div>
@@ -2219,7 +2363,8 @@ export default function ParentSettings() {
                   marginBottom: '20px',
                   color: '#065f46',
                   fontSize: 'clamp(12px, 3.5vw, 14px)',
-                  textAlign: 'center'
+                  textAlign: 'center',
+                  animation: 'slideInDown 0.3s ease-out'
                 }}>
                   ✅ {addChildForm.success}
                 </div>
@@ -2234,7 +2379,8 @@ export default function ParentSettings() {
                   marginBottom: '20px',
                   color: '#dc2626',
                   fontSize: 'clamp(12px, 3.5vw, 14px)',
-                  textAlign: 'center'
+                  textAlign: 'center',
+                  animation: 'slideInDown 0.3s ease-out'
                 }}>
                   ❌ {addChildForm.error}
                 </div>
@@ -2323,7 +2469,19 @@ export default function ParentSettings() {
                     gap: '12px',
                     margin: '0 auto',
                     minHeight: '56px',
-                    minWidth: '160px'
+                    minWidth: '160px',
+                    transition: 'all 0.2s ease',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!addChildForm.loading && addChildForm.inviteCode.trim()) {
+                      e.target.style.transform = 'scale(1.02)'
+                      e.target.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.transform = 'scale(1)'
+                    e.target.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'
                   }}
                 >
                   {addChildForm.loading && (
@@ -2390,6 +2548,62 @@ export default function ParentSettings() {
             to { 
               opacity: 1; 
               transform: translateY(0); 
+            }
+          }
+          
+          @keyframes slideInUp {
+            from { 
+              opacity: 0; 
+              transform: translateY(30px); 
+            }
+            to { 
+              opacity: 1; 
+              transform: translateY(0); 
+            }
+          }
+          
+          @keyframes slideInDown {
+            from { 
+              opacity: 0; 
+              transform: translateY(-30px); 
+            }
+            to { 
+              opacity: 1; 
+              transform: translateY(0); 
+            }
+          }
+          
+          @keyframes slideInLeft {
+            from { 
+              opacity: 0; 
+              transform: translateX(-30px); 
+            }
+            to { 
+              opacity: 1; 
+              transform: translateX(0); 
+            }
+          }
+          
+          @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {
+              transform: translateY(0);
+            }
+            40% {
+              transform: translateY(-8px);
+            }
+            60% {
+              transform: translateY(-4px);
+            }
+          }
+          
+          @keyframes pulseGlow {
+            0%, 100% {
+              opacity: 1;
+              filter: brightness(1);
+            }
+            50% {
+              opacity: 0.8;
+              filter: brightness(1.2);
             }
           }
           

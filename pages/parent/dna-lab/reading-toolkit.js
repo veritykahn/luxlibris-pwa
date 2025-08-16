@@ -126,6 +126,13 @@ export default function ReadingToolkit() {
     { name: 'Settings', path: '/parent/settings', icon: '⚙' }
   ], []);
 
+  // Calculate total saved strategies count
+  const totalSavedStrategies = useMemo(() => {
+    // Create a combined set to avoid counting duplicates
+    const combinedSet = new Set([...starredStrategies, ...triedStrategies]);
+    return combinedSet.size;
+  }, [starredStrategies, triedStrategies]);
+
   // Load strategies from Firebase
   const loadUserStrategies = useCallback(async () => {
     if (!user?.uid) return;
@@ -547,10 +554,10 @@ export default function ReadingToolkit() {
           bottom: 0,
           background: luxTheme.timeOverlay,
           pointerEvents: 'none',
-          zIndex: 1
+          zIndex: 0
         }} />
         
-        <div style={{ textAlign: 'center', position: 'relative', zIndex: 2 }}>
+        <div style={{ textAlign: 'center', position: 'relative', zIndex: 1 }}>
           <div style={{
             width: '40px',
             height: '40px',
@@ -615,7 +622,7 @@ export default function ReadingToolkit() {
         fontFamily: 'system-ui, -apple-system, sans-serif',
         position: 'relative'
       }}>
-        {/* Time-based overlay */}
+        {/* Time-based overlay - Fixed to not block interactions */}
         <div style={{
           position: 'fixed',
           top: 0,
@@ -623,8 +630,8 @@ export default function ReadingToolkit() {
           right: 0,
           bottom: 0,
           background: luxTheme.timeOverlay,
-          pointerEvents: 'none',
-          zIndex: 1
+          pointerEvents: 'none',  // This ensures it doesn't block clicks
+          zIndex: 0  // Lower z-index
         }} />
         
         {/* Header with DNA Lab Dropdown */}
@@ -632,10 +639,11 @@ export default function ReadingToolkit() {
           background: timeTheme.gradient,
           backdropFilter: 'blur(20px)',
           padding: '30px 20px 12px',
-          position: 'relative',
+          position: 'sticky',  // Changed from relative to sticky
+          top: 0,
           borderRadius: '0 0 25px 25px',
           boxShadow: `0 4px 20px rgba(0,0,0,0.1), 0 0 40px ${luxTheme.timeGlow}30`,
-          zIndex: 1000
+          zIndex: 100  // Reduced from 1000
         }}>
           {/* Back Button */}
           <button
@@ -658,7 +666,7 @@ export default function ReadingToolkit() {
               backdropFilter: 'blur(10px)',
               touchAction: 'manipulation',
               WebkitTapHighlightColor: 'transparent',
-              zIndex: 1001
+              zIndex: 101
             }}
           >
             ←
@@ -669,7 +677,7 @@ export default function ReadingToolkit() {
             display: 'flex',
             justifyContent: 'center',
             position: 'relative',
-            zIndex: 1002
+            zIndex: 102
           }}>
             <button
               onClick={() => setShowDnaDropdown(!showDnaDropdown)}
@@ -685,7 +693,9 @@ export default function ReadingToolkit() {
                 color: luxTheme.textPrimary,
                 backdropFilter: 'blur(10px)',
                 fontSize: '16px',
-                fontWeight: '500'
+                fontWeight: '500',
+                position: 'relative',  // Ensure proper stacking
+                zIndex: 1
               }}
             >
               <span style={{ fontSize: '18px' }}>🧰</span>
@@ -713,7 +723,7 @@ export default function ReadingToolkit() {
                 backdropFilter: 'blur(20px)',
                 border: `2px solid ${luxTheme.primary}60`,
                 overflow: 'hidden',
-                zIndex: 10000
+                zIndex: 1000  // High z-index for dropdown
               }}>
                 <div style={{
                   padding: '16px',
@@ -773,7 +783,7 @@ export default function ReadingToolkit() {
             position: 'absolute', 
             right: '20px', 
             top: '30px',
-            zIndex: 1002
+            zIndex: 102
           }}>
             <button
               onClick={() => setShowNavMenu(!showNavMenu)}
@@ -789,7 +799,9 @@ export default function ReadingToolkit() {
                 fontSize: '18px',
                 cursor: 'pointer',
                 color: luxTheme.textPrimary,
-                backdropFilter: 'blur(10px)'
+                backdropFilter: 'blur(10px)',
+                position: 'relative',
+                zIndex: 1
               }}
             >
               ☰
@@ -807,7 +819,7 @@ export default function ReadingToolkit() {
                 backdropFilter: 'blur(20px)',
                 border: `2px solid ${luxTheme.primary}60`,
                 overflow: 'hidden',
-                zIndex: 10000
+                zIndex: 1000  // High z-index for dropdown
               }}>
                 {navMenuItems.map((item, index) => (
                   <button
@@ -852,7 +864,7 @@ export default function ReadingToolkit() {
           maxWidth: '800px', 
           margin: '0 auto', 
           position: 'relative', 
-          zIndex: 2 
+          zIndex: 1  // Reduced from 2
         }}>
           
           {/* Toolkit Header */}
@@ -908,7 +920,9 @@ export default function ReadingToolkit() {
                 fontSize: '32px',
                 cursor: 'pointer',
                 boxShadow: '0 6px 30px rgba(220, 20, 60, 0.5)',
-                animation: 'emergencyPulse 1.5s infinite'
+                animation: 'emergencyPulse 1.5s infinite',
+                position: 'relative',
+                zIndex: 1
               }}
               title="Reading Emergency Search"
             >
@@ -927,7 +941,7 @@ export default function ReadingToolkit() {
               padding: '8px 16px',
               borderRadius: '8px',
               boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-              zIndex: 10001,
+              zIndex: 1001,
               fontSize: '14px',
               fontWeight: '600'
             }}>
@@ -944,7 +958,9 @@ export default function ReadingToolkit() {
             marginBottom: '20px',
             boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
             gap: '4px',
-            overflowX: 'auto'
+            overflowX: 'auto',
+            position: 'relative',
+            zIndex: 1
           }}>
             {[
               { id: 'daily', label: 'Daily', icon: '📖' },
@@ -974,7 +990,7 @@ export default function ReadingToolkit() {
               >
                 <span style={{ fontSize: '18px' }}>{tab.icon}</span>
                 <span>{tab.label}</span>
-                {tab.id === 'strategies' && starredStrategies.size > 0 && (
+                {tab.id === 'strategies' && totalSavedStrategies > 0 && (
                   <span style={{
                     backgroundColor: '#FFD700',
                     color: 'white',
@@ -984,7 +1000,7 @@ export default function ReadingToolkit() {
                     minWidth: '18px',
                     fontWeight: 'bold'
                   }}>
-                    {starredStrategies.size}
+                    {totalSavedStrategies}
                   </span>
                 )}
               </button>
@@ -992,66 +1008,68 @@ export default function ReadingToolkit() {
           </div>
 
           {/* Tab Content */}
-          {activeTab === 'daily' && (
-            <DailyStrategiesTab
-              parentDnaType={parentDnaType}
-              expandedSections={expandedSections}
-              toggleSection={toggleSection}
-              starredStrategies={starredStrategies}
-              triedStrategies={triedStrategies}
-              dismissedStrategies={dismissedStrategies}
-              toggleStar={toggleStar}
-              toggleTried={toggleTried}
-              dismissStrategy={dismissStrategy}
-              theme={luxTheme}
-              strategyRefs={strategyRefs}
-            />
-          )}
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            {activeTab === 'daily' && (
+              <DailyStrategiesTab
+                parentDnaType={parentDnaType}
+                expandedSections={expandedSections}
+                toggleSection={toggleSection}
+                starredStrategies={starredStrategies}
+                triedStrategies={triedStrategies}
+                dismissedStrategies={dismissedStrategies}
+                toggleStar={toggleStar}
+                toggleTried={toggleTried}
+                dismissStrategy={dismissStrategy}
+                theme={luxTheme}
+                strategyRefs={strategyRefs}
+              />
+            )}
 
-          {activeTab === 'seasonal' && (
-            <SeasonalStrategiesTab
-              parentDnaType={parentDnaType}
-              expandedSections={expandedSections}
-              toggleSection={toggleSection}
-              starredStrategies={starredStrategies}
-              triedStrategies={triedStrategies}
-              dismissedStrategies={dismissedStrategies}
-              toggleStar={toggleStar}
-              toggleTried={toggleTried}
-              dismissStrategy={dismissStrategy}
-              theme={luxTheme}
-              strategyRefs={strategyRefs}
-            />
-          )}
+            {activeTab === 'seasonal' && (
+              <SeasonalStrategiesTab
+                parentDnaType={parentDnaType}
+                expandedSections={expandedSections}
+                toggleSection={toggleSection}
+                starredStrategies={starredStrategies}
+                triedStrategies={triedStrategies}
+                dismissedStrategies={dismissedStrategies}
+                toggleStar={toggleStar}
+                toggleTried={toggleTried}
+                dismissStrategy={dismissStrategy}
+                theme={luxTheme}
+                strategyRefs={strategyRefs}
+              />
+            )}
 
-          {activeTab === 'emergency' && (
-            <EmergencyTab
-              parentDnaType={parentDnaType}
-              expandedSections={expandedSections}
-              toggleSection={toggleSection}
-              starredStrategies={starredStrategies}
-              triedStrategies={triedStrategies}
-              dismissedStrategies={dismissedStrategies}
-              toggleStar={toggleStar}
-              toggleTried={toggleTried}
-              dismissStrategy={dismissStrategy}
-              theme={luxTheme}
-              strategyRefs={strategyRefs}
-            />
-          )}
+            {activeTab === 'emergency' && (
+              <EmergencyTab
+                parentDnaType={parentDnaType}
+                expandedSections={expandedSections}
+                toggleSection={toggleSection}
+                starredStrategies={starredStrategies}
+                triedStrategies={triedStrategies}
+                dismissedStrategies={dismissedStrategies}
+                toggleStar={toggleStar}
+                toggleTried={toggleTried}
+                dismissStrategy={dismissStrategy}
+                theme={luxTheme}
+                strategyRefs={strategyRefs}
+              />
+            )}
 
-          {activeTab === 'strategies' && (
-            <MyStrategiesTab
-              parentDnaType={parentDnaType}
-              starredStrategies={starredStrategies}
-              triedStrategies={triedStrategies}
-              dismissedStrategies={dismissedStrategies}
-              toggleStar={toggleStar}
-              toggleTried={toggleTried}
-              restoreStrategy={restoreStrategy}
-              theme={luxTheme}
-            />
-          )}
+            {activeTab === 'strategies' && (
+              <MyStrategiesTab
+                parentDnaType={parentDnaType}
+                starredStrategies={starredStrategies}
+                triedStrategies={triedStrategies}
+                dismissedStrategies={dismissedStrategies}
+                toggleStar={toggleStar}
+                toggleTried={toggleTried}
+                restoreStrategy={restoreStrategy}
+                theme={luxTheme}
+              />
+            )}
+          </div>
         </div>
 
         {/* Search Modal */}
@@ -1063,7 +1081,7 @@ export default function ReadingToolkit() {
             right: 0,
             bottom: 0,
             backgroundColor: 'rgba(0,0,0,0.8)',
-            zIndex: 10000,
+            zIndex: 2000,  // Very high z-index for modal
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -1076,7 +1094,9 @@ export default function ReadingToolkit() {
               width: '100%',
               maxHeight: '80vh',
               overflow: 'hidden',
-              boxShadow: '0 20px 40px rgba(0,0,0,0.3)'
+              boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+              position: 'relative',
+              zIndex: 2001
             }}>
               <div style={{
                 padding: '24px',
