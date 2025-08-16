@@ -162,9 +162,7 @@ export default function MyStrategiesTab({
           display: 'flex',
           alignItems: 'center',
           gap: '8px',
-          opacity: 0.7,
-          position: 'relative',
-          zIndex: 1
+          opacity: 0.7
         }}>
           <span style={{ fontSize: '16px' }}>📝</span>
           <span style={{ flex: 1, fontSize: '14px', fontStyle: 'italic', color: theme.textSecondary }}>
@@ -179,9 +177,7 @@ export default function MyStrategiesTab({
                 fontSize: '14px',
                 cursor: 'pointer',
                 color: theme.textSecondary,
-                padding: '4px',
-                position: 'relative',
-                zIndex: 2
+                padding: '4px'
               }}
             >
               ✕
@@ -199,9 +195,7 @@ export default function MyStrategiesTab({
         padding: '16px',
         display: 'flex',
         flexDirection: 'column',
-        gap: '12px',
-        position: 'relative',
-        zIndex: 1
+        gap: '12px'
       }}>
         {/* Header with emoji, label, and actions */}
         <div style={{
@@ -236,9 +230,7 @@ export default function MyStrategiesTab({
           <div style={{
             display: 'flex',
             gap: '6px',
-            flexShrink: 0,
-            position: 'relative',
-            zIndex: 2
+            flexShrink: 0
           }}>
             {showTried && (
               <button
@@ -249,9 +241,7 @@ export default function MyStrategiesTab({
                   fontSize: '14px',
                   cursor: 'pointer',
                   color: '#4CAF50',
-                  padding: '2px',
-                  position: 'relative',
-                  zIndex: 3
+                  padding: '2px'
                 }}
                 title="Marked as tried"
               >
@@ -267,9 +257,7 @@ export default function MyStrategiesTab({
                   fontSize: '14px',
                   cursor: 'pointer',
                   color: theme.textSecondary,
-                  padding: '2px',
-                  position: 'relative',
-                  zIndex: 3
+                  padding: '2px'
                 }}
                 title="Remove"
               >
@@ -285,19 +273,14 @@ export default function MyStrategiesTab({
   return (
     <div style={{ 
       display: 'grid', 
-      gap: '20px',
-      position: 'relative',
-      zIndex: 1,
-      isolation: 'isolate'  // Create new stacking context
+      gap: '20px'
     }}>
       {/* Starred Strategies */}
       <div style={{
         backgroundColor: theme.surface,
         borderRadius: '16px',
         padding: '24px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-        position: 'relative',
-        zIndex: 1
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
       }}>
         <h3 style={{
           fontSize: '18px',
@@ -317,7 +300,7 @@ export default function MyStrategiesTab({
             No starred strategies yet. Star your favorites from Daily, Seasonal, or Emergency sections!
           </p>
         ) : (
-          <div style={{ display: 'grid', gap: '12px', position: 'relative', zIndex: 1 }}>
+          <div style={{ display: 'grid', gap: '12px' }}>
             {starredItems.map((strategyId) => (
               <StrategyItem 
                 key={strategyId}
@@ -334,9 +317,7 @@ export default function MyStrategiesTab({
         backgroundColor: theme.surface,
         borderRadius: '16px',
         padding: '24px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-        position: 'relative',
-        zIndex: 1
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
       }}>
         <h3 style={{
           fontSize: '18px',
@@ -356,7 +337,7 @@ export default function MyStrategiesTab({
             No tried strategies yet. Mark strategies you&apos;ve tested!
           </p>
         ) : (
-          <div style={{ display: 'grid', gap: '12px', position: 'relative', zIndex: 1 }}>
+          <div style={{ display: 'grid', gap: '12px' }}>
             {triedItems.map((strategyId) => (
               <StrategyItem 
                 key={strategyId}
@@ -375,9 +356,7 @@ export default function MyStrategiesTab({
           backgroundColor: theme.surface,
           borderRadius: '16px',
           padding: '24px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-          position: 'relative',
-          zIndex: 1
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
         }}>
           <h3 style={{
             fontSize: '18px',
@@ -392,7 +371,7 @@ export default function MyStrategiesTab({
             Dismissed Strategies ({dismissedItems.length})
           </h3>
           
-          <div style={{ display: 'grid', gap: '12px', position: 'relative', zIndex: 1 }}>
+          <div style={{ display: 'grid', gap: '12px' }}>
             {dismissedItems.map((strategyId) => {
               const details = getStrategyDetails(strategyId);
               
@@ -404,9 +383,7 @@ export default function MyStrategiesTab({
                     border: '1px solid #CCC',
                     borderRadius: '12px',
                     padding: '16px',
-                    opacity: 0.7,
-                    position: 'relative',
-                    zIndex: 1
+                    opacity: 0.7
                   }}
                 >
                   <div style={{
@@ -462,9 +439,7 @@ export default function MyStrategiesTab({
                         fontSize: '12px',
                         cursor: 'pointer',
                         fontWeight: '600',
-                        flexShrink: 0,
-                        position: 'relative',
-                        zIndex: 3
+                        flexShrink: 0
                       }}
                     >
                       Restore
