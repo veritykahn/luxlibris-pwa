@@ -1,10 +1,25 @@
-// pages/parent/dna-lab/reading-toolkit.js - Enhanced with Time-Based Themes and Fixed Strategy Display
+// pages/parent/dna-lab/reading-toolkit.js - Main page with Firebase persistence
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../../contexts/AuthContext';
 import Head from 'next/head';
-import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
+import { 
+  doc, 
+  getDoc, 
+  collection, 
+  getDocs, 
+  setDoc, 
+  deleteDoc,
+  query,
+  onSnapshot
+} from 'firebase/firestore';
 import { db } from '../../../lib/firebase';
+
+// Import tab components
+import DailyStrategiesTab from '../../../components/parent/readingtoolkit/DailyStrategiesTab';
+import SeasonalStrategiesTab from '../../../components/parent/readingtoolkit/SeasonalStrategiesTab';
+import EmergencyTab from '../../../components/parent/readingtoolkit/EmergencyTab';
+import MyStrategiesTab from '../../../components/parent/readingtoolkit/MyStrategiesTab';
 
 export default function ReadingToolkit() {
   const router = useRouter();
@@ -24,14 +39,18 @@ export default function ReadingToolkit() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('daily');
   const [expandedSections, setExpandedSections] = useState({});
+  
+  // Strategy states - These will be synced with Firebase
   const [starredStrategies, setStarredStrategies] = useState(new Set());
   const [triedStrategies, setTriedStrategies] = useState(new Set());
   const [dismissedStrategies, setDismissedStrategies] = useState(new Set());
+  const [savingState, setSavingState] = useState(false);
   
-  // Ref for scrolling
+  // Refs
   const strategyRefs = useRef({});
+  const unsubscribers = useRef([]);
   
-  // Get time-based theme with smoother transitions
+  // Get time-based theme
   const timeTheme = useMemo(() => {
     const hour = new Date().getHours();
     if (hour >= 5 && hour < 12) {
@@ -69,161 +88,21 @@ export default function ReadingToolkit() {
     }
   }, [Math.floor(new Date().getHours() / 6)]);
 
-  // Lux Libris Classic Theme - adapted for time-based backgrounds
+  // Lux Libris Theme
   const luxTheme = useMemo(() => {
     const isNight = timeTheme.name === 'night';
     return {
       primary: '#ADD4EA',
       secondary: '#C3E0DE',
       accent: '#A1E5DB',
-      background: timeTheme.backgroundGradient, // Now uses time-based gradient
-      surface: isNight ? 'rgba(255, 255, 255, 0.95)' : '#FFFFFF', // Slightly transparent for night mode
-      textPrimary: isNight ? '#1F2937' : '#223848', // Darker for night mode contrast
+      background: timeTheme.backgroundGradient,
+      surface: isNight ? 'rgba(255, 255, 255, 0.95)' : '#FFFFFF',
+      textPrimary: isNight ? '#1F2937' : '#223848',
       textSecondary: isNight ? '#374151' : '#556B7A',
       timeOverlay: timeTheme.overlay,
       timeGlow: timeTheme.glow
     };
   }, [timeTheme]);
-
-  // CRITICAL FIX: Helper function to get strategy details from ID
-  const getStrategyDetails = useCallback((strategyId) => {
-    if (!parentDnaType || !strategyId) return null;
-    
-    const parts = strategyId.split('-');
-    
-    // Daily strategies: category-index (e.g., "engagement-0")
-    if (parts.length === 2 && ['engagement', 'conflict', 'celebration'].includes(parts[0])) {
-      const category = parts[0];
-      const index = parseInt(parts[1]);
-      
-      if (parentDnaType.dailyStrategies?.[category]?.[index]) {
-        return {
-          content: parentDnaType.dailyStrategies[category][index],
-          type: 'daily',
-          category: category,
-          label: `Daily ${category.charAt(0).toUpperCase() + category.slice(1)}`,
-          emoji: category === 'engagement' ? '💫' : category === 'conflict' ? '⚡' : '🎉',
-          color: category === 'engagement' ? '#4CAF50' : category === 'conflict' ? '#FF9800' : '#9C27B0'
-        };
-      }
-    }
-    
-    // Seasonal strategies: season-index (e.g., "summer-0")
-    const seasonNames = ['backToSchool', 'summer', 'holidays', 'spring', 'winter'];
-    if (parts.length === 2 && seasonNames.includes(parts[0])) {
-      const season = parts[0];
-      const index = parseInt(parts[1]);
-      
-      if (parentDnaType.seasonalSupport?.[season]?.strategies?.[index]) {
-        const seasonEmojis = {
-          backToSchool: '🎒',
-          summer: '☀️',
-          holidays: '🎄',
-          spring: '🌸',
-          winter: '❄️'
-        };
-        const seasonTitles = {
-          backToSchool: 'Back to School',
-          summer: 'Summer Reading',
-          holidays: 'Holiday Season',
-          spring: 'Spring Renewal',
-          winter: 'Winter Challenges'
-        };
-        
-        return {
-          content: parentDnaType.seasonalSupport[season].strategies[index],
-          type: 'seasonal',
-          season: season,
-          label: seasonTitles[season] || season,
-          emoji: seasonEmojis[season] || '📅',
-          color: '#FFD93D'
-        };
-      }
-    }
-    
-    // Emergency strategies: scenarioId-type-index
-    if (parts.length >= 3) {
-      const scenarioId = parts[0];
-      const strategyType = parts[1];
-      
-      if (strategyType === 'prevention') {
-        if (parentDnaType.problemsToolkit?.[scenarioId]?.prevention) {
-          return {
-            content: parentDnaType.problemsToolkit[scenarioId].prevention,
-            type: 'emergency',
-            scenario: scenarioId,
-            label: `${formatScenarioName(scenarioId)} - Prevention`,
-            emoji: '🛡️',
-            color: '#DC143C'
-          };
-        }
-      } else if (strategyType === 'doSay' || strategyType === 'dontSay') {
-        const index = parseInt(parts[2]);
-        const scripts = parentDnaType.problemsToolkit?.[scenarioId]?.scripts;
-        
-        if (scripts?.[strategyType]?.[index]) {
-          return {
-            content: `"${scripts[strategyType][index]}"`,
-            type: 'emergency',
-            scenario: scenarioId,
-            label: `${formatScenarioName(scenarioId)} - ${strategyType === 'doSay' ? 'DO Say' : "DON'T Say"}`,
-            emoji: strategyType === 'doSay' ? '✅' : '❌',
-            color: '#DC143C'
-          };
-        }
-      } else if (strategyType === 'approach') {
-        const index = parseInt(parts[2]);
-        const approach = parentDnaType.problemsToolkit?.[scenarioId]?.gentleApproaches?.[index];
-        
-        if (approach) {
-          return {
-            content: approach,
-            type: 'emergency',
-            scenario: scenarioId,
-            label: `${formatScenarioName(scenarioId)} - Gentle Approach`,
-            emoji: '🌟',
-            color: '#DC143C'
-          };
-        }
-      } else if (strategyType === 'tip') {
-        const index = parseInt(parts[2]);
-        const tip = parentDnaType.problemsToolkit?.[scenarioId]?.practicalTips?.[index];
-        
-        if (tip) {
-          return {
-            content: tip,
-            type: 'emergency',
-            scenario: scenarioId,
-            label: `${formatScenarioName(scenarioId)} - Practical Tip`,
-            emoji: '💡',
-            color: '#DC143C'
-          };
-        }
-      }
-    }
-    
-    // Fallback for unrecognized format
-    return {
-      content: strategyId.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-      type: 'unknown',
-      label: 'Strategy',
-      emoji: '📝',
-      color: luxTheme.primary
-    };
-  }, [parentDnaType, luxTheme.primary]);
-  
-  // Helper function to format scenario names
-  const formatScenarioName = (scenarioId) => {
-    const scenarioTitles = {
-      reluctantReader: 'Child Refuses to Read',
-      powerStruggles: 'Reading Power Struggles',
-      achievementPressure: 'Too Much Pressure',
-      bookChoiceStruggles: 'Book Choice Struggles',
-      differentLearningSpeeds: 'Different Learning Speeds',
-      readingHabitBuilding: 'Reading Habit Building'
-    };
-    return scenarioTitles[scenarioId] || scenarioId.replace(/([A-Z])/g, ' $1').trim();
-  };
 
   // DNA Lab navigation options
   const dnaNavOptions = useMemo(() => [
@@ -247,13 +126,89 @@ export default function ReadingToolkit() {
     { name: 'Settings', path: '/parent/settings', icon: '⚙' }
   ], []);
 
-  // Fixed back button handler
-  const handleBackClick = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    console.log('Back button clicked - navigating to /parent/dna-lab');
-    router.push('/parent/dna-lab');
-  };
+  // Load strategies from Firebase
+  const loadUserStrategies = useCallback(async () => {
+    if (!user?.uid) return;
+    
+    try {
+      // Load starred strategies
+      const starredRef = collection(db, 'parents', user.uid, 'starredStrategies');
+      const starredSnapshot = await getDocs(starredRef);
+      const starredSet = new Set();
+      starredSnapshot.forEach(doc => {
+        starredSet.add(doc.id);
+      });
+      setStarredStrategies(starredSet);
+      
+      // Load tried strategies
+      const triedRef = collection(db, 'parents', user.uid, 'triedStrategies');
+      const triedSnapshot = await getDocs(triedRef);
+      const triedSet = new Set();
+      triedSnapshot.forEach(doc => {
+        triedSet.add(doc.id);
+      });
+      setTriedStrategies(triedSet);
+      
+      // Load dismissed strategies
+      const dismissedRef = collection(db, 'parents', user.uid, 'dismissedStrategies');
+      const dismissedSnapshot = await getDocs(dismissedRef);
+      const dismissedSet = new Set();
+      dismissedSnapshot.forEach(doc => {
+        dismissedSet.add(doc.id);
+      });
+      setDismissedStrategies(dismissedSet);
+      
+      console.log('✅ Loaded user strategies:', {
+        starred: starredSet.size,
+        tried: triedSet.size,
+        dismissed: dismissedSet.size
+      });
+    } catch (error) {
+      console.error('Error loading user strategies:', error);
+    }
+  }, [user]);
+
+  // Set up real-time listeners for strategy collections
+  const setupStrategyListeners = useCallback(() => {
+    if (!user?.uid) return;
+    
+    // Clear previous listeners
+    unsubscribers.current.forEach(unsub => unsub());
+    unsubscribers.current = [];
+    
+    // Listen to starred strategies
+    const starredRef = collection(db, 'parents', user.uid, 'starredStrategies');
+    const starredUnsub = onSnapshot(starredRef, (snapshot) => {
+      const newStarred = new Set();
+      snapshot.forEach(doc => {
+        newStarred.add(doc.id);
+      });
+      setStarredStrategies(newStarred);
+    });
+    unsubscribers.current.push(starredUnsub);
+    
+    // Listen to tried strategies
+    const triedRef = collection(db, 'parents', user.uid, 'triedStrategies');
+    const triedUnsub = onSnapshot(triedRef, (snapshot) => {
+      const newTried = new Set();
+      snapshot.forEach(doc => {
+        newTried.add(doc.id);
+      });
+      setTriedStrategies(newTried);
+    });
+    unsubscribers.current.push(triedUnsub);
+    
+    // Listen to dismissed strategies
+    const dismissedRef = collection(db, 'parents', user.uid, 'dismissedStrategies');
+    const dismissedUnsub = onSnapshot(dismissedRef, (snapshot) => {
+      const newDismissed = new Set();
+      snapshot.forEach(doc => {
+        newDismissed.add(doc.id);
+      });
+      setDismissedStrategies(newDismissed);
+    });
+    unsubscribers.current.push(dismissedUnsub);
+  }, [user]);
 
   // Load parent DNA data
   const loadParentDnaData = useCallback(async () => {
@@ -287,12 +242,18 @@ export default function ReadingToolkit() {
         setParentDnaType(parentType);
       }
       
+      // Load user's saved strategies
+      await loadUserStrategies();
+      
+      // Set up real-time listeners
+      setupStrategyListeners();
+      
     } catch (error) {
       setError('Failed to load your toolkit. Please try again.');
     }
     
     setLoading(false);
-  }, [user, router]);
+  }, [user, router, loadUserStrategies, setupStrategyListeners]);
 
   // Load data on mount
   useEffect(() => {
@@ -304,6 +265,13 @@ export default function ReadingToolkit() {
       router.push('/student-dashboard');
     }
   }, [authLoading, isAuthenticated, user, userProfile, loadParentDnaData, router]);
+
+  // Cleanup listeners on unmount
+  useEffect(() => {
+    return () => {
+      unsubscribers.current.forEach(unsub => unsub());
+    };
+  }, []);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -336,14 +304,101 @@ export default function ReadingToolkit() {
     };
   }, [showDnaDropdown, showNavMenu, showSearchModal]);
 
-  // Navigate to DNA pages
+  // Strategy action handlers with Firebase persistence
+  const toggleStar = async (strategyId) => {
+    if (!user?.uid) return;
+    
+    setSavingState(true);
+    try {
+      const docRef = doc(db, 'parents', user.uid, 'starredStrategies', strategyId);
+      
+      if (starredStrategies.has(strategyId)) {
+        await deleteDoc(docRef);
+        console.log('✅ Removed star:', strategyId);
+      } else {
+        await setDoc(docRef, {
+          strategyId,
+          addedAt: new Date(),
+          parentDnaType: parentDnaType?.id || 'unknown'
+        });
+        console.log('✅ Added star:', strategyId);
+      }
+    } catch (error) {
+      console.error('Error toggling star:', error);
+    }
+    setSavingState(false);
+  };
+
+  const toggleTried = async (strategyId) => {
+    if (!user?.uid) return;
+    
+    setSavingState(true);
+    try {
+      const docRef = doc(db, 'parents', user.uid, 'triedStrategies', strategyId);
+      
+      if (triedStrategies.has(strategyId)) {
+        await deleteDoc(docRef);
+        console.log('✅ Removed tried:', strategyId);
+      } else {
+        await setDoc(docRef, {
+          strategyId,
+          triedAt: new Date(),
+          parentDnaType: parentDnaType?.id || 'unknown'
+        });
+        console.log('✅ Added tried:', strategyId);
+      }
+    } catch (error) {
+      console.error('Error toggling tried:', error);
+    }
+    setSavingState(false);
+  };
+
+  const dismissStrategy = async (strategyId) => {
+    if (!user?.uid) return;
+    
+    setSavingState(true);
+    try {
+      const docRef = doc(db, 'parents', user.uid, 'dismissedStrategies', strategyId);
+      await setDoc(docRef, {
+        strategyId,
+        dismissedAt: new Date(),
+        parentDnaType: parentDnaType?.id || 'unknown'
+      });
+      console.log('✅ Dismissed strategy:', strategyId);
+    } catch (error) {
+      console.error('Error dismissing strategy:', error);
+    }
+    setSavingState(false);
+  };
+
+  const restoreStrategy = async (strategyId) => {
+    if (!user?.uid) return;
+    
+    setSavingState(true);
+    try {
+      const docRef = doc(db, 'parents', user.uid, 'dismissedStrategies', strategyId);
+      await deleteDoc(docRef);
+      console.log('✅ Restored strategy:', strategyId);
+    } catch (error) {
+      console.error('Error restoring strategy:', error);
+    }
+    setSavingState(false);
+  };
+
+  // Navigation handlers
   const handleDnaNavigation = (option) => {
     if (option.current) return;
     setShowDnaDropdown(false);
     router.push(option.path);
   };
 
-  // Toggle section expansion
+  const handleBackClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    router.push('/parent/dna-lab');
+  };
+
+  // Section toggle
   const toggleSection = (sectionId) => {
     setExpandedSections(prev => ({
       ...prev,
@@ -351,51 +406,13 @@ export default function ReadingToolkit() {
     }));
   };
 
-  // Strategy actions
-  const toggleStar = (strategyId) => {
-    setStarredStrategies(prev => {
-      const newStarred = new Set(prev);
-      if (newStarred.has(strategyId)) {
-        newStarred.delete(strategyId);
-      } else {
-        newStarred.add(strategyId);
-      }
-      return newStarred;
-    });
-  };
-
-  const toggleTried = (strategyId) => {
-    setTriedStrategies(prev => {
-      const newTried = new Set(prev);
-      if (newTried.has(strategyId)) {
-        newTried.delete(strategyId);
-      } else {
-        newTried.add(strategyId);
-      }
-      return newTried;
-    });
-  };
-
-  const dismissStrategy = (strategyId) => {
-    setDismissedStrategies(prev => new Set([...prev, strategyId]));
-  };
-
-  const restoreStrategy = (strategyId) => {
-    setDismissedStrategies(prev => {
-      const newDismissed = new Set(prev);
-      newDismissed.delete(strategyId);
-      return newDismissed;
-    });
-  };
-
-  // Enhanced search functionality with exact content
+  // Search functionality
   const searchStrategies = useCallback((query) => {
     if (!query || !parentDnaType) return [];
     
     const searchTerms = query.toLowerCase().split(' ');
     const results = [];
     
-    // Helper function to calculate match score
     const getMatchScore = (text) => {
       const lowerText = text.toLowerCase();
       return searchTerms.filter(term => lowerText.includes(term)).length;
@@ -445,10 +462,9 @@ export default function ReadingToolkit() {
       });
     }
 
-    // Search in emergency toolkit with more detail
+    // Search in emergency toolkit
     if (parentDnaType.problemsToolkit) {
       Object.entries(parentDnaType.problemsToolkit).forEach(([key, scenario]) => {
-        // Search in scripts
         if (scenario.scripts) {
           scenario.scripts.doSay?.forEach((script, index) => {
             const matchScore = getMatchScore(script);
@@ -480,54 +496,6 @@ export default function ReadingToolkit() {
             }
           });
         }
-
-        // Search in approaches
-        scenario.gentleApproaches?.forEach((approach, index) => {
-          const matchScore = getMatchScore(approach);
-          if (matchScore > 0) {
-            results.push({
-              type: 'emergency',
-              scenarioId: key,
-              id: `emergency-${key}`,
-              strategyId: `${key}-approach-${index}`,
-              title: `${key.replace(/([A-Z])/g, ' $1').trim()} - Gentle Approach`,
-              content: approach,
-              matchScore
-            });
-          }
-        });
-
-        // Search in practical tips
-        scenario.practicalTips?.forEach((tip, index) => {
-          const matchScore = getMatchScore(tip);
-          if (matchScore > 0) {
-            results.push({
-              type: 'emergency',
-              scenarioId: key,
-              id: `emergency-${key}`,
-              strategyId: `${key}-tip-${index}`,
-              title: `${key.replace(/([A-Z])/g, ' $1').trim()} - Practical Tip`,
-              content: tip,
-              matchScore
-            });
-          }
-        });
-
-        // Search in other fields
-        if (scenario.prevention) {
-          const matchScore = getMatchScore(scenario.prevention);
-          if (matchScore > 0) {
-            results.push({
-              type: 'emergency',
-              scenarioId: key,
-              id: `emergency-${key}`,
-              strategyId: `${key}-prevention`,
-              title: `${key.replace(/([A-Z])/g, ' $1').trim()} - Prevention`,
-              content: scenario.prevention,
-              matchScore
-            });
-          }
-        }
       });
     }
     
@@ -538,27 +506,19 @@ export default function ReadingToolkit() {
     return searchStrategies(searchQuery);
   }, [searchQuery, searchStrategies]);
 
-  // Handle search result click with scroll
   const handleSearchResultClick = (result) => {
-    // Navigate to the correct tab
     setActiveTab(result.type);
-    
-    // Expand the section
     setExpandedSections(prev => ({
       ...prev,
       [result.id]: true
     }));
-    
-    // Close search modal
     setShowSearchModal(false);
     setSearchQuery('');
     
-    // Scroll to the specific strategy after a short delay
     setTimeout(() => {
       const element = strategyRefs.current[result.strategyId];
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        // Add a highlight effect
         element.style.backgroundColor = '#FFD700';
         setTimeout(() => {
           element.style.backgroundColor = '';
@@ -579,7 +539,6 @@ export default function ReadingToolkit() {
         justifyContent: 'center',
         position: 'relative'
       }}>
-        {/* Time-based overlay */}
         <div style={{
           position: 'fixed',
           top: 0,
@@ -615,22 +574,9 @@ export default function ReadingToolkit() {
         minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center',
-        position: 'relative'
+        justifyContent: 'center'
       }}>
-        {/* Time-based overlay */}
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: luxTheme.timeOverlay,
-          pointerEvents: 'none',
-          zIndex: 1
-        }} />
-        
-        <div style={{ textAlign: 'center', padding: '2rem', position: 'relative', zIndex: 2 }}>
+        <div style={{ textAlign: 'center', padding: '2rem' }}>
           <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>😞</div>
           <h2 style={{ color: luxTheme.textPrimary, marginBottom: '1rem' }}>Oops!</h2>
           <p style={{ color: luxTheme.textSecondary, marginBottom: '1.5rem' }}>
@@ -681,7 +627,7 @@ export default function ReadingToolkit() {
           zIndex: 1
         }} />
         
-        {/* Header with DNA Lab Dropdown - Now with time-based gradient */}
+        {/* Header with DNA Lab Dropdown */}
         <div style={{
           background: timeTheme.gradient,
           backdropFilter: 'blur(20px)',
@@ -691,7 +637,7 @@ export default function ReadingToolkit() {
           boxShadow: `0 4px 20px rgba(0,0,0,0.1), 0 0 40px ${luxTheme.timeGlow}30`,
           zIndex: 1000
         }}>
-          {/* Back Button - Fixed with explicit handler */}
+          {/* Back Button */}
           <button
             onClick={handleBackClick}
             style={{
@@ -714,12 +660,6 @@ export default function ReadingToolkit() {
               WebkitTapHighlightColor: 'transparent',
               zIndex: 1001
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.5)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.3)';
-            }}
           >
             ←
           </button>
@@ -728,7 +668,8 @@ export default function ReadingToolkit() {
           <div className="dna-dropdown-container" style={{ 
             display: 'flex',
             justifyContent: 'center',
-            position: 'relative'
+            position: 'relative',
+            zIndex: 1002
           }}>
             <button
               onClick={() => setShowDnaDropdown(!showDnaDropdown)}
@@ -744,10 +685,7 @@ export default function ReadingToolkit() {
                 color: luxTheme.textPrimary,
                 backdropFilter: 'blur(10px)',
                 fontSize: '16px',
-                fontWeight: '500',
-                minHeight: '40px',
-                touchAction: 'manipulation',
-                WebkitTapHighlightColor: 'transparent'
+                fontWeight: '500'
               }}
             >
               <span style={{ fontSize: '18px' }}>🧰</span>
@@ -809,36 +747,15 @@ export default function ReadingToolkit() {
                       fontSize: '13px',
                       color: luxTheme.textPrimary,
                       fontWeight: option.current ? '600' : '500',
-                      textAlign: 'left',
-                      touchAction: 'manipulation',
-                      WebkitTapHighlightColor: 'transparent',
-                      transition: 'background-color 0.2s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!option.current) {
-                        e.target.style.backgroundColor = `${luxTheme.primary}20`;
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!option.current) {
-                        e.target.style.backgroundColor = 'transparent';
-                      }
+                      textAlign: 'left'
                     }}
                   >
                     <span style={{ fontSize: '16px', flexShrink: 0 }}>{option.icon}</span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{
-                        fontSize: '13px',
-                        fontWeight: '600',
-                        marginBottom: '2px'
-                      }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '13px', fontWeight: '600', marginBottom: '2px' }}>
                         {option.name}
                       </div>
-                      <div style={{
-                        fontSize: '11px',
-                        color: luxTheme.textSecondary,
-                        opacity: 0.8
-                      }}>
+                      <div style={{ fontSize: '11px', color: luxTheme.textSecondary, opacity: 0.8 }}>
                         {option.description}
                       </div>
                     </div>
@@ -852,7 +769,12 @@ export default function ReadingToolkit() {
           </div>
 
           {/* Hamburger Menu */}
-          <div className="nav-menu-container" style={{ position: 'absolute', right: '20px', top: '30px' }}>
+          <div className="nav-menu-container" style={{ 
+            position: 'absolute', 
+            right: '20px', 
+            top: '30px',
+            zIndex: 1002
+          }}>
             <button
               onClick={() => setShowNavMenu(!showNavMenu)}
               style={{
@@ -867,10 +789,7 @@ export default function ReadingToolkit() {
                 fontSize: '18px',
                 cursor: 'pointer',
                 color: luxTheme.textPrimary,
-                backdropFilter: 'blur(10px)',
-                flexShrink: 0,
-                touchAction: 'manipulation',
-                WebkitTapHighlightColor: 'transparent'
+                backdropFilter: 'blur(10px)'
               }}
             >
               ☰
@@ -912,30 +831,13 @@ export default function ReadingToolkit() {
                       fontSize: '14px',
                       color: luxTheme.textPrimary,
                       fontWeight: item.current ? '600' : '500',
-                      textAlign: 'left',
-                      touchAction: 'manipulation',
-                      WebkitTapHighlightColor: 'transparent',
-                      transition: 'background-color 0.2s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!item.current) {
-                        e.target.style.backgroundColor = `${luxTheme.primary}20`;
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!item.current) {
-                        e.target.style.backgroundColor = 'transparent';
-                      }
+                      textAlign: 'left'
                     }}
                   >
                     <span style={{ fontSize: '16px' }}>{item.icon}</span>
                     <span>{item.name}</span>
                     {item.current && (
-                      <span style={{ 
-                        marginLeft: 'auto', 
-                        fontSize: '12px', 
-                        color: luxTheme.primary 
-                      }}>●</span>
+                      <span style={{ marginLeft: 'auto', fontSize: '12px', color: luxTheme.primary }}>●</span>
                     )}
                   </button>
                 ))}
@@ -945,9 +847,15 @@ export default function ReadingToolkit() {
         </div>
 
         {/* Main Content */}
-        <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
+        <div style={{ 
+          padding: '20px', 
+          maxWidth: '800px', 
+          margin: '0 auto', 
+          position: 'relative', 
+          zIndex: 2 
+        }}>
           
-          {/* Toolkit Header - Enhanced with time-based styling */}
+          {/* Toolkit Header */}
           <div style={{
             background: timeTheme.gradient,
             borderRadius: '20px',
@@ -959,50 +867,30 @@ export default function ReadingToolkit() {
             overflow: 'hidden',
             boxShadow: `0 4px 20px rgba(0,0,0,0.15), 0 0 40px ${luxTheme.timeGlow}30`
           }}>
-            <div style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              opacity: 0.1,
-              background: 'radial-gradient(circle at 20% 30%, white 0%, transparent 50%), radial-gradient(circle at 80% 60%, white 0%, transparent 50%)'
-            }} />
-            
             <div style={{ position: 'relative', zIndex: 1 }}>
-              <div style={{
-                fontSize: '64px',
-                marginBottom: '16px',
-                filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.2))'
-              }}>
-                🧰
-              </div>
-              
+              <div style={{ fontSize: '64px', marginBottom: '16px' }}>🧰</div>
               <h1 style={{
                 fontSize: '32px',
                 fontWeight: 'bold',
                 margin: '0 0 12px 0',
-                fontFamily: 'Didot, serif',
-                textShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                fontFamily: 'Didot, serif'
               }}>
                 Your Reading Toolkit
               </h1>
-              
               <p style={{
                 fontSize: '18px',
-                margin: '0 0 0 0',
+                margin: '0',
                 opacity: 0.95,
                 maxWidth: '600px',
                 marginLeft: 'auto',
-                marginRight: 'auto',
-                lineHeight: '1.5'
+                marginRight: 'auto'
               }}>
-                Personalized strategies, scripts, and crisis management for your {parentDnaType.name} style
+                Personalized strategies for your {parentDnaType.name} style
               </p>
             </div>
           </div>
 
-          {/* Emergency Button - Underneath Header */}
+          {/* Emergency Button */}
           <div style={{
             display: 'flex',
             justifyContent: 'center',
@@ -1020,23 +908,34 @@ export default function ReadingToolkit() {
                 fontSize: '32px',
                 cursor: 'pointer',
                 boxShadow: '0 6px 30px rgba(220, 20, 60, 0.5)',
-                animation: 'emergencyPulse 1.5s infinite',
-                touchAction: 'manipulation',
-                WebkitTapHighlightColor: 'transparent',
-                transition: 'transform 0.2s ease',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
+                animation: 'emergencyPulse 1.5s infinite'
               }}
-              onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
-              onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
               title="Reading Emergency Search"
             >
               🚨
             </button>
           </div>
 
-          {/* Tab Navigation - Mobile Optimized */}
+          {/* Saving Indicator */}
+          {savingState && (
+            <div style={{
+              position: 'fixed',
+              top: '80px',
+              right: '20px',
+              backgroundColor: luxTheme.primary,
+              color: luxTheme.textPrimary,
+              padding: '8px 16px',
+              borderRadius: '8px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+              zIndex: 10001,
+              fontSize: '14px',
+              fontWeight: '600'
+            }}>
+              Saving...
+            </div>
+          )}
+
+          {/* Tab Navigation */}
           <div style={{
             display: 'flex',
             backgroundColor: luxTheme.surface,
@@ -1045,10 +944,7 @@ export default function ReadingToolkit() {
             marginBottom: '20px',
             boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
             gap: '4px',
-            overflowX: 'auto',
-            WebkitOverflowScrolling: 'touch',
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none'
+            overflowX: 'auto'
           }}>
             {[
               { id: 'daily', label: 'Daily', icon: '📖' },
@@ -1070,32 +966,22 @@ export default function ReadingToolkit() {
                   fontWeight: '600',
                   cursor: 'pointer',
                   display: 'flex',
-                  flexDirection: 'row',
                   alignItems: 'center',
-                  justifyContent: 'center',
                   gap: '6px',
                   transition: 'all 0.2s ease',
-                  touchAction: 'manipulation',
-                  WebkitTapHighlightColor: 'transparent',
-                  position: 'relative',
-                  whiteSpace: 'nowrap',
-                  flexShrink: 0
+                  position: 'relative'
                 }}
               >
                 <span style={{ fontSize: '18px' }}>{tab.icon}</span>
                 <span>{tab.label}</span>
                 {tab.id === 'strategies' && starredStrategies.size > 0 && (
                   <span style={{
-                    backgroundColor: parentDnaType.color || luxTheme.secondary,
+                    backgroundColor: '#FFD700',
                     color: 'white',
                     borderRadius: '10px',
                     padding: '2px 6px',
                     fontSize: '11px',
                     minWidth: '18px',
-                    height: '18px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
                     fontWeight: 'bold'
                   }}>
                     {starredStrategies.size}
@@ -1107,7 +993,7 @@ export default function ReadingToolkit() {
 
           {/* Tab Content */}
           {activeTab === 'daily' && (
-            <DailyStrategiesSection 
+            <DailyStrategiesTab
               parentDnaType={parentDnaType}
               expandedSections={expandedSections}
               toggleSection={toggleSection}
@@ -1123,7 +1009,7 @@ export default function ReadingToolkit() {
           )}
 
           {activeTab === 'seasonal' && (
-            <SeasonalStrategiesSection 
+            <SeasonalStrategiesTab
               parentDnaType={parentDnaType}
               expandedSections={expandedSections}
               toggleSection={toggleSection}
@@ -1139,7 +1025,7 @@ export default function ReadingToolkit() {
           )}
 
           {activeTab === 'emergency' && (
-            <EmergencySection 
+            <EmergencyTab
               parentDnaType={parentDnaType}
               expandedSections={expandedSections}
               toggleSection={toggleSection}
@@ -1155,7 +1041,7 @@ export default function ReadingToolkit() {
           )}
 
           {activeTab === 'strategies' && (
-            <MyStrategiesSection 
+            <MyStrategiesTab
               parentDnaType={parentDnaType}
               starredStrategies={starredStrategies}
               triedStrategies={triedStrategies}
@@ -1163,13 +1049,12 @@ export default function ReadingToolkit() {
               toggleStar={toggleStar}
               toggleTried={toggleTried}
               restoreStrategy={restoreStrategy}
-              getStrategyDetails={getStrategyDetails}
               theme={luxTheme}
             />
           )}
         </div>
 
-        {/* Enhanced Search Modal */}
+        {/* Search Modal */}
         {showSearchModal && (
           <div style={{
             position: 'fixed',
@@ -1178,7 +1063,7 @@ export default function ReadingToolkit() {
             right: 0,
             bottom: 0,
             backgroundColor: 'rgba(0,0,0,0.8)',
-            zIndex: 1000,
+            zIndex: 10000,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -1247,8 +1132,6 @@ export default function ReadingToolkit() {
                       color: luxTheme.textPrimary,
                       outline: 'none'
                     }}
-                    onFocus={(e) => e.target.style.borderColor = luxTheme.primary}
-                    onBlur={(e) => e.target.style.borderColor = `${luxTheme.primary}30`}
                     autoFocus
                   />
                 </div>
@@ -1282,16 +1165,6 @@ export default function ReadingToolkit() {
                             transition: 'all 0.2s ease'
                           }}
                           onClick={() => handleSearchResultClick(result)}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.borderColor = luxTheme.primary;
-                            e.currentTarget.style.transform = 'translateY(-2px)';
-                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.borderColor = `${luxTheme.primary}30`;
-                            e.currentTarget.style.transform = 'translateY(0)';
-                            e.currentTarget.style.boxShadow = 'none';
-                          }}
                         >
                           <div style={{ 
                             fontWeight: '600', 
@@ -1323,9 +1196,9 @@ export default function ReadingToolkit() {
                 ) : searchQuery ? (
                   <div style={{ textAlign: 'center', color: luxTheme.textSecondary, padding: '40px' }}>
                     <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔍</div>
-                    <p>No strategies found for &quot;{searchQuery}&quot;</p>
+                    <p>No strategies found for "{searchQuery}"</p>
                     <p style={{ fontSize: '12px', marginTop: '8px' }}>
-                      Try different keywords like &quot;won&apos;t read&quot;, &quot;battles&quot;, or &quot;pressure&quot;
+                      Try different keywords like "won't read", "battles", or "pressure"
                     </p>
                   </div>
                 ) : (
@@ -1368,1426 +1241,8 @@ export default function ReadingToolkit() {
             -webkit-overflow-scrolling: touch;
             scroll-behavior: smooth;
           }
-          
-          /* Hide scrollbar for Chrome, Safari and Opera */
-          div::-webkit-scrollbar {
-            display: none;
-          }
         `}</style>
       </div>
     </>
-  );
-}
-
-// Daily Strategies Section Component
-function DailyStrategiesSection({ parentDnaType, expandedSections, toggleSection, starredStrategies, triedStrategies, dismissedStrategies, toggleStar, toggleTried, dismissStrategy, theme, strategyRefs }) {
-  if (!parentDnaType.dailyStrategies) {
-    return (
-      <div style={{ textAlign: 'center', padding: '40px', color: theme.textSecondary }}>
-        <div style={{ fontSize: '48px', marginBottom: '16px' }}>📖</div>
-        <p>Daily strategies not available for your DNA type.</p>
-      </div>
-    );
-  }
-
-  const categoryColors = {
-    engagement: '#4CAF50',
-    conflict: '#FF9800',
-    celebration: '#9C27B0'
-  };
-
-  const categoryEmojis = {
-    engagement: '💫',
-    conflict: '⚡',
-    celebration: '🎉'
-  };
-
-  const categoryTitles = {
-    engagement: 'Daily Engagement',
-    conflict: 'Navigating Conflicts',
-    celebration: 'Celebration Moments'
-  };
-
-  return (
-    <div style={{ display: 'grid', gap: '16px' }}>
-      {Object.entries(parentDnaType.dailyStrategies).map(([category, strategies]) => {
-        const sectionId = `daily-${category}`;
-        const isExpanded = expandedSections[sectionId];
-        
-        return (
-          <div
-            key={category}
-            style={{
-              backgroundColor: theme.surface,
-              borderRadius: '16px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              border: `2px solid ${categoryColors[category]}30`,
-              overflow: 'hidden'
-            }}
-          >
-            <button
-              onClick={() => toggleSection(sectionId)}
-              style={{
-                width: '100%',
-                backgroundColor: 'transparent',
-                border: 'none',
-                padding: '20px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '16px',
-                textAlign: 'left'
-              }}
-            >
-              <div style={{
-                width: '48px',
-                height: '48px',
-                borderRadius: '50%',
-                backgroundColor: `${categoryColors[category]}20`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '24px',
-                flexShrink: 0
-              }}>
-                {categoryEmojis[category]}
-              </div>
-              
-              <div style={{ flex: 1 }}>
-                <div style={{
-                  fontSize: '18px',
-                  fontWeight: '600',
-                  color: theme.textPrimary,
-                  marginBottom: '4px'
-                }}>
-                  {categoryTitles[category]}
-                </div>
-                <div style={{
-                  fontSize: '14px',
-                  color: theme.textSecondary
-                }}>
-                  {strategies.length} strategies available
-                </div>
-              </div>
-              
-              <div style={{
-                fontSize: '20px',
-                color: theme.textSecondary,
-                transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
-                transition: 'transform 0.3s ease'
-              }}>
-                ▶
-              </div>
-            </button>
-            
-            {isExpanded && (
-              <div style={{
-                padding: '0 20px 20px',
-                borderTop: `1px solid ${categoryColors[category]}30`
-              }}>
-                <div style={{ 
-                  display: 'grid', 
-                  gap: '12px',
-                  marginTop: '16px'
-                }}>
-                  {strategies.map((strategy, index) => {
-                    const strategyId = `${category}-${index}`;
-                    const isStarred = starredStrategies.has(strategyId);
-                    const isTried = triedStrategies.has(strategyId);
-                    const isDismissed = dismissedStrategies.has(strategyId);
-                    
-                    if (isDismissed) return null;
-                    
-                    return (
-                      <div
-                        key={index}
-                        ref={el => strategyRefs.current[strategyId] = el}
-                        style={{
-                          backgroundColor: `${categoryColors[category]}15`,
-                          borderRadius: '12px',
-                          padding: '16px',
-                          fontSize: '14px',
-                          color: theme.textPrimary,
-                          lineHeight: '1.5',
-                          border: `1px solid ${categoryColors[category]}30`,
-                          display: 'flex',
-                          alignItems: 'start',
-                          gap: '12px'
-                        }}
-                      >
-                        {/* Left side - Star/Try buttons */}
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          flexShrink: 0
-                        }}>
-                          <button
-                            onClick={() => toggleStar(strategyId)}
-                            style={{
-                              backgroundColor: 'transparent',
-                              border: 'none',
-                              fontSize: '16px',
-                              cursor: 'pointer',
-                              color: isStarred ? '#FFD700' : theme.textSecondary,
-                              padding: '2px'
-                            }}
-                            title="Star this strategy"
-                          >
-                            {isStarred ? '★' : '☆'}
-                          </button>
-                          <button
-                            onClick={() => toggleTried(strategyId)}
-                            style={{
-                              backgroundColor: 'transparent',
-                              border: 'none',
-                              fontSize: '14px',
-                              cursor: 'pointer',
-                              color: isTried ? categoryColors[category] : theme.textSecondary,
-                              padding: '2px'
-                            }}
-                            title="Mark as tried"
-                          >
-                            {isTried ? '✓' : '○'}
-                          </button>
-                        </div>
-                        
-                        {/* Strategy content */}
-                        <span style={{ flex: 1 }}>{strategy}</span>
-                        
-                        {/* Right side - Dismiss button */}
-                        <button
-                          onClick={() => dismissStrategy(strategyId)}
-                          style={{
-                            backgroundColor: 'transparent',
-                            border: 'none',
-                            fontSize: '14px',
-                            cursor: 'pointer',
-                            color: theme.textSecondary,
-                            padding: '2px',
-                            flexShrink: 0
-                          }}
-                          title="Dismiss this strategy"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// Seasonal Strategies Section Component
-function SeasonalStrategiesSection({ parentDnaType, expandedSections, toggleSection, starredStrategies, triedStrategies, dismissedStrategies, toggleStar, toggleTried, dismissStrategy, theme, strategyRefs }) {
-  if (!parentDnaType.seasonalSupport) {
-    return (
-      <div style={{ textAlign: 'center', padding: '40px', color: theme.textSecondary }}>
-        <div style={{ fontSize: '48px', marginBottom: '16px' }}>🗓️</div>
-        <p>Seasonal support not available for your DNA type.</p>
-      </div>
-    );
-  }
-
-  const seasonColors = {
-    backToSchool: '#FF6B6B',
-    summer: '#FFD93D',
-    holidays: '#6BCF7F',
-    spring: '#FF69B4',
-    winter: '#4ECDC4'
-  };
-
-  const seasonEmojis = {
-    backToSchool: '🎒',
-    summer: '☀️',
-    holidays: '🎄',
-    spring: '🌸',
-    winter: '❄️'
-  };
-
-  const seasonTitles = {
-    backToSchool: 'Back to School',
-    summer: 'Summer Reading',
-    holidays: 'Holiday Season',
-    spring: 'Spring Renewal',
-    winter: 'Winter Challenges'
-  };
-
-  return (
-    <div style={{ display: 'grid', gap: '16px' }}>
-      {Object.entries(parentDnaType.seasonalSupport).map(([season, support]) => {
-        const sectionId = `seasonal-${season}`;
-        const isExpanded = expandedSections[sectionId];
-        const seasonColor = seasonColors[season] || theme.primary;
-        
-        return (
-          <div
-            key={season}
-            style={{
-              backgroundColor: theme.surface,
-              borderRadius: '16px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              border: `2px solid ${seasonColor}30`,
-              overflow: 'hidden'
-            }}
-          >
-            <button
-              onClick={() => toggleSection(sectionId)}
-              style={{
-                width: '100%',
-                backgroundColor: 'transparent',
-                border: 'none',
-                padding: '20px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '16px',
-                textAlign: 'left'
-              }}
-            >
-              <div style={{
-                width: '48px',
-                height: '48px',
-                borderRadius: '50%',
-                backgroundColor: `${seasonColor}20`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '24px',
-                flexShrink: 0
-              }}>
-                {seasonEmojis[season] || '📅'}
-              </div>
-              
-              <div style={{ flex: 1 }}>
-                <div style={{
-                  fontSize: '18px',
-                  fontWeight: '600',
-                  color: theme.textPrimary,
-                  marginBottom: '4px'
-                }}>
-                  {seasonTitles[season] || season}
-                </div>
-                <div style={{
-                  fontSize: '14px',
-                  color: theme.textSecondary
-                }}>
-                  {support.strategies?.length || 0} strategies available
-                </div>
-              </div>
-              
-              <div style={{
-                fontSize: '20px',
-                color: theme.textSecondary,
-                transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
-                transition: 'transform 0.3s ease'
-              }}>
-                ▶
-              </div>
-            </button>
-            
-            {isExpanded && (
-              <div style={{
-                padding: '0 20px 20px',
-                borderTop: `1px solid ${seasonColor}30`
-              }}>
-                {support.challenge && (
-                  <div style={{
-                    backgroundColor: `${seasonColor}15`,
-                    borderRadius: '12px',
-                    padding: '16px',
-                    marginTop: '16px',
-                    marginBottom: '16px',
-                    border: `1px solid ${seasonColor}30`
-                  }}>
-                    <div style={{
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      color: seasonColor,
-                      marginBottom: '8px'
-                    }}>
-                      🎯 Challenge
-                    </div>
-                    <div style={{
-                      fontSize: '14px',
-                      color: theme.textPrimary,
-                      lineHeight: '1.5'
-                    }}>
-                      {support.challenge}
-                    </div>
-                  </div>
-                )}
-
-                {support.strategies && (
-                  <div style={{ display: 'grid', gap: '8px' }}>
-                    {support.strategies.map((strategy, index) => {
-                      const strategyId = `${season}-${index}`;
-                      const isStarred = starredStrategies.has(strategyId);
-                      const isTried = triedStrategies.has(strategyId);
-                      const isDismissed = dismissedStrategies.has(strategyId);
-                      
-                      if (isDismissed) return null;
-                      
-                      return (
-                        <div
-                          key={index}
-                          ref={el => strategyRefs.current[strategyId] = el}
-                          style={{
-                            backgroundColor: `${seasonColor}10`,
-                            borderRadius: '8px',
-                            padding: '12px',
-                            fontSize: '14px',
-                            color: theme.textPrimary,
-                            lineHeight: '1.5',
-                            display: 'flex',
-                            alignItems: 'start',
-                            gap: '8px',
-                            border: `1px solid ${seasonColor}20`
-                          }}
-                        >
-                          {/* Left side - Star/Try buttons */}
-                          <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            flexShrink: 0
-                          }}>
-                            <button
-                              onClick={() => toggleStar(strategyId)}
-                              style={{
-                                backgroundColor: 'transparent',
-                                border: 'none',
-                                fontSize: '16px',
-                                cursor: 'pointer',
-                                color: isStarred ? '#FFD700' : theme.textSecondary,
-                                padding: '2px'
-                              }}
-                              title="Star this strategy"
-                            >
-                              {isStarred ? '★' : '☆'}
-                            </button>
-                            <button
-                              onClick={() => toggleTried(strategyId)}
-                              style={{
-                                backgroundColor: 'transparent',
-                                border: 'none',
-                                fontSize: '14px',
-                                cursor: 'pointer',
-                                color: isTried ? seasonColor : theme.textSecondary,
-                                padding: '2px'
-                              }}
-                              title="Mark as tried"
-                            >
-                              {isTried ? '✓' : '○'}
-                            </button>
-                          </div>
-                          
-                          {/* Strategy content */}
-                          <span style={{ flex: 1 }}>{strategy}</span>
-                          
-                          {/* Right side - Dismiss button */}
-                          <button
-                            onClick={() => dismissStrategy(strategyId)}
-                            style={{
-                              backgroundColor: 'transparent',
-                              border: 'none',
-                              fontSize: '14px',
-                              cursor: 'pointer',
-                              color: theme.textSecondary,
-                              padding: '2px',
-                              flexShrink: 0
-                            }}
-                            title="Dismiss this strategy"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// Emergency Section Component
-function EmergencySection({ parentDnaType, expandedSections, toggleSection, starredStrategies, triedStrategies, dismissedStrategies, toggleStar, toggleTried, dismissStrategy, theme, strategyRefs }) {
-  if (!parentDnaType.problemsToolkit) {
-    return (
-      <div style={{ textAlign: 'center', padding: '40px', color: theme.textSecondary }}>
-        <div style={{ fontSize: '48px', marginBottom: '16px' }}>🚨</div>
-        <p>Emergency toolkit not available for your DNA type.</p>
-      </div>
-    );
-  }
-
-  // Get ALL available scenarios from Firebase data
-  const emergencyScenarios = [
-    { id: 'reluctantReader', title: 'Child Refuses to Read', emoji: '😤' },
-    { id: 'powerStruggles', title: 'Reading Power Struggles', emoji: '⚔️' },
-    { id: 'achievementPressure', title: 'Too Much Pressure', emoji: '📊' },
-    { id: 'bookChoiceStruggles', title: 'Book Choice Struggles', emoji: '📖' },
-    { id: 'differentLearningSpeeds', title: 'Different Learning Speeds', emoji: '🐌' },
-    { id: 'readingHabitBuilding', title: 'Reading Habit Building', emoji: '🏗️' }
-  ];
-
-  return (
-    <div style={{ display: 'grid', gap: '16px' }}>
-      {emergencyScenarios.map((scenarioMeta) => {
-        const scenario = parentDnaType.problemsToolkit[scenarioMeta.id];
-        if (!scenario) {
-          console.log(`❌ Missing scenario: ${scenarioMeta.id}`);
-          return null;
-        }
-
-        const sectionId = `emergency-${scenarioMeta.id}`;
-        const isExpanded = expandedSections[sectionId];
-        
-        return (
-          <div
-            key={scenarioMeta.id}
-            style={{
-              backgroundColor: theme.surface,
-              borderRadius: '16px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              border: '2px solid #DC143C30',
-              overflow: 'hidden'
-            }}
-          >
-            <button
-              onClick={() => toggleSection(sectionId)}
-              style={{
-                width: '100%',
-                backgroundColor: 'transparent',
-                border: 'none',
-                padding: '20px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '16px',
-                textAlign: 'left'
-              }}
-            >
-              <div style={{
-                width: '48px',
-                height: '48px',
-                borderRadius: '50%',
-                backgroundColor: '#FFE4E1',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '24px',
-                flexShrink: 0
-              }}>
-                {scenarioMeta.emoji}
-              </div>
-              
-              <div style={{ flex: 1 }}>
-                <div style={{
-                  fontSize: '18px',
-                  fontWeight: '600',
-                  color: theme.textPrimary,
-                  marginBottom: '4px'
-                }}>
-                  {scenarioMeta.title}
-                </div>
-                <div style={{
-                  fontSize: '14px',
-                  color: theme.textSecondary
-                }}>
-                  {scenario.yourInstinct?.substring(0, 60) || 'Crisis management strategies'}...
-                </div>
-              </div>
-              
-              <div style={{
-                fontSize: '20px',
-                color: theme.textSecondary,
-                transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
-                transition: 'transform 0.3s ease'
-              }}>
-                ▶
-              </div>
-            </button>
-            
-            {isExpanded && (
-              <div style={{
-                padding: '0 20px 20px',
-                borderTop: '1px solid #DC143C30'
-              }}>
-                <ScenarioDetails 
-                  scenario={scenario} 
-                  scenarioId={scenarioMeta.id}
-                  starredStrategies={starredStrategies}
-                  triedStrategies={triedStrategies}
-                  dismissedStrategies={dismissedStrategies}
-                  toggleStar={toggleStar}
-                  toggleTried={toggleTried}
-                  dismissStrategy={dismissStrategy}
-                  theme={theme}
-                  strategyRefs={strategyRefs}
-                />
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// FIXED My Strategies Section Component
-function MyStrategiesSection({ parentDnaType, starredStrategies, triedStrategies, dismissedStrategies, toggleStar, toggleTried, restoreStrategy, getStrategyDetails, theme }) {
-  const starredItems = Array.from(starredStrategies);
-  const triedItems = Array.from(triedStrategies);
-  const dismissedItems = Array.from(dismissedStrategies);
-
-  // Component to display a single strategy item with full content
-  const StrategyItem = ({ strategyId, onRemove, showTried = false }) => {
-    const details = getStrategyDetails(strategyId);
-    
-    if (!details) {
-      // Fallback if strategy details can't be found
-      return (
-        <div style={{
-          backgroundColor: '#F5F5F5',
-          borderRadius: '8px',
-          padding: '12px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          opacity: 0.7
-        }}>
-          <span style={{ fontSize: '16px' }}>📝</span>
-          <span style={{ flex: 1, fontSize: '14px', fontStyle: 'italic', color: theme.textSecondary }}>
-            Strategy not found: {strategyId}
-          </span>
-          {onRemove && (
-            <button
-              onClick={() => onRemove(strategyId)}
-              style={{
-                backgroundColor: 'transparent',
-                border: 'none',
-                fontSize: '14px',
-                cursor: 'pointer',
-                color: theme.textSecondary
-              }}
-            >
-              ✕
-            </button>
-          )}
-        </div>
-      );
-    }
-    
-    return (
-      <div style={{
-        backgroundColor: `${details.color}10`,
-        border: `2px solid ${details.color}40`,
-        borderRadius: '12px',
-        padding: '16px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '12px'
-      }}>
-        {/* Header with emoji, label, and actions */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'start',
-          gap: '12px'
-        }}>
-          <span style={{ fontSize: '20px', flexShrink: 0 }}>{details.emoji}</span>
-          
-          <div style={{ flex: 1 }}>
-            <div style={{
-              fontSize: '12px',
-              fontWeight: '600',
-              color: details.color,
-              marginBottom: '4px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
-            }}>
-              {details.label}
-            </div>
-            
-            <div style={{
-              fontSize: '14px',
-              color: theme.textPrimary,
-              lineHeight: '1.5'
-            }}>
-              {details.content}
-            </div>
-          </div>
-          
-          {/* Action buttons */}
-          <div style={{
-            display: 'flex',
-            gap: '6px',
-            flexShrink: 0
-          }}>
-            {showTried && (
-              <button
-                onClick={() => toggleTried(strategyId)}
-                style={{
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  fontSize: '14px',
-                  cursor: 'pointer',
-                  color: '#4CAF50',
-                  padding: '2px'
-                }}
-                title="Marked as tried"
-              >
-                ✓
-              </button>
-            )}
-            {onRemove && (
-              <button
-                onClick={() => onRemove(strategyId)}
-                style={{
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  fontSize: '14px',
-                  cursor: 'pointer',
-                  color: theme.textSecondary,
-                  padding: '2px'
-                }}
-                title="Remove from starred"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  return (
-    <div style={{ display: 'grid', gap: '20px' }}>
-      {/* Starred Strategies */}
-      <div style={{
-        backgroundColor: theme.surface,
-        borderRadius: '16px',
-        padding: '24px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-      }}>
-        <h3 style={{
-          fontSize: '18px',
-          fontWeight: '600',
-          color: theme.textPrimary,
-          marginBottom: '16px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px'
-        }}>
-          <span>⭐</span> Starred Strategies ({starredItems.length})
-        </h3>
-        
-        {starredItems.length === 0 ? (
-          <p style={{ color: theme.textSecondary, fontStyle: 'italic' }}>
-            No starred strategies yet. Star your favorites from Daily, Seasonal, or Emergency sections!
-          </p>
-        ) : (
-          <div style={{ display: 'grid', gap: '12px' }}>
-            {starredItems.map((strategyId) => (
-              <StrategyItem 
-                key={strategyId}
-                strategyId={strategyId}
-                onRemove={toggleStar}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Tried Strategies */}
-      <div style={{
-        backgroundColor: theme.surface,
-        borderRadius: '16px',
-        padding: '24px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-      }}>
-        <h3 style={{
-          fontSize: '18px',
-          fontWeight: '600',
-          color: theme.textPrimary,
-          marginBottom: '16px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px'
-        }}>
-          <span>✓</span> Tried Strategies ({triedItems.length})
-        </h3>
-        
-        {triedItems.length === 0 ? (
-          <p style={{ color: theme.textSecondary, fontStyle: 'italic' }}>
-            No tried strategies yet. Mark strategies you&apos;ve tested!
-          </p>
-        ) : (
-          <div style={{ display: 'grid', gap: '12px' }}>
-            {triedItems.map((strategyId) => (
-              <StrategyItem 
-                key={strategyId}
-                strategyId={strategyId}
-                showTried={true}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Dismissed Strategies */}
-      {dismissedItems.length > 0 && (
-        <div style={{
-          backgroundColor: theme.surface,
-          borderRadius: '16px',
-          padding: '24px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-        }}>
-          <h3 style={{
-            fontSize: '18px',
-            fontWeight: '600',
-            color: theme.textPrimary,
-            marginBottom: '16px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}>
-            <span>📦</span> Dismissed Strategies ({dismissedItems.length})
-          </h3>
-          
-          <div style={{ display: 'grid', gap: '12px' }}>
-            {dismissedItems.map((strategyId) => {
-              const details = getStrategyDetails(strategyId);
-              
-              return (
-                <div
-                  key={strategyId}
-                  style={{
-                    backgroundColor: '#F5F5F5',
-                    border: '1px solid #CCC',
-                    borderRadius: '12px',
-                    padding: '16px',
-                    opacity: 0.7
-                  }}
-                >
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'start',
-                    gap: '12px'
-                  }}>
-                    <span style={{ fontSize: '20px', flexShrink: 0 }}>
-                      {details?.emoji || '📦'}
-                    </span>
-                    
-                    <div style={{ flex: 1 }}>
-                      {details && (
-                        <>
-                          <div style={{
-                            fontSize: '12px',
-                            fontWeight: '600',
-                            color: theme.textSecondary,
-                            marginBottom: '4px',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.5px'
-                          }}>
-                            {details.label}
-                          </div>
-                          
-                          <div style={{
-                            fontSize: '14px',
-                            color: theme.textPrimary,
-                            lineHeight: '1.5'
-                          }}>
-                            {details.content}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                    
-                    <button
-                      onClick={() => restoreStrategy(strategyId)}
-                      style={{
-                        backgroundColor: theme.primary,
-                        color: theme.textPrimary,
-                        border: 'none',
-                        borderRadius: '6px',
-                        padding: '6px 12px',
-                        fontSize: '12px',
-                        cursor: 'pointer',
-                        fontWeight: '600',
-                        flexShrink: 0
-                      }}
-                    >
-                      Restore
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Scenario Details Component (unchanged)
-function ScenarioDetails({ scenario, scenarioId, starredStrategies, triedStrategies, dismissedStrategies, toggleStar, toggleTried, dismissStrategy, theme, strategyRefs }) {
-  return (
-    <div style={{ marginTop: '20px' }}>
-      {/* Your Instinct */}
-      {scenario.yourInstinct && (
-        <div style={{
-          backgroundColor: `${theme.accent}20`,
-          borderRadius: '12px',
-          padding: '16px',
-          marginBottom: '16px'
-        }}>
-          <div style={{
-            fontSize: '14px',
-            fontWeight: '600',
-            color: theme.primary,
-            marginBottom: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}>
-            <span>🎯</span> Your Instinct
-          </div>
-          <div style={{
-            fontSize: '14px',
-            color: theme.textPrimary,
-            lineHeight: '1.5'
-          }}>
-            {scenario.yourInstinct}
-          </div>
-        </div>
-      )}
-
-      {/* Your Approach */}
-      {scenario.yourApproach && (
-        <div style={{
-          backgroundColor: `${theme.accent}20`,
-          borderRadius: '12px',
-          padding: '16px',
-          marginBottom: '16px'
-        }}>
-          <div style={{
-            fontSize: '14px',
-            fontWeight: '600',
-            color: theme.primary,
-            marginBottom: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}>
-            <span>🎯</span> Your Approach
-          </div>
-          <div style={{
-            fontSize: '14px',
-            color: theme.textPrimary,
-            lineHeight: '1.5'
-          }}>
-            {scenario.yourApproach}
-          </div>
-        </div>
-      )}
-
-      {/* Your Philosophy */}
-      {scenario.yourPhilosophy && (
-        <div style={{
-          backgroundColor: `${theme.accent}20`,
-          borderRadius: '12px',
-          padding: '16px',
-          marginBottom: '16px'
-        }}>
-          <div style={{
-            fontSize: '14px',
-            fontWeight: '600',
-            color: theme.primary,
-            marginBottom: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}>
-            <span>💭</span> Your Philosophy
-          </div>
-          <div style={{
-            fontSize: '14px',
-            color: theme.textPrimary,
-            lineHeight: '1.5'
-          }}>
-            {scenario.yourPhilosophy}
-          </div>
-        </div>
-      )}
-
-      {/* Prevention */}
-      {scenario.prevention && (
-        <div 
-          ref={el => strategyRefs.current[`${scenarioId}-prevention`] = el}
-          style={{
-            backgroundColor: '#FFF3CD',
-            border: '2px solid #FFE69C',
-            borderRadius: '12px',
-            padding: '16px',
-            marginBottom: '16px',
-            display: 'flex',
-            alignItems: 'start',
-            gap: '12px'
-          }}
-        >
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '4px',
-            flexShrink: 0
-          }}>
-            <button
-              onClick={() => toggleStar(`${scenarioId}-prevention`)}
-              style={{
-                backgroundColor: 'transparent',
-                border: 'none',
-                fontSize: '16px',
-                cursor: 'pointer',
-                color: starredStrategies.has(`${scenarioId}-prevention`) ? '#FFD700' : '#664D03',
-                padding: '2px'
-              }}
-            >
-              {starredStrategies.has(`${scenarioId}-prevention`) ? '★' : '☆'}
-            </button>
-            <button
-              onClick={() => toggleTried(`${scenarioId}-prevention`)}
-              style={{
-                backgroundColor: 'transparent',
-                border: 'none',
-                fontSize: '14px',
-                cursor: 'pointer',
-                color: triedStrategies.has(`${scenarioId}-prevention`) ? '#FF9800' : '#664D03',
-                padding: '2px'
-              }}
-            >
-              {triedStrategies.has(`${scenarioId}-prevention`) ? '✓' : '○'}
-            </button>
-          </div>
-          
-          <div style={{ flex: 1 }}>
-            <div style={{
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#664D03',
-              marginBottom: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}>
-              <span>🛡️</span> Prevention
-            </div>
-            <div style={{
-              fontSize: '14px',
-              color: '#664D03',
-              lineHeight: '1.5'
-            }}>
-              {scenario.prevention}
-            </div>
-          </div>
-          
-          <button
-            onClick={() => dismissStrategy(`${scenarioId}-prevention`)}
-            style={{
-              backgroundColor: 'transparent',
-              border: 'none',
-              fontSize: '14px',
-              cursor: 'pointer',
-              color: '#664D03',
-              padding: '2px',
-              flexShrink: 0
-            }}
-          >
-            ✕
-          </button>
-        </div>
-      )}
-
-      {/* Scripts Section - Larger and better paired */}
-      {scenario.scripts && (
-        <div style={{ marginBottom: '16px' }}>
-          <h4 style={{
-            fontSize: '18px',
-            fontWeight: '600',
-            color: theme.textPrimary,
-            marginBottom: '16px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}>
-            <span>💬</span> What to Say vs. What NOT to Say
-          </h4>
-          
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '16px',
-            marginBottom: '12px'
-          }}>
-            {/* Do Say - Larger */}
-            {scenario.scripts.doSay && (
-              <div style={{
-                backgroundColor: '#E8F5E8',
-                borderRadius: '16px',
-                padding: '20px',
-                border: '3px solid #4CAF50'
-              }}>
-                <div style={{
-                  fontSize: '16px',
-                  fontWeight: '700',
-                  color: '#2E7D32',
-                  marginBottom: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}>
-                  <span style={{ fontSize: '20px' }}>✅</span> DO Say
-                </div>
-                {scenario.scripts.doSay.map((script, index) => (
-                  <div
-                    key={index}
-                    ref={el => strategyRefs.current[`${scenarioId}-doSay-${index}`] = el}
-                    style={{
-                      fontSize: '15px',
-                      color: '#2E7D32',
-                      marginBottom: '12px',
-                      paddingLeft: '20px',
-                      position: 'relative',
-                      lineHeight: '1.5',
-                      fontStyle: 'italic',
-                      fontWeight: '500'
-                    }}
-                  >
-                    <span style={{
-                      position: 'absolute',
-                      left: 0,
-                      color: '#4CAF50',
-                      fontSize: '16px'
-                    }}>•</span>
-                    &quot;{script}&quot;
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Don't Say - Larger */}
-            {scenario.scripts.dontSay && (
-              <div style={{
-                backgroundColor: '#FFE4E1',
-                borderRadius: '16px',
-                padding: '20px',
-                border: '3px solid #F44336'
-              }}>
-                <div style={{
-                  fontSize: '16px',
-                  fontWeight: '700',
-                  color: '#C62828',
-                  marginBottom: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}>
-                  <span style={{ fontSize: '20px' }}>❌</span> DON&apos;T Say
-                </div>
-                {scenario.scripts.dontSay.map((script, index) => (
-                  <div
-                    key={index}
-                    ref={el => strategyRefs.current[`${scenarioId}-dontSay-${index}`] = el}
-                    style={{
-                      fontSize: '15px',
-                      color: '#C62828',
-                      marginBottom: '12px',
-                      paddingLeft: '20px',
-                      position: 'relative',
-                      lineHeight: '1.5',
-                      fontStyle: 'italic',
-                      fontWeight: '500'
-                    }}
-                  >
-                    <span style={{
-                      position: 'absolute',
-                      left: 0,
-                      color: '#F44336',
-                      fontSize: '16px'
-                    }}>•</span>
-                    &quot;{script}&quot;
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Gentle Approaches */}
-      {scenario.gentleApproaches && (
-        <div style={{ marginBottom: '16px' }}>
-          <h4 style={{
-            fontSize: '16px',
-            fontWeight: '600',
-            color: theme.textPrimary,
-            marginBottom: '12px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}>
-            <span>🌟</span> Gentle Approaches
-          </h4>
-          
-          {scenario.gentleApproaches.map((approach, index) => {
-            const approachId = `${scenarioId}-approach-${index}`;
-            const isStarred = starredStrategies.has(approachId);
-            const isTried = triedStrategies.has(approachId);
-            const isDismissed = dismissedStrategies.has(approachId);
-            
-            if (isDismissed) return null;
-            
-            return (
-              <div
-                key={index}
-                ref={el => strategyRefs.current[approachId] = el}
-                style={{
-                  backgroundColor: `${theme.primary}10`,
-                  borderRadius: '8px',
-                  padding: '12px',
-                  marginBottom: '8px',
-                  fontSize: '14px',
-                  color: theme.textPrimary,
-                  lineHeight: '1.5',
-                  display: 'flex',
-                  alignItems: 'start',
-                  gap: '8px'
-                }}
-              >
-                {/* Left side - Star/Try buttons */}
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  flexShrink: 0
-                }}>
-                  <button
-                    onClick={() => toggleStar(approachId)}
-                    style={{
-                      backgroundColor: 'transparent',
-                      border: 'none',
-                      fontSize: '16px',
-                      cursor: 'pointer',
-                      color: isStarred ? '#FFD700' : theme.textSecondary,
-                      padding: '2px'
-                    }}
-                  >
-                    {isStarred ? '★' : '☆'}
-                  </button>
-                  <button
-                    onClick={() => toggleTried(approachId)}
-                    style={{
-                      backgroundColor: 'transparent',
-                      border: 'none',
-                      fontSize: '14px',
-                      cursor: 'pointer',
-                      color: isTried ? theme.primary : theme.textSecondary,
-                      padding: '2px'
-                    }}
-                  >
-                    {isTried ? '✓' : '○'}
-                  </button>
-                </div>
-                
-                <span style={{ flex: 1 }}>{approach}</span>
-                
-                <button
-                  onClick={() => dismissStrategy(approachId)}
-                  style={{
-                    backgroundColor: 'transparent',
-                    border: 'none',
-                    fontSize: '14px',
-                    cursor: 'pointer',
-                    color: theme.textSecondary,
-                    padding: '2px',
-                    flexShrink: 0
-                  }}
-                >
-                  ✕
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Practical Tips */}
-      {scenario.practicalTips && (
-        <div style={{ marginBottom: '16px' }}>
-          <h4 style={{
-            fontSize: '16px',
-            fontWeight: '600',
-            color: theme.textPrimary,
-            marginBottom: '12px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}>
-            <span>💡</span> Practical Tips
-          </h4>
-          
-          {scenario.practicalTips.map((tip, index) => {
-            const tipId = `${scenarioId}-tip-${index}`;
-            const isStarred = starredStrategies.has(tipId);
-            const isTried = triedStrategies.has(tipId);
-            const isDismissed = dismissedStrategies.has(tipId);
-            
-            if (isDismissed) return null;
-            
-            return (
-              <div
-                key={index}
-                ref={el => strategyRefs.current[tipId] = el}
-                style={{
-                  backgroundColor: `${theme.primary}10`,
-                  borderRadius: '8px',
-                  padding: '12px',
-                  marginBottom: '8px',
-                  fontSize: '14px',
-                  color: theme.textPrimary,
-                  lineHeight: '1.5',
-                  display: 'flex',
-                  alignItems: 'start',
-                  gap: '8px'
-                }}
-              >
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  flexShrink: 0
-                }}>
-                  <button
-                    onClick={() => toggleStar(tipId)}
-                    style={{
-                      backgroundColor: 'transparent',
-                      border: 'none',
-                      fontSize: '16px',
-                      cursor: 'pointer',
-                      color: isStarred ? '#FFD700' : theme.textSecondary,
-                      padding: '2px'
-                    }}
-                  >
-                    {isStarred ? '★' : '☆'}
-                  </button>
-                  <button
-                    onClick={() => toggleTried(tipId)}
-                    style={{
-                      backgroundColor: 'transparent',
-                      border: 'none',
-                      fontSize: '14px',
-                      cursor: 'pointer',
-                      color: isTried ? theme.primary : theme.textSecondary,
-                      padding: '2px'
-                    }}
-                  >
-                    {isTried ? '✓' : '○'}
-                  </button>
-                </div>
-                
-                <span style={{ flex: 1 }}>{tip}</span>
-                
-                <button
-                  onClick={() => dismissStrategy(tipId)}
-                  style={{
-                    backgroundColor: 'transparent',
-                    border: 'none',
-                    fontSize: '14px',
-                    cursor: 'pointer',
-                    color: theme.textSecondary,
-                    padding: '2px',
-                    flexShrink: 0
-                  }}
-                >
-                  ✕
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Why This Works */}
-      {scenario.whyThisWorks && (
-        <div style={{
-          backgroundColor: `${theme.secondary}20`,
-          borderRadius: '12px',
-          padding: '16px',
-          marginTop: '16px'
-        }}>
-          <div style={{
-            fontSize: '14px',
-            fontWeight: '600',
-            color: theme.primary,
-            marginBottom: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}>
-            <span>💡</span> Why This Works
-          </div>
-          <div style={{
-            fontSize: '14px',
-            color: theme.textPrimary,
-            lineHeight: '1.5'
-          }}>
-            {scenario.whyThisWorks}
-          </div>
-        </div>
-      )}
-
-      {/* When to Worry */}
-      {scenario.whenToWorry && (
-        <div style={{
-          backgroundColor: '#FFE4E1',
-          border: '2px solid #F44336',
-          borderRadius: '12px',
-          padding: '16px',
-          marginTop: '16px'
-        }}>
-          <div style={{
-            fontSize: '14px',
-            fontWeight: '600',
-            color: '#C62828',
-            marginBottom: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}>
-            <span>⚠️</span> When to Seek Additional Support
-          </div>
-          <div style={{
-            fontSize: '14px',
-            color: '#C62828',
-            lineHeight: '1.5'
-          }}>
-            {scenario.whenToWorry}
-          </div>
-        </div>
-      )}
-    </div>
   );
 }
