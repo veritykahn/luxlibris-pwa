@@ -330,7 +330,7 @@ export default function MyStrategiesTab({
         
         {triedItems.length === 0 ? (
           <p style={{ color: theme.textSecondary, fontStyle: 'italic' }}>
-            No tried strategies yet. Mark strategies you've tested!
+            No tried strategies yet. Mark strategies you&apos;ve tested!
           </p>
         ) : (
           <div style={{ display: 'grid', gap: '12px' }}>

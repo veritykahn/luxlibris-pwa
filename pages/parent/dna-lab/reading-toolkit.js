@@ -1196,9 +1196,9 @@ export default function ReadingToolkit() {
                 ) : searchQuery ? (
                   <div style={{ textAlign: 'center', color: luxTheme.textSecondary, padding: '40px' }}>
                     <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔍</div>
-                    <p>No strategies found for "{searchQuery}"</p>
+                    <p>No strategies found for &quot;{searchQuery}&quot;</p>
                     <p style={{ fontSize: '12px', marginTop: '8px' }}>
-                      Try different keywords like "won't read", "battles", or "pressure"
+                      Try different keywords like &quot;won't read&quot;, &quot;battles&quot;, or &quot;pressure&quot;
                     </p>
                   </div>
                 ) : (

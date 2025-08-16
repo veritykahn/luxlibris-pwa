@@ -385,7 +385,7 @@ function ScenarioDetails({
                       color: '#4CAF50',
                       fontSize: '16px'
                     }}>•</span>
-                    "{script}"
+                    &quot;{script}&quot;
                   </div>
                 ))}
               </div>
@@ -408,7 +408,7 @@ function ScenarioDetails({
                   alignItems: 'center',
                   gap: '8px'
                 }}>
-                  <span style={{ fontSize: '20px' }}>❌</span> DON'T Say
+                  <span style={{ fontSize: '20px' }}>❌</span> DON&apos;T Say
                 </div>
                 {scenario.scripts.dontSay.map((script, index) => (
                   <div
@@ -431,7 +431,7 @@ function ScenarioDetails({
                       color: '#F44336',
                       fontSize: '16px'
                     }}>•</span>
-                    "{script}"
+                    &quot;{script}&quot;
                   </div>
                 ))}
               </div>
