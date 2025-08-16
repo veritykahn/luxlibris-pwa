@@ -1198,7 +1198,7 @@ export default function ReadingToolkit() {
                     <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔍</div>
                     <p>No strategies found for &quot;{searchQuery}&quot;</p>
                     <p style={{ fontSize: '12px', marginTop: '8px' }}>
-                      Try different keywords like &quot;won't read&quot;, &quot;battles&quot;, or &quot;pressure&quot;
+                      Try different keywords like &quot;won&apos;t read&quot;, &quot;battles&quot;, or &quot;pressure&quot;
                     </p>
                   </div>
                 ) : (
