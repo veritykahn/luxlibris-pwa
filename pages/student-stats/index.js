@@ -7,6 +7,7 @@ import { getStudentDataEntities, updateStudentDataEntities } from '../../lib/fir
 import { awardBadgeXP } from '../../lib/xp-management'; // ADD THIS LINE
 import { getCurrentWeekBadge, getBadgeProgress, getEarnedBadges, getLevelProgress, BADGE_CALENDAR } from '../../lib/badge-system';
 import { calculateReadingPersonality, shouldShowFirstBookCelebration, unlockCertificate } from '../../lib/reading-personality';
+import { getTheme, getSeasonalThemeAnnouncement } from '../../lib/themes';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import Head from 'next/head';
@@ -36,98 +37,8 @@ export default function StudentStatsMain() {
   const [levelProgress, setLevelProgress] = useState(null);
   const [currentWeekBadge, setCurrentWeekBadge] = useState(null);
   const [funTidbits, setFunTidbits] = useState([]);
-  const [weeklyXP, setWeeklyXP] = useState(0);
-  // Theme definitions
-  const themes = useMemo(() => ({
-    classic_lux: {
-      name: 'Lux Libris Classic',
-      assetPrefix: 'classic_lux',
-      primary: '#ADD4EA',
-      secondary: '#C3E0DE',
-      accent: '#A1E5DB',
-      background: '#FFFCF5',
-      surface: '#FFFFFF',
-      textPrimary: '#223848',
-      textSecondary: '#556B7A'
-    },
-    darkwood_sports: {
-      name: 'Athletic Champion',
-      assetPrefix: 'darkwood_sports',
-      primary: '#2F5F5F',
-      secondary: '#8B2635',
-      accent: '#F5DEB3',
-      background: '#F5F5DC',
-      surface: '#FFF8DC',
-      textPrimary: '#2F1B14',
-      textSecondary: '#5D4037'
-    },
-    lavender_space: {
-  name: 'Cosmic Explorer',
-  assetPrefix: 'lavender_space',
-  primary: '#8B7AA8',      // Darkened from #9C88C4
-  secondary: '#9B85C4',    // Darkened from #B19CD9
-  accent: '#C8B3E8',       // Darkened from #E1D5F7
-  background: '#2A1B3D',   // Keep dark background
-  surface: '#3D2B54',      // Keep
-  textPrimary: '#E8DEFF',  // Slightly brightened for dark bg
-  textSecondary: '#B8A6D9' // Slightly adjusted
-},
-    mint_music: {
-      name: 'Musical Harmony',
-      assetPrefix: 'mint_music',
-      primary: '#B8E6B8',
-      secondary: '#FFB3BA',
-      accent: '#FFCCCB',
-      background: '#FEFEFE',
-      surface: '#F8FDF8',
-      textPrimary: '#2E4739',
-      textSecondary: '#4A6B57'
-    },
-    pink_plushies: {
-      name: 'Kawaii Dreams',
-      assetPrefix: 'pink_plushies',
-      primary: '#FFB6C1',
-      secondary: '#FFC0CB',
-      accent: '#FFE4E1',
-      background: '#FFF0F5',
-      surface: '#FFE4E6',
-      textPrimary: '#4A2C2A',
-      textSecondary: '#8B4B5C'
-    },
-    teal_anime: {
-      name: 'Otaku Paradise',
-      assetPrefix: 'teal_anime',
-      primary: '#20B2AA',
-      secondary: '#48D1CC',
-      accent: '#7FFFD4',
-      background: '#E0FFFF',
-      surface: '#AFEEEE',
-      textPrimary: '#2F4F4F',
-      textSecondary: '#5F9EA0'
-    },
-    white_nature: {
-      name: 'Pure Serenity',
-      assetPrefix: 'white_nature',
-      primary: '#6B8E6B',
-      secondary: '#D2B48C',
-      accent: '#F5F5DC',
-      background: '#FFFEF8',
-      surface: '#FFFFFF',
-      textPrimary: '#2F4F2F',
-      textSecondary: '#556B2F'
-    },
-    little_luminaries: {
-  name: 'Luxlings™',
-  assetPrefix: 'little_luminaries',
-  primary: '#000000',      // Lightened grey from #666666
-  secondary: '#000000',    // Keep black
-  accent: '#E8E8E8',       // Keep
-  background: '#FFFFFF',   // Keep white
-  surface: '#FAFAFA',      // Keep
-  textPrimary: '#8B6914',  // Darkened gold from #B8860B
-  textSecondary: '#606060' // Darkened from #AAAAAA for better contrast
-}
-  }), []);
+ const [weeklyXP, setWeeklyXP] = useState(0);
+  const [seasonalThemeAlert, setSeasonalThemeAlert] = useState(null);
   const navMenuItems = useMemo(() => [
     { name: 'Dashboard', path: '/student-dashboard', icon: '⌂' },
     { 
@@ -781,6 +692,7 @@ if (sessionDay === 0 || sessionDay === 6) weekendSessions++;
         setShowBadgeChallenge(false);
         setShowSuccess('');
         setShowBadgeNotification(false);
+        setSeasonalThemeAlert(null); // ADD THIS LINE
       }
     };
     if (showNavMenu || showStatsDropdown || showFirstBookCelebration || showBraggingRights || showBadgeChallenge || showBadgeNotification) {
@@ -1075,9 +987,18 @@ if (sessionDay === 0 || sessionDay === 6) weekendSessions++;
       
       setStudentData(firebaseStudentData);
       
+      // UPDATED: Use getTheme instead of themes object
       const selectedThemeKey = firebaseStudentData.selectedTheme || 'classic_lux';
-      const selectedTheme = themes[selectedThemeKey];
-      setCurrentTheme(selectedTheme);
+      const theme = getTheme(selectedThemeKey);
+      setCurrentTheme(theme);
+      
+      // ADD: Check for seasonal themes
+      const seasonalAnnouncements = getSeasonalThemeAnnouncement();
+      if (seasonalAnnouncements.length > 0 && !firebaseStudentData.selectedTheme) {
+        // Show seasonal theme notification if user hasn't selected a theme
+        setSeasonalThemeAlert(seasonalAnnouncements[0]);
+        setTimeout(() => setSeasonalThemeAlert(null), 5000);
+      }
       
       // Load current week's badge challenge
       const weekBadge = getCurrentWeekBadge();
@@ -1105,7 +1026,7 @@ if (sessionDay === 0 || sessionDay === 6) weekendSessions++;
     }
     
     setIsLoading(false);
-  }, [user, router, themes, calculateQuickStats]);
+  }, [user, router, calculateQuickStats]);
   // Generate fun tidbits after data loads
   useEffect(() => {
     if (studentData && quickStats && earnedBadges && levelProgress) {
@@ -1276,6 +1197,33 @@ if (sessionDay === 0 || sessionDay === 6) weekendSessions++;
             animation: 'slideInDown 0.3s ease-out'
           }}>
             {showSuccess}
+          </div>
+        )}
+        
+        {/* SEASONAL THEME NOTIFICATION */}    {/* <-- ADD THIS ENTIRE BLOCK HERE */}
+        {seasonalThemeAlert && (
+          <div style={{
+            position: 'fixed',
+            top: '20px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: currentTheme.primary,
+            color: 'white',
+            padding: '12px 24px',
+            borderRadius: '24px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+            zIndex: 1002,
+            fontSize: '14px',
+            fontWeight: '600',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            cursor: 'pointer',
+            animation: 'slideInDown 0.3s ease-out'
+          }}
+          onClick={() => router.push('/student-settings')}
+          >
+            {seasonalThemeAlert.icon} {seasonalThemeAlert.message} Tap to use!
           </div>
         )}
         
@@ -2499,38 +2447,40 @@ if (sessionDay === 0 || sessionDay === 6) weekendSessions++;
                       </div>
                     </div>
                     {/* Progress Tracking */}
-                    {challengeProgress && (
-                      <div style={{
-                        backgroundColor: `${currentTheme.secondary}15`,
-                        borderRadius: '12px',
-                        padding: '12px',
-                        marginBottom: '16px',
-                        border: `2px solid ${currentTheme.secondary}30`
-                      }}>
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          marginBottom: '8px'
-                        }}>
-                          <div style={{
-                            fontSize: '14px',
-                            fontWeight: '600',
-                            color: currentTheme.textPrimary,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px'
-                          }}>
-                            📊 Progress: {challengeProgress.current}/{challengeProgress.target}
-                          </div>
-                          <div style={{
-                            fontSize: '13px',
-                            color: challengeProgress.completed ? '#4CAF50' : currentTheme.textSecondary,
-                            fontWeight: '600'
-                          }}>
-                            {challengeProgress.completed ? '✅ Complete!' : `${Math.round(challengeProgress.percentage)}%`}
-                          </div>
-                        </div>
+{challengeProgress && (
+  <div style={{
+    backgroundColor: `${currentTheme.secondary}15`,
+    borderRadius: '12px',
+    padding: '12px',
+    marginBottom: '16px',
+    border: `2px solid ${currentTheme.secondary}30`
+  }}>
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: '8px'
+    }}>
+      <div style={{
+        fontSize: '14px',
+        fontWeight: '600',
+        // FIX: Use dark text for lavender space theme
+        color: currentTheme.assetPrefix === 'lavender_space' ? '#2A1B3D' : currentTheme.textPrimary,
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px'
+      }}>
+        📊 Progress: {challengeProgress.current}/{challengeProgress.target}
+      </div>
+      <div style={{
+        fontSize: '13px',
+        // FIX: Use dark text for lavender space theme
+        color: challengeProgress.completed ? '#4CAF50' : (currentTheme.assetPrefix === 'lavender_space' ? '#4A148C' : currentTheme.textSecondary),
+        fontWeight: '600'
+      }}>
+        {challengeProgress.completed ? '✅ Complete!' : `${Math.round(challengeProgress.percentage)}%`}
+      </div>
+    </div>
                         
                         <div style={{
                           height: '8px',
@@ -2551,26 +2501,28 @@ if (sessionDay === 0 || sessionDay === 6) weekendSessions++;
                         </div>
                         
                         <div style={{
-                          fontSize: '11px',
-                          color: currentTheme.textSecondary,
-                          marginBottom: '6px'
-                        }}>
-                          {challengeProgress.description}
-                        </div>
+  fontSize: '11px',
+  // FIX: Use dark text for lavender space theme
+  color: currentTheme.assetPrefix === 'lavender_space' ? '#6A4C93' : currentTheme.textSecondary,
+  marginBottom: '6px'
+}}>
+  {challengeProgress.description}
+</div>
                         
                         <div style={{
-                          padding: '6px 8px',
-                          backgroundColor: 'rgba(255,255,255,0.5)',
-                          borderRadius: '6px',
-                          fontSize: '10px',
-                          color: currentTheme.textSecondary,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          flexWrap: 'wrap',
-                          gap: '4px'
-                        }}>
-                          <span>📈 {challengeProgress.sessionsThisWeek} sessions • {challengeProgress.daysWithReading} days • {challengeProgress.totalMinutes}min</span>
+  padding: '6px 8px',
+  backgroundColor: 'rgba(255,255,255,0.5)',
+  borderRadius: '6px',
+  fontSize: '10px',
+  // FIX: Use dark text for lavender space theme
+  color: currentTheme.assetPrefix === 'lavender_space' ? '#6A4C93' : currentTheme.textSecondary,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  flexWrap: 'wrap',
+  gap: '4px'
+}}>
+  <span>📈 {challengeProgress.sessionsThisWeek} sessions • {challengeProgress.daysWithReading} days • {challengeProgress.totalMinutes}min</span>
                           {challengeProgress.hasReadToday && <span style={{ color: '#4CAF50', fontWeight: '600' }}>✅ Read today!</span>}
                         </div>
                       </div>

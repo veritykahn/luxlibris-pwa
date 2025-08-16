@@ -1,4 +1,4 @@
-// pages/student-stats/family-battle.js - FIXED VERSION
+// pages/student-stats/family-battle.js - ENHANCED VERSION
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../contexts/AuthContext';
@@ -10,6 +10,9 @@ import Head from 'next/head';
 
 // Import modal component
 import FamilyBattleResultsModal from '../../components/FamilyBattleResultsModal';
+
+// ADD THIS: Import theme system
+import { getTheme, getSeasonalThemeAnnouncement } from '../../lib/themes';
 
 // Import sync functions - UPDATED to include syncFamilyBattleData
 import {
@@ -26,6 +29,11 @@ import {
   getLocalDateString,
   getProgramWeekStart 
 } from '../../lib/family-battle-system';
+
+const pluralize = (count, singular, plural = null) => {
+  const pluralWord = plural || `${singular}s`;
+  return count === 1 ? `${count} ${singular}` : `${count} ${pluralWord}`;
+};
 
 // Sunday Results Button Component
 function SundayResultsButton({ onClick, winner, margin, weekNumber }) {
@@ -194,11 +202,8 @@ function StoneColdjaneAustenHelper({ show, battleState, winner, onClose, current
       width: '90vw',
       animation: 'slideInUp 0.5s ease-out',
       boxShadow: isPrayerful
-        ? `0 8px 32px rgba(138, 43, 226, 0.2), 0 0 0 2px #E6E6FA`
-        : `0 8px 32px rgba(0,0,0,0.25), 0 0 0 2px ${currentTheme.accent}`,
-      border: isPrayerful 
-        ? `3px solid #DDA0DD`
-        : `3px solid ${currentTheme.primary}`,
+        ? `0 8px 32px rgba(138, 43, 226, 0.2)`
+        : `0 8px 32px rgba(0,0,0,0.15)`,
       zIndex: 1000,
       display: 'flex',
       alignItems: 'flex-start',
@@ -234,10 +239,7 @@ function StoneColdjaneAustenHelper({ show, battleState, winner, onClose, current
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '28px',
-            border: isPrayerful 
-              ? `2px solid #DDA0DD`
-              : `2px solid ${currentTheme.primary}`
+            fontSize: '28px'
           }}>
             {isPrayerful ? '🙏' : '👩‍🎓'}
           </div>
@@ -298,6 +300,20 @@ function StoneColdjaneAustenHelper({ show, battleState, winner, onClose, current
 function BattleArena({ battleData, currentTheme, studentData }) {
   if (!battleData) return null;
 
+  // ADD THIS: Helper for high contrast text
+  const getContrastText = (bgColor) => {
+    // For dark backgrounds/themes, use white or very light text
+    const darkThemes = ['Cosmic Explorer', 'Luxlings™ Classic', 'Spooky Halloween', 'Winter Wonderland'];
+    const darkBgColors = ['#2A1B3D', '#000000', '#8B7AA8', '#9B85C4', '#2F5F5F', '#8B2635'];
+    
+    if (darkThemes.includes(currentTheme.name) || darkBgColors.includes(bgColor)) {
+      return '#FFFFFF';  // Pure white for dark backgrounds
+    }
+    
+    // For light/bright backgrounds, use very dark text
+    return '#000000';  // Pure black for light backgrounds
+  };
+
   // Debug logging
   console.log('🎯 Battle Data:', {
     childrenMinutes: battleData.childrenMinutes,
@@ -350,7 +366,7 @@ function BattleArena({ battleData, currentTheme, studentData }) {
     } else {
       // During the week (Monday-Saturday)
       if (childrenWinning && battleData.margin > 0) {
-        return `🔥 Kids leading by ${battleData.margin} minutes! Keep reading to stay ahead!`;
+        return `🔥 Kids leading by ${pluralize(battleData.margin, 'minute')}! Keep reading to stay ahead!`;
       } else if (parentWinning && battleData.margin > 0) {
         return `Parents ahead by ${battleData.margin} minutes! Time to catch up! 📚`;
       } else if (isTie && battleData.totalMinutes > 0) {
@@ -402,7 +418,7 @@ function BattleArena({ battleData, currentTheme, studentData }) {
           color: currentTheme.textSecondary,
           margin: 0
         }}>
-          Week {battleData.weekNumber} • {isSunday ? '🏆 RESULTS DAY!' : `${7 - dayOfWeek} days until results`}
+          Week {battleData.weekNumber} • {isSunday ? '🏆 RESULTS DAY!' : `${pluralize(7 - dayOfWeek, 'day')} until results`}
         </p>
       </div>
 
@@ -417,15 +433,17 @@ function BattleArena({ battleData, currentTheme, studentData }) {
       }}>
         {/* KIDS CORNER */}
         <div style={{
-          background: childrenWinning 
-            ? `linear-gradient(145deg, #4ECDC440, #4ECDC420, #FFFFFF)`
-            : `linear-gradient(145deg, ${currentTheme.surface}, #4ECDC410, #FFFFFF)`,
+          backgroundColor: childrenWinning 
+            ? currentTheme.primary
+            : `${currentTheme.primary}40`,
           borderRadius: '16px',
           padding: '20px',
           textAlign: 'center',
-          border: childrenWinning ? '3px solid #4ECDC4' : '2px solid #E5E7EB',
+          border: childrenWinning 
+            ? `3px solid #4ECDC4`  // Fixed teal/cyan color for winner
+            : `2px solid ${currentTheme.primary}60`,
           boxShadow: childrenWinning 
-            ? '0 8px 25px rgba(78, 205, 196, 0.4)'
+            ? `0 0 15px #4ECDC460, 0 4px 12px rgba(0,0,0,0.15)`  // Subtle glow effect
             : '0 2px 8px rgba(0,0,0,0.1)',
           position: 'relative',
           transform: childrenWinning ? 'scale(1.02)' : 'scale(1)',
@@ -434,7 +452,9 @@ function BattleArena({ battleData, currentTheme, studentData }) {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          minHeight: '280px'
+          minHeight: '280px',
+          // ADD THIS: Pulsing animation for winner
+          animation: childrenWinning ? 'winnerPulse 2s ease-in-out infinite' : 'none'
         }}>
           {/* CROWN FOR WINNING TEAM - FLOATING ABOVE */}
           {childrenWinning && (
@@ -462,7 +482,7 @@ function BattleArena({ battleData, currentTheme, studentData }) {
           <h3 style={{
             fontSize: 'clamp(14px, 4vw, 16px)',
             fontWeight: '600',
-            color: currentTheme.textPrimary,
+            color: getContrastText(childrenWinning ? currentTheme.primary : currentTheme.primary),  // HIGH CONTRAST
             marginBottom: '4px'
           }}>
             Kids Squad
@@ -470,21 +490,23 @@ function BattleArena({ battleData, currentTheme, studentData }) {
           <div style={{
             fontSize: 'clamp(24px, 8vw, 28px)',
             fontWeight: 'bold',
-            color: '#4ECDC4',
-            marginBottom: '4px'
+            color: getContrastText(childrenWinning ? currentTheme.primary : currentTheme.primary),  // HIGH CONTRAST
+            marginBottom: '4px',
+            textShadow: childrenWinning ? '0 0 10px rgba(0,0,0,0.3)' : 'none'  // Add shadow for extra pop
           }}>
             {battleData.childrenMinutes}
           </div>
           <div style={{
             fontSize: 'clamp(10px, 3vw, 12px)',
-            color: currentTheme.textSecondary,
-            marginBottom: '8px'
+            color: getContrastText(childrenWinning ? currentTheme.primary : currentTheme.primary),  // HIGH CONTRAST
+            marginBottom: '8px',
+            opacity: childrenWinning ? 0.9 : 0.8
           }}>
             minutes this week
           </div>
           
           <div style={{
-            backgroundColor: '#4ECDC420',
+            backgroundColor: `${currentTheme.surface}90`,  // Semi-transparent white background
             borderRadius: '8px',
             padding: '8px',
             fontSize: 'clamp(10px, 3vw, 11px)',
@@ -497,7 +519,7 @@ function BattleArena({ battleData, currentTheme, studentData }) {
             marginTop: '12px',
             fontSize: 'clamp(10px, 3vw, 11px)',
             fontWeight: '600',
-            color: '#4ECDC4',
+            color: getContrastText(childrenWinning ? currentTheme.primary : currentTheme.primary),  // HIGH CONTRAST
             fontStyle: 'italic'
           }}>
             {childrenWinning && isSunday ? "VICTORIOUS! 🎉" :
@@ -509,15 +531,17 @@ function BattleArena({ battleData, currentTheme, studentData }) {
         
         {/* PARENTS CORNER */}
         <div style={{
-          background: parentWinning 
-            ? `linear-gradient(145deg, #FF6B6B40, #FF6B6B20, #FFFFFF)`
-            : `linear-gradient(145deg, ${currentTheme.surface}, #FF6B6B10, #FFFFFF)`,
+          backgroundColor: parentWinning 
+            ? currentTheme.secondary
+            : `${currentTheme.secondary}40`,
           borderRadius: '16px',
           padding: '20px',
           textAlign: 'center',
-          border: parentWinning ? '3px solid #FF6B6B' : '2px solid #E5E7EB',
+          border: parentWinning 
+            ? `3px solid #4ECDC4`  // Fixed teal/cyan color for winner
+            : `2px solid ${currentTheme.secondary}60`,
           boxShadow: parentWinning 
-            ? '0 8px 25px rgba(255, 107, 107, 0.4)'
+            ? `0 0 15px #4ECDC460, 0 4px 12px rgba(0,0,0,0.15)`  // Subtle glow effect
             : '0 2px 8px rgba(0,0,0,0.1)',
           position: 'relative',
           transform: parentWinning ? 'scale(1.02)' : 'scale(1)',
@@ -526,7 +550,9 @@ function BattleArena({ battleData, currentTheme, studentData }) {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          minHeight: '280px'
+          minHeight: '280px',
+          // ADD THIS: Pulsing animation for winner
+          animation: parentWinning ? 'winnerPulse 2s ease-in-out infinite' : 'none'
         }}>
           {/* CROWN FOR WINNING TEAM - ABOVE EVERYTHING */}
           {parentWinning && (
@@ -550,7 +576,7 @@ function BattleArena({ battleData, currentTheme, studentData }) {
           <h3 style={{
             fontSize: 'clamp(14px, 4vw, 16px)',
             fontWeight: '600',
-            color: currentTheme.textPrimary,
+            color: getContrastText(parentWinning ? currentTheme.secondary : currentTheme.secondary),  // HIGH CONTRAST
             marginBottom: '4px'
           }}>
             Parent Power
@@ -558,15 +584,17 @@ function BattleArena({ battleData, currentTheme, studentData }) {
           <div style={{
             fontSize: 'clamp(24px, 8vw, 28px)',
             fontWeight: 'bold',
-            color: '#FF6B6B',
-            marginBottom: '4px'
+            color: getContrastText(parentWinning ? currentTheme.secondary : currentTheme.secondary),  // HIGH CONTRAST
+            marginBottom: '4px',
+            textShadow: parentWinning ? '0 0 10px rgba(0,0,0,0.3)' : 'none'  // Add shadow for extra pop
           }}>
             {battleData.parentMinutes}
           </div>
           <div style={{
             fontSize: 'clamp(10px, 3vw, 12px)',
-            color: currentTheme.textSecondary,
-            marginBottom: '16px'
+            color: getContrastText(parentWinning ? currentTheme.secondary : currentTheme.secondary),  // HIGH CONTRAST
+            marginBottom: '16px',
+            opacity: parentWinning ? 0.9 : 0.8
           }}>
             minutes this week
           </div>
@@ -575,7 +603,7 @@ function BattleArena({ battleData, currentTheme, studentData }) {
             marginTop: '12px',
             fontSize: 'clamp(10px, 3vw, 11px)',
             fontWeight: '600',
-            color: '#FF6B6B',
+            color: getContrastText(parentWinning ? currentTheme.secondary : currentTheme.secondary),  // HIGH CONTRAST
             fontStyle: 'italic'
           }}>
             {parentWinning && isSunday ? "Winners! 🏆" : 
@@ -644,104 +672,15 @@ export default function StudentFamilyBattleSimplified() {
   const [showJaneAusten, setShowJaneAusten] = useState(true);
   const [showResultsModal, setShowResultsModal] = useState(false);
   
+  // ADD THIS: State for seasonal theme notifications
+  const [seasonalThemeAlert, setSeasonalThemeAlert] = useState(null);
+  
   // Refs to prevent rapid refreshes
   const lastRefreshTime = useRef(0);
   const refreshIntervalRef = useRef(null);
 
   // Check if it's Sunday
   const isSunday = new Date().getDay() === 0;
-
-  // Theme definitions
-  const themes = useMemo(() => ({
-    classic_lux: {
-      name: 'Lux Libris Classic',
-      assetPrefix: 'classic_lux',
-      primary: '#ADD4EA',
-      secondary: '#C3E0DE',
-      accent: '#A1E5DB',
-      background: '#FFFCF5',
-      surface: '#FFFFFF',
-      textPrimary: '#223848',
-      textSecondary: '#556B7A'
-    },
-    darkwood_sports: {
-      name: 'Athletic Champion',
-      assetPrefix: 'darkwood_sports',
-      primary: '#2F5F5F',
-      secondary: '#8B2635',
-      accent: '#F5DEB3',
-      background: '#F5F5DC',
-      surface: '#FFF8DC',
-      textPrimary: '#2F1B14',
-      textSecondary: '#5D4037'
-    },
-    lavender_space: {
-      name: 'Cosmic Explorer',
-      assetPrefix: 'lavender_space',
-      primary: '#8B7AA8',
-      secondary: '#9B85C4',
-      accent: '#C8B3E8',
-      background: '#2A1B3D',
-      surface: '#3D2B54',
-      textPrimary: '#E8DEFF',
-      textSecondary: '#B8A6D9'
-    },
-    mint_music: {
-      name: 'Musical Harmony',
-      assetPrefix: 'mint_music',
-      primary: '#B8E6B8',
-      secondary: '#FFB3BA',
-      accent: '#FFCCCB',
-      background: '#FEFEFE',
-      surface: '#F8FDF8',
-      textPrimary: '#2E4739',
-      textSecondary: '#4A6B57'
-    },
-    pink_plushies: {
-      name: 'Kawaii Dreams',
-      assetPrefix: 'pink_plushies',
-      primary: '#FFB6C1',
-      secondary: '#FFC0CB',
-      accent: '#FFE4E1',
-      background: '#FFF0F5',
-      surface: '#FFE4E6',
-      textPrimary: '#4A2C2A',
-      textSecondary: '#8B4B5C'
-    },
-    teal_anime: {
-      name: 'Otaku Paradise',
-      assetPrefix: 'teal_anime',
-      primary: '#20B2AA',
-      secondary: '#48D1CC',
-      accent: '#7FFFD4',
-      background: '#E0FFFF',
-      surface: '#AFEEEE',
-      textPrimary: '#2F4F4F',
-      textSecondary: '#5F9EA0'
-    },
-    white_nature: {
-      name: 'Pure Serenity',
-      assetPrefix: 'white_nature',
-      primary: '#6B8E6B',
-      secondary: '#D2B48C',
-      accent: '#F5F5DC',
-      background: '#FFFEF8',
-      surface: '#FFFFFF',
-      textPrimary: '#2F4F2F',
-      textSecondary: '#556B2F'
-    },
-    little_luminaries: {
-      name: 'Luxlings™',
-      assetPrefix: 'little_luminaries',
-      primary: '#000000',
-      secondary: '#000000',
-      accent: '#E8E8E8',
-      background: '#FFFFFF',
-      surface: '#FAFAFA',
-      textPrimary: '#8B6914',
-      textSecondary: '#606060'
-    }
-  }), []);
 
   // Navigation menu items
   const navMenuItems = useMemo(() => [
@@ -828,15 +767,31 @@ export default function StudentFamilyBattleSimplified() {
         
         setStudentData(completeStudentData);
         
+        // UPDATED: Use getTheme instead of themes object
         const selectedThemeKey = completeStudentData.selectedTheme || 'classic_lux';
-        const selectedTheme = themes[selectedThemeKey];
+        const selectedTheme = getTheme(selectedThemeKey);
         setCurrentTheme(selectedTheme);
+        
+        // ADD: Check for seasonal themes
+        const seasonalAnnouncements = getSeasonalThemeAnnouncement();
+        if (seasonalAnnouncements.length > 0 && !completeStudentData.selectedTheme) {
+          setSeasonalThemeAlert(seasonalAnnouncements[0]);
+          setTimeout(() => setSeasonalThemeAlert(null), 5000);
+        }
       } else {
         setStudentData(firebaseStudentData);
         
+        // UPDATED: Use getTheme instead of themes object
         const selectedThemeKey = firebaseStudentData.selectedTheme || 'classic_lux';
-        const selectedTheme = themes[selectedThemeKey];
+        const selectedTheme = getTheme(selectedThemeKey);
         setCurrentTheme(selectedTheme);
+        
+        // ADD: Check for seasonal themes here too
+        const seasonalAnnouncements = getSeasonalThemeAnnouncement();
+        if (seasonalAnnouncements.length > 0 && !firebaseStudentData.selectedTheme) {
+          setSeasonalThemeAlert(seasonalAnnouncements[0]);
+          setTimeout(() => setSeasonalThemeAlert(null), 5000);
+        }
       }
       
     } catch (error) {
@@ -845,7 +800,7 @@ export default function StudentFamilyBattleSimplified() {
     }
     
     setIsLoading(false);
-  }, [user?.uid, router, themes]);
+  }, [user?.uid, router]);
 
   // Auto-show results modal on Sunday
   useEffect(() => {
@@ -1195,6 +1150,34 @@ export default function StudentFamilyBattleSimplified() {
             animation: 'slideInDown 0.3s ease-out'
           }}>
             {showSuccess}
+          </div>
+        )}
+        
+         {/* ADD THIS: Seasonal theme notification */}
+        {seasonalThemeAlert && (
+          <div 
+            style={{
+              position: 'fixed',
+              top: '20px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              backgroundColor: currentTheme.primary,
+              color: 'white',
+              padding: '12px 24px',
+              borderRadius: '24px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+              zIndex: 1002,
+              fontSize: '14px',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              cursor: 'pointer',
+              animation: 'slideInDown 0.5s ease-out'
+            }}
+            onClick={() => router.push('/student-settings')}
+          >
+            {seasonalThemeAlert.icon} {seasonalThemeAlert.message} Tap to use!
           </div>
         )}
         
@@ -1810,6 +1793,18 @@ export default function StudentFamilyBattleSimplified() {
           @keyframes spin {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
+          }
+          
+          /* ADD THIS NEW ANIMATION */
+          @keyframes winnerPulse {
+            0%, 100% { 
+              box-shadow: 0 0 15px #4ECDC460, 0 4px 12px rgba(0,0,0,0.15);
+              border-color: #4ECDC4;
+            }
+            50% { 
+              box-shadow: 0 0 20px #4ECDC480, 0 4px 16px rgba(0,0,0,0.2);
+              border-color: #4ECDC4;
+            }
           }
           
           @keyframes slideInUp {

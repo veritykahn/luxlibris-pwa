@@ -1,9 +1,10 @@
-// pages/student-onboarding.js - Complete Fixed Version with Input Validation
+// pages/student-onboarding.js - Complete Updated Version with Themes Library
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { db, getCurrentAcademicYear } from '../lib/firebase';
 import { collection, addDoc, getDocs, doc, getDoc } from 'firebase/firestore';
-import Head from 'next/head'
+import Head from 'next/head';
+import { baseThemes, getTheme } from '../lib/themes';
 
 export default function StudentOnboarding() {
   const router = useRouter();
@@ -30,90 +31,6 @@ export default function StudentOnboarding() {
     currentYearGoal: 10,
     selectedTheme: 'classic_lux'
   });
-
-  // Theme definitions
-  const themes = [
-    {
-      name: 'Lux Libris Classic',
-      assetPrefix: 'classic_lux',
-      primary: '#ADD4EA',
-      secondary: '#C3E0DE',
-      accent: '#A1E5DB',
-      background: '#FFFCF5',
-      surface: '#FFFFFF',
-      textPrimary: '#223848'
-    },
-    {
-      name: 'Athletic Champion',
-      assetPrefix: 'darkwood_sports',
-      primary: '#2F5F5F',
-      secondary: '#8B2635',
-      accent: '#F5DEB3',
-      background: '#F5F5DC',
-      surface: '#FFF8DC',
-      textPrimary: '#2F1B14'
-    },
-    {
-      name: 'Cosmic Explorer',
-      assetPrefix: 'lavender_space',
-      primary: '#8B7AA8',
-      secondary: '#9B85C4',
-      accent: '#C8B3E8',
-      background: '#2A1B3D',
-      surface: '#3D2B54',
-      textPrimary: '#E8DEFF',
-    },
-    {
-      name: 'Musical Harmony',
-      assetPrefix: 'mint_music',
-      primary: '#B8E6B8',
-      secondary: '#FFB3BA',
-      accent: '#FFCCCB',
-      background: '#FEFEFE',
-      surface: '#F8FDF8',
-      textPrimary: '#2E4739'
-    },
-    {
-      name: 'Kawaii Dreams',
-      assetPrefix: 'pink_plushies',
-      primary: '#FFB6C1',
-      secondary: '#FFC0CB',
-      accent: '#FFE4E1',
-      background: '#FFF0F5',
-      surface: '#FFE4E6',
-      textPrimary: '#4A2C2A'
-    },
-    {
-      name: 'Otaku Paradise',
-      assetPrefix: 'teal_anime',
-      primary: '#20B2AA',
-      secondary: '#48D1CC',
-      accent: '#7FFFD4',
-      background: '#E0FFFF',
-      surface: '#AFEEEE',
-      textPrimary: '#2F4F4F'
-    },
-    {
-      name: 'Pure Serenity',
-      assetPrefix: 'white_nature',
-      primary: '#6B8E6B',
-      secondary: '#D2B48C',
-      accent: '#F5F5DC',
-      background: '#FFFEF8',
-      surface: '#FFFFFF',
-      textPrimary: '#2F4F2F'
-    },
-    {
-      name: 'Luxlings™',
-      assetPrefix: 'little_luminaries',
-      primary: '#000000',
-      secondary: '#000000',
-      accent: '#E8E8E8',
-      background: '#FFFFFF',
-      surface: '#FAFAFA',
-      textPrimary: '#8B6914',
-    }
-  ];
 
   const grades = [4, 5, 6, 7, 8];
   const bookGoals = Array.from({length: 20}, (_, i) => i + 1);
@@ -329,7 +246,7 @@ export default function StudentOnboarding() {
     router.push(`/student-sign-in?${params.toString()}`);
   };
 
-  const selectedTheme = themes.find(theme => theme.assetPrefix === formData.selectedTheme);
+  const selectedTheme = getTheme(formData.selectedTheme);
 
   return (
     <>
@@ -586,7 +503,6 @@ export default function StudentOnboarding() {
               <ThemePage 
                 formData={formData} 
                 setFormData={setFormData} 
-                themes={themes} 
               />
             )}
           </div>
@@ -1397,8 +1313,10 @@ function GoalPage({ formData, setFormData, selectedTheme, bookGoals }) {
   );
 }
 
-function ThemePage({ formData, setFormData, themes }) {
-  const selectedTheme = themes.find(theme => theme.assetPrefix === formData.selectedTheme);
+function ThemePage({ formData, setFormData }) {
+  // Get themes from the library (base themes only for onboarding)
+  const themes = Object.values(baseThemes);
+  const selectedTheme = baseThemes[formData.selectedTheme] || baseThemes.classic_lux;
   
   return (
     <div style={{ maxWidth: '700px', margin: '0 auto' }}>
@@ -1511,6 +1429,7 @@ function ThemePage({ formData, setFormData, themes }) {
         })}
       </div>
       
+      {/* Updated message to include seasonal themes note */}
       <div style={{
         marginTop: '20px',
         padding: '16px',
@@ -1522,9 +1441,18 @@ function ThemePage({ formData, setFormData, themes }) {
         <p style={{
           fontSize: '14px',
           color: selectedTheme.textPrimary,
-          margin: 0
+          margin: '0 0 8px 0',
+          fontWeight: '600'
         }}>
           <strong>{selectedTheme.name}</strong> - Your bookshelf and trophy case will look amazing! 📚🏆
+        </p>
+        <p style={{
+          fontSize: '12px',
+          color: `${selectedTheme.textPrimary}99`,
+          margin: 0,
+          fontStyle: 'italic'
+        }}>
+          🎨 Special seasonal themes (Halloween 🎃, Christmas 🎄, and more) become available throughout the year in Settings!
         </p>
       </div>
     </div>

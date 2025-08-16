@@ -16,6 +16,8 @@ import {
 } from '../lib/badge-system';
 // NEW XP MANAGEMENT IMPORTS
 import { awardReadingXP, awardBadgeXP } from '../lib/xp-management';
+// THEME SYSTEM IMPORT
+import { getTheme, getSeasonalThemeAnnouncement } from '../lib/themes';
 
 export default function StudentHealthyHabits() {
   const router = useRouter();
@@ -66,6 +68,7 @@ export default function StudentHealthyHabits() {
   const [showSuccess, setShowSuccess] = useState('');
   const [showCompletionCelebration, setShowCompletionCelebration] = useState(false);
   const [showBookProgressModal, setShowBookProgressModal] = useState(false);
+  const [seasonalThemeAlert, setSeasonalThemeAlert] = useState(null);
   
   // Banking warning modal state
   const [showBankingWarning, setShowBankingWarning] = useState(false);
@@ -152,98 +155,6 @@ export default function StudentHealthyHabits() {
       console.log('Notification failed:', error);
     }
   }, [notificationsEnabled]);
-
-  // Theme definitions
-  const themes = useMemo(() => ({
-    classic_lux: {
-      name: 'Lux Libris Classic',
-      assetPrefix: 'classic_lux',
-      primary: '#ADD4EA',
-      secondary: '#C3E0DE',
-      accent: '#A1E5DB',
-      background: '#FFFCF5',
-      surface: '#FFFFFF',
-      textPrimary: '#223848',
-      textSecondary: '#556B7A'
-    },
-    darkwood_sports: {
-      name: 'Athletic Champion',
-      assetPrefix: 'darkwood_sports',
-      primary: '#2F5F5F',
-      secondary: '#8B2635',
-      accent: '#F5DEB3',
-      background: '#F5F5DC',
-      surface: '#FFF8DC',
-      textPrimary: '#2F1B14',
-      textSecondary: '#5D4037'
-    },
-    lavender_space: {
-      name: 'Cosmic Explorer',
-      assetPrefix: 'lavender_space',
-      primary: '#8B7AA8',
-      secondary: '#9B85C4',
-      accent: '#C8B3E8',
-      background: '#2A1B3D',
-      surface: '#3D2B54',
-      textPrimary: '#E8DEFF',
-      textSecondary: '#B8A6D9'
-    },
-    mint_music: {
-      name: 'Musical Harmony',
-      assetPrefix: 'mint_music',
-      primary: '#B8E6B8',
-      secondary: '#FFB3BA',
-      accent: '#FFCCCB',
-      background: '#FEFEFE',
-      surface: '#F8FDF8',
-      textPrimary: '#2E4739',
-      textSecondary: '#4A6B57'
-    },
-    pink_plushies: {
-      name: 'Kawaii Dreams',
-      assetPrefix: 'pink_plushies',
-      primary: '#FFB6C1',
-      secondary: '#FFC0CB',
-      accent: '#FFE4E1',
-      background: '#FFF0F5',
-      surface: '#FFE4E6',
-      textPrimary: '#4A2C2A',
-      textSecondary: '#8B4B5C'
-    },
-    teal_anime: {
-      name: 'Otaku Paradise',
-      assetPrefix: 'teal_anime',
-      primary: '#20B2AA',
-      secondary: '#48D1CC',
-      accent: '#7FFFD4',
-      background: '#E0FFFF',
-      surface: '#AFEEEE',
-      textPrimary: '#2F4F4F',
-      textSecondary: '#5F9EA0'
-    },
-    white_nature: {
-      name: 'Pure Serenity',
-      assetPrefix: 'white_nature',
-      primary: '#6B8E6B',
-      secondary: '#D2B48C',
-      accent: '#F5F5DC',
-      background: '#FFFEF8',
-      surface: '#FFFFFF',
-      textPrimary: '#2F4F2F',
-      textSecondary: '#556B2F'
-    },
-    little_luminaries: {
-      name: 'Luxlings™',
-      assetPrefix: 'little_luminaries',
-      primary: '#000000',
-      secondary: '#000000',
-      accent: '#E8E8E8',
-      background: '#FFFFFF',
-      surface: '#FAFAFA',
-      textPrimary: '#8B6914',
-      textSecondary: '#606060'
-    }
-  }), []);
 
   // Utility function to get local date string with consistent timezone handling
   const getLocalDateString = (date = new Date()) => {
@@ -704,17 +615,24 @@ export default function StudentHealthyHabits() {
   }, [studentData, timerDuration, todaysSessions, calculateReadingLevel, updateStreakData, currentBookId]);
 
   const loadHealthyHabitsData = useCallback(async () => {
-    try {
-      const firebaseStudentData = await getStudentDataEntities(user.uid);
-      if (!firebaseStudentData) {
-        router.push('/student-onboarding');
-        return;
-      }
+  try {
+    const firebaseStudentData = await getStudentDataEntities(user.uid);
+    if (!firebaseStudentData) {
+      router.push('/student-onboarding');
+      return;
+    }
 
-      setStudentData(firebaseStudentData);
-      const selectedThemeKey = firebaseStudentData.selectedTheme || 'classic_lux';
-      const selectedTheme = themes[selectedThemeKey];
-      setCurrentTheme(selectedTheme);
+    setStudentData(firebaseStudentData);
+    const selectedThemeKey = firebaseStudentData.selectedTheme || 'classic_lux';
+    const selectedTheme = getTheme(selectedThemeKey);  // NEW WAY - using getTheme
+    setCurrentTheme(selectedTheme);
+
+    // Check for seasonal themes and show notification
+    const seasonalAnnouncements = getSeasonalThemeAnnouncement();
+    if (seasonalAnnouncements.length > 0 && !firebaseStudentData.selectedTheme) {
+      setSeasonalThemeAlert(seasonalAnnouncements[0]);
+      setTimeout(() => setSeasonalThemeAlert(null), 5000);
+    }
 
       // Update timer duration in context
       const defaultDuration = firebaseStudentData.readingSettings?.defaultTimerDuration || 20;
@@ -726,7 +644,7 @@ export default function StudentHealthyHabits() {
       router.push('/student-dashboard');
     }
     setIsLoading(false);
-  }, [user, router, themes, loadReadingData, updateTimerDuration]);
+  }, [user, router, loadReadingData, updateTimerDuration]);
 
   // Load student data and reading data
   useEffect(() => {
@@ -2013,7 +1931,45 @@ export default function StudentHealthyHabits() {
           </div>
         )}
 
+        {/* SEASONAL THEME NOTIFICATION - ADD THIS ENTIRE BLOCK HERE */}
+        {seasonalThemeAlert && (
+          <div 
+            onClick={() => router.push('/student-settings')}
+            style={{
+              position: 'fixed',
+              top: '20px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              backgroundColor: currentTheme.primary,
+              color: 'white',
+              padding: '12px 24px',
+              borderRadius: '24px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+              zIndex: 1002,
+              fontSize: '14px',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              cursor: 'pointer',
+              animation: 'slideDown 0.5s ease'
+            }}
+          >
+            {seasonalThemeAlert.icon} {seasonalThemeAlert.message} Tap to use!
+          </div>
+        )}
+
         <style jsx>{`
+          @keyframes slideDown {
+            from {
+              transform: translateX(-50%) translateY(-100px);
+              opacity: 0;
+            }
+            to {
+              transform: translateX(-50%) translateY(0);
+              opacity: 1;
+            }
+          }
           @keyframes spin {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }

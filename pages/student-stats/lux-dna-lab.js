@@ -6,6 +6,7 @@ import { usePhaseAccess } from '../../hooks/usePhaseAccess';
 import { getStudentDataEntities, updateStudentDataEntities } from '../../lib/firebase';
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
+import { getTheme, getSeasonalThemeAnnouncement } from '../../lib/themes'; // ADD THIS LINE
 import Head from 'next/head';
 
 export default function LuxDnaLab() {
@@ -55,92 +56,11 @@ export default function LuxDnaLab() {
   const [showLearningStyleModal, setShowLearningStyleModal] = useState(false);
   const [isUnlockCelebrating, setIsUnlockCelebrating] = useState(false);
   const [isSaintResultsExpanded, setIsSaintResultsExpanded] = useState(false);
-const [isNomineeResultsExpanded, setIsNomineeResultsExpanded] = useState(false);
+  const [isNomineeResultsExpanded, setIsNomineeResultsExpanded] = useState(false);
+  const [seasonalThemeAlert, setSeasonalThemeAlert] = useState(null);
 
-  // Theme definitions (consistent with all other pages)
-  const themes = useMemo(() => ({
-    classic_lux: {
-      name: 'Lux Libris Classic',
-      primary: '#ADD4EA',
-      secondary: '#C3E0DE',
-      accent: '#A1E5DB',
-      background: '#FFFCF5',
-      surface: '#FFFFFF',
-      textPrimary: '#223848',
-      textSecondary: '#556B7A'
-    },
-    darkwood_sports: {
-      name: 'Athletic Champion',
-      primary: '#2F5F5F',
-      secondary: '#8B2635',
-      accent: '#F5DEB3',
-      background: '#F5F5DC',
-      surface: '#FFF8DC',
-      textPrimary: '#2F1B14',
-      textSecondary: '#5D4037'
-    },
-    lavender_space: {
-  name: 'Cosmic Explorer',
-  primary: '#8B7AA8',
-  secondary: '#9B85C4',
-  accent: '#C8B3E8',
-  background: '#2A1B3D',
-  surface: '#3D2B54',
-  textPrimary: '#E8DEFF',
-  textSecondary: '#B8A6D9'
-},
-    mint_music: {
-      name: 'Musical Harmony',
-      primary: '#B8E6B8',
-      secondary: '#FFB3BA',
-      accent: '#FFCCCB',
-      background: '#FEFEFE',
-      surface: '#F8FDF8',
-      textPrimary: '#2E4739',
-      textSecondary: '#4A6B57'
-    },
-    pink_plushies: {
-      name: 'Kawaii Dreams',
-      primary: '#FFB6C1',
-      secondary: '#FFC0CB',
-      accent: '#FFE4E1',
-      background: '#FFF0F5',
-      surface: '#FFE4E6',
-      textPrimary: '#4A2C2A',
-      textSecondary: '#8B4B5C'
-    },
-    teal_anime: {
-      name: 'Otaku Paradise',
-      primary: '#20B2AA',
-      secondary: '#48D1CC',
-      accent: '#7FFFD4',
-      background: '#E0FFFF',
-      surface: '#AFEEEE',
-      textPrimary: '#2F4F4F',
-      textSecondary: '#5F9EA0'
-    },
-    white_nature: {
-      name: 'Pure Serenity',
-      primary: '#6B8E6B',
-      secondary: '#D2B48C',
-      accent: '#F5F5DC',
-      background: '#FFFEF8',
-      surface: '#FFFFFF',
-      textPrimary: '#2F4F2F',
-      textSecondary: '#556B2F'
-    },
-    little_luminaries: {
-  name: 'Luxlings™',
-  assetPrefix: 'little_luminaries',
-  primary: '#000000',    // Lightened grey from #666666
-  secondary: '#000000',    // Keep black
-  accent: '#E8E8E8',       // Keep
-  background: '#FFFFFF',   // Keep white
-  surface: '#FAFAFA',      // Keep
-  textPrimary: '#8B6914',  // Darkened gold from #B8860B
-  textSecondary: '#606060' // Darkened from #AAAAAA for better contrast
-}
-  }), []);
+  const fixedTextPrimary = currentTheme?.assetPrefix === 'lavender_space' ? '#2A1B3D' : (currentTheme?.textPrimary || '#223848');
+  const fixedTextSecondary = currentTheme?.assetPrefix === 'lavender_space' ? '#4A3B5C' : (currentTheme?.textSecondary || '#556B7A');
 
   // STEP 3: ADDED THIS NEW FUNCTION
   const loadReadingDnaAssessment = useCallback(async () => {
@@ -565,8 +485,16 @@ if (firebaseStudentData.familyId) {
       setStudentData(firebaseStudentData);
       
       const selectedThemeKey = firebaseStudentData.selectedTheme || 'classic_lux';
-      const selectedTheme = themes[selectedThemeKey];
+      const selectedTheme = getTheme(selectedThemeKey); // CHANGED: Use getTheme instead of themes[selectedThemeKey]
       setCurrentTheme(selectedTheme);
+      
+      // ADD: Check for seasonal themes
+      const seasonalAnnouncements = getSeasonalThemeAnnouncement();
+      if (seasonalAnnouncements.length > 0 && !firebaseStudentData.selectedTheme) {
+        // Show seasonal theme notification if user hasn't selected a theme
+        setSeasonalThemeAlert(seasonalAnnouncements[0]);
+        setTimeout(() => setSeasonalThemeAlert(null), 5000);
+      }
       
       // Load quizzes
       await loadQuizzes();
@@ -579,7 +507,7 @@ if (firebaseStudentData.familyId) {
     }
     
     setIsLoading(false);
-  }, [user, router, themes, loadQuizzes, loadNomineeQuizzes, loadMasterNominees]);
+  }, [user, router, loadQuizzes, loadNomineeQuizzes, loadMasterNominees]);
 
   useEffect(() => {
     if (!loading && isAuthenticated && user) {
@@ -1063,13 +991,40 @@ return (
         <link rel="icon" href="/images/lux_libris_logo.png" />
       </Head>
       
-      <div style={{
+     <div style={{
         minHeight: '100vh',
         fontFamily: 'Avenir, system-ui, -apple-system, sans-serif',
         backgroundColor: currentTheme.background,
         paddingBottom: '100px'
       }}>
         
+        {/* ADD: Seasonal theme notification */}
+        {seasonalThemeAlert && (
+          <div style={{
+            position: 'fixed',
+            top: '20px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: currentTheme.primary,
+            color: 'white',
+            padding: '12px 24px',
+            borderRadius: '24px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+            zIndex: 1002,
+            fontSize: '14px',
+            fontWeight: '600',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            cursor: 'pointer',
+            animation: 'slideInDown 0.6s ease-out'
+          }}
+          onClick={() => router.push('/student-settings')}
+          >
+            {seasonalThemeAlert.icon} {seasonalThemeAlert.message} Tap to use!
+          </div>
+        )}
+
         {/* HEADER WITH DROPDOWN NAVIGATION */}
         <div style={{
           background: `linear-gradient(135deg, ${currentTheme.primary}F0, ${currentTheme.secondary}F0)`,
@@ -3784,7 +3739,7 @@ return (
                 <h2 style={{
                   fontSize: '20px',
                   fontWeight: '600',
-                  color: currentTheme.textPrimary,
+                  color: fixedTextPrimary,
                   margin: '0',
                   fontFamily: 'Didot, "Times New Roman", serif'
                 }}>
@@ -3806,7 +3761,7 @@ return (
                     <div style={{
                       fontSize: '16px',
                       fontWeight: '600',
-                      color: currentTheme.textPrimary,
+                      color: fixedTextPrimary,
                       marginBottom: '8px'
                     }}>
                       No DNA Results Yet
@@ -3827,7 +3782,7 @@ return (
                         <div style={{
                           fontSize: '14px',
                           fontWeight: '600',
-                          color: currentTheme.textPrimary,
+                          color: fixedTextPrimary,
                           marginBottom: '16px',
                           textAlign: 'center'
                         }}>
@@ -3911,14 +3866,14 @@ return (
       <span style={{
         fontSize: '14px',
         fontWeight: '600',
-        color: currentTheme.textPrimary,
+        color: fixedTextPrimary,
         textAlign: 'center'
       }}>
         ♔ Your Saint Personality Matches ({Object.keys(studentData?.quizResults || {}).length})
       </span>
       <span style={{
         fontSize: '12px',
-        color: currentTheme.textPrimary,
+        color: fixedTextPrimary,
         transform: isSaintResultsExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
         transition: 'transform 0.3s ease'
       }}>
@@ -3966,7 +3921,7 @@ return (
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                   <div style={{
                                     fontSize: '12px',
-                                    color: currentTheme.textPrimary,
+                                    color: fixedTextPrimary,
 opacity: 0.9,
                                     marginBottom: '2px'
                                   }}>
@@ -3975,14 +3930,14 @@ opacity: 0.9,
                                   <div style={{
                                     fontSize: '14px',
                                     fontWeight: '600',
-                                    color: currentTheme.textPrimary,
+                                    color: fixedTextPrimary,
                                     marginBottom: '2px'
                                   }}>
                                     {result.saintName}
                                   </div>
                                   <div style={{
                                     fontSize: '10px',
-                                    color: currentTheme.textPrimary,
+                                    color: fixedTextPrimary,
 opacity: 0.85
                                   }}>
                                     Completed {result.timesCompleted} time{result.timesCompleted > 1 ? 's' : ''}
@@ -4019,14 +3974,14 @@ opacity: 0.85
       <span style={{
         fontSize: '14px',
         fontWeight: '600',
-        color: currentTheme.textPrimary,
+        color: fixedTextPrimary,
         textAlign: 'center'
       }}>
         □ Your Book World Matches ({Object.keys(studentData?.nomineeQuizResults || {}).length})
       </span>
       <span style={{
         fontSize: '12px',
-        color: currentTheme.textPrimary,
+        color: fixedTextPrimary,
         transform: isNomineeResultsExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
         transition: 'transform 0.3s ease'
       }}>
@@ -4081,7 +4036,7 @@ opacity: 0.85
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                   <div style={{
                                     fontSize: '12px',
-                                    color: currentTheme.textPrimary,
+                                    color: fixedTextPrimary,
 opacity: 0.9,
                                     marginBottom: '2px'
                                   }}>
@@ -4090,14 +4045,14 @@ opacity: 0.9,
                                   <div style={{
                                     fontSize: '14px',
                                     fontWeight: '600',
-                                    color: currentTheme.textPrimary,
+                                    color: fixedTextPrimary,
                                     marginBottom: '2px'
                                   }}>
                                     {result.bookTitle}
                                   </div>
                                   <div style={{
                                     fontSize: '10px',
-                                    color: currentTheme.textPrimary,
+                                    color: fixedTextPrimary,
 opacity: 0.85
                                   }}>
                                     Completed {result.timesCompleted} time{result.timesCompleted > 1 ? 's' : ''}

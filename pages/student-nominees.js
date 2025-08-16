@@ -1,8 +1,10 @@
 // pages/student-nominees.js - COMPLETE version with phase locking, circular navigation, hamburger menu, interactive book added dialog, and book locking
+// pages/student-nominees.js
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
 import { usePhaseAccess } from '../hooks/usePhaseAccess';
+import { getTheme, getSeasonalThemeAnnouncement } from '../lib/themes'; // ADD THIS LINE
 import { getStudentDataEntities, getSchoolNomineesEntities, addBookToBookshelfEntities, addBookToBookshelfEntitiesWithYear, removeBookFromBookshelfEntities, getCurrentAcademicYear } from '../lib/firebase';
 import { checkSpecificContentBadge } from '../lib/badge-system-content';
 import { getBookState, getBookStateMessage } from '../lib/book-state-utils';
@@ -24,9 +26,10 @@ export default function StudentNominees() {
   const [isAddingBook, setIsAddingBook] = useState(false);
   const [showFormatSwitchDialog, setShowFormatSwitchDialog] = useState(null);
   const [showBookAddedDialog, setShowBookAddedDialog] = useState(null);
+const [seasonalThemeAlert, setSeasonalThemeAlert] = useState(null); // ADD THIS LINE!
 
-  // 🍔 HAMBURGER MENU STATE VARIABLES
-  const [showNavMenu, setShowNavMenu] = useState(false);
+// 🍔 HAMBURGER MENU STATE VARIABLES
+const [showNavMenu, setShowNavMenu] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [notificationProcessing, setNotificationProcessing] = useState(false);
 
@@ -120,98 +123,6 @@ export default function StudentNominees() {
       console.log('Notification failed:', error);
     }
   }, [notificationsEnabled]);
-
-  // Theme definitions (same as before)
-  const themes = {
-    classic_lux: {
-      name: 'Lux Libris Classic',
-      assetPrefix: 'classic_lux',
-      primary: '#ADD4EA',
-      secondary: '#C3E0DE',
-      accent: '#A1E5DB',
-      background: '#FFFCF5',
-      surface: '#FFFFFF',
-      textPrimary: '#223848',
-      textSecondary: '#556B7A'
-    },
-    darkwood_sports: {
-      name: 'Athletic Champion',
-      assetPrefix: 'darkwood_sports',
-      primary: '#2F5F5F',
-      secondary: '#8B2635',
-      accent: '#F5DEB3',
-      background: '#F5F5DC',
-      surface: '#FFF8DC',
-      textPrimary: '#2F1B14',
-      textSecondary: '#5D4037'
-    },
-    lavender_space: {
-  name: 'Cosmic Explorer',
-  assetPrefix: 'lavender_space',
-  primary: '#8B7AA8',      // Darkened from #9C88C4
-  secondary: '#9B85C4',    // Darkened from #B19CD9
-  accent: '#C8B3E8',       // Darkened from #E1D5F7
-  background: '#2A1B3D',   // Keep dark background
-  surface: '#3D2B54',      // Keep
-  textPrimary: '#E8DEFF',  // Slightly brightened for dark bg
-  textSecondary: '#B8A6D9' // Slightly adjusted
-},
-    mint_music: {
-      name: 'Musical Harmony',
-      assetPrefix: 'mint_music',
-      primary: '#B8E6B8',
-      secondary: '#FFB3BA',
-      accent: '#FFCCCB',
-      background: '#FEFEFE',
-      surface: '#F8FDF8',
-      textPrimary: '#2E4739',
-      textSecondary: '#4A6B57'
-    },
-    pink_plushies: {
-      name: 'Kawaii Dreams',
-      assetPrefix: 'pink_plushies',
-      primary: '#FFB6C1',
-      secondary: '#FFC0CB',
-      accent: '#FFE4E1',
-      background: '#FFF0F5',
-      surface: '#FFE4E6',
-      textPrimary: '#4A2C2A',
-      textSecondary: '#8B4B5C'
-    },
-    teal_anime: {
-      name: 'Otaku Paradise',
-      assetPrefix: 'teal_anime',
-      primary: '#20B2AA',
-      secondary: '#48D1CC',
-      accent: '#7FFFD4',
-      background: '#E0FFFF',
-      surface: '#AFEEEE',
-      textPrimary: '#2F4F4F',
-      textSecondary: '#5F9EA0'
-    },
-    white_nature: {
-      name: 'Pure Serenity',
-      assetPrefix: 'white_nature',
-      primary: '#6B8E6B',
-      secondary: '#D2B48C',
-      accent: '#F5F5DC',
-      background: '#FFFEF8',
-      surface: '#FFFFFF',
-      textPrimary: '#2F4F2F',
-      textSecondary: '#556B2F'
-    },
-    little_luminaries: {
-  name: 'Luxlings™',
-  assetPrefix: 'little_luminaries',
-  primary: '#000000',      // Lightened grey from #666666
-  secondary: '#000000',    // Keep black
-  accent: '#E8E8E8',       // Keep
-  background: '#FFFFFF',   // Keep white
-  surface: '#FAFAFA',      // Keep
-  textPrimary: '#8B6914',  // Darkened gold from #B8860B
-  textSecondary: '#606060' // Darkened from #AAAAAA for better contrast
-}
-  };
 
   // Helper function to check if a book is in a locked state
   const isBookInLockedState = (bookshelfEntry) => {
@@ -377,9 +288,19 @@ useEffect(() => {
         return;
       }
 
-      setStudentData(firebaseStudentData);
-      const selectedTheme = firebaseStudentData.selectedTheme || 'classic_lux';
-      setCurrentTheme(themes[selectedTheme]);
+      // NEW CODE:
+setStudentData(firebaseStudentData);
+const selectedThemeKey = firebaseStudentData.selectedTheme || 'classic_lux';
+const theme = getTheme(selectedThemeKey);
+setCurrentTheme(theme);
+
+// Optional: Check for seasonal themes
+const seasonalAnnouncements = getSeasonalThemeAnnouncement();
+if (seasonalAnnouncements.length > 0 && !firebaseStudentData.selectedTheme) {
+  // Show seasonal theme notification if user hasn't selected a theme
+  setSeasonalThemeAlert(seasonalAnnouncements[0]);
+  setTimeout(() => setSeasonalThemeAlert(null), 5000);
+}
 
       if (firebaseStudentData.entityId && firebaseStudentData.schoolId) {
   const allNominees = await getSchoolNomineesEntities(
@@ -2165,6 +2086,33 @@ setIsAddingBook(false);
             }
           }
         `}</style>
+        
+        {/* ADD THE SEASONAL THEME NOTIFICATION RIGHT HERE! */}
+        {seasonalThemeAlert && (
+          <div style={{
+            position: 'fixed',
+            top: '20px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: currentTheme.primary,
+            color: 'white',
+            padding: '12px 24px',
+            borderRadius: '24px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+            zIndex: 2001,
+            fontSize: '14px',
+            fontWeight: '600',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            cursor: 'pointer'
+          }}
+          onClick={() => router.push('/student-settings')}
+          >
+            {seasonalThemeAlert.icon} {seasonalThemeAlert.message} Tap to use!
+          </div>
+        )}
+        
       </div>
     </>
   );
@@ -2172,6 +2120,7 @@ setIsAddingBook(false);
 
 // BookCard component with updated logic for smart format switching and locked states
 function BookCard({ book, theme, onAddBook, isAddingBook, getBookInBookshelf, isBookFormatInBookshelf, currentCardIndex, router, isBookInLockedState }) {
+  const fixedTextColor = theme.assetPrefix === 'lavender_space' ? '#2A1B3D' : theme.textPrimary;
   const getCategoryColorPalette = (book) => {
     const category = book.displayCategory || book.internalCategory || '';
 
@@ -2517,25 +2466,25 @@ function BookCard({ book, theme, onAddBook, isAddingBook, getBookInBookshelf, is
               }}>
                 <div>
                   <span style={{ color: theme.textSecondary, fontWeight: '600' }}>Grades:</span><br/>
-                  <span style={{ color: theme.textPrimary, fontWeight: 'bold' }}>
+                  <span style={{ color: fixedTextColor, fontWeight: 'bold' }}>
                     {getGradeDisplay(book.gradeLevels)}
                   </span>
                 </div>
                 <div>
                   <span style={{ color: theme.textSecondary, fontWeight: '600' }}>Length:</span><br/>
-                  <span style={{ color: theme.textPrimary, fontWeight: 'bold' }}>
+                  <span style={{ color: fixedTextColor, fontWeight: 'bold' }}>
                     {getLengthDisplay(book)}
                   </span>
                 </div>
                 <div>
                   <span style={{ color: theme.textSecondary, fontWeight: '600' }}>Published:</span><br/>
-                  <span style={{ color: theme.textPrimary, fontWeight: 'bold' }}>
+                  <span style={{ color: fixedTextColor, fontWeight: 'bold' }}>
                     {book.publicationDate ? new Date(book.publicationDate).getFullYear() : 'N/A'}
                   </span>
                 </div>
                 <div>
                   <span style={{ color: theme.textSecondary, fontWeight: '600' }}>Genre:</span><br/>
-                  <span style={{ color: theme.textPrimary, fontWeight: 'bold' }}>
+                  <span style={{ color: fixedTextColor, fontWeight: 'bold' }}>
                     {getGenreDisplay(book.genres)}
                   </span>
                 </div>

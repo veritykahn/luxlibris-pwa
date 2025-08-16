@@ -4,100 +4,9 @@ import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
 import { usePhaseAccess } from '../hooks/usePhaseAccess';
 import { getStudentDataEntities, updateStudentDataEntities, getSchoolNomineesEntities, dbHelpers, getLinkedParentDetails, getFamilyDetails } from '../lib/firebase';
+import { getTheme, getAvailableThemes } from '../lib/themes';
 import { createParentInviteCode } from '../lib/parentLinking';
 import Head from 'next/head'
-
-// Theme definitions
-const themes = {
-  classic_lux: {
-    name: 'Lux Libris Classic',
-    assetPrefix: 'classic_lux',
-    primary: '#ADD4EA',
-    secondary: '#C3E0DE',
-    accent: '#A1E5DB',
-    background: '#FFFCF5',
-    surface: '#FFFFFF',
-    textPrimary: '#223848',
-    textSecondary: '#556B7A'
-  },
-  darkwood_sports: {
-    name: 'Athletic Champion',
-    assetPrefix: 'darkwood_sports',
-    primary: '#2F5F5F',
-    secondary: '#8B2635',
-    accent: '#F5DEB3',
-    background: '#F5F5DC',
-    surface: '#FFF8DC',
-    textPrimary: '#2F1B14',
-    textSecondary: '#5D4037'
-  },
-  lavender_space: {
-  name: 'Cosmic Explorer',
-  assetPrefix: 'lavender_space',
-  primary: '#8B7AA8',      // Darkened from #9C88C4
-  secondary: '#9B85C4',    // Darkened from #B19CD9
-  accent: '#C8B3E8',       // Darkened from #E1D5F7
-  background: '#2A1B3D',   // Keep dark background
-  surface: '#3D2B54',      // Keep
-  textPrimary: '#E8DEFF',  // Slightly brightened for dark bg
-  textSecondary: '#B8A6D9' // Slightly adjusted
-},
-  mint_music: {
-    name: 'Musical Harmony',
-    assetPrefix: 'mint_music',
-    primary: '#B8E6B8',
-    secondary: '#FFB3BA',
-    accent: '#FFCCCB',
-    background: '#FEFEFE',
-    surface: '#F8FDF8',
-    textPrimary: '#2E4739',
-    textSecondary: '#4A6B57'
-  },
-  pink_plushies: {
-    name: 'Kawaii Dreams',
-    assetPrefix: 'pink_plushies',
-    primary: '#FFB6C1',
-    secondary: '#FFC0CB',
-    accent: '#FFE4E1',
-    background: '#FFF0F5',
-    surface: '#FFE4E6',
-    textPrimary: '#4A2C2A',
-    textSecondary: '#8B4B5C'
-  },
-  teal_anime: {
-    name: 'Otaku Paradise',
-    assetPrefix: 'teal_anime',
-    primary: '#20B2AA',
-    secondary: '#48D1CC',
-    accent: '#7FFFD4',
-    background: '#E0FFFF',
-    surface: '#AFEEEE',
-    textPrimary: '#2F4F4F',
-    textSecondary: '#5F9EA0'
-  },
-  white_nature: {
-    name: 'Pure Serenity',
-    assetPrefix: 'white_nature',
-    primary: '#6B8E6B',
-    secondary: '#D2B48C',
-    accent: '#F5F5DC',
-    background: '#FFFEF8',
-    surface: '#FFFFFF',
-    textPrimary: '#2F4F2F',
-    textSecondary: '#556B2F'
-  },
-  little_luminaries: {
-  name: 'Luxlings™',
-  assetPrefix: 'little_luminaries',
-  primary: '#000000',     // Lightened grey from #666666
-  secondary: '#000000',    // Keep black
-  accent: '#E8E8E8',       // Keep
-  background: '#FFFFFF',   // Keep white
-  surface: '#FAFAFA',      // Keep
-  textPrimary: '#8B6914',  // Darkened gold from #B8860B
-  textSecondary: '#606060' // Darkened from #AAAAAA for better contrast
-}
-};
 
 export default function StudentSettings() {
   const router = useRouter();
@@ -196,10 +105,10 @@ export default function StudentSettings() {
     }
   }, []);
 
-  const themesArray = Object.entries(themes).map(([key, value]) => ({
-    assetPrefix: key,
-    ...value
-  }));
+  const themesArray = Object.entries(getAvailableThemes()).map(([key, value]) => ({
+  assetPrefix: key,
+  ...value
+}));
 
   // useEffects
   useEffect(() => {
@@ -264,7 +173,7 @@ export default function StudentSettings() {
       console.log('✅ Loaded student data:', realStudentData);
       
       setStudentData(realStudentData);
-      setCurrentTheme(themes[realStudentData.selectedTheme] || themes.classic_lux);
+      setCurrentTheme(getTheme(realStudentData.selectedTheme || 'classic_lux'));
       setSelectedThemePreview(realStudentData.selectedTheme || 'classic_lux');
       setNewGoal(realStudentData.personalGoal || 20);
       setParentInviteCode(realStudentData.parentInviteCode || '');
@@ -322,7 +231,7 @@ export default function StudentSettings() {
       
       const updatedData = { ...studentData, selectedTheme: selectedThemePreview };
       setStudentData(updatedData);
-      setCurrentTheme(themes[selectedThemePreview]);
+      setCurrentTheme(getTheme(selectedThemePreview));
       
       setShowSuccess('✨ Theme saved! Your bookshelf and saints collection look amazing!');
       setTimeout(() => setShowSuccess(''), 3000);
@@ -540,7 +449,7 @@ export default function StudentSettings() {
     };
   };
 
-  const previewTheme = themes[selectedThemePreview] || themes.classic_lux;
+  const previewTheme = getTheme(selectedThemePreview || 'classic_lux');
 
   if (isLoading || signingOut || !studentData || !currentTheme) {
     return (

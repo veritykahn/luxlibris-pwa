@@ -1,4 +1,4 @@
-// pages/teacher/achievements.js - Updated with real-time phase access
+// pages/teacher/achievements.js - Updated with real-time phase access and new export functions
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
@@ -6,6 +6,8 @@ import { useAuth } from '../../contexts/AuthContext'
 import { usePhaseAccess } from '../../hooks/usePhaseAccess' // Use the updated hook
 import { db } from '../../lib/firebase'
 import { collection, getDocs, query, where } from 'firebase/firestore'
+import { generateAwardsSpeech } from '../../lib/templates/speechTemplate'
+import { emailTemplates, getCurrentEmailTemplate } from '../../lib/templates/emailTemplates'
 
 export default function TeacherAchievements() {
   const router = useRouter()
@@ -37,6 +39,11 @@ export default function TeacherAchievements() {
   const [showSuccess, setShowSuccess] = useState('')
   const [showTimeoutWarning, setShowTimeoutWarning] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
+  const [showEmailModal, setShowEmailModal] = useState(false)
+  const [selectedEmailTemplate, setSelectedEmailTemplate] = useState(null)
+  const [copiedEmail, setCopiedEmail] = useState(false)
+  const [expandedTiers, setExpandedTiers] = useState(new Set())
+  const [allExpanded, setAllExpanded] = useState(false)
 
   // Authentication check
   useEffect(() => {
@@ -132,30 +139,37 @@ export default function TeacherAchievements() {
       const tiers = teacherData.achievementTiers || []
       console.log('🎯 Achievement tiers:', tiers)
       setAchievementTiers(tiers)
+      
+      // Get the actual number of books selected by the teacher
+      const selectedBooksCount = teacherData.selectedNominees?.length || 0
+      console.log('📚 Teacher has selected', selectedBooksCount, 'books')
+      
+      // Store this for use in speech generation
+      window.totalBooksInProgram = selectedBooksCount
 
       // Load all students (app + manual)
       const students = []
 
       // Find the highest book requirement from achievement tiers
-const maxBookRequirement = Math.max(...tiers.map(tier => tier.books))
+      const maxBookRequirement = Math.max(...tiers.map(tier => tier.books))
 
-// Load app students
-const appStudentsRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/students`)
-const appStudentsQuery = query(appStudentsRef, where('currentTeacherId', '==', teacherId))
-const appStudentsSnapshot = await getDocs(appStudentsQuery)
+      // Load app students
+      const appStudentsRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/students`)
+      const appStudentsQuery = query(appStudentsRef, where('currentTeacherId', '==', teacherId))
+      const appStudentsSnapshot = await getDocs(appStudentsQuery)
 
-appStudentsSnapshot.forEach(doc => {
-  const studentData = { id: doc.id, ...doc.data() }
-  if (studentData.status !== 'deleted') {
-    students.push({
-      ...studentData,
-      type: 'app',
-      booksCompleted: studentData.booksSubmittedThisYear || 0,
-      lifetimeBooksCompleted: studentData.lifetimeBooksSubmitted || 0,
-      maxBookRequirement // Pass this through for the calculation
-    })
-  }
-})
+      appStudentsSnapshot.forEach(doc => {
+        const studentData = { id: doc.id, ...doc.data() }
+        if (studentData.status !== 'deleted') {
+          students.push({
+            ...studentData,
+            type: 'app',
+            booksCompleted: studentData.booksSubmittedThisYear || 0,
+            lifetimeBooksCompleted: studentData.lifetimeBooksSubmitted || 0,
+            maxBookRequirement // Pass this through for the calculation
+          })
+        }
+      })
 
       // Load manual students
       const manualStudentsRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers/${teacherId}/manualStudents`)
@@ -167,15 +181,15 @@ appStudentsSnapshot.forEach(doc => {
       }
 
       manualStudentsSnapshot.forEach(doc => {
-  const studentData = { id: doc.id, ...doc.data() }
-  students.push({
-    ...studentData,
-    type: 'manual',
-    booksCompleted: studentData.totalBooksThisYear || 0,
-    lifetimeBooksCompleted: studentData.lifetimeBooksSubmitted || studentData.totalBooksThisYear || 0,
-    maxBookRequirement // Pass this through for the calculation
-  })
-})
+        const studentData = { id: doc.id, ...doc.data() }
+        students.push({
+          ...studentData,
+          type: 'manual',
+          booksCompleted: studentData.totalBooksThisYear || 0,
+          lifetimeBooksCompleted: studentData.lifetimeBooksSubmitted || studentData.totalBooksThisYear || 0,
+          maxBookRequirement // Pass this through for the calculation
+        })
+      })
 
       console.log('📚 All students loaded:', students.length)
       setAllStudents(students)
@@ -191,19 +205,19 @@ appStudentsSnapshot.forEach(doc => {
     }
   }
 
-  // Calculate which students achieved which tiers
-const calculateAchievements = (tiers, students) => {
-  // Find the highest book requirement
-  const maxBookRequirement = Math.max(...tiers.map(t => t.books))
-  
-  const achievements = tiers.map(tier => {
-    const achievedStudents = students.filter(student => {
-      // Use lifetime books for the highest tier, yearly for all others
-      const booksToCheck = tier.books === maxBookRequirement 
-        ? student.lifetimeBooksCompleted 
-        : student.booksCompleted
-      return booksToCheck >= tier.books
-    }).sort((a, b) => {
+  // Calculate which students achieved which tiers (for display)
+  const calculateAchievements = (tiers, students) => {
+    // Find the highest book requirement
+    const maxBookRequirement = Math.max(...tiers.map(t => t.books))
+    
+    const achievements = tiers.map(tier => {
+      const achievedStudents = students.filter(student => {
+        // Use lifetime books for the highest tier, yearly for all others
+        const booksToCheck = tier.books === maxBookRequirement 
+          ? student.lifetimeBooksCompleted 
+          : student.booksCompleted
+        return booksToCheck >= tier.books
+      }).sort((a, b) => {
         // Sort by books completed (highest first), then by name
         if (b.booksCompleted !== a.booksCompleted) {
           return b.booksCompleted - a.booksCompleted
@@ -222,19 +236,41 @@ const calculateAchievements = (tiers, students) => {
     return achievements.sort((a, b) => a.books - b.books)
   }
 
-  // Export achievements as CSV
+  // New function to get highest achievement for each student (for export only)
+  const getStudentsHighestAchievements = () => {
+    const studentsWithHighestTier = new Map()
+    
+    // Process tiers from highest to lowest
+    const sortedAchievements = [...studentAchievements].sort((a, b) => b.books - a.books)
+    
+    sortedAchievements.forEach(achievement => {
+      achievement.achievedStudents.forEach(student => {
+        // Only add student if not already placed in a higher tier
+        if (!studentsWithHighestTier.has(student.id)) {
+          studentsWithHighestTier.set(student.id, {
+            ...student,
+            achievementTier: achievement
+          })
+        }
+      })
+    })
+    
+    return studentsWithHighestTier
+  }
+
+  // Export achievements as TXT
   const exportAchievements = () => {
     setIsExporting(true)
     
     try {
-      const csvContent = generateCSV()
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const txtContent = generateTXT()
+      const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8;' })
       const link = document.createElement('a')
       
       if (link.download !== undefined) {
         const url = URL.createObjectURL(blob)
         link.setAttribute('href', url)
-        link.setAttribute('download', `${userProfile.schoolName || 'School'}_Achievements_${new Date().getFullYear()}.csv`)
+        link.setAttribute('download', `${userProfile.schoolName || 'School'}_Achievements_${new Date().getFullYear()}.txt`)
         link.style.visibility = 'hidden'
         document.body.appendChild(link)
         link.click()
@@ -253,35 +289,48 @@ const calculateAchievements = (tiers, students) => {
     }
   }
 
-  // Generate CSV content
-  const generateCSV = () => {
+  // Generate TXT content (for achievement report - shows students in ALL tiers they achieved)
+  const generateTXT = () => {
     const currentDate = new Date().toLocaleDateString()
     const schoolName = userProfile.schoolName || 'School'
     const teacherName = `${userProfile.firstName || ''} ${userProfile.lastName || ''}`.trim()
     
-    let csv = `${schoolName} - Reading Achievement Report\n`
-    csv += `Teacher: ${teacherName}\n`
-    csv += `Generated: ${currentDate}\n\n`
+    let txt = `${'='.repeat(60)}\n`
+    txt += `${schoolName.toUpperCase()} - READING ACHIEVEMENT REPORT\n`
+    txt += `${'='.repeat(60)}\n\n`
+    txt += `Teacher: ${teacherName}\n`
+    txt += `Date Generated: ${currentDate}\n`
+    txt += `Total Students: ${allStudents.length}\n\n`
 
-    // Summary section
-    csv += `ACHIEVEMENT SUMMARY\n`
-    csv += `Achievement Level,Books Required,Reward,Students Achieved\n`
+    txt += `${'─'.repeat(60)}\n`
+    txt += `ACHIEVEMENT SUMMARY - CERTIFICATE PRINTING GUIDE\n`
+    txt += `${'─'.repeat(60)}\n\n`
+    
+    // For the report, show students in ALL tiers they achieved (for certificate printing)
+    txt += `CERTIFICATES NEEDED BY TIER:\n\n`
     
     studentAchievements.forEach(achievement => {
-      csv += `"${achievement.books} Books","${achievement.books}","${achievement.reward}","${achievement.count}"\n`
+      txt += `📚 ${achievement.books} Books - "${achievement.reward}": ${achievement.count} certificates needed\n`
     })
 
-    csv += `\nTotal Students: ${allStudents.length}\n\n`
+    txt += `\n${'─'.repeat(60)}\n`
+    txt += `DETAILED ACHIEVEMENT ROSTER\n`
+    txt += `(Students appear in ALL tiers they have achieved)\n`
+    txt += `${'─'.repeat(60)}\n\n`
 
-    // Detailed section for each achievement
+    // Show students in ALL achievement tiers they qualify for
     studentAchievements.forEach(achievement => {
       if (achievement.count > 0) {
-        csv += `\n"${achievement.reward} (${achievement.books} Books)" - ${achievement.count} Students\n`
-        csv += `Student Name,Grade,Books Completed,Type\n`
+        txt += `\n🏆 ${achievement.reward.toUpperCase()} (${achievement.books} Books Required)\n`
+        txt += `   ${achievement.count} Student${achievement.count !== 1 ? 's' : ''} Achieved - Print ${achievement.count} certificates\n`
+        txt += `   ${'─'.repeat(40)}\n\n`
         
-        achievement.achievedStudents.forEach(student => {
-          csv += `"${student.firstName} ${student.lastInitial}.","Grade ${student.grade}","${student.booksCompleted}","${student.type === 'app' ? 'App Student' : 'Manual Student'}"\n`
+        achievement.achievedStudents.forEach((student, index) => {
+          const studentType = student.type === 'app' ? '[App]' : '[Manual]'
+          txt += `   ${(index + 1).toString().padStart(2)}. ${student.firstName} ${student.lastInitial}. `
+          txt += `(Grade ${student.grade}) - ${student.booksCompleted} books completed ${studentType}\n`
         })
+        txt += '\n'
       }
     })
 
@@ -293,14 +342,162 @@ const calculateAchievements = (tiers, students) => {
     )
 
     if (noAchievements.length > 0) {
-      csv += `\n"Students Still Working Toward First Achievement" - ${noAchievements.length} Students\n`
-      csv += `Student Name,Grade,Books Completed,Type\n`
-      noAchievements.forEach(student => {
-        csv += `"${student.firstName} ${student.lastInitial}.","Grade ${student.grade}","${student.booksCompleted}","${student.type === 'app' ? 'App Student' : 'Manual Student'}"\n`
-      })
+      txt += `\n${'─'.repeat(60)}\n`
+      txt += `STUDENTS WORKING TOWARD FIRST ACHIEVEMENT\n`
+      txt += `${'─'.repeat(60)}\n\n`
+      txt += `Total: ${noAchievements.length} students\n\n`
+      
+      noAchievements
+        .sort((a, b) => {
+          if (b.booksCompleted !== a.booksCompleted) {
+            return b.booksCompleted - a.booksCompleted
+          }
+          return a.firstName.localeCompare(b.firstName)
+        })
+        .forEach((student, index) => {
+          const studentType = student.type === 'app' ? '[App]' : '[Manual]'
+          txt += `   ${(index + 1).toString().padStart(2)}. ${student.firstName} ${student.lastInitial}. `
+          txt += `(Grade ${student.grade}) - ${student.booksCompleted} books completed ${studentType}\n`
+        })
     }
 
-    return csv
+    // Add a summary section for total certificates needed
+    txt += `\n${'='.repeat(60)}\n`
+    txt += `TOTAL CERTIFICATES NEEDED:\n`
+    txt += `${'='.repeat(60)}\n\n`
+    
+    let totalCertificates = 0
+    studentAchievements.forEach(achievement => {
+      if (achievement.count > 0) {
+        txt += `${achievement.reward}: ${achievement.count} certificates\n`
+        totalCertificates += achievement.count
+      }
+    })
+    
+    txt += `\nTOTAL: ${totalCertificates} certificates\n`
+
+    txt += `\n${'='.repeat(60)}\n`
+    txt += `END OF REPORT\n`
+    txt += `${'='.repeat(60)}\n`
+
+    return txt
+  }
+
+  // New function to export speech for mass
+  const exportSpeechForMass = () => {
+    setIsExporting(true)
+    
+    try {
+      const speechContent = generateSpeech()
+      const blob = new Blob([speechContent], { type: 'text/plain;charset=utf-8;' })
+      const link = document.createElement('a')
+      
+      if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob)
+        link.setAttribute('href', url)
+        link.setAttribute('download', `${userProfile.schoolName || 'School'}_Awards_Speech_${new Date().getFullYear()}.txt`)
+        link.style.visibility = 'hidden'
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+      }
+
+      setShowSuccess('✅ Awards speech exported successfully!')
+      setTimeout(() => setShowSuccess(''), 3000)
+
+    } catch (error) {
+      console.error('❌ Error exporting speech:', error)
+      setShowSuccess('❌ Error exporting speech. Please try again.')
+      setTimeout(() => setShowSuccess(''), 3000)
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  // Generate speech content (for mass - shows students ONLY in their highest tier)
+  const generateSpeech = () => {
+    const currentDate = new Date().toLocaleDateString()
+    const schoolName = userProfile.schoolName || 'School'
+    
+    // Get students mapped to their highest achievement only
+    const studentsHighestAchievements = getStudentsHighestAchievements()
+    
+    // Create achievement tiers with students at their highest level only
+    const tiersWithHighestOnly = studentAchievements.map(achievement => {
+      const studentsInThisTier = []
+      studentsHighestAchievements.forEach((studentData) => {
+        if (studentData.achievementTier.books === achievement.books) {
+          studentsInThisTier.push(studentData)
+        }
+      })
+      
+      return {
+        ...achievement,
+        highestTierStudents: studentsInThisTier.sort((a, b) => 
+          a.firstName.localeCompare(b.firstName)
+        )
+      }
+    })
+
+    // Get the actual number of books selected by the teacher
+    const totalBooksInProgram = window.totalBooksInProgram || 50
+    
+    // Find the highest tier (for 5-year achievement)
+    const maxBookRequirement = Math.max(...achievementTiers.map(t => t.books))
+    
+    // Use the imported speech template function
+    return generateAwardsSpeech(
+      schoolName,
+      currentDate,
+      totalBooksInProgram,
+      tiersWithHighestOnly,
+      maxBookRequirement
+    )
+  }
+  
+  // Handle email template selection
+  const handleEmailTemplateSelect = (templateKey) => {
+    setSelectedEmailTemplate(templateKey)
+    setCopiedEmail(false)
+  }
+  
+  // Copy email to clipboard
+  const copyEmailToClipboard = () => {
+    const template = emailTemplates[selectedEmailTemplate]
+    const emailContent = `Subject: ${template.subject}\n\n${template.body}`
+    navigator.clipboard.writeText(emailContent)
+    setCopiedEmail(true)
+    setTimeout(() => setCopiedEmail(false), 3000)
+  }
+  
+  // Open email modal with appropriate template
+  const openEmailModal = () => {
+    const currentTemplate = getCurrentEmailTemplate()
+    setSelectedEmailTemplate(currentTemplate)
+    setShowEmailModal(true)
+  }
+  
+  // Toggle tier expansion
+  const toggleTierExpansion = (tierIndex) => {
+    const newExpanded = new Set(expandedTiers)
+    if (newExpanded.has(tierIndex)) {
+      newExpanded.delete(tierIndex)
+    } else {
+      newExpanded.add(tierIndex)
+    }
+    setExpandedTiers(newExpanded)
+  }
+  
+  // Toggle all tiers expansion
+  const toggleAllTiers = () => {
+    if (allExpanded) {
+      setExpandedTiers(new Set())
+      setAllExpanded(false)
+    } else {
+      const allIndices = studentAchievements.map((_, index) => index)
+      setExpandedTiers(new Set(allIndices))
+      setAllExpanded(true)
+    }
   }
 
   // Session extension
@@ -447,6 +644,201 @@ const calculateAchievements = (tiers, students) => {
           </div>
         )}
 
+        {/* Email Templates Modal */}
+        {showEmailModal && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'center',
+            zIndex: 10000,
+            padding: '2rem',
+            overflowY: 'auto'
+          }}>
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '1rem',
+              padding: '2rem',
+              maxWidth: '800px',
+              width: '100%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+              marginTop: '2rem'
+            }}>
+              {/* Modal Header */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '1.5rem',
+                borderBottom: '2px solid #e5e7eb',
+                paddingBottom: '1rem'
+              }}>
+                <h2 style={{
+                  fontSize: '1.5rem',
+                  fontWeight: 'bold',
+                  color: '#223848',
+                  margin: 0
+                }}>
+                  ✉️ Parent Email Templates
+                </h2>
+                <button
+                  onClick={() => setShowEmailModal(false)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '1.5rem',
+                    cursor: 'pointer',
+                    color: '#6b7280'
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Email Template Selector */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, 1fr)',
+                gap: '0.75rem',
+                marginBottom: '1.5rem'
+              }}>
+                {Object.entries(emailTemplates).map(([key, template]) => (
+                  <button
+                    key={key}
+                    onClick={() => handleEmailTemplateSelect(key)}
+                    style={{
+                      padding: '1rem',
+                      border: selectedEmailTemplate === key ? '2px solid #3B82F6' : '2px solid #e5e7eb',
+                      borderRadius: '0.5rem',
+                      background: selectedEmailTemplate === key ? '#EFF6FF' : 'white',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <div style={{
+                      fontSize: '0.875rem',
+                      fontWeight: '600',
+                      color: '#223848',
+                      marginBottom: '0.25rem'
+                    }}>
+                      {template.title}
+                    </div>
+                    <div style={{
+                      fontSize: '0.75rem',
+                      color: '#6b7280'
+                    }}>
+                      {template.sendTime}
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {/* Selected Email Content */}
+              {selectedEmailTemplate && (
+                <div style={{
+                  border: '2px solid #e5e7eb',
+                  borderRadius: '0.75rem',
+                  padding: '1.5rem',
+                  background: '#f9fafb'
+                }}>
+                  <div style={{
+                    marginBottom: '1rem',
+                    paddingBottom: '1rem',
+                    borderBottom: '1px solid #e5e7eb'
+                  }}>
+                    <div style={{
+                      fontSize: '0.75rem',
+                      color: '#6b7280',
+                      marginBottom: '0.5rem'
+                    }}>
+                      EMAIL SUBJECT:
+                    </div>
+                    <div style={{
+                      fontSize: '1rem',
+                      fontWeight: '600',
+                      color: '#223848'
+                    }}>
+                      {emailTemplates[selectedEmailTemplate].subject}
+                    </div>
+                  </div>
+
+                  <div style={{
+                    fontSize: '0.75rem',
+                    color: '#6b7280',
+                    marginBottom: '0.5rem'
+                  }}>
+                    EMAIL BODY:
+                  </div>
+                  <div style={{
+                    whiteSpace: 'pre-wrap',
+                    fontSize: '0.875rem',
+                    lineHeight: '1.6',
+                    color: '#374151',
+                    maxHeight: '400px',
+                    overflowY: 'auto',
+                    padding: '1rem',
+                    background: 'white',
+                    borderRadius: '0.5rem',
+                    border: '1px solid #e5e7eb'
+                  }}>
+                    {emailTemplates[selectedEmailTemplate].body}
+                  </div>
+
+                  {/* Copy Button */}
+                  <div style={{
+                    marginTop: '1.5rem',
+                    display: 'flex',
+                    gap: '1rem',
+                    justifyContent: 'center'
+                  }}>
+                    <button
+                      onClick={copyEmailToClipboard}
+                      style={{
+                        padding: '0.75rem 2rem',
+                        background: copiedEmail 
+                          ? 'linear-gradient(135deg, #10B981, #059669)'
+                          : 'linear-gradient(135deg, #3B82F6, #2563EB)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '0.5rem',
+                        fontSize: '0.875rem',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem'
+                      }}
+                    >
+                      {copiedEmail ? '✓ Copied to Clipboard!' : '📋 Copy Email'}
+                    </button>
+                  </div>
+
+                  <div style={{
+                    marginTop: '1rem',
+                    padding: '1rem',
+                    background: '#FEF3C7',
+                    borderRadius: '0.5rem',
+                    fontSize: '0.75rem',
+                    color: '#92400E',
+                    textAlign: 'center'
+                  }}>
+                    💡 Tip: Copy this email and paste it into your school's email system. 
+                    Remember to customize placeholders like [TEACHER NAME] and [SCHOOL NAME].
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <header style={{
           background: 'rgba(255, 255, 255, 0.95)',
@@ -541,6 +933,49 @@ const calculateAchievements = (tiers, students) => {
                 🔄
               </button>
               
+              {/* Email to Parents button */}
+              <button
+                onClick={openEmailModal}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: 'linear-gradient(135deg, #3B82F6, #2563EB)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '0.5rem',
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                ✉️ Emails
+              </button>
+              
+              {/* Export Speech button */}
+              <button
+                onClick={exportSpeechForMass}
+                disabled={isExporting || studentAchievements.length === 0}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: 'linear-gradient(135deg, #9333EA, #7C3AED)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '0.5rem',
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  opacity: (isExporting || studentAchievements.length === 0) ? 0.7 : 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                {isExporting ? '⏳' : '🎤'} Speech
+              </button>
+              
+              {/* Export Report button */}
               <button
                 onClick={exportAchievements}
                 disabled={isExporting || studentAchievements.length === 0}
@@ -559,8 +994,9 @@ const calculateAchievements = (tiers, students) => {
                   gap: '0.5rem'
                 }}
               >
-                {isExporting ? '⏳' : '📥'} {isExporting ? 'Exporting...' : 'Export CSV'}
+                {isExporting ? '⏳' : '📥'} Report
               </button>
+              
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -607,14 +1043,41 @@ const calculateAchievements = (tiers, students) => {
             marginBottom: '1.5rem',
             boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)'
           }}>
-            <h2 style={{
-              fontSize: '1.25rem',
-              fontWeight: 'bold',
-              color: '#223848',
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
               marginBottom: '1rem'
             }}>
-              🏆 Achievement Overview
-            </h2>
+              <h2 style={{
+                fontSize: '1.25rem',
+                fontWeight: 'bold',
+                color: '#223848',
+                margin: 0
+              }}>
+                🏆 Achievement Overview
+              </h2>
+              {studentAchievements.length > 0 && (
+                <button
+                  onClick={toggleAllTiers}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    background: 'linear-gradient(135deg, #f3f4f6, #e5e7eb)',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    fontSize: '0.875rem',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    color: '#223848',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}
+                >
+                  {allExpanded ? '➖ Collapse All Tiers' : '➕ Expand All Tiers'}
+                </button>
+              )}
+            </div>
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
@@ -792,13 +1255,15 @@ const calculateAchievements = (tiers, students) => {
           ) : (
             <div style={{
               display: 'grid',
-              gap: '1.5rem'
+              gap: '1rem'
             }}>
               {studentAchievements.map((achievement, index) => (
                 <AchievementLevelCard
                   key={index}
                   achievement={achievement}
                   index={index}
+                  isExpanded={expandedTiers.has(index)}
+                  onToggle={() => toggleTierExpansion(index)}
                 />
               ))}
             </div>
@@ -973,7 +1438,7 @@ function OverviewCard({ icon, title, value, subtitle, color }) {
   )
 }
 
-function AchievementLevelCard({ achievement, index }) {
+function AchievementLevelCard({ achievement, index, isExpanded, onToggle }) {
   const tierColors = ['#FFB366', '#ADD4EA', '#C3E0DE', '#A1E5DB', '#B6DFEB']
   const tierIcons = ['🥉', '🥈', '🥇', '🏆', '⭐']
   const color = tierColors[index % tierColors.length]
@@ -983,133 +1448,234 @@ function AchievementLevelCard({ achievement, index }) {
     <div style={{
       background: 'white',
       borderRadius: '1rem',
-      padding: '1.5rem',
       boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
-      border: `2px solid ${color}30`
+      border: `2px solid ${color}30`,
+      overflow: 'hidden'
     }}>
-      {/* Header */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: '1rem'
-      }}>
+      {/* Header - Always Visible */}
+      <div 
+        onClick={onToggle}
+        style={{
+          padding: '1.5rem',
+          cursor: 'pointer',
+          background: isExpanded ? `${color}08` : 'white',
+          transition: 'background 0.2s',
+          ':hover': {
+            background: `${color}10`
+          }
+        }}
+      >
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '1rem'
+          justifyContent: 'space-between'
         }}>
           <div style={{
-            width: '3rem',
-            height: '3rem',
-            background: `linear-gradient(135deg, ${color}, ${color}80)`,
-            borderRadius: '50%',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '1.5rem'
+            gap: '1rem'
           }}>
-            {icon}
-          </div>
-          <div>
-            <h3 style={{
+            {/* Expand/Collapse Icon */}
+            <div style={{
               fontSize: '1.25rem',
-              fontWeight: 'bold',
-              color: '#223848',
-              margin: 0
-            }}>
-              {achievement.reward}
-            </h3>
-            <p style={{
-              fontSize: '0.875rem',
               color: '#6b7280',
-              margin: 0
+              transition: 'transform 0.2s',
+              transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)'
             }}>
-              {achievement.books} book{achievement.books !== 1 ? 's' : ''} required
-            </p>
+              ▶
+            </div>
+            
+            {/* Tier Icon */}
+            <div style={{
+              width: '3rem',
+              height: '3rem',
+              background: `linear-gradient(135deg, ${color}, ${color}80)`,
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.5rem'
+            }}>
+              {icon}
+            </div>
+            
+            {/* Tier Info */}
+            <div>
+              <h3 style={{
+                fontSize: '1.25rem',
+                fontWeight: 'bold',
+                color: '#223848',
+                margin: 0
+              }}>
+                {achievement.reward}
+              </h3>
+              <p style={{
+                fontSize: '0.875rem',
+                color: '#6b7280',
+                margin: 0
+              }}>
+                {achievement.books} book{achievement.books !== 1 ? 's' : ''} required
+              </p>
+            </div>
           </div>
-        </div>
-        <div style={{
-          background: `${color}15`,
-          borderRadius: '0.5rem',
-          padding: '0.5rem 1rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem'
-        }}>
-          <span style={{
-            fontSize: '1.25rem',
-            fontWeight: 'bold',
-            color: '#223848'
+          
+          {/* Student Count Badge */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem'
           }}>
-            {achievement.count}
-          </span>
-          <span style={{
-            fontSize: '0.875rem',
-            color: '#6b7280'
-          }}>
-            student{achievement.count !== 1 ? 's' : ''}
-          </span>
+            <div style={{
+              background: `${color}15`,
+              borderRadius: '0.5rem',
+              padding: '0.5rem 1rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}>
+              <span style={{
+                fontSize: '1.5rem',
+                fontWeight: 'bold',
+                color: '#223848'
+              }}>
+                {achievement.count}
+              </span>
+              <span style={{
+                fontSize: '0.875rem',
+                color: '#6b7280'
+              }}>
+                student{achievement.count !== 1 ? 's' : ''}
+              </span>
+            </div>
+            <span style={{
+              fontSize: '0.875rem',
+              color: '#9ca3af',
+              fontStyle: 'italic'
+            }}>
+              Click to {isExpanded ? 'collapse' : 'expand'}
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* Student List */}
-      {achievement.count === 0 ? (
+      {/* Expanded Student List */}
+      {isExpanded && (
         <div style={{
-          textAlign: 'center',
-          padding: '2rem',
-          color: '#6b7280',
-          fontStyle: 'italic'
+          padding: '0 1.5rem 1.5rem 1.5rem',
+          borderTop: `1px solid ${color}20`
         }}>
-          No students have achieved this level yet
-        </div>
-      ) : (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-          gap: '0.75rem'
-        }}>
-          {achievement.achievedStudents.map(student => (
-            <div
-              key={`${student.type}-${student.id}`}
-              style={{
-                background: '#f8fafc',
-                borderRadius: '0.5rem',
-                padding: '0.75rem',
-                border: '1px solid #e2e8f0',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between'
-              }}
-            >
-              <div style={{ flex: 1 }}>
-                <div style={{
-                  fontSize: '0.875rem',
-                  fontWeight: '600',
-                  color: '#223848',
-                  marginBottom: '0.25rem'
-                }}>
-                  {student.firstName} {student.lastInitial}.
-                </div>
-                <div style={{
-                  fontSize: '0.75rem',
-                  color: '#6b7280'
-                }}>
-                  Grade {student.grade} • {student.booksCompleted} book{student.booksCompleted !== 1 ? 's' : ''}
-                </div>
-              </div>
-              <div style={{
-                fontSize: '0.75rem',
-                padding: '0.25rem 0.5rem',
-                backgroundColor: student.type === 'app' ? '#ADD4EA' : '#C3E0DE',
-                color: '#223848',
-                borderRadius: '0.25rem',
-                fontWeight: '600'
-              }}>
-                {student.type === 'app' ? 'APP' : 'MANUAL'}
-              </div>
+          {achievement.count === 0 ? (
+            <div style={{
+              textAlign: 'center',
+              padding: '2rem',
+              color: '#6b7280',
+              fontStyle: 'italic'
+            }}>
+              No students have achieved this level yet
             </div>
-          ))}
+          ) : (
+            <>
+              {/* Student List Header */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '40px 2fr 1fr 1fr 100px',
+                gap: '1rem',
+                padding: '0.75rem 0',
+                borderBottom: `2px solid ${color}20`,
+                fontSize: '0.75rem',
+                fontWeight: '600',
+                color: '#6b7280',
+                textTransform: 'uppercase'
+              }}>
+                <div>#</div>
+                <div>Student Name</div>
+                <div>Grade</div>
+                <div>Books Read</div>
+                <div>Type</div>
+              </div>
+              
+              {/* Student Rows */}
+              <div style={{
+                maxHeight: '400px',
+                overflowY: 'auto'
+              }}>
+                {achievement.achievedStudents.map((student, idx) => (
+                  <div
+                    key={`${student.type}-${student.id}`}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '40px 2fr 1fr 1fr 100px',
+                      gap: '1rem',
+                      padding: '0.75rem 0',
+                      borderBottom: '1px solid #f3f4f6',
+                      alignItems: 'center',
+                      fontSize: '0.875rem',
+                      ':hover': {
+                        background: '#f9fafb'
+                      }
+                    }}
+                  >
+                    <div style={{
+                      color: '#9ca3af',
+                      fontWeight: '500'
+                    }}>
+                      {idx + 1}
+                    </div>
+                    <div style={{
+                      fontWeight: '600',
+                      color: '#223848'
+                    }}>
+                      {student.firstName} {student.lastInitial}.
+                    </div>
+                    <div style={{
+                      color: '#6b7280'
+                    }}>
+                      Grade {student.grade}
+                    </div>
+                    <div style={{
+                      color: '#223848',
+                      fontWeight: '600'
+                    }}>
+                      {student.booksCompleted}
+                    </div>
+                    <div>
+                      <span style={{
+                        fontSize: '0.75rem',
+                        padding: '0.25rem 0.5rem',
+                        backgroundColor: student.type === 'app' ? '#ADD4EA20' : '#C3E0DE20',
+                        color: '#223848',
+                        borderRadius: '0.25rem',
+                        fontWeight: '600',
+                        border: `1px solid ${student.type === 'app' ? '#ADD4EA' : '#C3E0DE'}`
+                      }}>
+                        {student.type === 'app' ? 'APP' : 'MANUAL'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Summary Stats */}
+              {achievement.count > 10 && (
+                <div style={{
+                  marginTop: '1rem',
+                  padding: '0.75rem',
+                  background: `${color}08`,
+                  borderRadius: '0.5rem',
+                  fontSize: '0.75rem',
+                  color: '#6b7280',
+                  display: 'flex',
+                  justifyContent: 'space-between'
+                }}>
+                  <span>Total: {achievement.count} students</span>
+                  <span>
+                    App: {achievement.achievedStudents.filter(s => s.type === 'app').length} | 
+                    Manual: {achievement.achievedStudents.filter(s => s.type === 'manual').length}
+                  </span>
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
     </div>

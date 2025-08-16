@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../contexts/AuthContext';
-import { usePhaseAccess } from '../../hooks/usePhaseAccess'; // ADDED PHASE ACCESS
+import { usePhaseAccess } from '../../hooks/usePhaseAccess';
+import { getTheme, getSeasonalThemeAnnouncement } from '../../lib/themes'; 
 import { getStudentDataEntities, updateStudentDataEntities, getLinkedParentDetails, getFamilyDetails } from '../../lib/firebase';
 import { awardBadgeXP } from '../../lib/xp-management'; // ADD THIS LINE
 import { collection, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
@@ -26,6 +27,7 @@ export default function MyStats() {
   const [showBraggingRights, setShowBraggingRights] = useState(false);
   const [showSuccess, setShowSuccess] = useState(''); // NEW: Success message state
   const [isSaving, setIsSaving] = useState(false);
+  const [seasonalThemeAlert, setSeasonalThemeAlert] = useState(null); // ADD THIS LINE
   
   // Enhanced features for personal deep dive
   const [badgeProgress, setBadgeProgress] = useState(null);
@@ -70,98 +72,6 @@ export default function MyStats() {
   // Parent info states
   const [linkedParents, setLinkedParents] = useState([]);
   const [familyInfo, setFamilyInfo] = useState(null);
-
-  // Theme definitions (consistent with original)
-  const themes = useMemo(() => ({
-    classic_lux: {
-      name: 'Lux Libris Classic',
-      assetPrefix: 'classic_lux',
-      primary: '#ADD4EA',
-      secondary: '#C3E0DE',
-      accent: '#A1E5DB',
-      background: '#FFFCF5',
-      surface: '#FFFFFF',
-      textPrimary: '#223848',
-      textSecondary: '#556B7A'
-    },
-    darkwood_sports: {
-      name: 'Athletic Champion',
-      assetPrefix: 'darkwood_sports',
-      primary: '#2F5F5F',
-      secondary: '#8B2635',
-      accent: '#F5DEB3',
-      background: '#F5F5DC',
-      surface: '#FFF8DC',
-      textPrimary: '#2F1B14',
-      textSecondary: '#5D4037'
-    },
-    lavender_space: {
-  name: 'Cosmic Explorer',
-  assetPrefix: 'lavender_space',
-  primary: '#8B7AA8',      // Darkened from #9C88C4
-  secondary: '#9B85C4',    // Darkened from #B19CD9
-  accent: '#C8B3E8',       // Darkened from #E1D5F7
-  background: '#2A1B3D',   // Keep dark background
-  surface: '#3D2B54',      // Keep
-  textPrimary: '#E8DEFF',  // Slightly brightened for dark bg
-  textSecondary: '#B8A6D9' // Slightly adjusted
-},
-    mint_music: {
-      name: 'Musical Harmony',
-      assetPrefix: 'mint_music',
-      primary: '#B8E6B8',
-      secondary: '#FFB3BA',
-      accent: '#FFCCCB',
-      background: '#FEFEFE',
-      surface: '#F8FDF8',
-      textPrimary: '#2E4739',
-      textSecondary: '#4A6B57'
-    },
-    pink_plushies: {
-      name: 'Kawaii Dreams',
-      assetPrefix: 'pink_plushies',
-      primary: '#FFB6C1',
-      secondary: '#FFC0CB',
-      accent: '#FFE4E1',
-      background: '#FFF0F5',
-      surface: '#FFE4E6',
-      textPrimary: '#4A2C2A',
-      textSecondary: '#8B4B5C'
-    },
-    teal_anime: {
-      name: 'Otaku Paradise',
-      assetPrefix: 'teal_anime',
-      primary: '#20B2AA',
-      secondary: '#48D1CC',
-      accent: '#7FFFD4',
-      background: '#E0FFFF',
-      surface: '#AFEEEE',
-      textPrimary: '#2F4F4F',
-      textSecondary: '#5F9EA0'
-    },
-    white_nature: {
-      name: 'Pure Serenity',
-      assetPrefix: 'white_nature',
-      primary: '#6B8E6B',
-      secondary: '#D2B48C',
-      accent: '#F5F5DC',
-      background: '#FFFEF8',
-      surface: '#FFFFFF',
-      textPrimary: '#2F4F2F',
-      textSecondary: '#556B2F'
-    },
-    little_luminaries: {
-  name: 'Luxlings™',
-  assetPrefix: 'little_luminaries',
-  primary: '#000000',      // Lightened grey from #666666
-  secondary: '#000000',    // Keep black
-  accent: '#E8E8E8',       // Keep
-  background: '#FFFFFF',   // Keep white
-  surface: '#FAFAFA',      // Keep
-  textPrimary: '#8B6914',  // Darkened gold from #B8860B
-  textSecondary: '#606060' // Darkened from #AAAAAA for better contrast
-}
-  }), []);
 
   // UPDATED: Navigation menu items with phase-aware locking
   const navMenuItems = useMemo(() => [
@@ -1356,9 +1266,17 @@ if (sessionDay === 0 || sessionDay === 6) weekendSessions++;
       setStudentData(firebaseStudentData);
       setLeaderboardUnlocked(firebaseStudentData.leaderboardUnlocked || false);
       
+      // UPDATED: Use getTheme from themes.js
       const selectedThemeKey = firebaseStudentData.selectedTheme || 'classic_lux';
-      const selectedTheme = themes[selectedThemeKey];
+      const selectedTheme = getTheme(selectedThemeKey);
       setCurrentTheme(selectedTheme);
+      
+      // ADD: Check for seasonal themes
+      const seasonalAnnouncements = getSeasonalThemeAnnouncement();
+      if (seasonalAnnouncements.length > 0 && !firebaseStudentData.selectedTheme) {
+        setSeasonalThemeAlert(seasonalAnnouncements[0]);
+        setTimeout(() => setSeasonalThemeAlert(null), 8000);
+      }
       
       // Load parent information
       if (firebaseStudentData.linkedParents && firebaseStudentData.linkedParents.length > 0) {
@@ -1406,7 +1324,7 @@ if (sessionDay === 0 || sessionDay === 6) weekendSessions++;
     }
     
     setIsLoading(false);
-  }, [user, router, themes, calculatePersonalStats, calculateReadingQuality, calculateSaintsStats, calculateRealWorldAchievements, calculateMedalAchievements]);
+  }, [user, router, calculatePersonalStats, calculateReadingQuality, calculateSaintsStats, calculateRealWorldAchievements, calculateMedalAchievements]);
 
   // Load initial data
   useEffect(() => {
@@ -1772,6 +1690,34 @@ if (sessionDay === 0 || sessionDay === 6) weekendSessions++;
             )}
           </div>
         </div>
+
+        {/* ADD: Seasonal theme notification */}
+        {seasonalThemeAlert && (
+          <div 
+            onClick={() => router.push('/student-settings')}
+            style={{
+              position: 'fixed',
+              top: '20px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              backgroundColor: currentTheme.primary,
+              color: 'white',
+              padding: '12px 24px',
+              borderRadius: '24px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+              zIndex: 1002,
+              fontSize: '14px',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              cursor: 'pointer',
+              animation: 'slideInDown 0.5s ease-out'
+            }}
+          >
+            {seasonalThemeAlert.icon} {seasonalThemeAlert.message} Tap to use!
+          </div>
+        )}
 
         {/* TEACHER_SELECTION: Show only messaging box */}
         {phaseData.currentPhase === 'TEACHER_SELECTION' ? (

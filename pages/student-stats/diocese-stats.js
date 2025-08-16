@@ -1,8 +1,9 @@
 // pages/student-stats/diocese-stats.js - Complete Diocese Stats Coming Soon Page
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../contexts/AuthContext';
 import { getStudentDataEntities } from '../../lib/firebase';
+import { getTheme } from '../../lib/themes';
 import Head from 'next/head';
 
 export default function DioceseStats() {
@@ -11,90 +12,6 @@ export default function DioceseStats() {
   const [studentData, setStudentData] = useState(null);
   const [currentTheme, setCurrentTheme] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-
-  // Theme definitions (consistent with all other pages)
-  const themes = useMemo(() => ({
-    classic_lux: {
-      name: 'Lux Libris Classic',
-      primary: '#ADD4EA',
-      secondary: '#C3E0DE',
-      accent: '#A1E5DB',
-      background: '#FFFCF5',
-      surface: '#FFFFFF',
-      textPrimary: '#223848',
-      textSecondary: '#556B7A'
-    },
-    darkwood_sports: {
-      name: 'Athletic Champion',
-      primary: '#2F5F5F',
-      secondary: '#8B2635',
-      accent: '#F5DEB3',
-      background: '#F5F5DC',
-      surface: '#FFF8DC',
-      textPrimary: '#2F1B14',
-      textSecondary: '#5D4037'
-    },
-    lavender_space: {
-  name: 'Cosmic Explorer',
-  primary: '#8B7AA8',
-  secondary: '#9B85C4',
-  accent: '#C8B3E8',
-  background: '#2A1B3D',
-  surface: '#3D2B54',
-  textPrimary: '#E8DEFF',
-  textSecondary: '#B8A6D9'
-},
-    mint_music: {
-      name: 'Musical Harmony',
-      primary: '#B8E6B8',
-      secondary: '#FFB3BA',
-      accent: '#FFCCCB',
-      background: '#FEFEFE',
-      surface: '#F8FDF8',
-      textPrimary: '#2E4739',
-      textSecondary: '#4A6B57'
-    },
-    pink_plushies: {
-      name: 'Kawaii Dreams',
-      primary: '#FFB6C1',
-      secondary: '#FFC0CB',
-      accent: '#FFE4E1',
-      background: '#FFF0F5',
-      surface: '#FFE4E6',
-      textPrimary: '#4A2C2A',
-      textSecondary: '#8B4B5C'
-    },
-    teal_anime: {
-      name: 'Otaku Paradise',
-      primary: '#20B2AA',
-      secondary: '#48D1CC',
-      accent: '#7FFFD4',
-      background: '#E0FFFF',
-      surface: '#AFEEEE',
-      textPrimary: '#2F4F4F',
-      textSecondary: '#5F9EA0'
-    },
-    white_nature: {
-      name: 'Pure Serenity',
-      primary: '#6B8E6B',
-      secondary: '#D2B48C',
-      accent: '#F5F5DC',
-      background: '#FFFEF8',
-      surface: '#FFFFFF',
-      textPrimary: '#2F4F2F',
-      textSecondary: '#556B2F'
-    },
-    little_luminaries: {
-  name: 'Luxlings™',
-  primary: '#000000',      // Lightened grey from #666666
-  secondary: '#000000',    // Keep black
-  accent: '#E8E8E8',       // Keep
-  background: '#FFFFFF',   // Keep white
-  surface: '#FAFAFA',      // Keep
-  textPrimary: '#8B6914',  // Darkened gold from #B8860B
-  textSecondary: '#606060' // Darkened from #AAAAAA for better contrast
-}
-  }), []);
 
   // Load student data for theme
   const loadData = useCallback(async () => {
@@ -108,7 +25,7 @@ export default function DioceseStats() {
       setStudentData(firebaseStudentData);
       
       const selectedThemeKey = firebaseStudentData.selectedTheme || 'classic_lux';
-      const selectedTheme = themes[selectedThemeKey];
+      const selectedTheme = getTheme(selectedThemeKey);
       setCurrentTheme(selectedTheme);
       
     } catch (error) {
@@ -117,7 +34,7 @@ export default function DioceseStats() {
     }
     
     setIsLoading(false);
-  }, [user, router, themes]);
+  }, [user, router]);
 
   useEffect(() => {
     if (!loading && isAuthenticated && user) {

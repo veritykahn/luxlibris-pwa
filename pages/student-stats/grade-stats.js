@@ -7,6 +7,7 @@ import { usePhaseAccess } from '../../hooks/usePhaseAccess'; // ADDED PHASE ACCE
 import { getStudentDataEntities } from '../../lib/firebase';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
+import { getTheme, getSeasonalThemeAnnouncement } from '../../lib/themes'; // ADD THIS LINE
 import Head from 'next/head';
 
 export default function GradeStats() {
@@ -27,90 +28,9 @@ export default function GradeStats() {
   
   // NEW: Expandable state for real rewards
   const [expandedRealRewards, setExpandedRealRewards] = useState(false);
-
-  // Theme definitions (same as before)
-  const themes = useMemo(() => ({
-    classic_lux: {
-      name: 'Lux Libris Classic',
-      primary: '#ADD4EA',
-      secondary: '#C3E0DE',
-      accent: '#A1E5DB',
-      background: '#FFFCF5',
-      surface: '#FFFFFF',
-      textPrimary: '#223848',
-      textSecondary: '#556B7A'
-    },
-    darkwood_sports: {
-      name: 'Athletic Champion',
-      primary: '#2F5F5F',
-      secondary: '#8B2635',
-      accent: '#F5DEB3',
-      background: '#F5F5DC',
-      surface: '#FFF8DC',
-      textPrimary: '#2F1B14',
-      textSecondary: '#5D4037'
-    },
-    lavender_space: {
-  name: 'Cosmic Explorer',
-  primary: '#8B7AA8',
-  secondary: '#9B85C4',
-  accent: '#C8B3E8',
-  background: '#2A1B3D',
-  surface: '#3D2B54',
-  textPrimary: '#E8DEFF',
-  textSecondary: '#B8A6D9'
-},
-    mint_music: {
-      name: 'Musical Harmony',
-      primary: '#B8E6B8',
-      secondary: '#FFB3BA',
-      accent: '#FFCCCB',
-      background: '#FEFEFE',
-      surface: '#F8FDF8',
-      textPrimary: '#2E4739',
-      textSecondary: '#4A6B57'
-    },
-    pink_plushies: {
-      name: 'Kawaii Dreams',
-      primary: '#FFB6C1',
-      secondary: '#FFC0CB',
-      accent: '#FFE4E1',
-      background: '#FFF0F5',
-      surface: '#FFE4E6',
-      textPrimary: '#4A2C2A',
-      textSecondary: '#8B4B5C'
-    },
-    teal_anime: {
-      name: 'Otaku Paradise',
-      primary: '#20B2AA',
-      secondary: '#48D1CC',
-      accent: '#7FFFD4',
-      background: '#E0FFFF',
-      surface: '#AFEEEE',
-      textPrimary: '#2F4F4F',
-      textSecondary: '#5F9EA0'
-    },
-    white_nature: {
-      name: 'Pure Serenity',
-      primary: '#6B8E6B',
-      secondary: '#D2B48C',
-      accent: '#F5F5DC',
-      background: '#FFFEF8',
-      surface: '#FFFFFF',
-      textPrimary: '#2F4F2F',
-      textSecondary: '#556B2F'
-    },
-    little_luminaries: {
-  name: 'Luxlings™',
-  primary: '#000000',      // Lightened grey from #666666
-  secondary: '#000000',    // Keep black
-  accent: '#E8E8E8',       // Keep
-  background: '#FFFFFF',   // Keep white
-  surface: '#FAFAFA',      // Keep
-  textPrimary: '#8B6914',  // Darkened gold from #B8860B
-  textSecondary: '#606060' // Darkened from #AAAAAA for better contrast
-}
-  }), []);
+  
+  // ADD: State for seasonal theme notification
+  const [seasonalThemeAlert, setSeasonalThemeAlert] = useState(null);
 
   // UPDATED: Navigation menu items with phase-aware locking
   const navMenuItems = useMemo(() => [
@@ -594,9 +514,18 @@ gradeSnapshot.forEach(studentDoc => {
       
       setStudentData(firebaseStudentData);
       
+      // UPDATED: Use getTheme instead of themes object
       const selectedThemeKey = firebaseStudentData.selectedTheme || 'classic_lux';
-      const selectedTheme = themes[selectedThemeKey];
-      setCurrentTheme(selectedTheme);
+      const theme = getTheme(selectedThemeKey);  // NEW WAY
+      setCurrentTheme(theme);
+      
+      // ADD: Check for seasonal themes (optional)
+      const seasonalAnnouncements = getSeasonalThemeAnnouncement();
+      if (seasonalAnnouncements.length > 0 && !firebaseStudentData.selectedTheme) {
+        // Show seasonal theme notification if user hasn't selected a theme
+        setSeasonalThemeAlert(seasonalAnnouncements[0]);
+        setTimeout(() => setSeasonalThemeAlert(null), 8000);
+      }
       
       // Calculate grade statistics
       await calculateGradeStats(firebaseStudentData);
@@ -610,7 +539,7 @@ gradeSnapshot.forEach(studentDoc => {
     }
     
     setIsLoading(false);
-  }, [user, router, themes, calculateGradeStats, calculateRealRewardsTracker]);
+  }, [user, router, calculateGradeStats, calculateRealRewardsTracker]);
 
   useEffect(() => {
     if (!loading && isAuthenticated && user) {
@@ -673,6 +602,37 @@ if (loading || isLoading || !studentData || !currentTheme) {
         backgroundColor: currentTheme.background,
         paddingBottom: '100px'
       }}>
+        
+        {/* ADD: Seasonal theme notification */}
+        {seasonalThemeAlert && (
+          <div style={{
+            position: 'fixed',
+            top: '20px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: currentTheme.primary,
+            color: 'white',
+            padding: '14px 24px',
+            borderRadius: '24px',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+            zIndex: 1002,
+            fontSize: '14px',
+            fontWeight: '600',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            cursor: 'pointer',
+            animation: 'slideInDown 0.6s ease-out'
+          }}
+          onClick={() => {
+            router.push('/student-settings');
+            setSeasonalThemeAlert(null);
+          }}
+          >
+            <span style={{ fontSize: '20px' }}>{seasonalThemeAlert.icon}</span>
+            <span>{seasonalThemeAlert.message} Tap to use!</span>
+          </div>
+        )}
         
         {/* HEADER WITH DROPDOWN NAVIGATION */}
         <div style={{

@@ -5,6 +5,7 @@ import { usePhaseAccess } from '../hooks/usePhaseAccess';
 import { getStudentDataEntities, updateStudentDataEntities } from '../lib/firebase';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { getTheme, getSeasonalThemeAnnouncement } from '../lib/themes'; // ADD THIS LINE
 import Head from 'next/head';
 
 export default function StudentSaints() {
@@ -26,100 +27,9 @@ export default function StudentSaints() {
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [isSeriesExpanded, setIsSeriesExpanded] = useState(false);
   const [showNavMenu, setShowNavMenu] = useState(false);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
-  const [notificationProcessing, setNotificationProcessing] = useState(false);
-
-  // Theme definitions
-  const themes = useMemo(() => ({
-    classic_lux: {
-      name: 'Lux Libris Classic',
-      assetPrefix: 'classic_lux',
-      primary: '#ADD4EA',
-      secondary: '#C3E0DE',
-      accent: '#A1E5DB',
-      background: '#FFFCF5',
-      surface: '#FFFFFF',
-      textPrimary: '#223848',
-      textSecondary: '#556B7A'
-    },
-    darkwood_sports: {
-      name: 'Athletic Champion',
-      assetPrefix: 'darkwood_sports',
-      primary: '#2F5F5F',
-      secondary: '#8B2635',
-      accent: '#F5DEB3',
-      background: '#F5F5DC',
-      surface: '#FFF8DC',
-      textPrimary: '#2F1B14',
-      textSecondary: '#5D4037'
-    },
-    lavender_space: {
-  name: 'Cosmic Explorer',
-  assetPrefix: 'lavender_space',
-  primary: '#8B7AA8',      // Darkened from #9C88C4
-  secondary: '#9B85C4',    // Darkened from #B19CD9
-  accent: '#C8B3E8',       // Darkened from #E1D5F7
-  background: '#2A1B3D',   // Keep dark background
-  surface: '#3D2B54',      // Keep
-  textPrimary: '#E8DEFF',  // Slightly brightened for dark bg
-  textSecondary: '#B8A6D9' // Slightly adjusted
-},
-    mint_music: {
-      name: 'Musical Harmony',
-      assetPrefix: 'mint_music',
-      primary: '#B8E6B8',
-      secondary: '#FFB3BA',
-      accent: '#FFCCCB',
-      background: '#FEFEFE',
-      surface: '#F8FDF8',
-      textPrimary: '#2E4739',
-      textSecondary: '#4A6B57'
-    },
-    pink_plushies: {
-      name: 'Kawaii Dreams',
-      assetPrefix: 'pink_plushies',
-      primary: '#FFB6C1',
-      secondary: '#FFC0CB',
-      accent: '#FFE4E1',
-      background: '#FFF0F5',
-      surface: '#FFE4E6',
-      textPrimary: '#4A2C2A',
-      textSecondary: '#8B4B5C'
-    },
-    teal_anime: {
-      name: 'Otaku Paradise',
-      assetPrefix: 'teal_anime',
-      primary: '#20B2AA',
-      secondary: '#48D1CC',
-      accent: '#7FFFD4',
-      background: '#E0FFFF',
-      surface: '#AFEEEE',
-      textPrimary: '#2F4F4F',
-      textSecondary: '#5F9EA0'
-    },
-    white_nature: {
-      name: 'Pure Serenity',
-      assetPrefix: 'white_nature',
-      primary: '#6B8E6B',
-      secondary: '#D2B48C',
-      accent: '#F5F5DC',
-      background: '#FFFEF8',
-      surface: '#FFFFFF',
-      textPrimary: '#2F4F2F',
-      textSecondary: '#556B2F'
-    },
-    little_luminaries: {
-  name: 'Luxlings™',
-  assetPrefix: 'little_luminaries',
-  primary: '#757575',      // Lightened grey from #666666
-  secondary: '#000000',    // Keep black
-  accent: '#E8E8E8',       // Keep
-  background: '#FFFFFF',   // Keep white
-  surface: '#FAFAFA',      // Keep
-  textPrimary: '#8B6914',  // Darkened gold from #B8860B
-  textSecondary: '#606060' // Darkened from #AAAAAA for better contrast
-}
-  }), []);
+const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+const [notificationProcessing, setNotificationProcessing] = useState(false);
+const [seasonalThemeAlert, setSeasonalThemeAlert] = useState(null); // ADD THIS LINE
 
   // 🍔 NAVIGATION MENU ITEMS WITH PHASE AWARENESS
   const navMenuItems = useMemo(() => [
@@ -925,34 +835,43 @@ const loadSaintsData = useCallback(async () => {
 
   // Load initial data
   useEffect(() => {
-    if (!loading && isAuthenticated && user) {
-      const loadData = async () => {
-        try {
-          const firebaseStudentData = await getStudentDataEntities(user.uid);
-          if (!firebaseStudentData) {
-            router.push('/student-onboarding');
-            return;
-          }
-          
-          setStudentData(firebaseStudentData);
-          
-          const selectedThemeKey = firebaseStudentData.selectedTheme || 'classic_lux';
-          const selectedTheme = themes[selectedThemeKey];
-          setCurrentTheme(selectedTheme);
-          
-        } catch (error) {
-          console.error('Error loading data:', error);
-          router.push('/student-dashboard');
+  if (!loading && isAuthenticated && user) {
+    const loadData = async () => {
+      try {
+        const firebaseStudentData = await getStudentDataEntities(user.uid);
+        if (!firebaseStudentData) {
+          router.push('/student-onboarding');
+          return;
         }
         
-        setIsLoading(false);
-      };
+        setStudentData(firebaseStudentData);
+        
+        // UPDATED: Use getTheme from lib/themes.js
+        const selectedThemeKey = firebaseStudentData.selectedTheme || 'classic_lux';
+        const theme = getTheme(selectedThemeKey);
+        setCurrentTheme(theme);
+        
+        // ADD: Check for seasonal themes (optional but nice!)
+        const seasonalAnnouncements = getSeasonalThemeAnnouncement();
+        if (seasonalAnnouncements.length > 0 && !firebaseStudentData.selectedTheme) {
+          // Show seasonal theme notification if user hasn't selected a theme
+          setSeasonalThemeAlert(seasonalAnnouncements[0]);
+          setTimeout(() => setSeasonalThemeAlert(null), 5000);
+        }
+        
+      } catch (error) {
+        console.error('Error loading data:', error);
+        router.push('/student-dashboard');
+      }
+      
+      setIsLoading(false);
+    };
 
-      loadData();
-    } else if (!loading && !isAuthenticated) {
-      router.push('/role-selector');
-    }
-  }, [loading, isAuthenticated, user, router, themes]);
+    loadData();
+  } else if (!loading && !isAuthenticated) {
+    router.push('/role-selector');
+  }
+}, [loading, isAuthenticated, user, router]); 
 
   // Load saints when student data is available
   useEffect(() => {
@@ -1072,6 +991,11 @@ const loadSaintsData = useCallback(async () => {
   const decorativeOverlay = `/trophy_cases/${studentData.selectedTheme || 'classic_lux'}.jpg`;
   const shelves = organizeSaintsIntoShelves(saints, unlockedSaints, studentData, currentStreak);
   const phaseMessage = getPhaseAwareMessage();
+
+  // ADD THESE TWO LINES - Fix text colors for dark themes
+  const isLavenderSpace = currentTheme.assetPrefix === 'lavender_space';
+  const fixedTextColor = isLavenderSpace ? '#2A1B3D' : currentTheme.textPrimary;
+  const fixedTextSecondary = isLavenderSpace ? '#4A3B5C' : currentTheme.textSecondary;
 
   return (
     <>
@@ -1340,6 +1264,36 @@ const loadSaintsData = useCallback(async () => {
           </div>
         </div>
 
+{/* ADD: Seasonal theme notification */}
+      {seasonalThemeAlert && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          backgroundColor: currentTheme.primary,
+          color: 'white',
+          padding: '12px 24px',
+          borderRadius: '24px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+          zIndex: 1002,
+          fontSize: '14px',
+          fontWeight: '600',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          cursor: 'pointer',
+          animation: 'fadeIn 0.5s ease'
+        }}
+        onClick={() => {
+          router.push('/student-settings');
+          setSeasonalThemeAlert(null);
+        }}
+        >
+          {seasonalThemeAlert.icon} {seasonalThemeAlert.message} Tap to use!
+        </div>
+      )}
+
         {/* PROGRESS SUMMARY */}
         <div className="saints-progress-section" style={{
           padding: '15px',
@@ -1364,13 +1318,13 @@ const loadSaintsData = useCallback(async () => {
                 <div style={{
                   fontSize: '20px',
                   fontWeight: 'bold',
-                  color: currentTheme.textPrimary
+                  color: fixedTextColor  // FIXED
                 }}>
                   {unlockedSaints.size}
                 </div>
                 <div style={{
                   fontSize: '12px',
-                  color: currentTheme.textSecondary
+                  color: fixedTextSecondary  // FIXED
                 }}>
                   Saints Unlocked
                 </div>
@@ -1379,13 +1333,13 @@ const loadSaintsData = useCallback(async () => {
                 <div style={{
                   fontSize: '20px',
                   fontWeight: 'bold',
-                  color: currentTheme.textPrimary
+                  color: fixedTextColor  // FIXED
                 }}>
                   {currentStreak}
                 </div>
                 <div style={{
                   fontSize: '12px',
-                  color: currentTheme.textSecondary
+                  color: fixedTextSecondary  // FIXED
                 }}>
                   Day Streak
                 </div>
@@ -1394,13 +1348,13 @@ const loadSaintsData = useCallback(async () => {
                 <div style={{
                   fontSize: '20px',
                   fontWeight: 'bold',
-                  color: currentTheme.textPrimary
+                  color: fixedTextColor  // FIXED
                 }}>
                   {studentData.lifetimeBooksSubmitted || 0}
                 </div>
                 <div style={{
                   fontSize: '12px',
-                  color: currentTheme.textSecondary
+                  color: fixedTextSecondary  // FIXED
                 }}>
                   Books Read
                 </div>
@@ -1700,21 +1654,21 @@ const loadSaintsData = useCallback(async () => {
               cursor: 'pointer',
               touchAction: 'manipulation',
               WebkitTapHighlightColor: 'transparent',
-              transition: 'all 0.3s ease'
+              transition: 'all 0.3s ease',
+              backgroundColor: isLavenderSpace ? 'rgba(255,255,255,0.95)' : 'transparent'  // ADD THIS
             }}
           >
             <div style={{
               fontSize: '14px',
               fontWeight: '700',
-              color: currentTheme.textPrimary,
+               color: currentTheme.textPrimary,  
               marginBottom: '8px'
             }}>
               Unlock your Luxlings™ Saints
             </div>
             <div style={{
               fontSize: '12px',
-              color: currentTheme.textSecondary,
-              lineHeight: '1.5'
+              color: currentTheme.textSecondary,  
             }}>
               Keep building healthy habits every day to unlock more inspirational saints
             </div>
@@ -2019,7 +1973,7 @@ borderRadius: '12px'
                   <div style={{
                     fontSize: '14px',
                     fontWeight: '600',
-                    color: currentTheme.textPrimary,
+                    color: fixedTextColor,  // FIXED
                     marginBottom: '10px',
                     textAlign: 'center'
                   }}>
@@ -2027,7 +1981,7 @@ borderRadius: '12px'
                   </div>
                   <div style={{
                     fontSize: '12px',
-                    color: currentTheme.textSecondary,
+                    color: fixedTextSecondary,  // FIXED
                     lineHeight: '1.6',
                     textAlign: 'center'
                   }}>
@@ -2066,13 +2020,13 @@ borderRadius: '12px'
                     <div style={{
                       fontSize: '14px',
                       fontWeight: '600',
-                      color: currentTheme.textPrimary
+                      color: fixedTextColor  // FIXED
                     }}>
                       ✨ Series Collection Guide
                     </div>
                     <div style={{
                       fontSize: '12px',
-                      color: currentTheme.textPrimary,
+                      color: fixedTextColor,  // FIXED
                       transform: isSeriesExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
                       transition: 'transform 0.3s ease',
                       position: 'absolute',
@@ -2083,7 +2037,7 @@ borderRadius: '12px'
                   </div>
                   <div style={{
                     fontSize: '11px',
-                    color: currentTheme.textSecondary,
+                    color: fixedTextSecondary,
                     marginTop: '4px',
                     textAlign: 'center'
                   }}>
@@ -2094,93 +2048,93 @@ borderRadius: '12px'
                 {isSeriesExpanded && (
                   <div style={{
                     fontSize: '12px',
-                    color: currentTheme.textSecondary,
+                    color: fixedTextSecondary,
                     lineHeight: '1.5',
                     animation: 'fadeIn 0.3s ease',
                     textAlign: 'center'
                   }}>
                     <div style={{ marginBottom: '12px', textAlign: 'center' }}>
-                      <strong style={{ color: currentTheme.textPrimary }}>Ultimate Goal</strong><br />
+                      <strong style={{ color: fixedTextColor }}>Ultimate Goal</strong><br />
                       <em>The heart of our collection and the center of all faith</em>
                     </div>
                     
                     <div style={{ marginBottom: '12px', textAlign: 'center' }}>
-                      <strong style={{ color: currentTheme.textPrimary }}>Mini Marians</strong><br />
+                      <strong style={{ color: fixedTextColor }}>Mini Marians</strong><br />
                       <em>Collect all the beloved appearances and titles of Our Lady from around the world</em>
                     </div>
                     
                     <div style={{ marginBottom: '12px', textAlign: 'center' }}>
-                      <strong style={{ color: currentTheme.textPrimary }}>Sacred Circle</strong><br />
+                      <strong style={{ color: fixedTextColor }}>Sacred Circle</strong><br />
                       <em>Jesus&apos chosen twelve disciples plus Mary Magdalene - the original followers who changed everything</em>
                     </div>
                     
                     <div style={{ marginBottom: '12px', textAlign: 'center' }}>
-                      <strong style={{ color: currentTheme.textPrimary }}>Faithful Families</strong><br />
+                      <strong style={{ color: fixedTextColor }}>Faithful Families</strong><br />
                       <em>Canonized saint families who prayed, served, and were sanctified together</em>
                     </div>
                     
                     <div style={{ marginBottom: '12px', textAlign: 'center' }}>
-                      <strong style={{ color: currentTheme.textPrimary }}>Halo Hatchlings</strong><br />
+                      <strong style={{ color: fixedTextColor }}>Halo Hatchlings</strong><br />
                       <em>Young saints who lived holy lives and inspired others before reaching adulthood</em>
                     </div>
                     
                     <div style={{ marginBottom: '12px', textAlign: 'center' }}>
-                      <strong style={{ color: currentTheme.textPrimary }}>Apostolic All-Stars</strong><br />
+                      <strong style={{ color: fixedTextColor }}>Apostolic All-Stars</strong><br />
                       <em>The great teachers, doctors, and early Church fathers who shaped our faith</em>
                     </div>
                     
                     <div style={{ marginBottom: '12px', textAlign: 'center' }}>
-                      <strong style={{ color: currentTheme.textPrimary }}>Cherub Chibis</strong><br />
+                      <strong style={{ color: fixedTextColor }}>Cherub Chibis</strong><br />
                       <em>The mighty archangels - heaven&aposs warrior messengers in adorable form</em>
                     </div>
                     
                     <div style={{ marginBottom: '12px', textAlign: 'center' }}>
-                      <strong style={{ color: currentTheme.textPrimary }}>Contemplative Cuties</strong><br />
+                      <strong style={{ color: fixedTextColor }}>Contemplative Cuties</strong><br />
                       <em>Mystics and visionaries who experienced God&aposs love in extraordinary ways</em>
                     </div>
                     
                     <div style={{ marginBottom: '12px', textAlign: 'center' }}>
-                      <strong style={{ color: currentTheme.textPrimary }}>Founder Flames</strong><br />
+                      <strong style={{ color: fixedTextColor }}>Founder Flames</strong><br />
                       <em>Bold saints who started religious orders and lit fires of faith across the world</em>
                     </div>
                     
                     <div style={{ marginBottom: '12px', textAlign: 'center' }}>
-                      <strong style={{ color: currentTheme.textPrimary }}>Desert Disciples</strong><br />
+                      <strong style={{ color: fixedTextColor }}>Desert Disciples</strong><br />
                       <em>Holy hermits and monks who found God in silence, solitude, and prayer</em>
                     </div>
                     
                     <div style={{ marginBottom: '12px', textAlign: 'center' }}>
-                      <strong style={{ color: currentTheme.textPrimary }}>Regal Royals</strong><br />
+                      <strong style={{ color: fixedTextColor }}>Regal Royals</strong><br />
                       <em>Kings, queens, and nobles who used their crowns to serve God and their people</em>
                     </div>
                     
                     <div style={{ marginBottom: '12px', textAlign: 'center' }}>
-                      <strong style={{ color: currentTheme.textPrimary }}>Culture Carriers</strong><br />
+                      <strong style={{ color: fixedTextColor }}>Culture Carriers</strong><br />
                       <em>Beloved patron saints of countries - collect your homeland&aposs heavenly protector</em>
                     </div>
                     
                     <div style={{ marginBottom: '12px', textAlign: 'center' }}>
-                      <strong style={{ color: currentTheme.textPrimary }}>Learning Legends</strong><br />
+                      <strong style={{ color: fixedTextColor }}>Learning Legends</strong><br />
                       <em>Saints who dedicated their lives to education, schools, and spreading knowledge</em>
                     </div>
                     
                     <div style={{ marginBottom: '12px', textAlign: 'center' }}>
-                      <strong style={{ color: currentTheme.textPrimary }}>Super Sancti</strong><br />
+                      <strong style={{ color: fixedTextColor }}>Super Sancti</strong><br />
                       <em>Heroic martyrs, missionaries, and miracle-workers who changed the world</em>
                     </div>
                     
                     <div style={{ marginBottom: '12px', textAlign: 'center' }}>
-                      <strong style={{ color: currentTheme.textPrimary }}>Heavenly Helpers</strong><br />
+                      <strong style={{ color: fixedTextColor }}>Heavenly Helpers</strong><br />
                       <em>Powerful intercessors known for answering prayers and working miracles</em>
                     </div>
                     
                     <div style={{ marginBottom: '12px', textAlign: 'center' }}>
-                      <strong style={{ color: currentTheme.textPrimary }}>Pocket Patrons</strong><br />
+                      <strong style={{ color: fixedTextColor }}>Pocket Patrons</strong><br />
                       <em>Your everyday protectors for life&aposs daily needs and challenges</em>
                     </div>
                     
                     <div style={{ marginBottom: '12px', textAlign: 'center' }}>
-                      <strong style={{ color: currentTheme.textPrimary }}>Virtue Vignettes</strong><br />
+                      <strong style={{ color: fixedTextColor }}>Virtue Vignettes</strong><br />
                       <em>Saints who perfectly modeled specific virtues we can imitate in our own lives</em>
                     </div>
                   </div>

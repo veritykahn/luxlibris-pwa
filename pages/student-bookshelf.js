@@ -7,6 +7,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { getQuizByBookId } from '../book-quizzes-manager';
 import { checkSpecificContentBadge } from '../lib/badge-system-content';
+import { getTheme, getSeasonalThemeAnnouncement } from '../lib/themes';  // ADD THIS LINE
 import Head from 'next/head';
 
 export default function StudentBookshelf() {
@@ -36,6 +37,9 @@ export default function StudentBookshelf() {
   
   // Phase access control
   const { hasAccess, getPhaseMessage, getPhaseInfo } = usePhaseAccess();
+
+  // Seasonal theme notification state
+  const [seasonalThemeAlert, setSeasonalThemeAlert] = useState(null);
   
   // 🍔 HAMBURGER MENU STATE VARIABLES
   const [showNavMenu, setShowNavMenu] = useState(false);
@@ -199,98 +203,6 @@ export default function StudentBookshelf() {
       console.log('Revision request notification failed:', error);
     }
   }, [notificationsEnabled]);
-
-  // Theme definitions
-  const themes = {
-    classic_lux: {
-      name: 'Lux Libris Classic',
-      assetPrefix: 'classic_lux',
-      primary: '#ADD4EA',
-      secondary: '#C3E0DE',
-      accent: '#A1E5DB',
-      background: '#FFFCF5',
-      surface: '#FFFFFF',
-      textPrimary: '#223848',
-      textSecondary: '#556B7A'
-    },
-    darkwood_sports: {
-      name: 'Athletic Champion',
-      assetPrefix: 'darkwood_sports',
-      primary: '#2F5F5F',
-      secondary: '#8B2635',
-      accent: '#F5DEB3',
-      background: '#F5F5DC',
-      surface: '#FFF8DC',
-      textPrimary: '#2F1B14',
-      textSecondary: '#5D4037'
-    },
-    lavender_space: {
-  name: 'Cosmic Explorer',
-  assetPrefix: 'lavender_space',
-  primary: '#8B7AA8',      // Darkened from #9C88C4
-  secondary: '#9B85C4',    // Darkened from #B19CD9
-  accent: '#C8B3E8',       // Darkened from #E1D5F7
-  background: '#2A1B3D',   // Keep dark background
-  surface: '#3D2B54',      // Keep
-  textPrimary: '#E8DEFF',  // Slightly brightened for dark bg
-  textSecondary: '#B8A6D9' // Slightly adjusted
-},
-    mint_music: {
-      name: 'Musical Harmony',
-      assetPrefix: 'mint_music',
-      primary: '#B8E6B8',
-      secondary: '#FFB3BA',
-      accent: '#FFCCCB',
-      background: '#FEFEFE',
-      surface: '#F8FDF8',
-      textPrimary: '#2E4739',
-      textSecondary: '#4A6B57'
-    },
-    pink_plushies: {
-      name: 'Kawaii Dreams',
-      assetPrefix: 'pink_plushies',
-      primary: '#FFB6C1',
-      secondary: '#FFC0CB',
-      accent: '#FFE4E1',
-      background: '#FFF0F5',
-      surface: '#FFE4E6',
-      textPrimary: '#4A2C2A',
-      textSecondary: '#8B4B5C'
-    },
-    teal_anime: {
-      name: 'Otaku Paradise',
-      assetPrefix: 'teal_anime',
-      primary: '#20B2AA',
-      secondary: '#48D1CC',
-      accent: '#7FFFD4',
-      background: '#E0FFFF',
-      surface: '#AFEEEE',
-      textPrimary: '#2F4F4F',
-      textSecondary: '#5F9EA0'
-    },
-    white_nature: {
-      name: 'Pure Serenity',
-      assetPrefix: 'white_nature',
-      primary: '#6B8E6B',
-      secondary: '#D2B48C',
-      accent: '#F5F5DC',
-      background: '#FFFEF8',
-      surface: '#FFFFFF',
-      textPrimary: '#2F4F2F',
-      textSecondary: '#556B2F'
-    },
-    little_luminaries: {
-  name: 'Luxlings™',
-  assetPrefix: 'little_luminaries',
-  primary: '#000000',      // Lightened grey from #666666
-  secondary: '#000000',    // Keep black
-  accent: '#E8E8E8',       // Keep
-  background: '#FFFFFF',   // Keep white
-  surface: '#FAFAFA',      // Keep
-  textPrimary: '#8B6914',  // Darkened gold from #B8860B
-  textSecondary: '#606060' // Darkened from #AAAAAA for better contrast
-}
-  };
 
   // Quiz timer effect
   useEffect(() => {
@@ -699,8 +611,15 @@ useEffect(() => {
       setStudentData(firebaseStudentData);
       
       const selectedThemeKey = firebaseStudentData.selectedTheme || 'classic_lux';
-      const selectedTheme = themes[selectedThemeKey];
+      const selectedTheme = getTheme(selectedThemeKey);  // CHANGED: Use getTheme instead
       setCurrentTheme(selectedTheme);
+      
+      // ADD: Check for seasonal themes
+      const seasonalAnnouncements = getSeasonalThemeAnnouncement();
+      if (seasonalAnnouncements.length > 0 && !firebaseStudentData.selectedTheme) {
+        setSeasonalThemeAlert(seasonalAnnouncements[0]);
+        setTimeout(() => setSeasonalThemeAlert(null), 5000);
+      }
       
       // Load parent information
       if (firebaseStudentData.linkedParents && firebaseStudentData.linkedParents.length > 0) {
@@ -4299,43 +4218,82 @@ const handleQuizComplete = async (answers) => {
           </div>
         )}
 
-        <style jsx>{`
-          @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-          }
-          
-          @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-          }
-          
-          input[type="range"]::-webkit-slider-thumb {
-            appearance: none;
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            background: #555555;
-            border: 1px solid white;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-            cursor: pointer;
-          }
-          
-          input[type="range"]::-moz-range-thumb {
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            background: #555555;
-            border: 1px solid white;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-            cursor: pointer;
-          }
-          
-          button {
-            -webkit-tap-highlight-color: transparent;
-            -webkit-user-select: none;
-            user-select: none;
-          }
+        {/* SEASONAL THEME NOTIFICATION */}
+{seasonalThemeAlert && (
+  <div
+    onClick={() => router.push('/student-settings')}
+    style={{
+      position: 'fixed',
+      top: '80px',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      backgroundColor: currentTheme.primary,
+      color: 'white',
+      padding: '12px 24px',
+      borderRadius: '24px',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+      zIndex: 1002,
+      fontSize: '14px',
+      fontWeight: '600',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      cursor: 'pointer',
+      animation: 'slideDown 0.5s ease-out'
+    }}
+  >
+    {seasonalThemeAlert.icon} {seasonalThemeAlert.message} Tap to use!
+  </div>
+)}
+
+<style jsx>{`
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  
+  @keyframes slideDown {
+    from {
+      transform: translateX(-50%) translateY(-100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+  }
+  
+  input[type="range"]::-webkit-slider-thumb {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #555555;
+    border: 1px solid white;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    cursor: pointer;
+  }
+  
+  input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #555555;
+    border: 1px solid white;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    cursor: pointer;
+  }
+  
+  button {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+  }
           
           /* Tablet scaling for iPad-sized devices */
           @media screen and (min-width: 768px) and (max-width: 1024px) {
