@@ -830,7 +830,7 @@ export default function TeacherAchievements() {
                     color: '#92400E',
                     textAlign: 'center'
                   }}>
-                    💡 Tip: Copy this email and paste it into your school's email system. 
+                    💡 Tip: Copy this email and paste it into your school&apos;s email system. 
                     Remember to customize placeholders like [TEACHER NAME] and [SCHOOL NAME].
                   </div>
                 </div>
