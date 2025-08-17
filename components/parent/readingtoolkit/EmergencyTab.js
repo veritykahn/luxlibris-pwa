@@ -4,11 +4,7 @@ export default function EmergencyTab({
   expandedSections, 
   toggleSection, 
   starredStrategies, 
-  triedStrategies, 
-  dismissedStrategies, 
   toggleStar, 
-  toggleTried, 
-  dismissStrategy, 
   theme, 
   strategyRefs 
 }) {
@@ -116,11 +112,7 @@ export default function EmergencyTab({
                   scenario={scenario} 
                   scenarioId={scenarioMeta.id}
                   starredStrategies={starredStrategies}
-                  triedStrategies={triedStrategies}
-                  dismissedStrategies={dismissedStrategies}
                   toggleStar={toggleStar}
-                  toggleTried={toggleTried}
-                  dismissStrategy={dismissStrategy}
                   theme={theme}
                   strategyRefs={strategyRefs}
                 />
@@ -138,11 +130,7 @@ function ScenarioDetails({
   scenario, 
   scenarioId, 
   starredStrategies, 
-  triedStrategies, 
-  dismissedStrategies, 
   toggleStar, 
-  toggleTried, 
-  dismissStrategy, 
   theme, 
   strategyRefs 
 }) {
@@ -206,35 +194,6 @@ function ScenarioDetails({
         </div>
       )}
 
-      {/* Your Philosophy */}
-      {scenario.yourPhilosophy && (
-        <div style={{
-          backgroundColor: `${theme.accent}20`,
-          borderRadius: '12px',
-          padding: '16px',
-          marginBottom: '16px'
-        }}>
-          <div style={{
-            fontSize: '14px',
-            fontWeight: '600',
-            color: theme.primary,
-            marginBottom: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}>
-            <span>💭</span> Your Philosophy
-          </div>
-          <div style={{
-            fontSize: '14px',
-            color: theme.textPrimary,
-            lineHeight: '1.5'
-          }}>
-            {scenario.yourPhilosophy}
-          </div>
-        </div>
-      )}
-
       {/* Prevention */}
       {scenario.prevention && (
         <div 
@@ -250,39 +209,22 @@ function ScenarioDetails({
             gap: '12px'
           }}
         >
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '4px',
-            flexShrink: 0
-          }}>
-            <button
-              onClick={() => toggleStar(`${scenarioId}-prevention`)}
-              style={{
-                backgroundColor: 'transparent',
-                border: 'none',
-                fontSize: '16px',
-                cursor: 'pointer',
-                color: starredStrategies.has(`${scenarioId}-prevention`) ? '#FFD700' : '#664D03',
-                padding: '2px'
-              }}
-            >
-              {starredStrategies.has(`${scenarioId}-prevention`) ? '★' : '☆'}
-            </button>
-            <button
-              onClick={() => toggleTried(`${scenarioId}-prevention`)}
-              style={{
-                backgroundColor: 'transparent',
-                border: 'none',
-                fontSize: '14px',
-                cursor: 'pointer',
-                color: triedStrategies.has(`${scenarioId}-prevention`) ? '#FF9800' : '#664D03',
-                padding: '2px'
-              }}
-            >
-              {triedStrategies.has(`${scenarioId}-prevention`) ? '✓' : '○'}
-            </button>
-          </div>
+          <button
+            onClick={() => toggleStar(`${scenarioId}-prevention`)}
+            style={{
+              backgroundColor: 'transparent',
+              border: 'none',
+              fontSize: '18px',
+              cursor: 'pointer',
+              color: starredStrategies.has(`${scenarioId}-prevention`) ? '#FFD700' : '#664D03',
+              padding: '2px',
+              flexShrink: 0,
+              transition: 'color 0.2s ease'
+            }}
+            title={starredStrategies.has(`${scenarioId}-prevention`) ? "Remove from favorites" : "Add to favorites"}
+          >
+            {starredStrategies.has(`${scenarioId}-prevention`) ? '★' : '☆'}
+          </button>
           
           <div style={{ flex: 1 }}>
             <div style={{
@@ -304,23 +246,6 @@ function ScenarioDetails({
               {scenario.prevention}
             </div>
           </div>
-          
-          {!dismissedStrategies.has(`${scenarioId}-prevention`) && (
-            <button
-              onClick={() => dismissStrategy(`${scenarioId}-prevention`)}
-              style={{
-                backgroundColor: 'transparent',
-                border: 'none',
-                fontSize: '14px',
-                cursor: 'pointer',
-                color: '#664D03',
-                padding: '2px',
-                flexShrink: 0
-              }}
-            >
-              ✕
-            </button>
-          )}
         </div>
       )}
 
@@ -458,10 +383,6 @@ function ScenarioDetails({
           {scenario.gentleApproaches.map((approach, index) => {
             const approachId = `${scenarioId}-approach-${index}`;
             const isStarred = starredStrategies.has(approachId);
-            const isTried = triedStrategies.has(approachId);
-            const isDismissed = dismissedStrategies.has(approachId);
-            
-            if (isDismissed) return null;
             
             return (
               <div
@@ -480,57 +401,24 @@ function ScenarioDetails({
                   gap: '8px'
                 }}
               >
-                {/* Left side - Star/Try buttons */}
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  flexShrink: 0
-                }}>
-                  <button
-                    onClick={() => toggleStar(approachId)}
-                    style={{
-                      backgroundColor: 'transparent',
-                      border: 'none',
-                      fontSize: '16px',
-                      cursor: 'pointer',
-                      color: isStarred ? '#FFD700' : theme.textSecondary,
-                      padding: '2px'
-                    }}
-                  >
-                    {isStarred ? '★' : '☆'}
-                  </button>
-                  <button
-                    onClick={() => toggleTried(approachId)}
-                    style={{
-                      backgroundColor: 'transparent',
-                      border: 'none',
-                      fontSize: '14px',
-                      cursor: 'pointer',
-                      color: isTried ? theme.primary : theme.textSecondary,
-                      padding: '2px'
-                    }}
-                  >
-                    {isTried ? '✓' : '○'}
-                  </button>
-                </div>
-                
-                <span style={{ flex: 1 }}>{approach}</span>
-                
                 <button
-                  onClick={() => dismissStrategy(approachId)}
+                  onClick={() => toggleStar(approachId)}
                   style={{
                     backgroundColor: 'transparent',
                     border: 'none',
-                    fontSize: '14px',
+                    fontSize: '18px',
                     cursor: 'pointer',
-                    color: theme.textSecondary,
+                    color: isStarred ? '#FFD700' : theme.textSecondary,
                     padding: '2px',
-                    flexShrink: 0
+                    flexShrink: 0,
+                    transition: 'color 0.2s ease'
                   }}
+                  title={isStarred ? "Remove from favorites" : "Add to favorites"}
                 >
-                  ✕
+                  {isStarred ? '★' : '☆'}
                 </button>
+                
+                <span style={{ flex: 1 }}>{approach}</span>
               </div>
             );
           })}
@@ -555,10 +443,6 @@ function ScenarioDetails({
           {scenario.practicalTips.map((tip, index) => {
             const tipId = `${scenarioId}-tip-${index}`;
             const isStarred = starredStrategies.has(tipId);
-            const isTried = triedStrategies.has(tipId);
-            const isDismissed = dismissedStrategies.has(tipId);
-            
-            if (isDismissed) return null;
             
             return (
               <div
@@ -577,344 +461,24 @@ function ScenarioDetails({
                   gap: '8px'
                 }}
               >
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  flexShrink: 0
-                }}>
-                  <button
-                    onClick={() => toggleStar(tipId)}
-                    style={{
-                      backgroundColor: 'transparent',
-                      border: 'none',
-                      fontSize: '16px',
-                      cursor: 'pointer',
-                      color: isStarred ? '#FFD700' : theme.textSecondary,
-                      padding: '2px'
-                    }}
-                  >
-                    {isStarred ? '★' : '☆'}
-                  </button>
-                  <button
-                    onClick={() => toggleTried(tipId)}
-                    style={{
-                      backgroundColor: 'transparent',
-                      border: 'none',
-                      fontSize: '14px',
-                      cursor: 'pointer',
-                      color: isTried ? theme.primary : theme.textSecondary,
-                      padding: '2px'
-                    }}
-                  >
-                    {isTried ? '✓' : '○'}
-                  </button>
-                </div>
+                <button
+                  onClick={() => toggleStar(tipId)}
+                  style={{
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    fontSize: '18px',
+                    cursor: 'pointer',
+                    color: isStarred ? '#FFD700' : theme.textSecondary,
+                    padding: '2px',
+                    flexShrink: 0,
+                    transition: 'color 0.2s ease'
+                  }}
+                  title={isStarred ? "Remove from favorites" : "Add to favorites"}
+                >
+                  {isStarred ? '★' : '☆'}
+                </button>
                 
                 <span style={{ flex: 1 }}>{tip}</span>
-                
-                <button
-                  onClick={() => dismissStrategy(tipId)}
-                  style={{
-                    backgroundColor: 'transparent',
-                    border: 'none',
-                    fontSize: '14px',
-                    cursor: 'pointer',
-                    color: theme.textSecondary,
-                    padding: '2px',
-                    flexShrink: 0
-                  }}
-                >
-                  ✕
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Practical Strategies (for reading habit building) */}
-      {scenario.practicalStrategies && (
-        <div style={{ marginBottom: '16px' }}>
-          <h4 style={{
-            fontSize: '16px',
-            fontWeight: '600',
-            color: theme.textPrimary,
-            marginBottom: '12px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}>
-            <span>🎯</span> Practical Strategies
-          </h4>
-          
-          {scenario.practicalStrategies.map((strategy, index) => {
-            const strategyId = `${scenarioId}-strategy-${index}`;
-            const isStarred = starredStrategies.has(strategyId);
-            const isTried = triedStrategies.has(strategyId);
-            const isDismissed = dismissedStrategies.has(strategyId);
-            
-            if (isDismissed) return null;
-            
-            return (
-              <div
-                key={index}
-                ref={el => strategyRefs.current[strategyId] = el}
-                style={{
-                  backgroundColor: `${theme.primary}10`,
-                  borderRadius: '8px',
-                  padding: '12px',
-                  marginBottom: '8px',
-                  fontSize: '14px',
-                  color: theme.textPrimary,
-                  lineHeight: '1.5',
-                  display: 'flex',
-                  alignItems: 'start',
-                  gap: '8px'
-                }}
-              >
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  flexShrink: 0
-                }}>
-                  <button
-                    onClick={() => toggleStar(strategyId)}
-                    style={{
-                      backgroundColor: 'transparent',
-                      border: 'none',
-                      fontSize: '16px',
-                      cursor: 'pointer',
-                      color: isStarred ? '#FFD700' : theme.textSecondary,
-                      padding: '2px'
-                    }}
-                  >
-                    {isStarred ? '★' : '☆'}
-                  </button>
-                  <button
-                    onClick={() => toggleTried(strategyId)}
-                    style={{
-                      backgroundColor: 'transparent',
-                      border: 'none',
-                      fontSize: '14px',
-                      cursor: 'pointer',
-                      color: isTried ? theme.primary : theme.textSecondary,
-                      padding: '2px'
-                    }}
-                  >
-                    {isTried ? '✓' : '○'}
-                  </button>
-                </div>
-                
-                <span style={{ flex: 1 }}>{strategy}</span>
-                
-                <button
-                  onClick={() => dismissStrategy(strategyId)}
-                  style={{
-                    backgroundColor: 'transparent',
-                    border: 'none',
-                    fontSize: '14px',
-                    cursor: 'pointer',
-                    color: theme.textSecondary,
-                    padding: '2px',
-                    flexShrink: 0
-                  }}
-                >
-                  ✕
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Approaches (for different learning speeds) */}
-      {scenario.approaches && (
-        <div style={{ marginBottom: '16px' }}>
-          <h4 style={{
-            fontSize: '16px',
-            fontWeight: '600',
-            color: theme.textPrimary,
-            marginBottom: '12px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}>
-            <span>🎯</span> Approaches
-          </h4>
-          
-          {scenario.approaches.map((approach, index) => {
-            const approachId = `${scenarioId}-approaches-${index}`;
-            const isStarred = starredStrategies.has(approachId);
-            const isTried = triedStrategies.has(approachId);
-            const isDismissed = dismissedStrategies.has(approachId);
-            
-            if (isDismissed) return null;
-            
-            return (
-              <div
-                key={index}
-                ref={el => strategyRefs.current[approachId] = el}
-                style={{
-                  backgroundColor: `${theme.primary}10`,
-                  borderRadius: '8px',
-                  padding: '12px',
-                  marginBottom: '8px',
-                  fontSize: '14px',
-                  color: theme.textPrimary,
-                  lineHeight: '1.5',
-                  display: 'flex',
-                  alignItems: 'start',
-                  gap: '8px'
-                }}
-              >
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  flexShrink: 0
-                }}>
-                  <button
-                    onClick={() => toggleStar(approachId)}
-                    style={{
-                      backgroundColor: 'transparent',
-                      border: 'none',
-                      fontSize: '16px',
-                      cursor: 'pointer',
-                      color: isStarred ? '#FFD700' : theme.textSecondary,
-                      padding: '2px'
-                    }}
-                  >
-                    {isStarred ? '★' : '☆'}
-                  </button>
-                  <button
-                    onClick={() => toggleTried(approachId)}
-                    style={{
-                      backgroundColor: 'transparent',
-                      border: 'none',
-                      fontSize: '14px',
-                      cursor: 'pointer',
-                      color: isTried ? theme.primary : theme.textSecondary,
-                      padding: '2px'
-                    }}
-                  >
-                    {isTried ? '✓' : '○'}
-                  </button>
-                </div>
-                
-                <span style={{ flex: 1 }}>{approach}</span>
-                
-                <button
-                  onClick={() => dismissStrategy(approachId)}
-                  style={{
-                    backgroundColor: 'transparent',
-                    border: 'none',
-                    fontSize: '14px',
-                    cursor: 'pointer',
-                    color: theme.textSecondary,
-                    padding: '2px',
-                    flexShrink: 0
-                  }}
-                >
-                  ✕
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* When They Happen (for power struggles) */}
-      {scenario.whenTheyHappen && (
-        <div style={{ marginBottom: '16px' }}>
-          <h4 style={{
-            fontSize: '16px',
-            fontWeight: '600',
-            color: theme.textPrimary,
-            marginBottom: '12px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}>
-            <span>⚡</span> When They Happen
-          </h4>
-          
-          {scenario.whenTheyHappen.map((item, index) => {
-            const itemId = `${scenarioId}-whenTheyHappen-${index}`;
-            const isStarred = starredStrategies.has(itemId);
-            const isTried = triedStrategies.has(itemId);
-            const isDismissed = dismissedStrategies.has(itemId);
-            
-            if (isDismissed) return null;
-            
-            return (
-              <div
-                key={index}
-                ref={el => strategyRefs.current[itemId] = el}
-                style={{
-                  backgroundColor: `${theme.primary}10`,
-                  borderRadius: '8px',
-                  padding: '12px',
-                  marginBottom: '8px',
-                  fontSize: '14px',
-                  color: theme.textPrimary,
-                  lineHeight: '1.5',
-                  display: 'flex',
-                  alignItems: 'start',
-                  gap: '8px'
-                }}
-              >
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  flexShrink: 0
-                }}>
-                  <button
-                    onClick={() => toggleStar(itemId)}
-                    style={{
-                      backgroundColor: 'transparent',
-                      border: 'none',
-                      fontSize: '16px',
-                      cursor: 'pointer',
-                      color: isStarred ? '#FFD700' : theme.textSecondary,
-                      padding: '2px'
-                    }}
-                  >
-                    {isStarred ? '★' : '☆'}
-                  </button>
-                  <button
-                    onClick={() => toggleTried(itemId)}
-                    style={{
-                      backgroundColor: 'transparent',
-                      border: 'none',
-                      fontSize: '14px',
-                      cursor: 'pointer',
-                      color: isTried ? theme.primary : theme.textSecondary,
-                      padding: '2px'
-                    }}
-                  >
-                    {isTried ? '✓' : '○'}
-                  </button>
-                </div>
-                
-                <span style={{ flex: 1 }}>{item}</span>
-                
-                <button
-                  onClick={() => dismissStrategy(itemId)}
-                  style={{
-                    backgroundColor: 'transparent',
-                    border: 'none',
-                    fontSize: '14px',
-                    cursor: 'pointer',
-                    color: theme.textSecondary,
-                    padding: '2px',
-                    flexShrink: 0
-                  }}
-                >
-                  ✕
-                </button>
               </div>
             );
           })}

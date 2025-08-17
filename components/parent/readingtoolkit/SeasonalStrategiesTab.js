@@ -4,11 +4,7 @@ export default function SeasonalStrategiesTab({
   expandedSections, 
   toggleSection, 
   starredStrategies, 
-  triedStrategies, 
-  dismissedStrategies, 
   toggleStar, 
-  toggleTried, 
-  dismissStrategy, 
   theme, 
   strategyRefs 
 }) {
@@ -156,10 +152,6 @@ export default function SeasonalStrategiesTab({
                     {support.strategies.map((strategy, index) => {
                       const strategyId = `${season}-${index}`;
                       const isStarred = starredStrategies.has(strategyId);
-                      const isTried = triedStrategies.has(strategyId);
-                      const isDismissed = dismissedStrategies.has(strategyId);
-                      
-                      if (isDismissed) return null;
                       
                       return (
                         <div
@@ -178,62 +170,26 @@ export default function SeasonalStrategiesTab({
                             border: `1px solid ${seasonColor}20`
                           }}
                         >
-                          {/* Left side - Star/Try buttons */}
-                          <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            flexShrink: 0
-                          }}>
-                            <button
-                              onClick={() => toggleStar(strategyId)}
-                              style={{
-                                backgroundColor: 'transparent',
-                                border: 'none',
-                                fontSize: '16px',
-                                cursor: 'pointer',
-                                color: isStarred ? '#FFD700' : theme.textSecondary,
-                                padding: '2px'
-                              }}
-                              title="Star this strategy"
-                            >
-                              {isStarred ? '★' : '☆'}
-                            </button>
-                            <button
-                              onClick={() => toggleTried(strategyId)}
-                              style={{
-                                backgroundColor: 'transparent',
-                                border: 'none',
-                                fontSize: '14px',
-                                cursor: 'pointer',
-                                color: isTried ? seasonColor : theme.textSecondary,
-                                padding: '2px'
-                              }}
-                              title="Mark as tried"
-                            >
-                              {isTried ? '✓' : '○'}
-                            </button>
-                          </div>
-                          
-                          {/* Strategy content */}
-                          <span style={{ flex: 1 }}>{strategy}</span>
-                          
-                          {/* Right side - Dismiss button */}
+                          {/* Star button */}
                           <button
-                            onClick={() => dismissStrategy(strategyId)}
+                            onClick={() => toggleStar(strategyId)}
                             style={{
                               backgroundColor: 'transparent',
                               border: 'none',
-                              fontSize: '14px',
+                              fontSize: '18px',
                               cursor: 'pointer',
-                              color: theme.textSecondary,
+                              color: isStarred ? '#FFD700' : theme.textSecondary,
                               padding: '2px',
-                              flexShrink: 0
+                              flexShrink: 0,
+                              transition: 'color 0.2s ease'
                             }}
-                            title="Dismiss this strategy"
+                            title={isStarred ? "Remove from favorites" : "Add to favorites"}
                           >
-                            ✕
+                            {isStarred ? '★' : '☆'}
                           </button>
+                          
+                          {/* Strategy content */}
+                          <span style={{ flex: 1 }}>{strategy}</span>
                         </div>
                       );
                     })}

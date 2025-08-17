@@ -1,4 +1,4 @@
-// pages/parent/dna-lab/reading-toolkit.js - Main page with Firebase persistence
+// pages/parent/dna-lab/reading-toolkit.js - Simplified with starring only
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -10,7 +10,6 @@ import {
   getDocs, 
   setDoc, 
   deleteDoc,
-  query,
   onSnapshot
 } from 'firebase/firestore';
 import { db } from '../../../lib/firebase';
@@ -19,7 +18,6 @@ import { db } from '../../../lib/firebase';
 import DailyStrategiesTab from '../../../components/parent/readingtoolkit/DailyStrategiesTab';
 import SeasonalStrategiesTab from '../../../components/parent/readingtoolkit/SeasonalStrategiesTab';
 import EmergencyTab from '../../../components/parent/readingtoolkit/EmergencyTab';
-import MyStrategiesTab from '../../../components/parent/readingtoolkit/MyStrategiesTab';
 
 export default function ReadingToolkit() {
   const router = useRouter();
@@ -40,10 +38,8 @@ export default function ReadingToolkit() {
   const [activeTab, setActiveTab] = useState('daily');
   const [expandedSections, setExpandedSections] = useState({});
   
-  // Strategy states - These will be synced with Firebase
+  // Simplified - only starred strategies
   const [starredStrategies, setStarredStrategies] = useState(new Set());
-  const [triedStrategies, setTriedStrategies] = useState(new Set());
-  const [dismissedStrategies, setDismissedStrategies] = useState(new Set());
   const [savingState, setSavingState] = useState(false);
   
   // Refs
@@ -126,13 +122,6 @@ export default function ReadingToolkit() {
     { name: 'Settings', path: '/parent/settings', icon: '⚙' }
   ], []);
 
-  // Calculate total saved strategies count
-  const totalSavedStrategies = useMemo(() => {
-    // Create a combined set to avoid counting duplicates
-    const combinedSet = new Set([...starredStrategies, ...triedStrategies]);
-    return combinedSet.size;
-  }, [starredStrategies, triedStrategies]);
-
   // Load strategies from Firebase
   const loadUserStrategies = useCallback(async () => {
     if (!user?.uid) return;
@@ -147,29 +136,7 @@ export default function ReadingToolkit() {
       });
       setStarredStrategies(starredSet);
       
-      // Load tried strategies
-      const triedRef = collection(db, 'parents', user.uid, 'triedStrategies');
-      const triedSnapshot = await getDocs(triedRef);
-      const triedSet = new Set();
-      triedSnapshot.forEach(doc => {
-        triedSet.add(doc.id);
-      });
-      setTriedStrategies(triedSet);
-      
-      // Load dismissed strategies
-      const dismissedRef = collection(db, 'parents', user.uid, 'dismissedStrategies');
-      const dismissedSnapshot = await getDocs(dismissedRef);
-      const dismissedSet = new Set();
-      dismissedSnapshot.forEach(doc => {
-        dismissedSet.add(doc.id);
-      });
-      setDismissedStrategies(dismissedSet);
-      
-      console.log('✅ Loaded user strategies:', {
-        starred: starredSet.size,
-        tried: triedSet.size,
-        dismissed: dismissedSet.size
-      });
+      console.log('✅ Loaded starred strategies:', starredSet.size);
     } catch (error) {
       console.error('Error loading user strategies:', error);
     }
@@ -193,28 +160,6 @@ export default function ReadingToolkit() {
       setStarredStrategies(newStarred);
     });
     unsubscribers.current.push(starredUnsub);
-    
-    // Listen to tried strategies
-    const triedRef = collection(db, 'parents', user.uid, 'triedStrategies');
-    const triedUnsub = onSnapshot(triedRef, (snapshot) => {
-      const newTried = new Set();
-      snapshot.forEach(doc => {
-        newTried.add(doc.id);
-      });
-      setTriedStrategies(newTried);
-    });
-    unsubscribers.current.push(triedUnsub);
-    
-    // Listen to dismissed strategies
-    const dismissedRef = collection(db, 'parents', user.uid, 'dismissedStrategies');
-    const dismissedUnsub = onSnapshot(dismissedRef, (snapshot) => {
-      const newDismissed = new Set();
-      snapshot.forEach(doc => {
-        newDismissed.add(doc.id);
-      });
-      setDismissedStrategies(newDismissed);
-    });
-    unsubscribers.current.push(dismissedUnsub);
   }, [user]);
 
   // Load parent DNA data
@@ -311,7 +256,7 @@ export default function ReadingToolkit() {
     };
   }, [showDnaDropdown, showNavMenu, showSearchModal]);
 
-  // Strategy action handlers with Firebase persistence
+  // Simplified - only toggle star
   const toggleStar = async (strategyId) => {
     if (!user?.uid) return;
     
@@ -332,62 +277,6 @@ export default function ReadingToolkit() {
       }
     } catch (error) {
       console.error('Error toggling star:', error);
-    }
-    setSavingState(false);
-  };
-
-  const toggleTried = async (strategyId) => {
-    if (!user?.uid) return;
-    
-    setSavingState(true);
-    try {
-      const docRef = doc(db, 'parents', user.uid, 'triedStrategies', strategyId);
-      
-      if (triedStrategies.has(strategyId)) {
-        await deleteDoc(docRef);
-        console.log('✅ Removed tried:', strategyId);
-      } else {
-        await setDoc(docRef, {
-          strategyId,
-          triedAt: new Date(),
-          parentDnaType: parentDnaType?.id || 'unknown'
-        });
-        console.log('✅ Added tried:', strategyId);
-      }
-    } catch (error) {
-      console.error('Error toggling tried:', error);
-    }
-    setSavingState(false);
-  };
-
-  const dismissStrategy = async (strategyId) => {
-    if (!user?.uid) return;
-    
-    setSavingState(true);
-    try {
-      const docRef = doc(db, 'parents', user.uid, 'dismissedStrategies', strategyId);
-      await setDoc(docRef, {
-        strategyId,
-        dismissedAt: new Date(),
-        parentDnaType: parentDnaType?.id || 'unknown'
-      });
-      console.log('✅ Dismissed strategy:', strategyId);
-    } catch (error) {
-      console.error('Error dismissing strategy:', error);
-    }
-    setSavingState(false);
-  };
-
-  const restoreStrategy = async (strategyId) => {
-    if (!user?.uid) return;
-    
-    setSavingState(true);
-    try {
-      const docRef = doc(db, 'parents', user.uid, 'dismissedStrategies', strategyId);
-      await deleteDoc(docRef);
-      console.log('✅ Restored strategy:', strategyId);
-    } catch (error) {
-      console.error('Error restoring strategy:', error);
     }
     setSavingState(false);
   };
@@ -892,6 +781,23 @@ export default function ReadingToolkit() {
               }}>
                 Personalized strategies for your {parentDnaType.name} style
               </p>
+              
+              {/* Starred strategies counter */}
+              {starredStrategies.size > 0 && (
+                <div style={{
+                  marginTop: '16px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  backgroundColor: 'rgba(255,255,255,0.2)',
+                  padding: '8px 16px',
+                  borderRadius: '20px',
+                  fontSize: '16px'
+                }}>
+                  <span>⭐</span>
+                  <span>{starredStrategies.size} starred {starredStrategies.size === 1 ? 'strategy' : 'strategies'}</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -940,7 +846,7 @@ export default function ReadingToolkit() {
             </div>
           )}
 
-          {/* Tab Navigation */}
+          {/* Tab Navigation - Removed "My Strategies" tab */}
           <div style={{
             display: 'flex',
             backgroundColor: luxTheme.surface,
@@ -954,14 +860,13 @@ export default function ReadingToolkit() {
             {[
               { id: 'daily', label: 'Daily', icon: '📖' },
               { id: 'seasonal', label: 'Seasonal', icon: '🗓️' },
-              { id: 'emergency', label: 'Emergency', icon: '🚨' },
-              { id: 'strategies', label: 'My Strategies', icon: '⭐' }
+              { id: 'emergency', label: 'Emergency', icon: '🚨' }
             ].map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 style={{
-                  minWidth: 'max-content',
+                  flex: 1,
                   padding: '12px 16px',
                   borderRadius: '12px',
                   border: 'none',
@@ -972,25 +877,13 @@ export default function ReadingToolkit() {
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
+                  justifyContent: 'center',
                   gap: '6px',
                   transition: 'all 0.2s ease'
                 }}
               >
                 <span style={{ fontSize: '18px' }}>{tab.icon}</span>
                 <span>{tab.label}</span>
-                {tab.id === 'strategies' && totalSavedStrategies > 0 && (
-                  <span style={{
-                    backgroundColor: '#FFD700',
-                    color: 'white',
-                    borderRadius: '10px',
-                    padding: '2px 6px',
-                    fontSize: '11px',
-                    minWidth: '18px',
-                    fontWeight: 'bold'
-                  }}>
-                    {totalSavedStrategies}
-                  </span>
-                )}
               </button>
             ))}
           </div>
@@ -1003,11 +896,7 @@ export default function ReadingToolkit() {
                 expandedSections={expandedSections}
                 toggleSection={toggleSection}
                 starredStrategies={starredStrategies}
-                triedStrategies={triedStrategies}
-                dismissedStrategies={dismissedStrategies}
                 toggleStar={toggleStar}
-                toggleTried={toggleTried}
-                dismissStrategy={dismissStrategy}
                 theme={luxTheme}
                 strategyRefs={strategyRefs}
               />
@@ -1019,11 +908,7 @@ export default function ReadingToolkit() {
                 expandedSections={expandedSections}
                 toggleSection={toggleSection}
                 starredStrategies={starredStrategies}
-                triedStrategies={triedStrategies}
-                dismissedStrategies={dismissedStrategies}
                 toggleStar={toggleStar}
-                toggleTried={toggleTried}
-                dismissStrategy={dismissStrategy}
                 theme={luxTheme}
                 strategyRefs={strategyRefs}
               />
@@ -1035,32 +920,15 @@ export default function ReadingToolkit() {
                 expandedSections={expandedSections}
                 toggleSection={toggleSection}
                 starredStrategies={starredStrategies}
-                triedStrategies={triedStrategies}
-                dismissedStrategies={dismissedStrategies}
                 toggleStar={toggleStar}
-                toggleTried={toggleTried}
-                dismissStrategy={dismissStrategy}
                 theme={luxTheme}
                 strategyRefs={strategyRefs}
-              />
-            )}
-
-            {activeTab === 'strategies' && (
-              <MyStrategiesTab
-                parentDnaType={parentDnaType}
-                starredStrategies={starredStrategies}
-                triedStrategies={triedStrategies}
-                dismissedStrategies={dismissedStrategies}
-                toggleStar={toggleStar}
-                toggleTried={toggleTried}
-                restoreStrategy={restoreStrategy}
-                theme={luxTheme}
               />
             )}
           </div>
         </div>
 
-        {/* Search Modal */}
+        {/* Search Modal - Same as before */}
         {showSearchModal && (
           <div style={{
             position: 'fixed',
