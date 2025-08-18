@@ -662,7 +662,7 @@ export default function ParentFamilyBattle() {
                   fontSize: '14px',
                   color: theme.textSecondary
                 }}>
-                  Reflect on this week's reading journey. The battle resumes tomorrow!
+                  Reflect on this week&apos;s reading journey. The battle resumes tomorrow!
                 </div>
               </div>
             )}

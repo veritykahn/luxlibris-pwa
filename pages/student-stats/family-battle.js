@@ -594,7 +594,7 @@ export default function StudentFamilyBattle() {
                       color: currentTheme.textSecondary,
                       marginBottom: '16px'
                     }}>
-                      Reflect on this week's reading journey. The battle resumes tomorrow!
+                      Reflect on this week&apos;s reading journey. The battle resumes tomorrow!
                     </p>
                     <button
                       onClick={() => router.push('/student-saints')}
