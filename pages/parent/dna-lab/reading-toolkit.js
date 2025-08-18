@@ -46,6 +46,39 @@ export default function ReadingToolkit() {
   const strategyRefs = useRef({});
   const unsubscribers = useRef([]);
   
+  // Calculate starred counts per tab
+  const starredCounts = useMemo(() => {
+    const counts = {
+      daily: 0,
+      seasonal: 0,
+      emergency: 0
+    };
+    
+    starredStrategies.forEach(strategyId => {
+      // Parse the strategy ID to determine its type
+      const parts = strategyId.split('-');
+      
+      // Daily strategies: category-index (e.g., "engagement-0", "conflict-1", "celebration-2")
+      if (parts[0] === 'engagement' || parts[0] === 'conflict' || parts[0] === 'celebration') {
+        counts.daily++;
+      }
+      // Seasonal strategies: season-index (e.g., "summer-0", "winter-1")
+      else if (parts[0] === 'backToSchool' || parts[0] === 'summer' || 
+               parts[0] === 'holidays' || parts[0] === 'spring' || 
+               parts[0] === 'winter') {
+        counts.seasonal++;
+      }
+      // Emergency strategies: scenarioId-type-index (e.g., "reluctantReader-prevention", "powerStruggles-approach-0")
+      else if (parts[0] === 'reluctantReader' || parts[0] === 'powerStruggles' || 
+               parts[0] === 'achievementPressure' || parts[0] === 'bookChoiceStruggles' || 
+               parts[0] === 'differentLearningSpeeds' || parts[0] === 'readingHabitBuilding') {
+        counts.emergency++;
+      }
+    });
+    
+    return counts;
+  }, [starredStrategies]);
+
   // Get time-based theme
   const timeTheme = useMemo(() => {
     const hour = new Date().getHours();
@@ -781,23 +814,6 @@ export default function ReadingToolkit() {
               }}>
                 Personalized strategies for your {parentDnaType.name} style
               </p>
-              
-              {/* Starred strategies counter */}
-              {starredStrategies.size > 0 && (
-                <div style={{
-                  marginTop: '16px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  backgroundColor: 'rgba(255,255,255,0.2)',
-                  padding: '8px 16px',
-                  borderRadius: '20px',
-                  fontSize: '16px'
-                }}>
-                  <span>⭐</span>
-                  <span>{starredStrategies.size} starred {starredStrategies.size === 1 ? 'strategy' : 'strategies'}</span>
-                </div>
-              )}
             </div>
           </div>
 
@@ -846,7 +862,7 @@ export default function ReadingToolkit() {
             </div>
           )}
 
-          {/* Tab Navigation - Removed "My Strategies" tab */}
+          {/* Tab Navigation - With badges showing starred count per tab */}
           <div style={{
             display: 'flex',
             backgroundColor: luxTheme.surface,
@@ -858,9 +874,9 @@ export default function ReadingToolkit() {
             overflowX: 'auto'
           }}>
             {[
-              { id: 'daily', label: 'Daily', icon: '📖' },
-              { id: 'seasonal', label: 'Seasonal', icon: '🗓️' },
-              { id: 'emergency', label: 'Emergency', icon: '🚨' }
+              { id: 'daily', label: 'Daily', icon: '📖', count: starredCounts.daily },
+              { id: 'seasonal', label: 'Seasonal', icon: '🗓️', count: starredCounts.seasonal },
+              { id: 'emergency', label: 'Emergency', icon: '🚨', count: starredCounts.emergency }
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -879,11 +895,26 @@ export default function ReadingToolkit() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '6px',
-                  transition: 'all 0.2s ease'
+                  transition: 'all 0.2s ease',
+                  position: 'relative'
                 }}
               >
                 <span style={{ fontSize: '18px' }}>{tab.icon}</span>
                 <span>{tab.label}</span>
+                {tab.count > 0 && (
+                  <span style={{
+                    backgroundColor: '#FFD700',
+                    color: '#000',
+                    borderRadius: '10px',
+                    padding: '2px 6px',
+                    fontSize: '11px',
+                    minWidth: '18px',
+                    fontWeight: 'bold',
+                    marginLeft: '4px'
+                  }}>
+                    {tab.count}
+                  </span>
+                )}
               </button>
             ))}
           </div>

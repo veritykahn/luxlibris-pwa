@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { usePhaseAccess } from '../hooks/usePhaseAccess';
 import { useTimer } from '../contexts/TimerContext';
 import { getStudentDataEntities, updateStudentDataEntities } from '../lib/firebase';
-import { collection, addDoc, query, where, getDocs, orderBy, limit, updateDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, orderBy, limit, updateDoc, doc, increment } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import Head from 'next/head';
 // XP SYSTEM IMPORTS
@@ -503,31 +503,59 @@ export default function StudentHealthyHabits() {
   }, [studentData, loadStreakData]);
 
   // UPDATED SAVE READING SESSION WITH NEW XP MANAGEMENT SYSTEM
-  const saveReadingSession = useCallback(async (duration, completed) => {
-    try {
-      if (!studentData) return;
-      const today = getLocalDateString(new Date());
-      
-      // Save the session first
-      const sessionData = {
-        date: today,
-        startTime: new Date(),
-        duration: duration,
-        targetDuration: Math.floor(timerDuration / 60),
-        completed: completed,
-        bookId: currentBookId || null,
-        // Remove xpEarned from here - it will be in xpHistory
-      };
-      
-      const sessionsRef = collection(db, `entities/${studentData.entityId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
-      const docRef = await addDoc(sessionsRef, sessionData);
-      const newSession = { id: docRef.id, ...sessionData };
-      
-      setTodaysSessions(prev => [newSession, ...prev]);
-      setTodaysMinutes(prev => prev + duration);
-      
-      // Award reading XP using the new system
-      const xpResult = await awardReadingXP(studentData, duration, docRef.id);
+const saveReadingSession = useCallback(async (duration, completed) => {
+  try {
+    if (!studentData) return;
+    const today = getLocalDateString(new Date());
+    
+    // Save the session first
+    const sessionData = {
+      date: today,
+      startTime: new Date(),
+      duration: duration,
+      targetDuration: Math.floor(timerDuration / 60),
+      completed: completed,
+      bookId: currentBookId || null,
+      // Remove xpEarned from here - it will be in xpHistory
+    };
+    
+    const sessionsRef = collection(db, `entities/${studentData.entityId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
+    const docRef = await addDoc(sessionsRef, sessionData);
+    const newSession = { id: docRef.id, ...sessionData };
+    
+    setTodaysSessions(prev => [newSession, ...prev]);
+    setTodaysMinutes(prev => prev + duration);
+    
+    // Update family battle for ALL reading sessions (completed or banked)
+const dayOfWeek = new Date().getDay();
+const isSunday = dayOfWeek === 0;
+
+if (!isSunday && studentData.familyId && studentData.parentConnected) {
+  console.log('⚔️ Updating family battle with student minutes...');
+  try {
+    const familyRef = doc(db, 'families', studentData.familyId);
+    
+    // Update the children's total and this student's breakdown
+    // This happens for EVERY session, not just completed ones
+    await updateDoc(familyRef, {
+      [`familyBattle.currentWeek.children.total`]: increment(duration),
+      [`familyBattle.currentWeek.children.breakdown.${studentData.id}`]: increment(duration),
+      'familyBattle.currentWeek.lastUpdated': new Date()
+    });
+    
+    console.log(`✅ Family battle updated: +${duration} minutes for children (${completed ? 'completed' : 'banked'} session)`);
+  } catch (battleError) {
+    console.error('⚠️ Could not update family battle:', battleError);
+    // Don't fail the whole save for this
+  }
+} else if (isSunday) {
+  console.log('🙏 Sunday reading: Personal progress only - no battle points');
+} else if (!studentData.familyId || !studentData.parentConnected) {
+  console.log('👤 Student not connected to family - no battle update needed');
+}
+    
+    // Award reading XP using the new system
+    const xpResult = await awardReadingXP(studentData, duration, docRef.id);
       
       if (!xpResult.success) {
         console.error('Failed to award reading XP:', xpResult.error);

@@ -1,4 +1,4 @@
-// components/FamilyBattleResultsModal.js - COMPLETE FIXED VERSION
+// components/FamilyBattleResultsModal.js - FIXED DATA MAPPING VERSION
 import React, { useState, useEffect } from 'react';
 
 // Championship Belt styles based on winner
@@ -200,15 +200,15 @@ export default function FamilyBattleResultsModal({
     }
   }, [show, battleData]);
   
-  // FIXED: Use real battle data directly without mock data
+  // FIXED: Use correct field names from battleData
   const processedBattleData = battleData ? {
     winner: battleData.winner,
     margin: battleData.margin || 0,
-    childrenMinutes: battleData.childrenMinutes || 0,
-    parentMinutes: battleData.parentMinutes || 0,
-    studentBreakdown: battleData.studentBreakdown || {},
-    parentBreakdown: battleData.parentBreakdown || {},
-    weekNumber: battleData.weekNumber || 1,
+    childrenMinutes: battleData.children?.total || 0,  // FIXED: children.total
+    parentMinutes: battleData.parents?.total || 0,      // FIXED: parents.total
+    studentBreakdown: battleData.children?.breakdown || {},  // FIXED: children.breakdown
+    parentBreakdown: battleData.parents?.breakdown || {},    // FIXED: parents.breakdown
+    weekNumber: battleData.number || battleData.weekNumber || 1,  // FIXED: number
     isResultsDay: battleData.isResultsDay || false
   } : null;
   

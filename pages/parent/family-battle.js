@@ -1,92 +1,61 @@
-// pages/parent/family-battle.js - FIXED VERSION WITH TIME-SENSITIVE THEMES
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+// pages/parent/family-battle.js - COMPLETE FIXED VERSION
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
 import { usePremiumFeatures } from '../../hooks/usePremiumFeatures'
 import PremiumGate from '../../components/PremiumGate'
-import ParentFamilyBattleManager from '../../components/ParentFamilyBattleManager'
+import FamilyBattleDisplay from '../../components/FamilyBattleDisplay'
 import FamilyBattleVictoryModal from '../../components/FamilyBattleVictoryModal'
 import FamilyBattleResultsModal from '../../components/FamilyBattleResultsModal'
-import { getParentVictories } from '../../lib/family-battle-updates'
+import JaneAustenHelper from '../../components/JaneAustenHelper'
 import Head from 'next/head'
-import { collection, getDocs, doc, getDoc, query, where, updateDoc } from 'firebase/firestore'
+import { doc, getDoc, collection, getDocs } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
+
+// Import from master file only
 import { 
-  calculateFamilyBattleData,
-  getFamilyBattleStats
-} from '../../lib/family-battle-system'
+  syncFamilyBattle,
+  getBattleData,
+  initializeFamilyBattle,
+  enableFamilyBattleForStudents,
+  getParentVictories
+} from '../../lib/family-battle-master'
 
-// Sunday Results Button Component
-function SundayResultsButton({ onClick, winner, margin }) {
-  const getResultText = () => {
-    if (winner === 'children') {
-      return `Kids Won +${margin}`;
-    } else if (winner === 'parents') {
-      return `Parents Won +${margin}`;
-    } else {
-      return 'Tie Battle';
+// Helper to load linked students data
+const loadLinkedStudentsData = async (linkedStudentIds) => {
+  try {
+    const students = []
+    const entitiesSnapshot = await getDocs(collection(db, 'entities'))
+    
+    for (const entityDoc of entitiesSnapshot.docs) {
+      const entityId = entityDoc.id
+      const schoolsSnapshot = await getDocs(collection(db, `entities/${entityId}/schools`))
+      
+      for (const schoolDoc of schoolsSnapshot.docs) {
+        const schoolId = schoolDoc.id
+        const schoolData = schoolDoc.data()
+        const studentsSnapshot = await getDocs(collection(db, `entities/${entityId}/schools/${schoolId}/students`))
+        
+        for (const studentDoc of studentsSnapshot.docs) {
+          if (linkedStudentIds.includes(studentDoc.id)) {
+            const studentData = {
+              id: studentDoc.id,
+              entityId,
+              schoolId,
+              schoolName: schoolData.name,
+              ...studentDoc.data()
+            }
+            students.push(studentData)
+          }
+        }
+      }
     }
-  };
-
-  const getResultEmoji = () => {
-    if (winner === 'children') return '😭';
-    if (winner === 'parents') return '🏆';
-    return '🤝';
-  };
-
-  return (
-    <div 
-      onClick={onClick}
-      style={{
-        position: 'fixed',
-        top: '20px',
-        right: '20px',
-        backgroundColor: '#FFD700',
-        borderRadius: '50px',
-        padding: '8px 16px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        boxShadow: '0 4px 12px rgba(255, 215, 0, 0.5)',
-        cursor: 'pointer',
-        transition: 'all 0.3s ease',
-        animation: 'pulse 2s infinite',
-        zIndex: 200,
-        border: '2px solid #FFC700'
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.transform = 'scale(1.1)'
-        e.currentTarget.style.boxShadow = '0 6px 20px rgba(255, 215, 0, 0.7)'
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = 'scale(1)'
-        e.currentTarget.style.boxShadow = '0 4px 12px rgba(255, 215, 0, 0.5)'
-      }}
-    >
-      <span style={{ 
-        fontSize: '20px',
-        animation: 'bounce 1s infinite'
-      }}>
-        {getResultEmoji()}
-      </span>
-      <div style={{ color: '#000000' }}>
-        <div style={{
-          fontSize: '12px',
-          fontWeight: 'bold',
-          lineHeight: '1'
-        }}>
-          RESULTS
-        </div>
-        <div style={{
-          fontSize: '10px',
-          opacity: 0.8,
-          lineHeight: '1'
-        }}>
-          {getResultText()}
-        </div>
-      </div>
-    </div>
-  )
+    
+    return students
+  } catch (error) {
+    console.error('Error loading linked students:', error)
+    return []
+  }
 }
 
 export default function ParentFamilyBattle() {
@@ -98,22 +67,100 @@ export default function ParentFamilyBattle() {
   const [error, setError] = useState('')
   const [parentData, setParentData] = useState(null)
   const [linkedStudents, setLinkedStudents] = useState([])
-  const [familyBattleData, setFamilyBattleData] = useState(null)
-  const [familyStats, setFamilyStats] = useState(null)
+  const [battleData, setBattleData] = useState(null)
   const [showNavMenu, setShowNavMenu] = useState(false)
   const [showSuccess, setShowSuccess] = useState('')
   const [showVictoryModal, setShowVictoryModal] = useState(false)
   const [showResultsModal, setShowResultsModal] = useState(false)
+  const [showJaneAusten, setShowJaneAusten] = useState(true)
   const [parentVictories, setParentVictories] = useState([])
-  const [sundayBattleData, setSundayBattleData] = useState(null)
-  
-  // Add loading flag to prevent concurrent loads
-  const isLoadingBattleData = useRef(false)
-  const hasLoadedInitialData = useRef(false)
-  const lastLoadTime = useRef(0) // Track last load time to prevent rapid refreshes
+
+  // Track current hour for theme updates
+  const [currentHour, setCurrentHour] = useState(new Date().getHours())
+
+  // Update hour every minute to ensure theme changes
+  useEffect(() => {
+    const checkTimeUpdate = () => {
+      const newHour = new Date().getHours()
+      if (newHour !== currentHour) {
+        setCurrentHour(newHour)
+      }
+    }
+
+    // Check immediately
+    checkTimeUpdate()
+
+    // Then check every minute
+    const interval = setInterval(checkTimeUpdate, 60000)
+
+    return () => clearInterval(interval)
+  }, [currentHour])
+
+  // Get time-based theme with smoother transitions
+  const timeTheme = useMemo(() => {
+    const hour = currentHour;
+    if (hour >= 5 && hour < 12) {
+      return {
+        name: 'morning',
+        gradient: 'linear-gradient(135deg, #F5C99B, #F0B88A, #EBAD7A)',
+        backgroundGradient: 'linear-gradient(to bottom, #FDF4E7, #FAE8D4, #F5DCC1)',
+        overlay: 'rgba(245, 201, 155, 0.1)',
+        glow: '#F5C99B',
+        emoji: '🌅',
+        greeting: 'Good Morning Champion!'
+      };
+    } else if (hour >= 12 && hour < 17) {
+      return {
+        name: 'afternoon',
+        gradient: 'linear-gradient(135deg, #6BB6E3, #7AC5EA, #89D0EE)',
+        backgroundGradient: 'linear-gradient(to bottom, #E8F4FD, #D1E9FB, #B8DDF8)',
+        overlay: 'rgba(107, 182, 227, 0.1)',
+        glow: '#6BB6E3',
+        emoji: '☀️',
+        greeting: 'Afternoon Battle Time!'
+      };
+    } else if (hour >= 17 && hour < 20) {
+      return {
+        name: 'evening',
+        gradient: 'linear-gradient(135deg, #FFB347, #FF8C42, #FF6B35)',
+        backgroundGradient: 'linear-gradient(to bottom, #FFF0E6, #FFE4D1, #FFD7BC)',
+        overlay: 'rgba(255, 140, 66, 0.1)',
+        glow: '#FF8C42',
+        emoji: '🌅',
+        greeting: 'Evening Reading Battle!'
+      };
+    } else {
+      return {
+        name: 'night',
+        gradient: 'linear-gradient(135deg, #4B0082, #6A0DAD, #7B68EE)',
+        backgroundGradient: 'linear-gradient(to bottom, #2D1B4E, #3D2B5E, #4D3B6E)',
+        overlay: 'rgba(75, 0, 130, 0.1)',
+        glow: '#7B68EE',
+        emoji: '🌙',
+        greeting: 'Nighttime Champions!'
+      };
+    }
+  }, [currentHour]);
+
+  // Enhanced theme with time-based elements
+  const theme = useMemo(() => {
+    const isNight = timeTheme.name === 'night';
+    return {
+      primary: '#ADD4EA',
+      secondary: '#C3E0DE',
+      accent: '#A1E5DB',
+      background: timeTheme.backgroundGradient,
+      surface: isNight ? 'rgba(255, 255, 255, 0.95)' : '#FFFFFF',
+      textPrimary: isNight ? '#1F2937' : '#223848',
+      textSecondary: isNight ? '#374151' : '#556B7A',
+      timeOverlay: timeTheme.overlay,
+      timeGlow: timeTheme.glow,
+      headerGradient: timeTheme.gradient
+    }
+  }, [timeTheme]);
 
   // Check if it's Sunday
-  const isSunday = new Date().getDay() === 0;
+  const isSunday = new Date().getDay() === 0
 
   // Navigation menu items
   const navMenuItems = useMemo(() => [
@@ -126,248 +173,103 @@ export default function ParentFamilyBattle() {
     { name: 'Settings', path: '/parent/settings', icon: '⚙' }
   ], [])
 
-  // Get time-based theme with smoother transitions - UPDATED TO MATCH DASHBOARD
-  const timeTheme = useMemo(() => {
-    const hour = new Date().getHours();
-    if (hour >= 5 && hour < 12) {
-      return {
-        name: 'morning',
-        gradient: 'linear-gradient(135deg, #F5C99B, #F0B88A, #EBAD7A)',
-        backgroundGradient: 'linear-gradient(to bottom, #FDF4E7, #FAE8D4, #F5DCC1)',
-        overlay: 'rgba(245, 201, 155, 0.1)',
-        glow: '#F5C99B'
-      };
-    } else if (hour >= 12 && hour < 17) {
-      return {
-        name: 'afternoon',
-        gradient: 'linear-gradient(135deg, #6BB6E3, #7AC5EA, #89D0EE)',
-        backgroundGradient: 'linear-gradient(to bottom, #E8F4FD, #D1E9FB, #B8DDF8)',
-        overlay: 'rgba(107, 182, 227, 0.1)',
-        glow: '#6BB6E3'
-      };
-    } else if (hour >= 17 && hour < 20) {
-      return {
-        name: 'evening',
-        gradient: 'linear-gradient(135deg, #FFB347, #FF8C42, #FF6B35)',
-        backgroundGradient: 'linear-gradient(to bottom, #FFF0E6, #FFE4D1, #FFD7BC)',
-        overlay: 'rgba(255, 140, 66, 0.1)',
-        glow: '#FF8C42'
-      };
-    } else {
-      return {
-        name: 'night',
-        gradient: 'linear-gradient(135deg, #4B0082, #6A0DAD, #7B68EE)',
-        backgroundGradient: 'linear-gradient(to bottom, #2D1B4E, #3D2B5E, #4D3B6E)',
-        overlay: 'rgba(75, 0, 130, 0.1)',
-        glow: '#7B68EE'
-      };
-    }
-  }, [Math.floor(new Date().getHours() / 6)])
-
-  // Lux Libris Classic Theme - adapted for time-based backgrounds
-  const luxTheme = useMemo(() => {
-    const isNight = timeTheme.name === 'night';
-    return {
-      primary: '#ADD4EA',
-      secondary: '#C3E0DE',
-      accent: '#A1E5DB',
-      background: timeTheme.backgroundGradient, // Now uses time-based gradient
-      surface: isNight ? 'rgba(255, 255, 255, 0.95)' : '#FFFFFF', // Slightly transparent for night mode
-      textPrimary: isNight ? '#1F2937' : '#223848', // Darker for night mode contrast
-      textSecondary: isNight ? '#374151' : '#556B7A',
-      timeOverlay: timeTheme.overlay,
-      timeGlow: timeTheme.glow
-    }
-  }, [timeTheme])
-
-  // Utility function for local date
-  const getLocalDateString = (date = new Date()) => {
-    const d = new Date(date)
-    const year = d.getFullYear()
-    const month = String(d.getMonth() + 1).padStart(2, '0')
-    const day = String(d.getDate()).padStart(2, '0')
-    return `${year}-${month}-${day}`
-  }
-
-  // Helper function to load linked students data
-  const loadLinkedStudentsData = async (linkedStudentIds) => {
-    try {
-      const students = []
-      const entitiesSnapshot = await getDocs(collection(db, 'entities'))
-      
-      for (const entityDoc of entitiesSnapshot.docs) {
-        const entityId = entityDoc.id
-        const schoolsSnapshot = await getDocs(collection(db, `entities/${entityId}/schools`))
-        
-        for (const schoolDoc of schoolsSnapshot.docs) {
-          const schoolId = schoolDoc.id
-          const schoolData = schoolDoc.data()
-          const studentsSnapshot = await getDocs(collection(db, `entities/${entityId}/schools/${schoolId}/students`))
-          
-          for (const studentDoc of studentsSnapshot.docs) {
-            if (linkedStudentIds.includes(studentDoc.id)) {
-              const studentData = {
-                id: studentDoc.id,
-                entityId,
-                schoolId,
-                schoolName: schoolData.name,
-                ...studentDoc.data()
-              }
-              students.push(studentData)
-            }
-          }
-        }
-      }
-      
-      return students
-      
-    } catch (error) {
-      console.error('❌ Error loading linked students:', error)
-      return []
-    }
-  }
-
-  // Load family battle data - FIXED with throttling
-  const loadFamilyBattleData = useCallback(async () => {
-    if (!user?.uid || !linkedStudents.length || !parentData?.familyId) return;
-    
-    // Prevent rapid refreshes - minimum 5 seconds between loads
-    const now = Date.now();
-    if (now - lastLoadTime.current < 5000) {
-      console.log('🚫 Throttling battle data load - too soon');
-      return;
-    }
-    
-    if (isLoadingBattleData.current) return;
-    
-    isLoadingBattleData.current = true;
-    lastLoadTime.current = now;
+  // Load battle data
+  const loadBattleData = useCallback(async () => {
+    if (!parentData?.familyId || !linkedStudents.length) return
     
     try {
-      // Get current battle data using family ID
-      const battleData = await calculateFamilyBattleData(parentData.familyId, linkedStudents);
+      // Sync and get battle data
+      await syncFamilyBattle(parentData.familyId, linkedStudents)
+      const data = await getBattleData(parentData.familyId)
+      setBattleData(data)
       
-      // Handle Sunday vs weekday data
-      if (isSunday) {
-        // Try to get the stored completed week data from Firebase
-        const familyRef = doc(db, 'families', parentData.familyId);
-        const familyDoc = await getDoc(familyRef);
-        
-        if (familyDoc.exists()) {
-          const familyData = familyDoc.data();
-          const lastCompletedWeek = familyData.familyBattleSettings?.lastCompletedWeek;
-          
-          // Use the completed week data if available and has actual data
-          if (lastCompletedWeek && (lastCompletedWeek.parentMinutes > 0 || lastCompletedWeek.childrenMinutes > 0)) {
-            console.log('📊 Using stored Sunday Results Data:', lastCompletedWeek);
-            setSundayBattleData(lastCompletedWeek);
-            setFamilyBattleData(null);
-          } else if (battleData && (battleData.parentMinutes > 0 || battleData.childrenMinutes > 0)) {
-            // Use calculated data if it has values
-            console.log('📊 Using calculated Sunday Results Data:', battleData);
-            setSundayBattleData(battleData);
-            setFamilyBattleData(null);
-          } else {
-            // No data for Sunday - show empty state
-            console.log('📊 No battle data for Sunday');
-            setSundayBattleData(battleData);
-            setFamilyBattleData(null);
-          }
-        }
-      } else {
-        // Not Sunday - set as regular battle data
-        setFamilyBattleData(battleData);
-        setSundayBattleData(null);
+      // Load parent victories if they have wins
+      if (data?.history?.parentWins > 0) {
+        const victories = await getParentVictories(parentData.familyId)
+        setParentVictories(victories)
+      }
+    } catch (error) {
+      console.error('Error loading battle data:', error)
+      setError('Failed to load battle data')
+    }
+  }, [parentData?.familyId, linkedStudents])
+
+  // Initialize family battle
+  const handleInitializeBattle = async () => {
+    if (!hasFeature('familyBattle')) {
+      alert('Family Battle requires premium features!')
+      return
+    }
+    
+    if (!parentData?.familyId) {
+      alert('No family ID found. Please ensure your family is set up correctly.')
+      return
+    }
+    
+    try {
+      setLoading(true)
+      
+      // Initialize battle
+      await initializeFamilyBattle(parentData.familyId, user.uid)
+      
+      // Enable for all linked students
+      if (linkedStudents.length > 0) {
+        await enableFamilyBattleForStudents(parentData.familyId, linkedStudents)
       }
       
-      // Get family statistics
-      const stats = await getFamilyBattleStats(parentData.familyId);
-      setFamilyStats(stats);
+      setShowSuccess('🏆 Family Battle arena opened! Let the games begin! ⚔️')
+      setTimeout(() => setShowSuccess(''), 4000)
       
+      await loadBattleData()
     } catch (error) {
-      console.error('❌ Error loading family battle data:', error);
+      console.error('Error initializing family battle:', error)
+      alert('Error setting up Family Battle. Please try again.')
     } finally {
-      isLoadingBattleData.current = false;
+      setLoading(false)
     }
-  }, [user?.uid, linkedStudents, parentData?.familyId, isSunday])
+  }
 
-  // Load parent victories for the victory modal
-  const loadParentVictories = useCallback(async () => {
-    if (!parentData?.familyId) return;
-    
-    try {
-      const victories = await getParentVictories(parentData.familyId);
-      setParentVictories(victories);
-    } catch (error) {
-      console.error('Error loading parent victories:', error);
-    }
-  }, [parentData?.familyId])
-
-  // Load initial data - only once
-  const loadInitialData = useCallback(async () => {
-    if (hasLoadedInitialData.current) return;
-    hasLoadedInitialData.current = true;
-    
-    try {
-      // Load parent profile
-      const parentRef = doc(db, 'parents', user.uid)
-      const parentDoc = await getDoc(parentRef)
-      
-      if (!parentDoc.exists()) {
-        throw new Error('Parent profile not found')
-      }
-
-      const parentProfile = parentDoc.data()
-      setParentData(parentProfile)
-      
-      // Load linked students
-      const students = await loadLinkedStudentsData(parentProfile.linkedStudents || [])
-      setLinkedStudents(students)
-      
-    } catch (error) {
-      console.error('❌ Error loading initial data:', error)
-      setError('Failed to load family battle data. Please try again.')
-    }
-    
-    setLoading(false)
-  }, [user?.uid])
-
-  // Load family battle data when students are loaded - FIXED dependencies
+  // Load initial data
   useEffect(() => {
-    if (linkedStudents.length > 0 && parentData?.familyBattleSettings?.enabled && parentData?.familyId) {
-      loadFamilyBattleData();
-    }
-  }, [linkedStudents.length, parentData?.familyBattleSettings?.enabled, parentData?.familyId])
-
-  // Load parent victories when family data is loaded - FIXED to not trigger loops
-  useEffect(() => {
-    if (parentData?.familyId && familyStats && !parentVictories.length) {
-      loadParentVictories();
-    }
-  }, [parentData?.familyId, familyStats])
-
-  // Auto-show results modal on Sunday - only once per week using localStorage
-  useEffect(() => {
-    if (isSunday && 
-        sundayBattleData && 
-        sundayBattleData.winner && 
-        sundayBattleData.winner !== 'ongoing' &&
-        sundayBattleData.weekNumber) {
+    const loadInitialData = async () => {
+      if (!user?.uid) return
       
-      const localStorageKey = `familyBattleResultsShown_parent_${user?.uid}`;
-      const shownWeek = localStorage.getItem(localStorageKey);
-      const currentWeek = sundayBattleData.weekNumber.toString();
-      
-      if (shownWeek !== currentWeek) {
-        console.log('📊 Auto-showing results modal for week:', currentWeek);
-        setShowResultsModal(true);
-        localStorage.setItem(localStorageKey, currentWeek);
+      try {
+        // Load parent profile
+        const parentRef = doc(db, 'parents', user.uid)
+        const parentDoc = await getDoc(parentRef)
+        
+        if (!parentDoc.exists()) {
+          router.push('/parent/dashboard')
+          return
+        }
+
+        const data = parentDoc.data()
+        setParentData(data)
+        
+        // Load linked students
+        if (data.linkedStudents?.length > 0) {
+          const students = await loadLinkedStudentsData(data.linkedStudents)
+          setLinkedStudents(students)
+        }
+        
+        // Check if battle is enabled
+        if (data.familyId) {
+          const familyRef = doc(db, 'families', data.familyId)
+          const familyDoc = await getDoc(familyRef)
+          
+          if (familyDoc.exists() && familyDoc.data().familyBattle?.enabled) {
+            // Battle data will be loaded by the effect below
+          }
+        }
+      } catch (error) {
+        console.error('Error loading initial data:', error)
+        setError('Failed to load family data')
+      } finally {
+        setLoading(false)
       }
     }
-  }, [isSunday, sundayBattleData, user?.uid])
-
-  // Load initial data with premium check
-  useEffect(() => {
+    
     if (!authLoading && isAuthenticated && user && userProfile?.accountType === 'parent') {
       loadInitialData()
     } else if (!authLoading && !isAuthenticated) {
@@ -375,7 +277,38 @@ export default function ParentFamilyBattle() {
     } else if (!authLoading && userProfile?.accountType !== 'parent') {
       router.push('/student-dashboard')
     }
-  }, [authLoading, isAuthenticated, user?.uid, userProfile?.accountType, router, loadInitialData])
+  }, [authLoading, isAuthenticated, user?.uid, userProfile?.accountType, router])
+
+  // Load battle data when students are loaded
+  useEffect(() => {
+    if (parentData?.familyId && linkedStudents.length > 0) {
+      loadBattleData()
+    }
+  }, [parentData?.familyId, linkedStudents.length, loadBattleData])
+
+  // Auto-show results modal on Sunday
+  useEffect(() => {
+    if (isSunday && battleData?.isResultsDay && battleData?.winner && battleData?.number) {
+      const localStorageKey = `familyBattleResultsShown_parent_${user?.uid}_week_${battleData.number}`
+      const hasSeenResults = localStorage.getItem(localStorageKey) === 'true'
+      
+      if (!hasSeenResults) {
+        setShowResultsModal(true)
+        localStorage.setItem(localStorageKey, 'true')
+      }
+    }
+  }, [isSunday, battleData, user?.uid])
+
+  // Auto-refresh every 30 seconds (except Sunday)
+  useEffect(() => {
+    if (!isSunday && battleData?.enabled && parentData?.familyId && linkedStudents.length > 0) {
+      const interval = setInterval(() => {
+        loadBattleData()
+      }, 30000)
+      
+      return () => clearInterval(interval)
+    }
+  }, [isSunday, battleData?.enabled, parentData?.familyId, linkedStudents.length, loadBattleData])
 
   // Close nav menu when clicking outside
   useEffect(() => {
@@ -385,72 +318,45 @@ export default function ParentFamilyBattle() {
       }
     }
 
-    const handleEscape = (event) => {
-      if (event.key === 'Escape' && showNavMenu) {
-        setShowNavMenu(false)
-      }
-    }
-
     if (showNavMenu) {
       document.addEventListener('mousedown', handleClickOutside)
-      document.addEventListener('keydown', handleEscape)
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-      document.removeEventListener('keydown', handleEscape)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [showNavMenu])
 
-  // Navigation handler
-  const handleNavigation = (item) => {
-    if (item.current) return
-    
-    setShowNavMenu(false)
-    
-    setTimeout(() => {
-      router.push(item.path)
-    }, 100)
-  }
-
-  const handleResultsClick = () => {
-    setShowResultsModal(true)
-  }
-
-  const handleDataUpdate = () => {
-    // Reload all data when family battle manager updates something
-    loadFamilyBattleData();
-  }
-
-  // Show loading while data loads
-  if (authLoading || loading || !userProfile) {
+  if (authLoading || loading) {
     return (
-      <>
-        <Head>
-          <title>Family Battle - Lux Libris Parent</title>
-          <meta name="description" content="Compete with your children in weekly family reading battles" />
-          <link rel="icon" href="/images/lux_libris_logo.png" />
-          <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-        </Head>
+      <div style={{
+        background: theme.background,
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'relative'
+      }}>
+        {/* Time-based overlay */}
         <div style={{
-          background: luxTheme.background,
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{
-              width: '40px',
-              height: '40px',
-              border: `3px solid ${luxTheme.primary}30`,
-              borderTop: `3px solid ${luxTheme.primary}`,
-              borderRadius: '50%',
-              animation: 'spin 1s linear infinite',
-              margin: '0 auto 16px'
-            }} />
-            <p style={{ color: luxTheme.textPrimary }}>Loading family battle...</p>
-          </div>
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: theme.timeOverlay,
+          pointerEvents: 'none',
+          zIndex: 1
+        }} />
+        
+        <div style={{ textAlign: 'center', position: 'relative', zIndex: 10 }}>
+          <div style={{
+            width: '40px',
+            height: '40px',
+            border: `3px solid ${theme.primary}30`,
+            borderTop: `3px solid ${theme.primary}`,
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 16px'
+          }} />
+          <p style={{ color: theme.textPrimary }}>Loading family battle...</p>
         </div>
         <style jsx>{`
           @keyframes spin {
@@ -458,51 +364,9 @@ export default function ParentFamilyBattle() {
             to { transform: rotate(360deg); }
           }
         `}</style>
-      </>
+      </div>
     )
   }
-
-  if (error) {
-    return (
-      <>
-        <Head>
-          <title>Family Battle - Lux Libris Parent</title>
-          <meta name="description" content="Compete with your children in weekly family reading battles" />
-          <link rel="icon" href="/images/lux_libris_logo.png" />
-          <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-        </Head>
-        <div style={{
-          background: luxTheme.background,
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          <div style={{ textAlign: 'center', padding: '2rem' }}>
-            <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>😞</div>
-            <h2 style={{ color: luxTheme.textPrimary, marginBottom: '1rem' }}>Oops!</h2>
-            <p style={{ color: luxTheme.textSecondary, marginBottom: '1.5rem' }}>{error}</p>
-            <button
-              onClick={() => window.location.reload()}
-              style={{
-                backgroundColor: luxTheme.primary,
-                color: luxTheme.textPrimary,
-                border: 'none',
-                padding: '12px 24px',
-                borderRadius: '8px',
-                cursor: 'pointer'
-              }}
-            >
-              Try Again
-            </button>
-          </div>
-        </div>
-      </>
-    )
-  }
-
-  // Determine which battle data to show
-  const displayBattleData = isSunday ? sundayBattleData : familyBattleData;
 
   return (
     <>
@@ -514,7 +378,7 @@ export default function ParentFamilyBattle() {
       </Head>
 
       <div style={{
-        background: luxTheme.background,
+        background: theme.background,
         minHeight: '100vh',
         fontFamily: 'system-ui, -apple-system, sans-serif',
         paddingBottom: '100px',
@@ -527,28 +391,19 @@ export default function ParentFamilyBattle() {
           left: 0,
           right: 0,
           bottom: 0,
-          background: luxTheme.timeOverlay,
+          background: theme.timeOverlay,
           pointerEvents: 'none',
           zIndex: 1
         }} />
         
-        {/* ONLY show Results button on Sunday, NOTHING on other days */}
-        {isSunday && sundayBattleData && (
-          <SundayResultsButton
-            onClick={handleResultsClick}
-            winner={sundayBattleData.winner}
-            margin={sundayBattleData.margin}
-          />
-        )}
-        
-        {/* Header */}
+        {/* Header with time-based gradient */}
         <div style={{
-          background: timeTheme.gradient,
+          background: theme.headerGradient,
           backdropFilter: 'blur(20px)',
           padding: '30px 20px 12px',
-          position: 'relative',
           borderRadius: '0 0 25px 25px',
-          boxShadow: `0 4px 20px rgba(0,0,0,0.1), 0 0 40px ${luxTheme.timeGlow}30`,
+          boxShadow: `0 4px 20px rgba(0,0,0,0.1), 0 0 40px ${theme.timeGlow}30`,
+          position: 'relative',
           zIndex: 100,
           display: 'flex',
           alignItems: 'center',
@@ -570,9 +425,8 @@ export default function ParentFamilyBattle() {
               justifyContent: 'center',
               fontSize: '18px',
               cursor: 'pointer',
-              color: timeTheme.name === 'night' ? 'white' : luxTheme.textPrimary,
+              color: timeTheme.name === 'night' || timeTheme.name === 'evening' ? 'white' : theme.textPrimary,
               backdropFilter: 'blur(10px)',
-              flexShrink: 0,
               touchAction: 'manipulation',
               WebkitTapHighlightColor: 'transparent'
             }}
@@ -580,45 +434,51 @@ export default function ParentFamilyBattle() {
             ←
           </button>
 
-          {/* Centered Title */}
+          {/* Title with Time-Based Greeting */}
           <div style={{ textAlign: 'center', position: 'relative' }}>
-            <div style={{ fontSize: '32px', marginBottom: '4px' }}>⚔️</div>
+            <div style={{ 
+              fontSize: '32px', 
+              marginBottom: '4px',
+              filter: `drop-shadow(0 0 10px ${theme.timeGlow}50)`
+            }}>
+              {timeTheme.emoji} ⚔️
+            </div>
             <h1 style={{
               fontSize: 'clamp(20px, 5vw, 24px)',
               fontWeight: '600',
-              color: timeTheme.name === 'night' ? 'white' : luxTheme.textPrimary,
+              color: timeTheme.name === 'night' || timeTheme.name === 'evening' ? 'white' : theme.textPrimary,
               margin: '0',
-              letterSpacing: '1px',
               fontFamily: 'Didot, "Times New Roman", serif',
-              textShadow: timeTheme.name === 'night' ? '0 2px 4px rgba(0,0,0,0.3)' : 'none'
+              letterSpacing: '1px'
             }}>
               Family Battle
             </h1>
             <p style={{
-              fontSize: 'clamp(12px, 3vw, 14px)',
-              color: timeTheme.name === 'night' ? 'rgba(255,255,255,0.8)' : luxTheme.textSecondary,
+              fontSize: '14px',
+              color: timeTheme.name === 'night' || timeTheme.name === 'evening' ? 'rgba(255,255,255,0.8)' : theme.textSecondary,
               margin: '4px 0 0 0'
             }}>
-              {isSunday ? '✨ Sunday Day of Rest ✨' : 'WWE for Reading Champions'}
+              {isSunday ? '✨ Sunday Day of Rest ✨' : timeTheme.greeting}
             </p>
             {isPilotPhase && (
               <div style={{
                 position: 'absolute',
                 top: '-8px',
-                right: '-16px',
+                right: '-40px',
                 backgroundColor: '#10B981',
                 color: 'white',
                 padding: '2px 6px',
                 borderRadius: '8px',
                 fontSize: '10px',
-                fontWeight: '600'
+                fontWeight: '600',
+                boxShadow: '0 2px 6px rgba(16, 185, 129, 0.3)'
               }}>
                 PILOT
               </div>
             )}
           </div>
 
-          {/* Hamburger Menu */}
+          {/* Menu */}
           <div className="nav-menu-container" style={{ position: 'absolute', right: '20px' }}>
             <button
               onClick={() => setShowNavMenu(!showNavMenu)}
@@ -633,9 +493,8 @@ export default function ParentFamilyBattle() {
                 justifyContent: 'center',
                 fontSize: '18px',
                 cursor: 'pointer',
-                color: timeTheme.name === 'night' ? 'white' : luxTheme.textPrimary,
+                color: timeTheme.name === 'night' || timeTheme.name === 'evening' ? 'white' : theme.textPrimary,
                 backdropFilter: 'blur(10px)',
-                flexShrink: 0,
                 touchAction: 'manipulation',
                 WebkitTapHighlightColor: 'transparent'
               }}
@@ -643,50 +502,47 @@ export default function ParentFamilyBattle() {
               ☰
             </button>
 
-            {/* Dropdown Menu */}
             {showNavMenu && (
               <div style={{
                 position: 'absolute',
                 top: '50px',
                 right: '0',
-                backgroundColor: luxTheme.surface,
+                backgroundColor: theme.surface,
                 borderRadius: '12px',
                 minWidth: '200px',
                 boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
                 backdropFilter: 'blur(20px)',
-                border: `2px solid ${luxTheme.primary}60`,
+                border: `2px solid ${theme.primary}60`,
                 overflow: 'hidden',
-                zIndex: 9999
+                zIndex: 1000
               }}>
                 {navMenuItems.map((item, index) => (
                   <button
                     key={item.path}
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      handleNavigation(item)
+                    onClick={() => {
+                      setShowNavMenu(false)
+                      if (!item.current) router.push(item.path)
                     }}
                     style={{
                       width: '100%',
                       padding: '12px 16px',
-                      backgroundColor: item.current ? `${luxTheme.primary}30` : 'transparent',
+                      backgroundColor: item.current ? `${theme.primary}30` : 'transparent',
                       border: 'none',
-                      borderBottom: index < navMenuItems.length - 1 ? `1px solid ${luxTheme.primary}40` : 'none',
+                      borderBottom: index < navMenuItems.length - 1 ? `1px solid ${theme.primary}40` : 'none',
                       cursor: item.current ? 'default' : 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '12px',
                       fontSize: '14px',
-                      color: luxTheme.textPrimary,
+                      color: theme.textPrimary,
                       fontWeight: item.current ? '600' : '500',
                       textAlign: 'left',
                       touchAction: 'manipulation',
-                      WebkitTapHighlightColor: 'transparent',
                       transition: 'background-color 0.2s ease'
                     }}
                     onMouseEnter={(e) => {
                       if (!item.current) {
-                        e.target.style.backgroundColor = `${luxTheme.primary}20`
+                        e.target.style.backgroundColor = `${theme.primary}20`
                       }
                     }}
                     onMouseLeave={(e) => {
@@ -695,11 +551,9 @@ export default function ParentFamilyBattle() {
                       }
                     }}
                   >
-                    <span style={{ fontSize: '16px' }}>{item.icon}</span>
+                    <span>{item.icon}</span>
                     <span>{item.name}</span>
-                    {item.current && (
-                      <span style={{ marginLeft: 'auto', fontSize: '12px', color: luxTheme.primary }}>●</span>
-                    )}
+                    {item.current && <span style={{ marginLeft: 'auto', color: theme.primary }}>●</span>}
                   </button>
                 ))}
               </div>
@@ -707,7 +561,7 @@ export default function ParentFamilyBattle() {
           </div>
         </div>
 
-        {/* Main Content - Family Battle Manager */}
+        {/* Main Content */}
         <PremiumGate 
           feature="familyBattle"
           customMessage={isPilotPhase ? 
@@ -719,11 +573,41 @@ export default function ParentFamilyBattle() {
             padding: '20px', 
             maxWidth: '600px', 
             margin: '0 auto',
-            paddingTop: '20px',
             position: 'relative',
             zIndex: 10
           }}>
-
+            
+            {/* Time-Based Battle Announcement */}
+            {!isSunday && battleData?.enabled && (
+              <div style={{
+                background: `linear-gradient(135deg, ${theme.timeGlow}30, ${theme.timeGlow}10)`,
+                borderRadius: '16px',
+                padding: '16px',
+                marginBottom: '20px',
+                border: `2px solid ${theme.timeGlow}60`,
+                textAlign: 'center',
+                boxShadow: `0 4px 16px ${theme.timeGlow}20`
+              }}>
+                <div style={{
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  color: theme.textPrimary,
+                  marginBottom: '4px'
+                }}>
+                  {timeTheme.emoji} {timeTheme.greeting}
+                </div>
+                <div style={{
+                  fontSize: '13px',
+                  color: theme.textSecondary
+                }}>
+                  {timeTheme.name === 'morning' && 'Start the day strong! Every morning minute counts double in spirit!'}
+                  {timeTheme.name === 'afternoon' && 'Peak battle hours! Show your kids the power of consistency!'}
+                  {timeTheme.name === 'evening' && 'Golden hour reading! End the day with victory in sight!'}
+                  {timeTheme.name === 'night' && 'Night owl warriors unite! Silent reading brings loud victories!'}
+                </div>
+              </div>
+            )}
+            
             {/* Success Message */}
             {showSuccess && (
               <div style={{
@@ -733,9 +617,25 @@ export default function ParentFamilyBattle() {
                 borderRadius: '8px',
                 marginBottom: '16px',
                 fontSize: '14px',
-                fontWeight: '600'
+                fontWeight: '600',
+                boxShadow: '0 4px 12px rgba(76, 175, 80, 0.3)'
               }}>
                 {showSuccess}
+              </div>
+            )}
+
+            {/* Error Message */}
+            {error && (
+              <div style={{
+                backgroundColor: '#f44336',
+                color: 'white',
+                padding: '12px 16px',
+                borderRadius: '8px',
+                marginBottom: '16px',
+                fontSize: '14px',
+                boxShadow: '0 4px 12px rgba(244, 67, 54, 0.3)'
+              }}>
+                {error}
               </div>
             )}
 
@@ -748,106 +648,196 @@ export default function ParentFamilyBattle() {
                 padding: '16px',
                 marginBottom: '20px',
                 textAlign: 'center',
-                boxShadow: `0 4px 12px ${luxTheme.timeGlow}20`
+                boxShadow: '0 4px 16px rgba(255, 215, 0, 0.2)'
               }}>
                 <div style={{
                   fontSize: '16px',
                   fontWeight: '600',
-                  color: luxTheme.textPrimary,
+                  color: theme.textPrimary,
                   marginBottom: '8px'
                 }}>
                   🙏 Sunday Day of Rest 🙏
                 </div>
                 <div style={{
                   fontSize: '14px',
-                  color: luxTheme.textSecondary
+                  color: theme.textSecondary
                 }}>
-                  Reflect on this week&apos;s reading journey. The battle resumes tomorrow!
+                  Reflect on this week's reading journey. The battle resumes tomorrow!
                 </div>
               </div>
             )}
 
-            {/* Main Family Battle Manager Component */}
-            <ParentFamilyBattleManager
-              theme={luxTheme}
-              parentData={parentData}
-              linkedStudents={linkedStudents}
-              onUpdate={handleDataUpdate}
-              battleData={displayBattleData}
-              isSunday={isSunday}
-            />
+            {/* Battle Display or Initialize Button */}
+            {battleData?.enabled ? (
+              <FamilyBattleDisplay
+                battleData={battleData}
+                isStudent={false}
+                theme={theme}
+                onRefresh={loadBattleData}
+                onShowResults={() => setShowResultsModal(true)}
+                onShowVictoryArchive={() => {
+                  if (parentVictories.length === 0 && battleData?.history?.parentWins > 0) {
+                    // Load victories first if not loaded
+                    getParentVictories(parentData.familyId).then(victories => {
+                      setParentVictories(victories)
+                      setShowVictoryModal(true)
+                    })
+                  } else {
+                    setShowVictoryModal(true)
+                  }
+                }}
+              />
+            ) : (
+              <div style={{
+                backgroundColor: theme.surface,
+                borderRadius: '16px',
+                padding: '40px 20px',
+                textAlign: 'center',
+                boxShadow: `0 4px 12px rgba(0,0,0,0.1), 0 0 20px ${theme.timeGlow}20`,
+                border: `2px solid ${theme.timeGlow}40`
+              }}>
+                <div style={{ 
+                  fontSize: '48px', 
+                  marginBottom: '16px',
+                  filter: `drop-shadow(0 0 10px ${theme.timeGlow}50)`
+                }}>
+                  ⚔️
+                </div>
+                <h3 style={{
+                  fontSize: '20px',
+                  fontWeight: '600',
+                  color: theme.textPrimary,
+                  marginBottom: '12px'
+                }}>
+                  Ready for Family Battle?
+                </h3>
+                <p style={{
+                  fontSize: '14px',
+                  color: theme.textSecondary,
+                  marginBottom: '24px'
+                }}>
+                  Challenge your children to epic weekly reading battles!
+                </p>
+                <button
+                  onClick={handleInitializeBattle}
+                  disabled={loading || !parentData?.familyId || !hasFeature('familyBattle')}
+                  style={{
+                    background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary})`,
+                    color: theme.textPrimary,
+                    border: 'none',
+                    borderRadius: '12px',
+                    padding: '14px 24px',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    cursor: loading || !parentData?.familyId ? 'not-allowed' : 'pointer',
+                    opacity: loading || !parentData?.familyId ? 0.7 : 1,
+                    boxShadow: `0 4px 16px ${theme.primary}40`,
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!loading && parentData?.familyId) {
+                      e.target.style.transform = 'translateY(-2px)'
+                      e.target.style.boxShadow = `0 6px 20px ${theme.primary}50`
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.transform = 'translateY(0)'
+                    e.target.style.boxShadow = `0 4px 16px ${theme.primary}40`
+                  }}
+                >
+                  {loading ? '⏳ Opening Arena...' : '🚀 Start Family Battle!'}
+                </button>
+              </div>
+            )}
           </div>
         </PremiumGate>
+
+        {/* Jane Austen Helper */}
+        <JaneAustenHelper
+          show={battleData?.enabled && showJaneAusten}
+          battleState={battleData?.leader}
+          winner={battleData?.winner}
+          onClose={() => setShowJaneAusten(false)}
+          currentTheme={theme}
+          familyBattleData={battleData}
+        />
 
         {/* Victory Modal */}
         <FamilyBattleVictoryModal
           show={showVictoryModal}
           onClose={() => setShowVictoryModal(false)}
           victories={parentVictories}
-          theme={luxTheme}
+          theme={theme}
         />
 
-        {/* Family Battle Results Modal */}
+        {/* Results Modal */}
         <FamilyBattleResultsModal
           show={showResultsModal}
           onClose={() => {
-            setShowResultsModal(false);
-            // Update localStorage when manually closed
-            if (sundayBattleData?.weekNumber) {
-              const localStorageKey = `familyBattleResultsShown_parent_${user?.uid}`;
-              localStorage.setItem(localStorageKey, sundayBattleData.weekNumber.toString());
-            }
-            // If parents won, optionally show victory archive
-            if (sundayBattleData?.winner === 'parents') {
-              setTimeout(() => setShowVictoryModal(true), 500);
+            setShowResultsModal(false)
+            if (battleData?.winner === 'parents' && parentVictories.length > 0) {
+              setTimeout(() => setShowVictoryModal(true), 500)
             }
           }}
-          battleData={sundayBattleData || displayBattleData}
+          battleData={battleData}
           isStudent={false}
-          currentUserId={user?.uid}
-          theme={luxTheme}
+          theme={theme}
         />
-
-        <style jsx>{`
-          @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-          }
-          
-          @keyframes pulse {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.05); opacity: 0.8; }
-          }
-          
-          @keyframes bounce {
-            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
-            40% { transform: translateY(-10px); }
-            60% { transform: translateY(-5px); }
-          }
-          
-          button {
-            -webkit-tap-highlight-color: transparent;
-            -webkit-user-select: none;
-            user-select: none;
-            -webkit-touch-callout: none;
-            touch-action: manipulation;
-          }
-          
-          * {
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-            -webkit-overflow-scrolling: touch;
-            scroll-behavior: smooth;
-          }
-          
-          @media (max-width: 768px) {
-            .nav-menu-container > div {
-              right: 10px !important;
-              min-width: 180px !important;
-            }
-          }
-        `}</style>
       </div>
+
+      <style jsx>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        
+        @keyframes pulse {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.02); opacity: 0.9; }
+        }
+        
+        @keyframes slideIn {
+          from { 
+            opacity: 0; 
+            transform: translateY(-10px); 
+          }
+          to { 
+            opacity: 1; 
+            transform: translateY(0); 
+          }
+        }
+        
+        @keyframes glow {
+          0%, 100% { box-shadow: 0 0 10px ${theme.timeGlow}40; }
+          50% { box-shadow: 0 0 20px ${theme.timeGlow}60; }
+        }
+        
+        button {
+          -webkit-tap-highlight-color: transparent;
+          -webkit-user-select: none;
+          user-select: none;
+          -webkit-touch-callout: none;
+          touch-action: manipulation;
+        }
+        
+        * {
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
+          -webkit-overflow-scrolling: touch;
+          scroll-behavior: smooth;
+        }
+        
+        @media (max-width: 768px) {
+          input {
+            font-size: 16px !important;
+          }
+          
+          .nav-menu-container > div {
+            right: 10px !important;
+            minWidth: 180px !important;
+          }
+        }
+      `}</style>
     </>
   )
 }

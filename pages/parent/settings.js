@@ -4,7 +4,7 @@ import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
 import { usePremiumFeatures } from '../../hooks/usePremiumFeatures'
 import Head from 'next/head'
-import { collection, getDocs, doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore'
+import { collection, getDocs, doc, getDoc, updateDoc, arrayUnion, query, where } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
 import { linkParentToStudent } from '../../lib/parentLinking'
 
@@ -175,14 +175,16 @@ export default function ParentSettings() {
       
       console.log('✅ Parent profile loaded')
 
-      // Load family profile
-      const familyRef = doc(db, 'families', user.uid)
-      const familyDoc = await getDoc(familyRef)
-      
-      if (familyDoc.exists()) {
-        setFamilyData(familyDoc.data())
-        console.log('✅ Family profile loaded')
-      }
+      // Load family profile - search for family containing this parent
+const familiesRef = collection(db, 'families')
+const familyQuery = query(familiesRef, where('parents', 'array-contains', user.uid))
+const familySnapshot = await getDocs(familyQuery)
+
+if (!familySnapshot.empty) {
+  const familyDoc = familySnapshot.docs[0]
+  setFamilyData({ ...familyDoc.data(), id: familyDoc.id })
+  console.log('✅ Family profile loaded:', familyDoc.id)
+}
 
       // Load linked students and their teachers' quiz codes
       await loadLinkedStudentsAndTeachers(parentProfile.linkedStudents || [])
@@ -303,10 +305,10 @@ export default function ParentSettings() {
         setSuccess('Profile updated successfully!')
         
       } else if (section === 'family') {
-        const familyRef = doc(db, 'families', user.uid)
-        await updateDoc(familyRef, {
-          familyName: editedData.familyName
-        })
+  const familyRef = doc(db, 'families', familyData.id)  // Use familyData.id instead of user.uid
+  await updateDoc(familyRef, {
+    familyName: editedData.familyName
+  })
         
         setFamilyData(prev => ({
           ...prev,
@@ -1467,19 +1469,21 @@ export default function ParentSettings() {
                       First Name
                     </label>
                     <input
-                      type="text"
-                      value={editedData.firstName || ''}
-                      onChange={(e) => setEditedData(prev => ({ ...prev, firstName: e.target.value }))}
-                      style={{
-                        width: '100%',
-                        padding: '8px',
-                        border: `1px solid ${luxTheme.primary}40`,
-                        borderRadius: '6px',
-                        fontSize: 'clamp(12px, 3.5vw, 14px)',
-                        boxSizing: 'border-box',
-                        minHeight: '40px'
-                      }}
-                    />
+  type="text"
+  value={editedData.firstName || ''}
+  onChange={(e) => setEditedData(prev => ({ ...prev, firstName: e.target.value }))}
+  style={{
+    width: '100%',
+    padding: '8px',
+    border: `1px solid ${luxTheme.primary}40`,
+    borderRadius: '6px',
+    fontSize: 'clamp(12px, 3.5vw, 14px)',
+    boxSizing: 'border-box',
+    minHeight: '40px',
+    color: luxTheme.textPrimary,  // ADD THIS LINE
+    backgroundColor: luxTheme.surface  // OPTIONALLY ADD THIS TOO
+  }}
+/>
                   </div>
                   <div>
                     <label style={{
@@ -1492,19 +1496,21 @@ export default function ParentSettings() {
                       Last Name
                     </label>
                     <input
-                      type="text"
-                      value={editedData.lastName || ''}
-                      onChange={(e) => setEditedData(prev => ({ ...prev, lastName: e.target.value }))}
-                      style={{
-                        width: '100%',
-                        padding: '8px',
-                        border: `1px solid ${luxTheme.primary}40`,
-                        borderRadius: '6px',
-                        fontSize: 'clamp(12px, 3.5vw, 14px)',
-                        boxSizing: 'border-box',
-                        minHeight: '40px'
-                      }}
-                    />
+  type="text"
+  value={editedData.lastName || ''}
+  onChange={(e) => setEditedData(prev => ({ ...prev, lastName: e.target.value }))}
+  style={{
+    width: '100%',
+    padding: '8px',
+    border: `1px solid ${luxTheme.primary}40`,
+    borderRadius: '6px',
+    fontSize: 'clamp(12px, 3.5vw, 14px)',
+    boxSizing: 'border-box',
+    minHeight: '40px',
+    color: luxTheme.textPrimary,  // ADD THIS LINE
+    backgroundColor: luxTheme.surface  // ADD THIS LINE
+  }}
+/>
                   </div>
                 </div>
                 <div style={{ 
@@ -1683,19 +1689,21 @@ export default function ParentSettings() {
                       Family Name
                     </label>
                     <input
-                      type="text"
-                      value={editedData.familyName || ''}
-                      onChange={(e) => setEditedData(prev => ({ ...prev, familyName: e.target.value }))}
-                      style={{
-                        width: '100%',
-                        padding: '8px',
-                        border: `1px solid ${luxTheme.primary}40`,
-                        borderRadius: '6px',
-                        fontSize: 'clamp(12px, 3.5vw, 14px)',
-                        boxSizing: 'border-box',
-                        minHeight: '40px'
-                      }}
-                    />
+  type="text"
+  value={editedData.familyName || ''}
+  onChange={(e) => setEditedData(prev => ({ ...prev, familyName: e.target.value }))}
+  style={{
+    width: '100%',
+    padding: '8px',
+    border: `1px solid ${luxTheme.primary}40`,
+    borderRadius: '6px',
+    fontSize: 'clamp(12px, 3.5vw, 14px)',
+    boxSizing: 'border-box',
+    minHeight: '40px',
+    color: luxTheme.textPrimary,  // ADD THIS LINE
+    backgroundColor: luxTheme.surface  // ADD THIS LINE
+  }}
+/>
                   </div>
                   <div style={{ 
                     display: 'flex', 

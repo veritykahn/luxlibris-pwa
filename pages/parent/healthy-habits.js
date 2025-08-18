@@ -8,8 +8,6 @@ import PremiumGate from '../../components/PremiumGate'
 import Head from 'next/head'
 import { collection, addDoc, query, where, getDocs, doc, getDoc, updateDoc, increment } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
-// ADDED: Import sync function ONLY for initial load
-import { syncFamilyBattleData } from '../../lib/family-battle-sync'
 
 // Utility function for getting week start
 const getProgramWeekStart = (date = new Date()) => {
@@ -48,7 +46,7 @@ function FamilyBattleCard({ linkedStudents, user, luxTheme, router, isPilotPhase
         
         if (familyDoc.exists()) {
           const familyData = familyDoc.data()
-          const currentWeek = familyData.familyBattleSettings?.currentWeek
+          const currentWeek = familyData.familyBattle?.currentWeek
           
           if (currentWeek) {
             setBattleData({
@@ -512,69 +510,27 @@ export default function ParentHealthyHabits() {
 
       // Only update family battle on Monday-Saturday
       if (parentData?.familyBattleSettings?.enabled && parentData?.familyId && !isSunday) {
-        console.log('⚔️ Updating family battle stats (Mon-Sat only)...')
+        console.log('⚔️ Updating family battle with parent minutes...');
         try {
-          const familyRef = doc(db, 'families', parentData.familyId)
-          const weekStr = getLocalDateString(getProgramWeekStart())
+          const familyRef = doc(db, 'families', parentData.familyId);
           
-          // Direct incremental update - no recalculation needed
+          // Direct incremental update for ALL sessions (completed or banked)
           await updateDoc(familyRef, {
-            // Increment total parent minutes
-            'familyBattleSettings.currentWeek.parents': increment(duration),
-            
-            // Update this specific parent's contribution
-            [`familyBattleSettings.currentWeek.parentBreakdown.${user.uid}`]: increment(duration),
-            
-            // Update battle status based on new totals
-            'familyBattleSettings.currentWeek.lastUpdated': new Date(),
-            
-            // Don't update lastSynced - that's only for full syncs
-          })
+            [`familyBattle.currentWeek.parents.total`]: increment(duration),
+            [`familyBattle.currentWeek.parents.breakdown.${user.uid}`]: increment(duration),
+            'familyBattle.currentWeek.lastUpdated': new Date()
+          });
           
-          // Also update the margin and status locally (without full sync)
-          const familyDoc = await getDoc(familyRef)
-          if (familyDoc.exists()) {
-            const familyData = familyDoc.data()
-            const currentWeek = familyData.familyBattleSettings?.currentWeek
-            
-            if (currentWeek) {
-              const parentTotal = currentWeek.parents || 0
-              const childTotal = currentWeek.children || 0
-              const margin = Math.abs(parentTotal - childTotal)
-              
-              let winner = 'tie'
-              let battleStatus = 'The battle begins!'
-              
-              // During the week
-              if (childTotal > parentTotal) {
-                winner = 'children'
-                battleStatus = `Kids leading by ${margin} minutes! Keep reading!`
-              } else if (parentTotal > childTotal) {
-                winner = 'parents'
-                battleStatus = `Parents leading by ${margin} minutes! Battle continues!`
-              } else if (parentTotal > 0 || childTotal > 0) {
-                battleStatus = 'Tied up! Every minute counts!'
-              }
-              
-              // Update just the calculated fields
-              await updateDoc(familyRef, {
-                'familyBattleSettings.currentWeek.margin': margin,
-                'familyBattleSettings.currentWeek.winner': 'ongoing',
-                'familyBattleSettings.currentWeek.battleStatus': battleStatus
-              })
-            }
-          }
-          
-          console.log('✅ Family battle stats updated directly (no sync loop)!')
+          console.log(`✅ Family battle updated: +${duration} minutes for parents (${completed ? 'completed' : 'banked'} session)`);
           
           // Show battle-specific success
-          setShowSuccess(prev => prev + ' ⚔️ Battle stats updated!')
+          setShowSuccess(prev => prev + ' ⚔️ Battle points added!');
         } catch (updateError) {
-          console.error('⚠️ Could not update family battle:', updateError)
+          console.error('⚠️ Could not update family battle:', updateError);
           // Don't fail the whole save operation for battle update failure
         }
       } else if (isSunday && parentData?.familyBattleSettings?.enabled) {
-        console.log('🙏 Sunday reading: Personal progress only - battle rests today')
+        console.log('🙏 Sunday reading: Personal progress only - battle rests today');
       }
 
       // Update streaks and level if completed
@@ -631,18 +587,6 @@ export default function ParentHealthyHabits() {
       // Load linked students
       await loadLinkedStudentsData(parentProfile.linkedStudents || [])
 
-      // Do ONE initial sync on page load to ensure data is current
-      if (parentProfile.familyBattleSettings?.enabled && parentProfile.familyId) {
-        console.log('🔄 Performing initial family battle sync on page load...')
-        try {
-          const students = await loadLinkedStudentsDataForSync(parentProfile.linkedStudents || [])
-          await syncFamilyBattleData(parentProfile.familyId, students)
-          console.log('✅ Initial sync complete')
-        } catch (syncError) {
-          console.error('⚠️ Initial sync failed, continuing anyway:', syncError)
-        }
-      }
-
       await loadParentReadingData()
       
     } catch (error) {
@@ -687,43 +631,6 @@ export default function ParentHealthyHabits() {
       
     } catch (error) {
       console.error('❌ Error loading linked students:', error)
-    }
-  }
-
-  // Helper function for sync only
-  const loadLinkedStudentsDataForSync = async (linkedStudentIds) => {
-    try {
-      const students = []
-      const entitiesSnapshot = await getDocs(collection(db, 'entities'))
-      
-      for (const entityDoc of entitiesSnapshot.docs) {
-        const entityId = entityDoc.id
-        const schoolsSnapshot = await getDocs(collection(db, `entities/${entityId}/schools`))
-        
-        for (const schoolDoc of schoolsSnapshot.docs) {
-          const schoolId = schoolDoc.id
-          const schoolData = schoolDoc.data()
-          const studentsSnapshot = await getDocs(collection(db, `entities/${entityId}/schools/${schoolId}/students`))
-          
-          for (const studentDoc of studentsSnapshot.docs) {
-            if (linkedStudentIds.includes(studentDoc.id)) {
-              const studentData = {
-                id: studentDoc.id,
-                entityId,
-                schoolId,
-                schoolName: schoolData.name,
-                ...studentDoc.data()
-              }
-              students.push(studentData)
-            }
-          }
-        }
-      }
-      
-      return students
-    } catch (error) {
-      console.error('❌ Error loading linked students for sync:', error)
-      return []
     }
   }
 

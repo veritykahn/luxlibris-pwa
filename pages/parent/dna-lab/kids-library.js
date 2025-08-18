@@ -842,7 +842,7 @@ export default function KidsLibrary() {
                           <h2 style={{
                             fontSize: '24px',
                             fontWeight: '700',
-                            color: luxTheme.textPrimary,
+                            color: viewMode === 'student' && timeTheme.name === 'night' ? '#FFFFFF' : luxTheme.textPrimary,
                             marginBottom: '8px',
                             fontFamily: 'Didot, serif'
                           }}>
@@ -851,7 +851,7 @@ export default function KidsLibrary() {
                           
                           <p style={{
                             fontSize: '14px',
-                            color: luxTheme.textSecondary,
+                            color: viewMode === 'student' && timeTheme.name === 'night' ? '#E5E7EB' : luxTheme.textSecondary,
                             lineHeight: '1.5',
                             maxWidth: '500px',
                             margin: '0 auto'
@@ -936,7 +936,7 @@ export default function KidsLibrary() {
                               <h4 style={{
                                 fontSize: '16px',
                                 fontWeight: '600',
-                                color: luxTheme.textPrimary,
+                                color: timeTheme.name === 'night' ? '#FFFFFF' : luxTheme.textPrimary,
                                 margin: '0 0 12px 0'
                               }}>
                                 🌟 What Makes You Awesome
@@ -944,7 +944,7 @@ export default function KidsLibrary() {
                               {getChildDnaData(selectedChild).typeData?.intrinsicMotivators?.map((motivator, idx) => (
                                 <div key={idx} style={{
                                   fontSize: '13px',
-                                  color: luxTheme.textPrimary,
+                                  color: timeTheme.name === 'night' ? '#E5E7EB' : luxTheme.textPrimary,
                                   marginBottom: '8px',
                                   paddingLeft: '20px',
                                   position: 'relative'
@@ -969,14 +969,14 @@ export default function KidsLibrary() {
                                 <h4 style={{
                                   fontSize: '16px',
                                   fontWeight: '600',
-                                  color: luxTheme.textPrimary,
+                                  color: '#856404',
                                   margin: '0 0 8px 0'
                                 }}>
                                   🔬 Cool Science Fact
                                 </h4>
                                 <p style={{
                                   fontSize: '13px',
-                                  color: luxTheme.textPrimary,
+                                  color: '#856404',
                                   lineHeight: '1.5',
                                   margin: 0
                                 }}>

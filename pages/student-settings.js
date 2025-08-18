@@ -1,4 +1,4 @@
-// pages/student-settings.js - Updated and Cleaned Up (Export/Delete moved to separate page)
+// pages/student-settings.js - Complete file with seasonal theme enhancements
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
@@ -106,9 +106,9 @@ export default function StudentSettings() {
   }, []);
 
   const themesArray = Object.entries(getAvailableThemes()).map(([key, value]) => ({
-  assetPrefix: key,
-  ...value
-}));
+    assetPrefix: key,
+    ...value
+  }));
 
   // useEffects
   useEffect(() => {
@@ -219,19 +219,21 @@ export default function StudentSettings() {
     loadStudentData();
   }, [loadStudentData]);
 
-  // Save functions
-  const saveThemeChange = async () => {
-    if (selectedThemePreview === studentData.selectedTheme) return;
+  // Auto-save theme change function
+  const handleThemeSelect = async (themeKey) => {
+    if (themeKey === studentData.selectedTheme) return;
     
+    setSelectedThemePreview(themeKey);
     setIsSaving(true);
+    
     try {
       await updateStudentDataEntities(studentData.id, studentData.entityId, studentData.schoolId, {
-        selectedTheme: selectedThemePreview
+        selectedTheme: themeKey
       });
       
-      const updatedData = { ...studentData, selectedTheme: selectedThemePreview };
+      const updatedData = { ...studentData, selectedTheme: themeKey };
       setStudentData(updatedData);
-      setCurrentTheme(getTheme(selectedThemePreview));
+      setCurrentTheme(getTheme(themeKey));
       
       setShowSuccess('✨ Theme saved! Your bookshelf and saints collection look amazing!');
       setTimeout(() => setShowSuccess(''), 3000);
@@ -240,6 +242,8 @@ export default function StudentSettings() {
       console.error('❌ Error saving theme:', error);
       setShowSuccess('❌ Error saving theme. Please try again.');
       setTimeout(() => setShowSuccess(''), 3000);
+      // Revert on error
+      setSelectedThemePreview(studentData.selectedTheme);
     }
     setIsSaving(false);
   };
@@ -848,7 +852,8 @@ export default function StudentSettings() {
                         borderRadius: '8px',
                         fontSize: '14px',
                         fontFamily: 'monospace',
-                        backgroundColor: previewTheme.background
+                        backgroundColor: '#FFFFFF',
+                        color: '#000000'
                       }}
                     />
                     <button
@@ -895,7 +900,8 @@ export default function StudentSettings() {
                         borderRadius: '8px',
                         fontSize: '14px',
                         fontFamily: 'monospace',
-                        backgroundColor: previewTheme.background
+                        backgroundColor: '#FFFFFF',
+                        color: '#000000'
                       }}
                     />
                     <button
@@ -1519,7 +1525,7 @@ export default function StudentSettings() {
             )}
           </div>
 
-          {/* Theme Selection */}
+          {/* Theme Selection with Seasonal Themes */}
           <div style={{
             backgroundColor: previewTheme.surface,
             borderRadius: '16px',
@@ -1541,31 +1547,37 @@ export default function StudentSettings() {
               color: previewTheme.textSecondary,
               marginBottom: '20px'
             }}>
-              Select your bookshelf &amp; trophy case design. Changes apply instantly!
+              Select your bookshelf &amp; trophy case design
             </p>
 
+            {/* Regular Base Themes */}
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
               gap: '16px',
               marginBottom: '20px'
             }}>
-              {themesArray.map(theme => {
+              {themesArray.filter(theme => {
+                // Only show base themes here (themes that don't have special property)
+                return !theme.special;
+              }).map(theme => {
                 const isSelected = theme.assetPrefix === selectedThemePreview;
                 return (
                   <button
                     key={theme.assetPrefix}
-                    onClick={() => setSelectedThemePreview(theme.assetPrefix)}
+                    onClick={() => handleThemeSelect(theme.assetPrefix)}
+                    disabled={isSaving}
                     style={{
                       padding: '12px',
                       backgroundColor: theme.surface,
                       border: `${isSelected ? '3px' : '2px'} solid ${isSelected ? theme.primary : `${theme.primary}50`}`,
                       borderRadius: '16px',
-                      cursor: 'pointer',
+                      cursor: isSaving ? 'wait' : 'pointer',
                       transition: 'all 0.3s ease',
                       boxShadow: isSelected ? `0 8px 24px ${theme.primary}40` : '0 2px 8px rgba(0,0,0,0.1)',
                       transform: isSelected ? 'scale(1.05)' : 'scale(1)',
-                      position: 'relative'
+                      position: 'relative',
+                      opacity: isSaving ? 0.7 : 1
                     }}
                   >
                     <div style={{
@@ -1627,26 +1639,215 @@ export default function StudentSettings() {
               })}
             </div>
 
-            {selectedThemePreview !== studentData.selectedTheme && (
-              <div>
-                <button
-                  onClick={saveThemeChange}
-                  disabled={isSaving}
-                  style={{
-                    backgroundColor: previewTheme.primary,
-                    color: previewTheme.textPrimary,
-                    border: 'none',
-                    padding: '12px 32px',
-                    borderRadius: '12px',
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                    opacity: isSaving ? 0.7 : 1
-                  }}
-                >
-                  {isSaving ? 'Saving...' : `Save ${previewTheme.name}`}
-                </button>
+            {/* Seasonal/Special Themes Section */}
+            {themesArray.filter(theme => theme.special).length > 0 && (
+              <div className="seasonal-themes-container" style={{
+                marginTop: '32px',
+                padding: '24px',
+                background: `linear-gradient(135deg, ${previewTheme.primary}20, ${previewTheme.secondary}20)`,
+                borderRadius: '20px',
+                border: `2px solid ${previewTheme.primary}40`,
+                position: 'relative',
+                overflow: 'visible'
+              }}>
+                {/* Animated Sparkles */}
+                <div className="sparkle sparkle-1" style={{
+                  position: 'absolute',
+                  top: '-10px',
+                  left: '-10px',
+                  fontSize: '20px',
+                  animation: 'sparkle 2s ease-in-out infinite'
+                }}>✨</div>
+                <div className="sparkle sparkle-2" style={{
+                  position: 'absolute',
+                  top: '-10px',
+                  right: '-10px',
+                  fontSize: '20px',
+                  animation: 'sparkle 2s ease-in-out infinite 0.5s'
+                }}>✨</div>
+                <div className="sparkle sparkle-3" style={{
+                  position: 'absolute',
+                  bottom: '-10px',
+                  left: '-10px',
+                  fontSize: '20px',
+                  animation: 'sparkle 2s ease-in-out infinite 1s'
+                }}>✨</div>
+                <div className="sparkle sparkle-4" style={{
+                  position: 'absolute',
+                  bottom: '-10px',
+                  right: '-10px',
+                  fontSize: '20px',
+                  animation: 'sparkle 2s ease-in-out infinite 1.5s'
+                }}>✨</div>
+
+                {/* Limited Time Badge */}
+                <div style={{
+                  display: 'inline-block',
+                  backgroundColor: previewTheme.primary,
+                  color: previewTheme.textPrimary,
+                  padding: '6px 16px',
+                  borderRadius: '20px',
+                  fontSize: '12px',
+                  fontWeight: 'bold',
+                  marginBottom: '16px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '1px'
+                }}>
+                  🎊 Limited Time Only 🎊
+                </div>
+
+                <h3 style={{
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  color: previewTheme.textPrimary,
+                  marginBottom: '16px'
+                }}>
+                  Special Seasonal Themes
+                </h3>
+
+                {/* Seasonal Themes Grid - Centered */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  flexWrap: 'wrap',
+                  gap: '16px',
+                  marginTop: '12px'
+                }}>
+                  {themesArray.filter(theme => theme.special).map(theme => {
+                    const isSelected = theme.assetPrefix === selectedThemePreview;
+                    return (
+                      <button
+                        key={theme.assetPrefix}
+                        onClick={() => handleThemeSelect(theme.assetPrefix)}
+                        disabled={isSaving}
+                        style={{
+                          width: '180px',
+                          padding: '12px',
+                          backgroundColor: theme.surface,
+                          border: `${isSelected ? '3px' : '2px'} solid ${isSelected ? theme.primary : `${theme.primary}50`}`,
+                          borderRadius: '16px',
+                          cursor: isSaving ? 'wait' : 'pointer',
+                          transition: 'all 0.3s ease',
+                          boxShadow: isSelected ? `0 8px 24px ${theme.primary}40` : '0 4px 12px rgba(0,0,0,0.15)',
+                          transform: isSelected ? 'scale(1.05)' : 'scale(1)',
+                          position: 'relative',
+                          opacity: isSaving ? 0.7 : 1,
+                          background: `linear-gradient(145deg, ${theme.surface}, ${theme.background})`
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isSelected && !isSaving) {
+                            e.currentTarget.style.transform = 'scale(1.02)';
+                            e.currentTarget.style.boxShadow = `0 6px 16px ${theme.primary}50`;
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isSelected) {
+                            e.currentTarget.style.transform = 'scale(1)';
+                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                          }
+                        }}
+                      >
+                        <div style={{
+                          width: '100%',
+                          height: '60px',
+                          borderRadius: '8px',
+                          marginBottom: '6px',
+                          backgroundImage: `url(/bookshelves/${theme.assetPrefix}.jpg)`,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center',
+                          backgroundRepeat: 'no-repeat',
+                          backgroundColor: `${theme.primary}20`,
+                          border: `1px solid ${theme.primary}30`
+                        }} />
+                        
+                        <div style={{
+                          width: '100%',
+                          height: '45px',
+                          borderRadius: '6px',
+                          marginBottom: '8px',
+                          backgroundImage: `url(/trophy_cases/${theme.assetPrefix}.jpg)`,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center',
+                          backgroundRepeat: 'no-repeat',
+                          backgroundColor: `${theme.accent}20`,
+                          border: `1px solid ${theme.accent}30`
+                        }} />
+                        
+                        <div style={{
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          color: theme.textPrimary,
+                          textAlign: 'center',
+                          lineHeight: '1.2'
+                        }}>
+                          {theme.name}
+                        </div>
+
+                        {/* Special Badge */}
+                        {theme.liturgical && (
+                          <div style={{
+                            position: 'absolute',
+                            top: '4px',
+                            left: '4px',
+                            backgroundColor: '#FFD700',
+                            color: '#000',
+                            borderRadius: '8px',
+                            padding: '2px 6px',
+                            fontSize: '10px',
+                            fontWeight: 'bold'
+                          }}>
+                            LITURGICAL
+                          </div>
+                        )}
+                        
+                        {isSelected && (
+                          <div style={{
+                            position: 'absolute',
+                            top: '8px',
+                            right: '8px',
+                            backgroundColor: theme.primary,
+                            color: 'white',
+                            borderRadius: '50%',
+                            width: '20px',
+                            height: '20px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '10px',
+                            fontWeight: 'bold',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                            zIndex: 10
+                          }}>
+                            ✓
+                          </div>
+                        )}
+
+                        {/* Shimmer effect for special themes */}
+                        <div style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: '-100%',
+                          width: '100%',
+                          height: '100%',
+                          background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
+                          animation: isSelected ? 'shimmer 3s infinite' : 'none',
+                          pointerEvents: 'none'
+                        }} />
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Special theme description */}
+                <p style={{
+                  fontSize: '12px',
+                  color: previewTheme.textSecondary,
+                  marginTop: '16px',
+                  fontStyle: 'italic'
+                }}>
+                  🌟 These exclusive themes are only available for a limited time during special seasons and liturgical celebrations!
+                </p>
               </div>
             )}
           </div>
@@ -1827,6 +2028,26 @@ export default function StudentSettings() {
         </div>
 
         <style jsx>{`
+          @keyframes sparkle {
+            0%, 100% {
+              transform: scale(1) rotate(0deg);
+              opacity: 1;
+            }
+            50% {
+              transform: scale(1.3) rotate(180deg);
+              opacity: 0.7;
+            }
+          }
+          
+          @keyframes shimmer {
+            0% {
+              left: -100%;
+            }
+            100% {
+              left: 200%;
+            }
+          }
+          
           @keyframes spin {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
@@ -1836,6 +2057,13 @@ export default function StudentSettings() {
             -webkit-tap-highlight-color: transparent;
             -webkit-user-select: none;
             user-select: none;
+          }
+          
+          /* Hide sparkles on very small screens */
+          @media (max-width: 380px) {
+            .sparkle {
+              display: none !important;
+            }
           }
         `}</style>
       </div>

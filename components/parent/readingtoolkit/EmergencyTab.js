@@ -194,6 +194,35 @@ function ScenarioDetails({
         </div>
       )}
 
+      {/* Your Philosophy */}
+      {scenario.yourPhilosophy && (
+        <div style={{
+          backgroundColor: `${theme.accent}20`,
+          borderRadius: '12px',
+          padding: '16px',
+          marginBottom: '16px'
+        }}>
+          <div style={{
+            fontSize: '14px',
+            fontWeight: '600',
+            color: theme.primary,
+            marginBottom: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}>
+            <span>💭</span> Your Philosophy
+          </div>
+          <div style={{
+            fontSize: '14px',
+            color: theme.textPrimary,
+            lineHeight: '1.5'
+          }}>
+            {scenario.yourPhilosophy}
+          </div>
+        </div>
+      )}
+
       {/* Prevention */}
       {scenario.prevention && (
         <div 
@@ -479,6 +508,186 @@ function ScenarioDetails({
                 </button>
                 
                 <span style={{ flex: 1 }}>{tip}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Practical Strategies (for reading habit building) */}
+      {scenario.practicalStrategies && (
+        <div style={{ marginBottom: '16px' }}>
+          <h4 style={{
+            fontSize: '16px',
+            fontWeight: '600',
+            color: theme.textPrimary,
+            marginBottom: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <span>🎯</span> Practical Strategies
+          </h4>
+          
+          {scenario.practicalStrategies.map((strategy, index) => {
+            const strategyId = `${scenarioId}-strategy-${index}`;
+            const isStarred = starredStrategies.has(strategyId);
+            
+            return (
+              <div
+                key={index}
+                ref={el => strategyRefs.current[strategyId] = el}
+                style={{
+                  backgroundColor: `${theme.primary}10`,
+                  borderRadius: '8px',
+                  padding: '12px',
+                  marginBottom: '8px',
+                  fontSize: '14px',
+                  color: theme.textPrimary,
+                  lineHeight: '1.5',
+                  display: 'flex',
+                  alignItems: 'start',
+                  gap: '8px'
+                }}
+              >
+                <button
+                  onClick={() => toggleStar(strategyId)}
+                  style={{
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    fontSize: '18px',
+                    cursor: 'pointer',
+                    color: isStarred ? '#FFD700' : theme.textSecondary,
+                    padding: '2px',
+                    flexShrink: 0,
+                    transition: 'color 0.2s ease'
+                  }}
+                  title={isStarred ? "Remove from favorites" : "Add to favorites"}
+                >
+                  {isStarred ? '★' : '☆'}
+                </button>
+                
+                <span style={{ flex: 1 }}>{strategy}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Approaches (for different learning speeds) */}
+      {scenario.approaches && (
+        <div style={{ marginBottom: '16px' }}>
+          <h4 style={{
+            fontSize: '16px',
+            fontWeight: '600',
+            color: theme.textPrimary,
+            marginBottom: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <span>🎯</span> Approaches
+          </h4>
+          
+          {scenario.approaches.map((approach, index) => {
+            const approachId = `${scenarioId}-approaches-${index}`;
+            const isStarred = starredStrategies.has(approachId);
+            
+            return (
+              <div
+                key={index}
+                ref={el => strategyRefs.current[approachId] = el}
+                style={{
+                  backgroundColor: `${theme.primary}10`,
+                  borderRadius: '8px',
+                  padding: '12px',
+                  marginBottom: '8px',
+                  fontSize: '14px',
+                  color: theme.textPrimary,
+                  lineHeight: '1.5',
+                  display: 'flex',
+                  alignItems: 'start',
+                  gap: '8px'
+                }}
+              >
+                <button
+                  onClick={() => toggleStar(approachId)}
+                  style={{
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    fontSize: '18px',
+                    cursor: 'pointer',
+                    color: isStarred ? '#FFD700' : theme.textSecondary,
+                    padding: '2px',
+                    flexShrink: 0,
+                    transition: 'color 0.2s ease'
+                  }}
+                  title={isStarred ? "Remove from favorites" : "Add to favorites"}
+                >
+                  {isStarred ? '★' : '☆'}
+                </button>
+                
+                <span style={{ flex: 1 }}>{approach}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* When They Happen (for power struggles) */}
+      {scenario.whenTheyHappen && (
+        <div style={{ marginBottom: '16px' }}>
+          <h4 style={{
+            fontSize: '16px',
+            fontWeight: '600',
+            color: theme.textPrimary,
+            marginBottom: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <span>⚡</span> When They Happen
+          </h4>
+          
+          {scenario.whenTheyHappen.map((item, index) => {
+            const itemId = `${scenarioId}-whenTheyHappen-${index}`;
+            const isStarred = starredStrategies.has(itemId);
+            
+            return (
+              <div
+                key={index}
+                ref={el => strategyRefs.current[itemId] = el}
+                style={{
+                  backgroundColor: `${theme.primary}10`,
+                  borderRadius: '8px',
+                  padding: '12px',
+                  marginBottom: '8px',
+                  fontSize: '14px',
+                  color: theme.textPrimary,
+                  lineHeight: '1.5',
+                  display: 'flex',
+                  alignItems: 'start',
+                  gap: '8px'
+                }}
+              >
+                <button
+                  onClick={() => toggleStar(itemId)}
+                  style={{
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    fontSize: '18px',
+                    cursor: 'pointer',
+                    color: isStarred ? '#FFD700' : theme.textSecondary,
+                    padding: '2px',
+                    flexShrink: 0,
+                    transition: 'color 0.2s ease'
+                  }}
+                  title={isStarred ? "Remove from favorites" : "Add to favorites"}
+                >
+                  {isStarred ? '★' : '☆'}
+                </button>
+                
+                <span style={{ flex: 1 }}>{item}</span>
               </div>
             );
           })}
