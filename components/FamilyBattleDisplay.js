@@ -1,6 +1,6 @@
 // components/FamilyBattleDisplay.js
 // Shared component for displaying family battle data - used by both parents and students
-// FIXED VERSION with z-index issues resolved for proper menu overlay
+// COMPLETE VERSION with all features
 
 import { useState, useEffect } from 'react';
 
@@ -27,9 +27,7 @@ export default function FamilyBattleDisplay({
         borderRadius: '20px',
         padding: '40px',
         textAlign: 'center',
-        boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-        position: 'relative',
-        zIndex: 1 // Keep low z-index
+        boxShadow: '0 4px 16px rgba(0,0,0,0.1)'
       }}>
         <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔒</div>
         <h3 style={{
@@ -60,9 +58,7 @@ export default function FamilyBattleDisplay({
         borderRadius: '20px',
         padding: '40px',
         textAlign: 'center',
-        boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-        position: 'relative',
-        zIndex: 1 // Keep low z-index
+        boxShadow: '0 4px 16px rgba(0,0,0,0.1)'
       }}>
         <div style={{ fontSize: '48px', marginBottom: '16px' }}>🙏</div>
         <h3 style={{
@@ -112,10 +108,7 @@ export default function FamilyBattleDisplay({
     Object.values(children.breakdown).find(s => s.name === studentName)?.minutes || 0 : 0;
 
   return (
-    <div style={{ 
-      position: 'relative',
-      zIndex: 1 // Ensure container has low z-index
-    }}>
+    <div style={{ position: 'relative' }}>
       {/* Results Day Banner */}
       {isResultsDay && winner && winner !== 'tie' && (
         <div 
@@ -129,9 +122,7 @@ export default function FamilyBattleDisplay({
             cursor: 'pointer',
             boxShadow: '0 4px 12px rgba(255, 215, 0, 0.3)',
             animation: 'pulse 2s infinite',
-            border: '2px solid #FFC700',
-            position: 'relative',
-            zIndex: 1 // Keep low z-index
+            border: '2px solid #FFC700'
           }}
         >
           <div style={{
@@ -152,8 +143,7 @@ export default function FamilyBattleDisplay({
         marginBottom: '20px',
         boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
         position: 'relative',
-        overflow: 'hidden',
-        zIndex: 1 // Keep low z-index
+        overflow: 'hidden'
       }}>
         {/* Background decoration */}
         <div style={{
@@ -163,16 +153,13 @@ export default function FamilyBattleDisplay({
           width: '200px',
           height: '200px',
           background: `radial-gradient(circle, ${theme.primary}10, transparent)`,
-          borderRadius: '50%',
-          zIndex: 0 // Background should be at z-index 0
+          borderRadius: '50%'
         }} />
 
         {/* Title */}
         <div style={{
           textAlign: 'center',
-          marginBottom: '24px',
-          position: 'relative',
-          zIndex: 1
+          marginBottom: '24px'
         }}>
           <div style={{ fontSize: '40px', marginBottom: '8px' }}>⚔️</div>
           <h2 style={{
@@ -198,9 +185,7 @@ export default function FamilyBattleDisplay({
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
           gap: '16px',
-          marginBottom: '20px',
-          position: 'relative',
-          zIndex: 1
+          marginBottom: '20px'
         }}>
           {/* Kids Team */}
           <div style={{
@@ -220,8 +205,7 @@ export default function FamilyBattleDisplay({
                 left: '50%',
                 transform: 'translateX(-50%)',
                 fontSize: '28px',
-                animation: 'bounce 2s infinite',
-                zIndex: 2 // Crown can be slightly higher but still low
+                animation: 'bounce 2s infinite'
               }}>
                 👑
               </div>
@@ -277,9 +261,7 @@ export default function FamilyBattleDisplay({
                 fontSize: '10px',
                 color: theme.textSecondary,
                 maxHeight: '80px',
-                overflowY: 'auto',
-                position: 'relative',
-                zIndex: 1
+                overflowY: 'auto'
               }}>
                 {Object.entries(children.breakdown).map(([id, data]) => (
                   <div key={id} style={{
@@ -315,8 +297,7 @@ export default function FamilyBattleDisplay({
                 left: '50%',
                 transform: 'translateX(-50%)',
                 fontSize: '28px',
-                animation: 'bounce 2s infinite',
-                zIndex: 2 // Crown can be slightly higher but still low
+                animation: 'bounce 2s infinite'
               }}>
                 👑
               </div>
@@ -357,9 +338,7 @@ export default function FamilyBattleDisplay({
                 fontSize: '10px',
                 color: theme.textSecondary,
                 maxHeight: '80px',
-                overflowY: 'auto',
-                position: 'relative',
-                zIndex: 1
+                overflowY: 'auto'
               }}>
                 {Object.entries(parents.breakdown).map(([id, data]) => (
                   <div key={id} style={{
@@ -392,9 +371,7 @@ export default function FamilyBattleDisplay({
                    winner === 'parents' ? '2px solid #FF6B6B' : '2px solid #FFD700') :
                   childrenWinning ? '2px solid #4ECDC4' : 
                   parentsWinning ? '2px solid #FF6B6B' : 
-                  `2px solid ${theme.primary}60`,
-          position: 'relative',
-          zIndex: 1
+                  `2px solid ${theme.primary}60`
         }}>
           <div style={{
             fontSize: '16px',
@@ -421,9 +398,7 @@ export default function FamilyBattleDisplay({
           backgroundColor: theme.surface,
           borderRadius: '20px',
           padding: '20px',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-          position: 'relative',
-          zIndex: 1 // Keep low z-index
+          boxShadow: '0 4px 16px rgba(0,0,0,0.1)'
         }}>
           <h3 style={{
             fontSize: '16px',
@@ -567,9 +542,7 @@ export default function FamilyBattleDisplay({
                 marginBottom: '12px',
                 transition: 'all 0.2s ease',
                 WebkitTapHighlightColor: 'transparent',
-                touchAction: 'manipulation',
-                position: 'relative',
-                zIndex: 1 // Keep buttons at low z-index
+                touchAction: 'manipulation'
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = 'scale(1.02)';
@@ -619,8 +592,7 @@ export default function FamilyBattleDisplay({
                   touchAction: 'manipulation',
                   position: 'relative',
                   overflow: 'hidden',
-                  opacity: refreshing ? 0.7 : 1,
-                  zIndex: 1 // Keep buttons at low z-index
+                  opacity: refreshing ? 0.7 : 1
                 }}
                 onMouseEnter={(e) => {
                   if (!refreshing) {
