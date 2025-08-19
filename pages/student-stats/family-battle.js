@@ -1,5 +1,7 @@
 // pages/student-stats/family-battle.js - FIXED VERSION with Grade Stats styling
-// Family Battle runs all year round but shows phase-aware messaging
+// Family Battle runs continuously all year through all 6 phases:
+// SETUP, TEACHER_SELECTION, ACTIVE, VOTING, RESULTS, CLOSED
+// Shows phase-aware messaging during special phases only (not during ACTIVE)
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../contexts/AuthContext';
@@ -27,7 +29,7 @@ import {
 export default function StudentFamilyBattle() {
   const router = useRouter();
   const { user, isAuthenticated, loading } = useAuth();
-  const { phaseData, hasAccess } = usePhaseAccess();
+  const { phaseData, hasAccess, getPhaseInfo, getPhaseMessage } = usePhaseAccess();
   const [studentData, setStudentData] = useState(null);
   const [currentTheme, setCurrentTheme] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -47,6 +49,9 @@ export default function StudentFamilyBattle() {
 
   // Check if it's Sunday
   const isSunday = new Date().getDay() === 0;
+  
+  // Get phase information
+  const phaseInfo = getPhaseInfo();
 
   // Navigation menu items with phase-aware locking
   const navMenuItems = useMemo(() => [
@@ -154,6 +159,13 @@ export default function StudentFamilyBattle() {
           router.push('/student-onboarding');
           return;
         }
+        
+        // Log phase information
+        console.log('🎮 Family Battle Phase:', {
+          currentPhase: phaseData.currentPhase,
+          academicYear: phaseData.academicYear,
+          source: phaseData.source || 'unknown'
+        });
         
         // Use the actual document ID from firebaseStudentData
         const studentDocId = firebaseStudentData.id;
@@ -653,15 +665,10 @@ export default function StudentFamilyBattle() {
           </div>
         </div>
 
-        {/* Phase-Specific Alert Banner - Shows for all phases */}
-        {phaseData.currentPhase && !phaseData.loading && (
+        {/* Phase-Specific Alert Banner - Only show for special phases, not ACTIVE */}
+        {phaseData.currentPhase && phaseData.currentPhase !== 'ACTIVE' && !phaseData.loading && (
           <div className="phase-alert-banner" style={{
-            background: phaseData.currentPhase === 'VOTING' ? 'linear-gradient(135deg, #8b5cf6, #a855f7)' : 
-                       phaseData.currentPhase === 'RESULTS' ? 'linear-gradient(135deg, #f59e0b, #f97316)' : 
-                       phaseData.currentPhase === 'TEACHER_SELECTION' ? 'linear-gradient(135deg, #3b82f6, #2563eb)' :
-                       phaseData.currentPhase === 'SETUP' ? 'linear-gradient(135deg, #f59e0b, #f97316)' :
-                       phaseData.currentPhase === 'CLOSED' ? 'linear-gradient(135deg, #6b7280, #4b5563)' :
-                       'linear-gradient(135deg, #10b981, #059669)',
+            background: `linear-gradient(135deg, ${phaseInfo.color}, ${phaseInfo.color}dd)`,
             color: 'white',
             padding: '12px 16px',
             margin: '0 16px 16px 16px',
@@ -671,12 +678,7 @@ export default function StudentFamilyBattle() {
             animation: 'slideInDown 0.6s ease-out'
           }}>
             <div style={{ fontSize: '32px', marginBottom: '8px' }}>
-              {phaseData.currentPhase === 'VOTING' ? '🗳️' : 
-               phaseData.currentPhase === 'RESULTS' ? '🏆' : 
-               phaseData.currentPhase === 'TEACHER_SELECTION' ? '👩‍🏫' :
-               phaseData.currentPhase === 'SETUP' ? '📝' :
-               phaseData.currentPhase === 'CLOSED' ? '❄️' :
-               phaseData.currentPhase === 'ACTIVE' ? '⚔️' : '⚔️'}
+              {phaseInfo.icon}
             </div>
             <div style={{
               fontSize: '14px',
@@ -689,7 +691,6 @@ export default function StudentFamilyBattle() {
                phaseData.currentPhase === 'TEACHER_SELECTION' ? 'Teachers Selecting - Battle On!' :
                phaseData.currentPhase === 'SETUP' ? 'New Year Setup - Battle Available!' :
                phaseData.currentPhase === 'CLOSED' ? 'Winter Break - Keep Reading!' :
-               phaseData.currentPhase === 'ACTIVE' ? 'Family Battle Arena Open!' :
                'Family Battle Arena Open!'}
             </div>
             <div style={{
@@ -708,8 +709,6 @@ export default function StudentFamilyBattle() {
                 "📝 While we set up the new academic year, Family Battle is ready! Challenge your parents and start earning XP!" :
                phaseData.currentPhase === 'CLOSED' ? 
                 "❄️ School may be on break, but Family Battle never stops! Keep your reading habits strong and dominate!" :
-               phaseData.currentPhase === 'ACTIVE' ? 
-                "⚔️ Challenge your parents in an epic reading showdown! Every minute counts toward victory and XP rewards!" :
                 "⚔️ Family Battle is always available! Keep reading to help your team win!"}
             </div>
           </div>
@@ -760,7 +759,17 @@ export default function StudentFamilyBattle() {
                 }
                 {phaseData.currentPhase === 'TEACHER_SELECTION' && 
                   <span style={{ display: 'block', marginTop: '8px', fontSize: '14px' }}>
-                    Family Battle runs all year round - let&apos;s get you back in!
+                    Family Battle runs all year round - let's get you back in!
+                  </span>
+                }
+                {phaseData.currentPhase === 'SETUP' && 
+                  <span style={{ display: 'block', marginTop: '8px', fontSize: '14px' }}>
+                    Family Battle is ready for the new year - try again!
+                  </span>
+                }
+                {phaseData.currentPhase === 'CLOSED' && 
+                  <span style={{ display: 'block', marginTop: '8px', fontSize: '14px' }}>
+                    Family Battle stays open during breaks - refresh to continue!
                   </span>
                 }
               </p>
@@ -821,6 +830,8 @@ export default function StudentFamilyBattle() {
                       {phaseData.currentPhase === 'VOTING' && " Don't forget to vote for your favorite books!"}
                       {phaseData.currentPhase === 'RESULTS' && " Check out the winning books in the Results page!"}
                       {phaseData.currentPhase === 'TEACHER_SELECTION' && " New amazing books coming next week!"}
+                      {phaseData.currentPhase === 'SETUP' && " The new academic year is being prepared!"}
+                      {phaseData.currentPhase === 'CLOSED' && " Enjoy your break and keep reading!"}
                     </p>
                     <button
                       onClick={() => router.push('/student-saints')}
@@ -857,6 +868,8 @@ export default function StudentFamilyBattle() {
                       {phaseData.currentPhase === 'VOTING' && " Battle while voting continues!"}
                       {phaseData.currentPhase === 'RESULTS' && " Keep battling during results week!"}
                       {phaseData.currentPhase === 'TEACHER_SELECTION' && " Your battle continues all year!"}
+                      {phaseData.currentPhase === 'SETUP' && " Start the new year strong!"}
+                      {phaseData.currentPhase === 'CLOSED' && " Winter battles are the best!"}
                     </p>
                     <button
                       onClick={() => router.push('/student-healthy-habits')}
@@ -914,7 +927,17 @@ export default function StudentFamilyBattle() {
                 }
                 {phaseData.currentPhase === 'TEACHER_SELECTION' && 
                   <div style={{ marginTop: '12px', fontSize: '14px' }}>
-                    📚 Family Battle runs all year - including while teachers select new books!
+                    👩‍🏫 Family Battle runs all year - including while teachers select new books!
+                  </div>
+                }
+                {phaseData.currentPhase === 'SETUP' && 
+                  <div style={{ marginTop: '12px', fontSize: '14px' }}>
+                    📝 Family Battle is ready for the new academic year - get started!
+                  </div>
+                }
+                {phaseData.currentPhase === 'CLOSED' && 
+                  <div style={{ marginTop: '12px', fontSize: '14px' }}>
+                    ❄️ Family Battle never takes a break - perfect for winter reading!
                   </div>
                 }
               </div>
