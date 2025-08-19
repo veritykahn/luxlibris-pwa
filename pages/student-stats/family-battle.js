@@ -1,263 +1,262 @@
-// pages/student/family-battle.js - FIXED VERSION with proper z-index hierarchy
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useRouter } from 'next/router'
-import { useAuth } from '../../contexts/AuthContext'
-import FamilyBattleDisplay from '../../components/FamilyBattleDisplay'
-import FamilyBattleResultsModal from '../../components/FamilyBattleResultsModal'
-import Head from 'next/head'
-import { doc, getDoc } from 'firebase/firestore'
-import { db } from '../../lib/firebase'
+// pages/student-stats/family-battle.js - FIXED VERSION
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useRouter } from 'next/router';
+import { useAuth } from '../../contexts/AuthContext';
+import { usePhaseAccess } from '../../hooks/usePhaseAccess';
+import { getStudentDataEntities } from '../../lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
+import Head from 'next/head';
 
-// Import from master file
-import { 
+// Import shared components
+import FamilyBattleDisplay from '../../components/FamilyBattleDisplay';
+import FamilyBattleResultsModal from '../../components/FamilyBattleResultsModal';
+import JaneAustenHelper from '../../components/JaneAustenHelper';
+
+// Import theme system
+import { getTheme, getSeasonalThemeAnnouncement } from '../../lib/themes';
+
+// Import from master file only
+import {
   syncFamilyBattle,
   getBattleData,
   getStudentFamilyBattleStatus
-} from '../../lib/family-battle-master'
+} from '../../lib/family-battle-master';
 
 export default function StudentFamilyBattle() {
-  const router = useRouter()
-  const { user, userProfile, isAuthenticated, loading: authLoading } = useAuth()
+  const router = useRouter();
+  const { user, isAuthenticated, loading } = useAuth();
+  const { phaseData, hasAccess } = usePhaseAccess();
+  const [studentData, setStudentData] = useState(null);
+  const [currentTheme, setCurrentTheme] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [showSuccess, setShowSuccess] = useState('');
   
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [studentData, setStudentData] = useState(null)
-  const [battleData, setBattleData] = useState(null)
-  const [showNavMenu, setShowNavMenu] = useState(false)
-  const [showResultsModal, setShowResultsModal] = useState(false)
-  const [familyId, setFamilyId] = useState(null)
-  const [refreshing, setRefreshing] = useState(false)
-
-  // Track current hour for theme updates
-  const [currentHour, setCurrentHour] = useState(new Date().getHours())
-
-  // Update hour every minute
-  useEffect(() => {
-    const checkTimeUpdate = () => {
-      const newHour = new Date().getHours()
-      if (newHour !== currentHour) {
-        setCurrentHour(newHour)
-      }
-    }
-    checkTimeUpdate()
-    const interval = setInterval(checkTimeUpdate, 60000)
-    return () => clearInterval(interval)
-  }, [currentHour])
-
-  // Get time-based theme
-  const timeTheme = useMemo(() => {
-    const hour = currentHour;
-    if (hour >= 5 && hour < 12) {
-      return {
-        name: 'morning',
-        gradient: 'linear-gradient(135deg, #667eea, #764ba2)',
-        backgroundGradient: 'linear-gradient(to bottom, #E8E3F5, #D8D1E8)',
-        overlay: 'rgba(102, 126, 234, 0.05)',
-        glow: '#667eea',
-        emoji: '🌅',
-        greeting: 'Morning Battle Mode!'
-      };
-    } else if (hour >= 12 && hour < 17) {
-      return {
-        name: 'afternoon',
-        gradient: 'linear-gradient(135deg, #f093fb, #f5576c)',
-        backgroundGradient: 'linear-gradient(to bottom, #FCE4EC, #F8BBD0)',
-        overlay: 'rgba(240, 147, 251, 0.05)',
-        glow: '#f093fb',
-        emoji: '☀️',
-        greeting: 'Afternoon Showdown!'
-      };
-    } else if (hour >= 17 && hour < 20) {
-      return {
-        name: 'evening',
-        gradient: 'linear-gradient(135deg, #fa709a, #fee140)',
-        backgroundGradient: 'linear-gradient(to bottom, #FFF0E6, #FFE4D1)',
-        overlay: 'rgba(250, 112, 154, 0.05)',
-        glow: '#fa709a',
-        emoji: '🌅',
-        greeting: 'Evening Battle Time!'
-      };
-    } else {
-      return {
-        name: 'night',
-        gradient: 'linear-gradient(135deg, #30cfd0, #330867)',
-        backgroundGradient: 'linear-gradient(to bottom, #1a1a2e, #16213e)',
-        overlay: 'rgba(48, 207, 208, 0.05)',
-        glow: '#30cfd0',
-        emoji: '🌙',
-        greeting: 'Night Warriors Unite!'
-      };
-    }
-  }, [currentHour]);
-
-  // Theme
-  const theme = useMemo(() => {
-    const isNight = timeTheme.name === 'night';
-    return {
-      primary: '#667eea',
-      secondary: '#764ba2',
-      accent: '#f093fb',
-      background: timeTheme.backgroundGradient,
-      surface: isNight ? 'rgba(255, 255, 255, 0.95)' : '#FFFFFF',
-      textPrimary: isNight ? '#1F2937' : '#2D3748',
-      textSecondary: isNight ? '#4A5568' : '#718096',
-      timeOverlay: timeTheme.overlay,
-      timeGlow: timeTheme.glow,
-      headerGradient: timeTheme.gradient
-    }
-  }, [timeTheme]);
+  // Battle states
+  const [battleData, setBattleData] = useState(null);
+  const [familyBattleUnlocked, setFamilyBattleUnlocked] = useState(false);
+  
+  // UI states
+  const [showNavMenu, setShowNavMenu] = useState(false);
+  const [showStatsDropdown, setShowStatsDropdown] = useState(false);
+  const [showJaneAusten, setShowJaneAusten] = useState(true);
+  const [showResultsModal, setShowResultsModal] = useState(false);
+  const [seasonalThemeAlert, setSeasonalThemeAlert] = useState(null);
 
   // Check if it's Sunday
-  const isSunday = new Date().getDay() === 0
+  const isSunday = new Date().getDay() === 0;
 
   // Navigation menu items
   const navMenuItems = useMemo(() => [
-    { name: 'Dashboard', path: '/student-dashboard', icon: '🏠' },
-    { name: 'Reading Timer', path: '/student/reading-timer', icon: '⏱️' },
-    { name: 'My Books', path: '/student/my-books', icon: '📚' },
-    { name: 'Family Battle', path: '/student/family-battle', icon: '⚔️', current: true },
-    { name: 'Reading Streak', path: '/student/streak', icon: '🔥' },
-    { name: 'Achievements', path: '/student/achievements', icon: '🏆' },
-    { name: 'Settings', path: '/student/settings', icon: '⚙️' }
-  ], [])
+    { name: 'Dashboard', path: '/student-dashboard', icon: '⌂' },
+    { 
+      name: 'Nominees', 
+      path: '/student-nominees', 
+      icon: '□', 
+      locked: !hasAccess('nomineesBrowsing')
+    },
+    { 
+      name: 'Bookshelf', 
+      path: '/student-bookshelf', 
+      icon: '⚏', 
+      locked: !hasAccess('bookshelfViewing')
+    },
+    { name: 'Healthy Habits', path: '/student-healthy-habits', icon: '○' },
+    { name: 'Saints', path: '/student-saints', icon: '♔' },
+    { name: 'Stats', path: '/student-stats', icon: '△' },
+    { name: 'Settings', path: '/student-settings', icon: '⚙' }
+  ], [hasAccess]);
+
+  // Stats navigation options
+  const statsNavOptions = useMemo(() => [
+    { name: 'Stats Dashboard', path: '/student-stats', icon: '📊' },
+    { name: 'My Stats', path: '/student-stats/my-stats', icon: '📈' },
+    { name: 'Grade Stats', path: '/student-stats/grade-stats', icon: '🎓' },
+    { name: 'School Stats', path: '/student-stats/school-stats', icon: '🏫' },
+    { name: 'Family Battle', path: '/student-stats/family-battle', icon: '🥊', current: true }
+  ], []);
 
   // Load battle data
   const loadBattleData = useCallback(async () => {
-    if (!familyId) return
+    if (!studentData) return;
     
     try {
-      setRefreshing(true)
-      // Sync and get battle data
-      const data = await syncFamilyBattle(familyId)
-      setBattleData(data)
+      const status = await getStudentFamilyBattleStatus(studentData);
+      
+      if (status.enabled && status.familyId) {
+        setFamilyBattleUnlocked(true);
+        
+        // Sync and get battle data
+        await syncFamilyBattle(status.familyId);
+        const data = await getBattleData(status.familyId);
+        setBattleData(data);
+        
+        // Check if XP was already awarded on Sunday
+        if (isSunday && data?.winner === 'children' && data?.weekNumber) {
+          const xpKey = `familyBattleWeek${data.weekNumber}XPAwarded`;
+          if (studentData[xpKey]) {
+            setShowSuccess(`🎉 You earned XP for Week ${data.weekNumber} victory!`);
+            setTimeout(() => setShowSuccess(''), 4000);
+          }
+        }
+      } else {
+        setFamilyBattleUnlocked(false);
+        setError(status.reason || 'Family battle not available');
+      }
     } catch (error) {
-      console.error('Error loading battle data:', error)
-      setError('Failed to load battle data')
-    } finally {
-      setRefreshing(false)
+      console.error('Error loading battle data:', error);
+      setError('Failed to load family battle data');
     }
-  }, [familyId])
+  }, [studentData, isSunday]);
 
   // Load initial data
   useEffect(() => {
     const loadInitialData = async () => {
-      if (!user?.uid || !userProfile) return
+      if (!user?.uid) return;
       
       try {
-        // Get student data from userProfile
-        const studentInfo = {
-          entityId: userProfile.entityId,
-          schoolId: userProfile.schoolId,
-          studentId: userProfile.studentId || user.uid,
-          firstName: userProfile.firstName,
-          lastName: userProfile.lastName,
-          ...userProfile
+        const firebaseStudentData = await getStudentDataEntities(user.uid);
+        
+        if (!firebaseStudentData) {
+          router.push('/student-onboarding');
+          return;
         }
         
-        setStudentData(studentInfo)
+        // Use the actual document ID from firebaseStudentData
+        const studentDocId = firebaseStudentData.id;
+        const studentPath = `entities/${firebaseStudentData.entityId}/schools/${firebaseStudentData.schoolId}/students/${studentDocId}`;
         
-        // Check if family battle is enabled
-        const battleStatus = await getStudentFamilyBattleStatus(studentInfo)
+        // Get fresh student data using the correct document ID
+        const studentRef = doc(db, studentPath);
+        const studentDoc = await getDoc(studentRef);
         
-        if (battleStatus.enabled) {
-          setFamilyId(battleStatus.familyId)
+        if (studentDoc.exists()) {
+          const completeData = {
+            ...firebaseStudentData,
+            ...studentDoc.data(),
+            id: studentDocId,
+            studentId: studentDocId,
+            uid: user.uid
+          };
+          setStudentData(completeData);
+          
+          // Set theme
+          const selectedThemeKey = completeData.selectedTheme || 'classic_lux';
+          const selectedTheme = getTheme(selectedThemeKey);
+          setCurrentTheme(selectedTheme);
+          
+          // Check for seasonal themes
+          const seasonalAnnouncements = getSeasonalThemeAnnouncement();
+          if (seasonalAnnouncements.length > 0 && !completeData.selectedTheme) {
+            setSeasonalThemeAlert(seasonalAnnouncements[0]);
+            setTimeout(() => setSeasonalThemeAlert(null), 5000);
+          }
         } else {
-          console.log('Family battle not enabled:', battleStatus.reason)
+          // If document doesn't exist with that ID, use data directly from getStudentDataEntities
+          const completeData = {
+            ...firebaseStudentData,
+            id: studentDocId,
+            studentId: studentDocId,
+            uid: user.uid
+          };
+          setStudentData(completeData);
+          
+          // Set theme
+          const selectedThemeKey = completeData.selectedTheme || 'classic_lux';
+          const selectedTheme = getTheme(selectedThemeKey);
+          setCurrentTheme(selectedTheme);
+          
+          // Check for seasonal themes
+          const seasonalAnnouncements = getSeasonalThemeAnnouncement();
+          if (seasonalAnnouncements.length > 0 && !completeData.selectedTheme) {
+            setSeasonalThemeAlert(seasonalAnnouncements[0]);
+            setTimeout(() => setSeasonalThemeAlert(null), 5000);
+          }
         }
       } catch (error) {
-        console.error('Error loading initial data:', error)
-        setError('Failed to load student data')
-      } finally {
-        setLoading(false)
+        console.error('Error loading data:', error);
+        setError('Failed to load student data');
       }
-    }
+      
+      setIsLoading(false);
+    };
     
-    if (!authLoading && isAuthenticated && user && userProfile?.accountType === 'student') {
-      loadInitialData()
-    } else if (!authLoading && !isAuthenticated) {
-      router.push('/role-selector')
-    } else if (!authLoading && userProfile?.accountType !== 'student') {
-      router.push('/parent/dashboard')
+    if (!loading && isAuthenticated && user) {
+      loadInitialData();
+    } else if (!loading && !isAuthenticated) {
+      router.push('/role-selector');
     }
-  }, [authLoading, isAuthenticated, user, userProfile, router])
+  }, [loading, isAuthenticated, user?.uid, router]);
 
-  // Load battle data when family ID is set
+  // Load battle data when student data is ready
   useEffect(() => {
-    if (familyId) {
-      loadBattleData()
+    if (studentData) {
+      loadBattleData();
     }
-  }, [familyId, loadBattleData])
+  }, [studentData, loadBattleData]);
 
   // Auto-show results modal on Sunday
   useEffect(() => {
-    if (isSunday && battleData?.isResultsDay && battleData?.winner && battleData?.number) {
-      const localStorageKey = `familyBattleResultsShown_student_${user?.uid}_week_${battleData.number}`
-      const hasSeenResults = localStorage.getItem(localStorageKey) === 'true'
+    if (isSunday && battleData?.isResultsDay && battleData?.winner && battleData?.weekNumber) {
+      const localStorageKey = `familyBattleResultsShown_student_${user?.uid}_week_${battleData.weekNumber}`;
+      const hasSeenResults = localStorage.getItem(localStorageKey) === 'true';
       
       if (!hasSeenResults) {
-        setShowResultsModal(true)
-        localStorage.setItem(localStorageKey, 'true')
+        setShowResultsModal(true);
+        localStorage.setItem(localStorageKey, 'true');
       }
     }
-  }, [isSunday, battleData, user?.uid])
+  }, [isSunday, battleData, user?.uid]);
 
   // Auto-refresh every 30 seconds (except Sunday)
   useEffect(() => {
-    if (!isSunday && battleData?.enabled && familyId) {
+    if (!isSunday && familyBattleUnlocked && battleData?.enabled) {
       const interval = setInterval(() => {
-        loadBattleData()
-      }, 30000)
+        loadBattleData();
+      }, 30000);
       
-      return () => clearInterval(interval)
+      return () => clearInterval(interval);
     }
-  }, [isSunday, battleData?.enabled, familyId, loadBattleData])
+  }, [isSunday, familyBattleUnlocked, battleData?.enabled, loadBattleData]);
 
-  // Close nav menu when clicking outside
+  // Close menus when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (showNavMenu && !event.target.closest('.nav-menu-container')) {
-        setShowNavMenu(false)
+        setShowNavMenu(false);
       }
-    }
+      if (showStatsDropdown && !event.target.closest('.stats-dropdown-container')) {
+        setShowStatsDropdown(false);
+      }
+    };
 
-    if (showNavMenu) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
+    if (showNavMenu || showStatsDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [showNavMenu])
+  }, [showNavMenu, showStatsDropdown]);
 
-  if (authLoading || loading) {
+  if (loading || isLoading || !studentData || !currentTheme) {
     return (
       <div style={{
-        background: theme.background,
+        backgroundColor: '#FFFCF5',
         minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center',
-        position: 'relative'
+        justifyContent: 'center'
       }}>
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: theme.timeOverlay,
-          pointerEvents: 'none',
-          zIndex: 1
-        }} />
-        
-        <div style={{ textAlign: 'center', position: 'relative', zIndex: 10 }}>
+        <div style={{ textAlign: 'center' }}>
           <div style={{
             width: '40px',
             height: '40px',
-            border: `3px solid ${theme.primary}30`,
-            borderTop: `3px solid ${theme.primary}`,
+            border: '3px solid #ADD4EA30',
+            borderTop: '3px solid #ADD4EA',
             borderRadius: '50%',
             animation: 'spin 1s linear infinite',
             margin: '0 auto 16px'
           }} />
-          <p style={{ color: theme.textPrimary }}>Loading epic battle...</p>
+          <p style={{ color: '#223848', fontSize: '14px' }}>Loading battle arena...</p>
         </div>
         <style jsx>{`
           @keyframes spin {
@@ -266,56 +265,89 @@ export default function StudentFamilyBattle() {
           }
         `}</style>
       </div>
-    )
+    );
   }
 
   return (
     <>
       <Head>
-        <title>Family Battle - Lux Libris Student</title>
-        <meta name="description" content="Compete with your parents in weekly family reading battles" />
+        <title>Family Battle - Lux Libris</title>
+        <meta name="description" content="Challenge your parents in epic reading battles" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
         <link rel="icon" href="/images/lux_libris_logo.png" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
       </Head>
-
+      
       <div style={{
-        background: theme.background,
         minHeight: '100vh',
-        fontFamily: 'system-ui, -apple-system, sans-serif',
-        paddingBottom: '100px',
-        position: 'relative'
+        fontFamily: 'Avenir, system-ui, -apple-system, sans-serif',
+        backgroundColor: currentTheme.background,
+        paddingBottom: '100px'
       }}>
-        {/* Time-based overlay */}
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: theme.timeOverlay,
-          pointerEvents: 'none',
-          zIndex: 1
-        }} />
         
-        {/* Header with PROPER Z-INDEX */}
+        {/* Success message */}
+        {showSuccess && (
+          <div style={{
+            position: 'fixed',
+            top: '80px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: '#4CAF50',
+            color: 'white',
+            padding: '12px 24px',
+            borderRadius: '8px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+            zIndex: 1000,
+            fontSize: '14px',
+            fontWeight: '600'
+          }}>
+            {showSuccess}
+          </div>
+        )}
+        
+        {/* Seasonal theme alert */}
+        {seasonalThemeAlert && (
+          <div 
+            style={{
+              position: 'fixed',
+              top: '20px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              backgroundColor: currentTheme.primary,
+              color: 'white',
+              padding: '12px 24px',
+              borderRadius: '24px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+              zIndex: 1002,
+              fontSize: '14px',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              cursor: 'pointer'
+            }}
+            onClick={() => router.push('/student-settings')}
+          >
+            {seasonalThemeAlert.icon} {seasonalThemeAlert.message} Tap to use!
+          </div>
+        )}
+        
+        {/* Header - FIXED Z-INDEX */}
         <div style={{
-          background: theme.headerGradient,
+          background: `linear-gradient(135deg, ${currentTheme.primary}F0, ${currentTheme.secondary}F0)`,
           backdropFilter: 'blur(20px)',
           padding: '30px 20px 12px',
           borderRadius: '0 0 25px 25px',
-          boxShadow: `0 4px 20px rgba(0,0,0,0.1), 0 0 40px ${theme.timeGlow}30`,
-          position: 'relative',
-          zIndex: 100, // HIGH Z-INDEX FOR HEADER
+          boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+          position: 'relative',  // Added
+          zIndex: 1000,  // Changed from 100
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center'
+          justifyContent: 'space-between'
         }}>
-          {/* Back Button */}
+          {/* Back button */}
           <button
-            onClick={() => router.push('/student-dashboard')}
+            onClick={() => router.push('/student-stats')}
             style={{
-              position: 'absolute',
-              left: '20px',
               backgroundColor: 'rgba(255,255,255,0.3)',
               border: 'none',
               borderRadius: '50%',
@@ -326,50 +358,86 @@ export default function StudentFamilyBattle() {
               justifyContent: 'center',
               fontSize: '18px',
               cursor: 'pointer',
-              color: 'white',
-              backdropFilter: 'blur(10px)',
-              touchAction: 'manipulation',
-              WebkitTapHighlightColor: 'transparent',
-              zIndex: 101 // Ensure button is above header
+              color: currentTheme.textPrimary
             }}
           >
             ←
           </button>
 
-          {/* Title */}
-          <div style={{ textAlign: 'center', position: 'relative' }}>
-            <div style={{ 
-              fontSize: '32px', 
-              marginBottom: '4px',
-              filter: `drop-shadow(0 0 10px ${theme.timeGlow}50)`
-            }}>
-              {timeTheme.emoji} ⚔️
-            </div>
-            <h1 style={{
-              fontSize: 'clamp(20px, 5vw, 24px)',
-              fontWeight: '600',
-              color: 'white',
-              margin: '0',
-              fontFamily: 'Didot, "Times New Roman", serif',
-              letterSpacing: '1px'
-            }}>
-              Family Battle
-            </h1>
-            <p style={{
-              fontSize: '14px',
-              color: 'rgba(255,255,255,0.8)',
-              margin: '4px 0 0 0'
-            }}>
-              {isSunday ? '✨ Sunday Day of Rest ✨' : timeTheme.greeting}
-            </p>
+          {/* Stats dropdown */}
+          <div className="stats-dropdown-container" style={{ position: 'relative', flex: 1 }}>
+            <button
+              onClick={() => setShowStatsDropdown(!showStatsDropdown)}
+              style={{
+                backgroundColor: 'rgba(255,255,255,0.3)',
+                border: 'none',
+                borderRadius: '20px',
+                padding: '8px 16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                cursor: 'pointer',
+                color: currentTheme.textPrimary,
+                fontSize: '16px',
+                fontWeight: '500',
+                margin: '0 auto'
+              }}
+            >
+              <span>🥊</span>
+              <span style={{ fontFamily: 'Didot, "Times New Roman", serif' }}>Family Battle</span>
+              <span style={{ fontSize: '12px', transform: showStatsDropdown ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+            </button>
+
+            {showStatsDropdown && (
+              <div style={{
+                position: 'absolute',
+                top: '50px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                backgroundColor: currentTheme.surface,
+                borderRadius: '16px',
+                minWidth: '280px',
+                maxWidth: '320px',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+                border: `2px solid ${currentTheme.primary}60`,
+                overflow: 'hidden',
+                zIndex: 10001  // Changed from 9999
+              }}>
+                {statsNavOptions.map((option, index) => (
+                  <button
+                    key={option.name}
+                    onClick={() => {
+                      setShowStatsDropdown(false);
+                      if (!option.current) router.push(option.path);
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '14px 16px',
+                      backgroundColor: option.current ? `${currentTheme.primary}30` : 'transparent',
+                      border: 'none',
+                      borderBottom: index < statsNavOptions.length - 1 ? '1px solid #E5E7EB' : 'none',
+                      cursor: option.current ? 'default' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      fontSize: '13px',
+                      color: currentTheme.textPrimary,
+                      fontWeight: option.current ? '600' : '500',
+                      textAlign: 'left'
+                    }}
+                  >
+                    <span>{option.icon}</span>
+                    <span>{option.name}</span>
+                    {option.current && <span style={{ marginLeft: 'auto' }}>●</span>}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Menu Container with PROPER Z-INDEX */}
-          <div className="nav-menu-container" style={{ 
-            position: 'absolute', 
-            right: '20px',
-            zIndex: 200 // HIGHER than header to ensure dropdown works
-          }}>
+          {/* Hamburger menu */}
+          <div className="nav-menu-container" style={{ position: 'relative' }}>
             <button
               onClick={() => setShowNavMenu(!showNavMenu)}
               style={{
@@ -383,10 +451,7 @@ export default function StudentFamilyBattle() {
                 justifyContent: 'center',
                 fontSize: '18px',
                 cursor: 'pointer',
-                color: 'white',
-                backdropFilter: 'blur(10px)',
-                touchAction: 'manipulation',
-                WebkitTapHighlightColor: 'transparent'
+                color: currentTheme.textPrimary
               }}
             >
               ☰
@@ -397,53 +462,45 @@ export default function StudentFamilyBattle() {
                 position: 'absolute',
                 top: '50px',
                 right: '0',
-                backgroundColor: theme.surface,
+                backgroundColor: currentTheme.surface,
                 borderRadius: '12px',
-                minWidth: '200px',
+                minWidth: '180px',
                 boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-                backdropFilter: 'blur(20px)',
-                border: `2px solid ${theme.primary}60`,
+                border: `2px solid ${currentTheme.primary}60`,
                 overflow: 'hidden',
-                zIndex: 1000 // VERY HIGH Z-INDEX FOR DROPDOWN MENU
+                zIndex: 10001  // Changed from 9999
               }}>
                 {navMenuItems.map((item, index) => (
                   <button
                     key={item.path}
                     onClick={() => {
-                      setShowNavMenu(false)
-                      if (!item.current) router.push(item.path)
+                      setShowNavMenu(false);
+                      if (item.locked) {
+                        alert(`🔒 ${item.name} is locked`);
+                      } else {
+                        router.push(item.path);
+                      }
                     }}
                     style={{
                       width: '100%',
                       padding: '12px 16px',
-                      backgroundColor: item.current ? `${theme.primary}30` : 'transparent',
+                      backgroundColor: 'transparent',
                       border: 'none',
-                      borderBottom: index < navMenuItems.length - 1 ? `1px solid ${theme.primary}40` : 'none',
-                      cursor: item.current ? 'default' : 'pointer',
+                      borderBottom: index < navMenuItems.length - 1 ? '1px solid #E5E7EB' : 'none',
+                      cursor: item.locked ? 'not-allowed' : 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '12px',
                       fontSize: '14px',
-                      color: theme.textPrimary,
-                      fontWeight: item.current ? '600' : '500',
+                      color: item.locked ? currentTheme.textSecondary : currentTheme.textPrimary,
+                      fontWeight: '500',
                       textAlign: 'left',
-                      touchAction: 'manipulation',
-                      transition: 'background-color 0.2s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!item.current) {
-                        e.target.style.backgroundColor = `${theme.primary}20`
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!item.current) {
-                        e.target.style.backgroundColor = 'transparent'
-                      }
+                      opacity: item.locked ? 0.5 : 1
                     }}
                   >
                     <span>{item.icon}</span>
                     <span>{item.name}</span>
-                    {item.current && <span style={{ marginLeft: 'auto', color: theme.primary }}>●</span>}
+                    {item.locked && <span style={{ marginLeft: 'auto' }}>🔒</span>}
                   </button>
                 ))}
               </div>
@@ -451,275 +508,202 @@ export default function StudentFamilyBattle() {
           </div>
         </div>
 
-        {/* Main Content with LOW Z-INDEX */}
+        {/* Main Content */}
         <div style={{ 
           padding: '20px', 
-          maxWidth: '600px', 
-          margin: '0 auto',
-          position: 'relative',
-          zIndex: 10 // LOW Z-INDEX for main content
+          maxWidth: '800px',
+          margin: '0 auto'
         }}>
           
-          {/* Time-Based Battle Announcement */}
-          {!isSunday && battleData?.enabled && (
+          {/* Error state */}
+          {error && !familyBattleUnlocked ? (
             <div style={{
-              background: `linear-gradient(135deg, ${theme.timeGlow}30, ${theme.timeGlow}10)`,
-              borderRadius: '16px',
-              padding: '16px',
-              marginBottom: '20px',
-              border: `2px solid ${theme.timeGlow}60`,
-              textAlign: 'center',
-              boxShadow: `0 4px 16px ${theme.timeGlow}20`,
-              position: 'relative',
-              zIndex: 1 // Keep low
-            }}>
-              <div style={{
-                fontSize: '16px',
-                fontWeight: '600',
-                color: theme.textPrimary,
-                marginBottom: '4px'
-              }}>
-                {timeTheme.emoji} {timeTheme.greeting}
-              </div>
-              <div style={{
-                fontSize: '13px',
-                color: theme.textSecondary
-              }}>
-                {timeTheme.name === 'morning' && 'Rise and read! Show your parents who rules the morning!'}
-                {timeTheme.name === 'afternoon' && 'Power hour! Every page turns the tide of battle!'}
-                {timeTheme.name === 'evening' && 'Evening warriors unite! Time to secure your victory!'}
-                {timeTheme.name === 'night' && 'Night owls have the advantage! Silent reading, loud victories!'}
-              </div>
-            </div>
-          )}
-
-          {/* Error Message */}
-          {error && (
-            <div style={{
-              backgroundColor: '#f44336',
-              color: 'white',
-              padding: '12px 16px',
-              borderRadius: '8px',
-              marginBottom: '16px',
-              fontSize: '14px',
-              boxShadow: '0 4px 12px rgba(244, 67, 54, 0.3)',
-              position: 'relative',
-              zIndex: 1
-            }}>
-              {error}
-            </div>
-          )}
-
-          {/* Sunday Message */}
-          {isSunday && (
-            <div style={{
-              backgroundColor: '#FFD70020',
-              border: '2px solid #FFD700',
-              borderRadius: '12px',
-              padding: '16px',
-              marginBottom: '20px',
-              textAlign: 'center',
-              boxShadow: '0 4px 16px rgba(255, 215, 0, 0.2)',
-              position: 'relative',
-              zIndex: 1
-            }}>
-              <div style={{
-                fontSize: '16px',
-                fontWeight: '600',
-                color: theme.textPrimary,
-                marginBottom: '8px'
-              }}>
-                🙏 Sunday Day of Rest 🙏
-              </div>
-              <div style={{
-                fontSize: '14px',
-                color: theme.textSecondary
-              }}>
-                Reflect on this week&apos;s reading journey. The battle resumes tomorrow!
-              </div>
-            </div>
-          )}
-
-          {/* Battle Display or Not Available Message */}
-          {battleData?.enabled ? (
-            <FamilyBattleDisplay
-              battleData={battleData}
-              isStudent={true}
-              theme={theme}
-              studentName={studentData?.firstName}
-              refreshing={refreshing}
-              onRefresh={loadBattleData}
-              onShowResults={() => setShowResultsModal(true)}
-            />
-          ) : familyId ? (
-            <div style={{
-              backgroundColor: theme.surface,
-              borderRadius: '16px',
+              backgroundColor: currentTheme.surface,
+              borderRadius: '20px',
               padding: '40px 20px',
-              textAlign: 'center',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-              position: 'relative',
-              zIndex: 1
-            }}>
-              <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏳</div>
-              <h3 style={{
-                fontSize: '20px',
-                fontWeight: '600',
-                color: theme.textPrimary,
-                marginBottom: '12px'
-              }}>
-                Loading Battle Arena...
-              </h3>
-              <p style={{
-                fontSize: '14px',
-                color: theme.textSecondary
-              }}>
-                Getting the latest battle data...
-              </p>
-            </div>
-          ) : (
-            <div style={{
-              backgroundColor: theme.surface,
-              borderRadius: '16px',
-              padding: '40px 20px',
-              textAlign: 'center',
-              boxShadow: `0 4px 12px rgba(0,0,0,0.1), 0 0 20px ${theme.timeGlow}20`,
-              border: `2px solid ${theme.timeGlow}40`,
-              position: 'relative',
-              zIndex: 1
-            }}>
-              <div style={{ 
-                fontSize: '48px', 
-                marginBottom: '16px',
-                filter: `drop-shadow(0 0 10px ${theme.timeGlow}50)`
-              }}>
-                🔒
-              </div>
-              <h3 style={{
-                fontSize: '20px',
-                fontWeight: '600',
-                color: theme.textPrimary,
-                marginBottom: '12px'
-              }}>
-                Family Battle Not Available
-              </h3>
-              <p style={{
-                fontSize: '14px',
-                color: theme.textSecondary,
-                marginBottom: '8px'
-              }}>
-                Ask your parent to enable Family Battle to start competing!
-              </p>
-              <p style={{
-                fontSize: '12px',
-                color: theme.textSecondary,
-                fontStyle: 'italic'
-              }}>
-                Once enabled, you&apos;ll battle for reading supremacy every week! ⚔️
-              </p>
-            </div>
-          )}
-
-          {/* Refresh button for students */}
-          {battleData?.enabled && !isSunday && (
-            <div style={{
               marginTop: '20px',
-              textAlign: 'center',
-              position: 'relative',
-              zIndex: 1
+              boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+              textAlign: 'center'
             }}>
+              <div style={{ fontSize: '64px', marginBottom: '20px' }}>😞</div>
+              <h2 style={{ 
+                color: currentTheme.textPrimary, 
+                marginBottom: '16px',
+                fontSize: '24px',
+                fontFamily: 'Didot, "Times New Roman", serif'
+              }}>
+                Battle Arena Closed!
+              </h2>
+              <p style={{ 
+                color: currentTheme.textSecondary, 
+                marginBottom: '24px',
+                fontSize: '16px',
+                lineHeight: '1.5'
+              }}>
+                {error}
+              </p>
               <button
-                onClick={loadBattleData}
-                disabled={refreshing}
+                onClick={() => window.location.reload()}
                 style={{
-                  backgroundColor: refreshing ? theme.secondary : theme.primary,
-                  color: 'white',
+                  backgroundColor: currentTheme.primary,
+                  color: currentTheme.textPrimary,
                   border: 'none',
-                  borderRadius: '12px',
                   padding: '12px 24px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: refreshing ? 'not-allowed' : 'pointer',
-                  opacity: refreshing ? 0.7 : 1,
-                  transition: 'all 0.2s ease',
-                  WebkitTapHighlightColor: 'transparent',
-                  touchAction: 'manipulation'
-                }}
-                onMouseEnter={(e) => {
-                  if (!refreshing) {
-                    e.currentTarget.style.backgroundColor = theme.secondary;
-                    e.currentTarget.style.transform = 'scale(1.02)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!refreshing) {
-                    e.currentTarget.style.backgroundColor = theme.primary;
-                    e.currentTarget.style.transform = 'scale(1)';
-                  }
+                  borderRadius: '12px',
+                  cursor: 'pointer',
+                  fontSize: '16px',
+                  fontWeight: '600'
                 }}
               >
-                {refreshing ? '⏳ Updating...' : '🔄 Refresh Battle'}
+                🔄 Try Again
               </button>
+            </div>
+          ) : battleData?.enabled ? (
+            <>
+              {/* Battle Display */}
+              <FamilyBattleDisplay
+                battleData={battleData}
+                isStudent={true}
+                theme={currentTheme}
+                studentName={studentData.firstName}
+                onRefresh={loadBattleData}
+                onShowResults={() => setShowResultsModal(true)}
+              />
+              
+              {/* Motivational Section */}
               <div style={{
-                fontSize: '11px',
-                color: theme.textSecondary,
-                marginTop: '8px',
-                fontStyle: 'italic'
+                backgroundColor: currentTheme.surface,
+                borderRadius: '16px',
+                padding: '20px',
+                marginTop: '20px',
+                textAlign: 'center',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                border: `2px solid ${currentTheme.accent}60`
               }}>
-                Auto-refreshes every 30 seconds
+                {isSunday ? (
+                  <>
+                    <h3 style={{
+                      fontSize: '18px',
+                      fontWeight: '600',
+                      color: currentTheme.textPrimary,
+                      marginBottom: '8px'
+                    }}>
+                      🙏 Sunday Day of Rest 🙏
+                    </h3>
+                    <p style={{
+                      fontSize: '14px',
+                      color: currentTheme.textSecondary,
+                      marginBottom: '16px'
+                    }}>
+                      Reflect on this week&apos;s reading journey. The battle resumes tomorrow!
+                    </p>
+                    <button
+                      onClick={() => router.push('/student-saints')}
+                      style={{
+                        backgroundColor: currentTheme.accent,
+                        color: currentTheme.textPrimary,
+                        border: 'none',
+                        borderRadius: '16px',
+                        padding: '16px 24px',
+                        fontSize: '16px',
+                        fontWeight: '600',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      ♔ Visit Saints for Inspiration
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <h3 style={{
+                      fontSize: '18px',
+                      fontWeight: '600',
+                      color: currentTheme.textPrimary,
+                      marginBottom: '8px'
+                    }}>
+                      Time to Read & Conquer!
+                    </h3>
+                    <p style={{
+                      fontSize: '14px',
+                      color: currentTheme.textSecondary,
+                      marginBottom: '16px'
+                    }}>
+                      Every minute helps your team dominate!
+                    </p>
+                    <button
+                      onClick={() => router.push('/student-healthy-habits')}
+                      style={{
+                        backgroundColor: currentTheme.accent,
+                        color: currentTheme.textPrimary,
+                        border: 'none',
+                        borderRadius: '16px',
+                        padding: '16px 24px',
+                        fontSize: '16px',
+                        fontWeight: '600',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      🤼 Enter the Reading Ring
+                    </button>
+                  </>
+                )}
+              </div>
+            </>
+          ) : (
+            /* Family Battle Locked */
+            <div style={{
+              backgroundColor: currentTheme.surface,
+              borderRadius: '20px',
+              padding: '40px 20px',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '64px', marginBottom: '20px' }}>⚔️</div>
+              <div style={{
+                fontSize: '20px',
+                fontWeight: '600',
+                color: currentTheme.textPrimary,
+                marginBottom: '12px',
+                fontFamily: 'Didot, "Times New Roman", serif'
+              }}>
+                Battle Arena Awaits!
+              </div>
+              <div style={{
+                fontSize: '16px',
+                color: currentTheme.textSecondary,
+                lineHeight: '1.5'
+              }}>
+                Ask your parent to enable Family Battle, then you can challenge them!
               </div>
             </div>
           )}
         </div>
 
+        {/* Jane Austen Helper */}
+        <JaneAustenHelper
+          show={showJaneAusten && familyBattleUnlocked && battleData?.enabled}
+          battleState={battleData?.leader}
+          winner={battleData?.winner}
+          onClose={() => setShowJaneAusten(false)}
+          currentTheme={currentTheme}
+          familyBattleData={battleData}
+        />
+
         {/* Results Modal */}
         <FamilyBattleResultsModal
           show={showResultsModal}
-          onClose={() => setShowResultsModal(false)}
+          onClose={() => {
+            setShowResultsModal(false);
+            if (battleData?.weekNumber) {
+              const localStorageKey = `familyBattleResultsShown_student_${user?.uid}_week_${battleData.weekNumber}`;
+              localStorage.setItem(localStorageKey, 'true');
+            }
+          }}
           battleData={battleData}
           isStudent={true}
-          theme={theme}
+          theme={currentTheme}
         />
       </div>
-
-      <style jsx>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); opacity: 1; }
-          50% { transform: scale(1.02); opacity: 0.9; }
-        }
-        
-        @keyframes glow {
-          0%, 100% { box-shadow: 0 0 10px ${theme.timeGlow}40; }
-          50% { box-shadow: 0 0 20px ${theme.timeGlow}60; }
-        }
-        
-        button {
-          -webkit-tap-highlight-color: transparent;
-          -webkit-user-select: none;
-          user-select: none;
-          -webkit-touch-callout: none;
-          touch-action: manipulation;
-        }
-        
-        * {
-          -webkit-font-smoothing: antialiased;
-          -moz-osx-font-smoothing: grayscale;
-          -webkit-overflow-scrolling: touch;
-          scroll-behavior: smooth;
-        }
-        
-        @media (max-width: 768px) {
-          .nav-menu-container > div {
-            right: 10px !important;
-            minWidth: 180px !important;
-          }
-        }
-      `}</style>
     </>
-  )
+  );
 }
