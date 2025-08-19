@@ -1,4 +1,4 @@
-// pages/student-stats/family-battle.js - FIXED VERSION
+// pages/student-stats/family-battle.js - FIXED VERSION with Grade Stats styling
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../contexts/AuthContext';
@@ -47,35 +47,66 @@ export default function StudentFamilyBattle() {
   // Check if it's Sunday
   const isSunday = new Date().getDay() === 0;
 
-  // Navigation menu items
+  // Navigation menu items with phase-aware locking
   const navMenuItems = useMemo(() => [
     { name: 'Dashboard', path: '/student-dashboard', icon: '⌂' },
     { 
       name: 'Nominees', 
       path: '/student-nominees', 
       icon: '□', 
-      locked: !hasAccess('nomineesBrowsing')
+      locked: !hasAccess('nomineesBrowsing'),
+      lockReason: phaseData.currentPhase === 'VOTING' ? 'Nominees locked during voting' : 
+                 phaseData.currentPhase === 'RESULTS' ? 'Nominees locked during results' :
+                 phaseData.currentPhase === 'TEACHER_SELECTION' ? 'New amazing nominees coming this week!' : 'Nominees not available'
     },
     { 
       name: 'Bookshelf', 
       path: '/student-bookshelf', 
       icon: '⚏', 
-      locked: !hasAccess('bookshelfViewing')
+      locked: !hasAccess('bookshelfViewing'),
+      lockReason: phaseData.currentPhase === 'RESULTS' ? 'Bookshelf locked during results' :
+                 phaseData.currentPhase === 'TEACHER_SELECTION' ? 'Stats refreshing - new bookshelf coming!' : 'Bookshelf not available'
     },
     { name: 'Healthy Habits', path: '/student-healthy-habits', icon: '○' },
     { name: 'Saints', path: '/student-saints', icon: '♔' },
-    { name: 'Stats', path: '/student-stats', icon: '△' },
+    { name: 'Stats', path: '/student-stats', icon: '△', current: true },
     { name: 'Settings', path: '/student-settings', icon: '⚙' }
-  ], [hasAccess]);
+  ], [hasAccess, phaseData.currentPhase]);
 
   // Stats navigation options
   const statsNavOptions = useMemo(() => [
-    { name: 'Stats Dashboard', path: '/student-stats', icon: '📊' },
-    { name: 'My Stats', path: '/student-stats/my-stats', icon: '📈' },
-    { name: 'Grade Stats', path: '/student-stats/grade-stats', icon: '🎓' },
-    { name: 'School Stats', path: '/student-stats/school-stats', icon: '🏫' },
-    { name: 'Family Battle', path: '/student-stats/family-battle', icon: '🥊', current: true }
-  ], []);
+    { name: 'Stats Dashboard', path: '/student-stats', icon: '📊', description: 'Fun overview' },
+    { name: 'My Stats', path: '/student-stats/my-stats', icon: '📈', description: 'Personal deep dive' },
+    { name: 'Grade Stats', path: '/student-stats/grade-stats', icon: '🎓', description: 'Compare with classmates' },
+    { name: 'School Stats', path: '/student-stats/school-stats', icon: '🏫', description: 'School-wide progress' },
+    { name: 'Diocese Stats', path: '/student-stats/diocese-stats', icon: '⛪', description: 'Coming soon!', disabled: true },
+    { name: 'Global Stats', path: '/student-stats/global-stats', icon: '🌎', description: 'Coming soon!', disabled: true },
+    { 
+      name: 'Lux DNA Lab', 
+      path: '/student-stats/lux-dna-lab', 
+      icon: '🧬', 
+      description: phaseData.currentPhase === 'RESULTS' ? 'Nominees DNA locked for year' : 'Discover your reading personality',
+      phaseNote: phaseData.currentPhase === 'RESULTS' ? 'Nominees DNA analysis is closed for this academic year' : null
+    },
+    { name: 'Family Battle', path: '/student-stats/family-battle', icon: '🥊', description: 'WWE-style reading showdown!', current: true }
+  ], [phaseData.currentPhase]);
+
+  // Handle stats navigation with phase awareness
+  const handleStatsNavigation = (option) => {
+    setShowStatsDropdown(false);
+    
+    if (option.disabled) {
+      alert(`${option.name} is coming soon! 🚧`);
+      return;
+    }
+    
+    if (option.current) {
+      return; // Already on current page
+    }
+    
+    // Allow navigation to all pages - phaseNote is just informational
+    router.push(option.path);
+  };
 
   // Load battle data
   const loadBattleData = useCallback(async () => {
@@ -150,7 +181,7 @@ export default function StudentFamilyBattle() {
           const seasonalAnnouncements = getSeasonalThemeAnnouncement();
           if (seasonalAnnouncements.length > 0 && !completeData.selectedTheme) {
             setSeasonalThemeAlert(seasonalAnnouncements[0]);
-            setTimeout(() => setSeasonalThemeAlert(null), 5000);
+            setTimeout(() => setSeasonalThemeAlert(null), 8000);
           }
         } else {
           // If document doesn't exist with that ID, use data directly from getStudentDataEntities
@@ -171,7 +202,7 @@ export default function StudentFamilyBattle() {
           const seasonalAnnouncements = getSeasonalThemeAnnouncement();
           if (seasonalAnnouncements.length > 0 && !completeData.selectedTheme) {
             setSeasonalThemeAlert(seasonalAnnouncements[0]);
-            setTimeout(() => setSeasonalThemeAlert(null), 5000);
+            setTimeout(() => setSeasonalThemeAlert(null), 8000);
           }
         }
       } catch (error) {
@@ -231,10 +262,22 @@ export default function StudentFamilyBattle() {
       }
     };
 
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        setShowNavMenu(false);
+        setShowStatsDropdown(false);
+      }
+    };
+
     if (showNavMenu || showStatsDropdown) {
       document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscape);
     }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
   }, [showNavMenu, showStatsDropdown]);
 
   if (loading || isLoading || !studentData || !currentTheme) {
@@ -273,7 +316,7 @@ export default function StudentFamilyBattle() {
       <Head>
         <title>Family Battle - Lux Libris</title>
         <meta name="description" content="Challenge your parents in epic reading battles" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
         <link rel="icon" href="/images/lux_libris_logo.png" />
       </Head>
       
@@ -314,37 +357,41 @@ export default function StudentFamilyBattle() {
               transform: 'translateX(-50%)',
               backgroundColor: currentTheme.primary,
               color: 'white',
-              padding: '12px 24px',
+              padding: '14px 24px',
               borderRadius: '24px',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
               zIndex: 1002,
               fontSize: '14px',
               fontWeight: '600',
               display: 'flex',
               alignItems: 'center',
-              gap: '8px',
-              cursor: 'pointer'
+              gap: '10px',
+              cursor: 'pointer',
+              animation: 'slideInDown 0.6s ease-out'
             }}
-            onClick={() => router.push('/student-settings')}
+            onClick={() => {
+              router.push('/student-settings');
+              setSeasonalThemeAlert(null);
+            }}
           >
-            {seasonalThemeAlert.icon} {seasonalThemeAlert.message} Tap to use!
+            <span style={{ fontSize: '20px' }}>{seasonalThemeAlert.icon}</span>
+            <span>{seasonalThemeAlert.message} Tap to use!</span>
           </div>
         )}
         
-        {/* Header - FIXED Z-INDEX */}
+        {/* HEADER WITH DROPDOWN NAVIGATION - Matching Grade Stats */}
         <div style={{
           background: `linear-gradient(135deg, ${currentTheme.primary}F0, ${currentTheme.secondary}F0)`,
           backdropFilter: 'blur(20px)',
           padding: '30px 20px 12px',
+          position: 'relative',
           borderRadius: '0 0 25px 25px',
           boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-          position: 'relative',  // Added
-          zIndex: 1000,  // Changed from 100
+          zIndex: 1000,  // Higher z-index for the fix
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between'
         }}>
-          {/* Back button */}
           <button
             onClick={() => router.push('/student-stats')}
             style={{
@@ -358,13 +405,17 @@ export default function StudentFamilyBattle() {
               justifyContent: 'center',
               fontSize: '18px',
               cursor: 'pointer',
-              color: currentTheme.textPrimary
+              color: currentTheme.textPrimary,
+              backdropFilter: 'blur(10px)',
+              flexShrink: 0,
+              touchAction: 'manipulation',
+              WebkitTapHighlightColor: 'transparent'
             }}
           >
             ←
           </button>
 
-          {/* Stats dropdown */}
+          {/* STATS DROPDOWN */}
           <div className="stats-dropdown-container" style={{ position: 'relative', flex: 1 }}>
             <button
               onClick={() => setShowStatsDropdown(!showStatsDropdown)}
@@ -379,14 +430,18 @@ export default function StudentFamilyBattle() {
                 gap: '8px',
                 cursor: 'pointer',
                 color: currentTheme.textPrimary,
+                backdropFilter: 'blur(10px)',
                 fontSize: '16px',
                 fontWeight: '500',
-                margin: '0 auto'
+                minHeight: '40px',
+                margin: '0 auto',
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent'
               }}
             >
-              <span>🥊</span>
+              <span style={{ fontSize: '18px' }}>🥊</span>
               <span style={{ fontFamily: 'Didot, "Times New Roman", serif' }}>Family Battle</span>
-              <span style={{ fontSize: '12px', transform: showStatsDropdown ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+              <span style={{ fontSize: '12px', transform: showStatsDropdown ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▼</span>
             </button>
 
             {showStatsDropdown && (
@@ -400,43 +455,100 @@ export default function StudentFamilyBattle() {
                 minWidth: '280px',
                 maxWidth: '320px',
                 boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+                backdropFilter: 'blur(20px)',
                 border: `2px solid ${currentTheme.primary}60`,
                 overflow: 'hidden',
-                zIndex: 10001  // Changed from 9999
+                zIndex: 10001  // Higher z-index for the fix
               }}>
+                <div style={{
+                  padding: '16px',
+                  backgroundColor: `${currentTheme.primary}20`,
+                  borderBottom: `1px solid ${currentTheme.primary}40`
+                }}>
+                  <div style={{
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: currentTheme.textPrimary,
+                    textAlign: 'center'
+                  }}>
+                    📊 Stats Explorer
+                  </div>
+                </div>
+                
                 {statsNavOptions.map((option, index) => (
                   <button
                     key={option.name}
-                    onClick={() => {
-                      setShowStatsDropdown(false);
-                      if (!option.current) router.push(option.path);
-                    }}
+                    onClick={() => handleStatsNavigation(option)}
+                    disabled={option.disabled}
                     style={{
                       width: '100%',
                       padding: '14px 16px',
                       backgroundColor: option.current ? `${currentTheme.primary}30` : 'transparent',
                       border: 'none',
-                      borderBottom: index < statsNavOptions.length - 1 ? '1px solid #E5E7EB' : 'none',
-                      cursor: option.current ? 'default' : 'pointer',
+                      borderBottom: index < statsNavOptions.length - 1 ? `1px solid ${currentTheme.primary}40` : 'none',
+                      cursor: option.disabled ? 'not-allowed' : option.current ? 'default' : 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '12px',
                       fontSize: '13px',
-                      color: currentTheme.textPrimary,
+                      color: option.disabled ? currentTheme.textSecondary : currentTheme.textPrimary,
                       fontWeight: option.current ? '600' : '500',
-                      textAlign: 'left'
+                      textAlign: 'left',
+                      touchAction: 'manipulation',
+                      WebkitTapHighlightColor: 'transparent',
+                      opacity: option.disabled ? 0.6 : 1,
+                      transition: 'background-color 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!option.disabled && !option.current) {
+                        e.target.style.backgroundColor = `${currentTheme.primary}20`;
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!option.disabled && !option.current) {
+                        e.target.style.backgroundColor = 'transparent';
+                      }
                     }}
                   >
-                    <span>{option.icon}</span>
-                    <span>{option.name}</span>
-                    {option.current && <span style={{ marginLeft: 'auto' }}>●</span>}
+                    <span style={{ fontSize: '16px', flexShrink: 0 }}>{option.icon}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        marginBottom: '2px'
+                      }}>
+                        {option.name}
+                      </div>
+                      <div style={{
+                        fontSize: '11px',
+                        color: option.phaseNote ? '#FF9800' : currentTheme.textSecondary,
+                        opacity: 0.8
+                      }}>
+                        {option.phaseNote || option.description}
+                      </div>
+                    </div>
+                    {option.current && (
+                      <span style={{ fontSize: '12px', color: currentTheme.primary }}>●</span>
+                    )}
+                    {option.disabled && (
+                      <span style={{
+                        fontSize: '9px',
+                        backgroundColor: '#FF9800',
+                        color: 'white',
+                        padding: '2px 6px',
+                        borderRadius: '8px',
+                        fontWeight: '600'
+                      }}>
+                        SOON
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
             )}
           </div>
 
-          {/* Hamburger menu */}
+          {/* Hamburger Menu with Phase-Aware Locking */}
           <div className="nav-menu-container" style={{ position: 'relative' }}>
             <button
               onClick={() => setShowNavMenu(!showNavMenu)}
@@ -451,7 +563,11 @@ export default function StudentFamilyBattle() {
                 justifyContent: 'center',
                 fontSize: '18px',
                 cursor: 'pointer',
-                color: currentTheme.textPrimary
+                color: currentTheme.textPrimary,
+                backdropFilter: 'blur(10px)',
+                flexShrink: 0,
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent'
               }}
             >
               ☰
@@ -466,9 +582,10 @@ export default function StudentFamilyBattle() {
                 borderRadius: '12px',
                 minWidth: '180px',
                 boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                backdropFilter: 'blur(20px)',
                 border: `2px solid ${currentTheme.primary}60`,
                 overflow: 'hidden',
-                zIndex: 10001  // Changed from 9999
+                zIndex: 10001  // Higher z-index for the fix
               }}>
                 {navMenuItems.map((item, index) => (
                   <button
@@ -476,31 +593,58 @@ export default function StudentFamilyBattle() {
                     onClick={() => {
                       setShowNavMenu(false);
                       if (item.locked) {
-                        alert(`🔒 ${item.name} is locked`);
-                      } else {
+                        alert(`🔒 ${item.lockReason}`);
+                        return;
+                      }
+                      if (!item.current) {
                         router.push(item.path);
                       }
                     }}
                     style={{
                       width: '100%',
                       padding: '12px 16px',
-                      backgroundColor: 'transparent',
+                      backgroundColor: item.current ? `${currentTheme.primary}30` : 
+                                      item.locked ? `${currentTheme.textSecondary}10` : 'transparent',
                       border: 'none',
-                      borderBottom: index < navMenuItems.length - 1 ? '1px solid #E5E7EB' : 'none',
-                      cursor: item.locked ? 'not-allowed' : 'pointer',
+                      borderBottom: index < navMenuItems.length - 1 ? `1px solid ${currentTheme.primary}40` : 'none',
+                      cursor: item.locked ? 'not-allowed' : (item.current ? 'default' : 'pointer'),
                       display: 'flex',
                       alignItems: 'center',
                       gap: '12px',
                       fontSize: '14px',
                       color: item.locked ? currentTheme.textSecondary : currentTheme.textPrimary,
-                      fontWeight: '500',
+                      fontWeight: item.current ? '600' : '500',
                       textAlign: 'left',
+                      touchAction: 'manipulation',
+                      WebkitTapHighlightColor: 'transparent',
+                      transition: 'background-color 0.2s ease',
                       opacity: item.locked ? 0.5 : 1
                     }}
+                    onMouseEnter={(e) => {
+                      if (!item.current && !item.locked) {
+                        e.target.style.backgroundColor = `${currentTheme.primary}20`;
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!item.current && !item.locked) {
+                        e.target.style.backgroundColor = 'transparent';
+                      }
+                    }}
+                    title={item.locked ? item.lockReason : undefined}
                   >
-                    <span>{item.icon}</span>
+                    <span style={{ 
+                      fontSize: '16px',
+                      filter: item.locked ? 'grayscale(1)' : 'none'
+                    }}>
+                      {item.icon}
+                    </span>
                     <span>{item.name}</span>
-                    {item.locked && <span style={{ marginLeft: 'auto' }}>🔒</span>}
+                    {item.current && (
+                      <span style={{ marginLeft: 'auto', fontSize: '12px', color: currentTheme.primary }}>●</span>
+                    )}
+                    {item.locked && (
+                      <span style={{ marginLeft: 'auto', fontSize: '12px', color: currentTheme.textSecondary }}>🔒</span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -508,10 +652,58 @@ export default function StudentFamilyBattle() {
           </div>
         </div>
 
-        {/* Main Content */}
-        <div style={{ 
-          padding: '20px', 
-          maxWidth: '800px',
+        {/* Phase-Specific Alert Banner */}
+        {phaseData.currentPhase && (
+          <div className="phase-alert-banner" style={{
+            background: phaseData.currentPhase === 'VOTING' ? 'linear-gradient(135deg, #8b5cf6, #a855f7)' : 
+                       phaseData.currentPhase === 'RESULTS' ? 'linear-gradient(135deg, #f59e0b, #f97316)' : 
+                       phaseData.currentPhase === 'TEACHER_SELECTION' ? 'linear-gradient(135deg, #3b82f6, #2563eb)' :
+                       'linear-gradient(135deg, #10b981, #059669)',
+            color: 'white',
+            padding: '12px 16px',
+            margin: '0 16px 16px 16px',
+            borderRadius: '12px',
+            textAlign: 'center',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+            animation: 'slideInDown 0.6s ease-out'
+          }}>
+            <div style={{ fontSize: '32px', marginBottom: '8px' }}>
+              {phaseData.currentPhase === 'VOTING' ? '🗳️' : 
+               phaseData.currentPhase === 'RESULTS' ? '🏆' : 
+               phaseData.currentPhase === 'TEACHER_SELECTION' ? '📚' : '⚔️'}
+            </div>
+            <div style={{
+              fontSize: '14px',
+              fontWeight: '600',
+              marginBottom: '6px',
+              lineHeight: '1.3'
+            }}>
+              {phaseData.currentPhase === 'VOTING' ? 'Voting Time - Battle Continues!' :
+               phaseData.currentPhase === 'RESULTS' ? 'Results Are In - Keep Battling!' :
+               phaseData.currentPhase === 'TEACHER_SELECTION' ? 'New Books Coming - Battle On!' :
+               'Family Battle Arena Open!'}
+            </div>
+            <div style={{
+              fontSize: '11px',
+              fontWeight: '400',
+              lineHeight: '1.4',
+              opacity: 0.95
+            }}>
+              {phaseData.currentPhase === 'VOTING' ? 
+                "🗳️ While you vote for your favorite books, the family battle rages on! Keep reading to help your team dominate!" :
+               phaseData.currentPhase === 'RESULTS' ? 
+                "🏆 Celebrate the year's winners while your family battle continues! Your reading minutes still count!" :
+               phaseData.currentPhase === 'TEACHER_SELECTION' ? 
+                "📚 Teachers are selecting amazing new books! Meanwhile, keep your family battle streak alive - XP and victories still count!" :
+                "⚔️ Challenge your parents in an epic reading showdown! Every minute counts toward victory and XP rewards!"}
+            </div>
+          </div>
+        )}
+
+        {/* MAIN CONTENT - Matching Grade Stats responsive layout */}
+        <div className="stats-main-content" style={{ 
+          padding: 'clamp(16px, 5vw, 20px)', 
+          maxWidth: '400px',
           margin: '0 auto'
         }}>
           
@@ -541,6 +733,21 @@ export default function StudentFamilyBattle() {
                 lineHeight: '1.5'
               }}>
                 {error}
+                {phaseData.currentPhase === 'VOTING' && 
+                  <span style={{ display: 'block', marginTop: '8px', fontSize: '14px' }}>
+                    Family Battle continues during voting - try refreshing!
+                  </span>
+                }
+                {phaseData.currentPhase === 'RESULTS' && 
+                  <span style={{ display: 'block', marginTop: '8px', fontSize: '14px' }}>
+                    Family Battle is available during results week!
+                  </span>
+                }
+                {phaseData.currentPhase === 'TEACHER_SELECTION' && 
+                  <span style={{ display: 'block', marginTop: '8px', fontSize: '14px' }}>
+                    Family Battle runs all year round - let's get you back in!
+                  </span>
+                }
               </p>
               <button
                 onClick={() => window.location.reload()}
@@ -596,6 +803,9 @@ export default function StudentFamilyBattle() {
                       marginBottom: '16px'
                     }}>
                       Reflect on this week&apos;s reading journey. The battle resumes tomorrow!
+                      {phaseData.currentPhase === 'VOTING' && " Don't forget to vote for your favorite books!"}
+                      {phaseData.currentPhase === 'RESULTS' && " Check out the winning books in the Results page!"}
+                      {phaseData.currentPhase === 'TEACHER_SELECTION' && " New amazing books coming next week!"}
                     </p>
                     <button
                       onClick={() => router.push('/student-saints')}
@@ -629,6 +839,9 @@ export default function StudentFamilyBattle() {
                       marginBottom: '16px'
                     }}>
                       Every minute helps your team dominate!
+                      {phaseData.currentPhase === 'VOTING' && " Battle while voting continues!"}
+                      {phaseData.currentPhase === 'RESULTS' && " Keep battling during results week!"}
+                      {phaseData.currentPhase === 'TEACHER_SELECTION' && " Your battle continues all year!"}
                     </p>
                     <button
                       onClick={() => router.push('/student-healthy-habits')}
@@ -674,6 +887,21 @@ export default function StudentFamilyBattle() {
                 lineHeight: '1.5'
               }}>
                 Ask your parent to enable Family Battle, then you can challenge them!
+                {phaseData.currentPhase === 'VOTING' && 
+                  <div style={{ marginTop: '12px', fontSize: '14px' }}>
+                    💡 Family Battles continue during voting - get your parent to enable it!
+                  </div>
+                }
+                {phaseData.currentPhase === 'RESULTS' && 
+                  <div style={{ marginTop: '12px', fontSize: '14px' }}>
+                    🏆 Even during results week, Family Battle keeps going!
+                  </div>
+                }
+                {phaseData.currentPhase === 'TEACHER_SELECTION' && 
+                  <div style={{ marginTop: '12px', fontSize: '14px' }}>
+                    📚 Family Battle runs all year - including while teachers select new books!
+                  </div>
+                }
               </div>
             </div>
           )}
@@ -704,6 +932,62 @@ export default function StudentFamilyBattle() {
           theme={currentTheme}
         />
       </div>
+
+      <style jsx>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        
+        @keyframes slideInDown {
+          from { 
+            opacity: 0; 
+            transform: translateY(-30px); 
+          }
+          to { 
+            opacity: 1; 
+            transform: translateY(0); 
+          }
+        }
+        
+        button {
+          -webkit-tap-highlight-color: transparent;
+          -webkit-user-select: none;
+          user-select: none;
+          -webkit-touch-callout: none;
+          touch-action: manipulation;
+        }
+        
+        * {
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Phase alert banner styling */
+        .phase-alert-banner {
+          animation: slideInDown 0.6s ease-out;
+        }
+
+        /* Adaptive CSS for tablet/iPad layouts - Matching Grade Stats */
+        @media screen and (min-width: 768px) and (max-width: 1024px) {
+          .stats-main-content {
+            max-width: 600px !important;
+            padding: 24px !important;
+          }
+          
+          .phase-alert-banner {
+            margin: 0 24px 20px 24px !important;
+            padding: 16px 20px !important;
+          }
+        }
+
+        /* Additional responsive styles for larger screens */
+        @media screen and (min-width: 1025px) {
+          .stats-main-content {
+            max-width: 600px !important;
+          }
+        }
+      `}</style>
     </>
   );
 }
