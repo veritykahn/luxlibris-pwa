@@ -1,4 +1,5 @@
 // pages/student-stats/family-battle.js - FIXED VERSION with Grade Stats styling
+// Family Battle runs all year round but shows phase-aware messaging
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../contexts/AuthContext';
@@ -652,12 +653,14 @@ export default function StudentFamilyBattle() {
           </div>
         </div>
 
-        {/* Phase-Specific Alert Banner */}
-        {phaseData.currentPhase && (
+        {/* Phase-Specific Alert Banner - Shows for all phases */}
+        {phaseData.currentPhase && !phaseData.loading && (
           <div className="phase-alert-banner" style={{
             background: phaseData.currentPhase === 'VOTING' ? 'linear-gradient(135deg, #8b5cf6, #a855f7)' : 
                        phaseData.currentPhase === 'RESULTS' ? 'linear-gradient(135deg, #f59e0b, #f97316)' : 
                        phaseData.currentPhase === 'TEACHER_SELECTION' ? 'linear-gradient(135deg, #3b82f6, #2563eb)' :
+                       phaseData.currentPhase === 'SETUP' ? 'linear-gradient(135deg, #f59e0b, #f97316)' :
+                       phaseData.currentPhase === 'CLOSED' ? 'linear-gradient(135deg, #6b7280, #4b5563)' :
                        'linear-gradient(135deg, #10b981, #059669)',
             color: 'white',
             padding: '12px 16px',
@@ -670,7 +673,10 @@ export default function StudentFamilyBattle() {
             <div style={{ fontSize: '32px', marginBottom: '8px' }}>
               {phaseData.currentPhase === 'VOTING' ? '🗳️' : 
                phaseData.currentPhase === 'RESULTS' ? '🏆' : 
-               phaseData.currentPhase === 'TEACHER_SELECTION' ? '📚' : '⚔️'}
+               phaseData.currentPhase === 'TEACHER_SELECTION' ? '👩‍🏫' :
+               phaseData.currentPhase === 'SETUP' ? '📝' :
+               phaseData.currentPhase === 'CLOSED' ? '❄️' :
+               phaseData.currentPhase === 'ACTIVE' ? '⚔️' : '⚔️'}
             </div>
             <div style={{
               fontSize: '14px',
@@ -680,7 +686,10 @@ export default function StudentFamilyBattle() {
             }}>
               {phaseData.currentPhase === 'VOTING' ? 'Voting Time - Battle Continues!' :
                phaseData.currentPhase === 'RESULTS' ? 'Results Are In - Keep Battling!' :
-               phaseData.currentPhase === 'TEACHER_SELECTION' ? 'New Books Coming - Battle On!' :
+               phaseData.currentPhase === 'TEACHER_SELECTION' ? 'Teachers Selecting - Battle On!' :
+               phaseData.currentPhase === 'SETUP' ? 'New Year Setup - Battle Available!' :
+               phaseData.currentPhase === 'CLOSED' ? 'Winter Break - Keep Reading!' :
+               phaseData.currentPhase === 'ACTIVE' ? 'Family Battle Arena Open!' :
                'Family Battle Arena Open!'}
             </div>
             <div style={{
@@ -692,10 +701,16 @@ export default function StudentFamilyBattle() {
               {phaseData.currentPhase === 'VOTING' ? 
                 "🗳️ While you vote for your favorite books, the family battle rages on! Keep reading to help your team dominate!" :
                phaseData.currentPhase === 'RESULTS' ? 
-                "🏆 Celebrate the year's winners while your family battle continues! Your reading minutes still count!" :
+                "🏆 Celebrate the year's winners while your family battle continues! Your reading minutes still count for XP and victories!" :
                phaseData.currentPhase === 'TEACHER_SELECTION' ? 
-                "📚 Teachers are selecting amazing new books! Meanwhile, keep your family battle streak alive - XP and victories still count!" :
-                "⚔️ Challenge your parents in an epic reading showdown! Every minute counts toward victory and XP rewards!"}
+                "👩‍🏫 Teachers are selecting amazing new books! Meanwhile, keep your family battle streak alive - every minute counts!" :
+               phaseData.currentPhase === 'SETUP' ? 
+                "📝 While we set up the new academic year, Family Battle is ready! Challenge your parents and start earning XP!" :
+               phaseData.currentPhase === 'CLOSED' ? 
+                "❄️ School may be on break, but Family Battle never stops! Keep your reading habits strong and dominate!" :
+               phaseData.currentPhase === 'ACTIVE' ? 
+                "⚔️ Challenge your parents in an epic reading showdown! Every minute counts toward victory and XP rewards!" :
+                "⚔️ Family Battle is always available! Keep reading to help your team win!"}
             </div>
           </div>
         )}
