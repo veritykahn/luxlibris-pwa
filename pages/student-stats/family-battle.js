@@ -760,7 +760,7 @@ export default function StudentFamilyBattle() {
                 }
                 {phaseData.currentPhase === 'TEACHER_SELECTION' && 
                   <span style={{ display: 'block', marginTop: '8px', fontSize: '14px' }}>
-                    Family Battle runs all year round - let's get you back in!
+                    Family Battle runs all year round - let&apos;s get you back in!
                   </span>
                 }
               </p>
