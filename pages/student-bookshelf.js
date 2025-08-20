@@ -4229,7 +4229,7 @@ const handleQuizComplete = async (answers) => {
         margin: '0 0 12px 0',
         fontFamily: 'Didot, "Times New Roman", serif'
       }}>
-        Remove "{selectedBook.details.title}"?
+        Remove &quot;{selectedBook.details.title}&quot;?
       </h3>
       <p style={{
         fontSize: '14px',
@@ -4237,7 +4237,7 @@ const handleQuizComplete = async (answers) => {
         margin: '0 0 24px 0',
         lineHeight: '1.4'
       }}>
-        You'll lose all progress, ratings, and notes for this book. This cannot be undone.
+        You&apos;ll lose all progress, ratings, and notes for this book. This cannot be undone.
       </p>
       
       <div style={{ display: 'flex', gap: '12px' }}>
