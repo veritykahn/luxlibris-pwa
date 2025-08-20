@@ -25,9 +25,12 @@ export default function StudentBookshelf() {
   const [textareaHeight, setTextareaHeight] = useState(50);
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState('');
-  
-  // NEW: Slider locking state for 100% completion
-  const [isSliderLocked, setIsSliderLocked] = useState(false);
+
+// NEW: Slider locking state for 100% completion
+const [isSliderLocked, setIsSliderLocked] = useState(false);
+
+// NEW: Remove confirmation dialog state
+const [showRemoveConfirmation, setShowRemoveConfirmation] = useState(false);
   
   // NEW: Warning dialog state for unlocking slider
   const [showUnlockWarning, setShowUnlockWarning] = useState(false);
@@ -3168,26 +3171,26 @@ const handleQuizComplete = async (answers) => {
                             </button>
                             
                             {shouldShowRemoveButton(selectedBook) && (
-                              <button
-                                onClick={() => deleteBook(selectedBook.bookId)}
-                                disabled={isSaving || locked}
-                                style={{
-                                  backgroundColor: locked ? '#E0E0E0' : colorPalette.textSecondary,
-                                  color: locked ? '#999' : 'white',
-                                  border: 'none',
-                                  padding: '10px 16px',
-                                  borderRadius: '16px',
-                                  fontSize: '12px',
-                                  cursor: locked ? 'not-allowed' : 'pointer',
-                                  opacity: isSaving ? 0.7 : (locked ? 0.6 : 1),
-                                  minHeight: '44px',
-                                  fontWeight: '500',
-                                  fontFamily: 'system-ui, -apple-system, sans-serif'
-                                }}
-                              >
-                                🗑️ Remove
-                              </button>
-                            )}
+  <button
+    onClick={() => setShowRemoveConfirmation(true)}
+    disabled={isSaving || locked}
+    style={{
+      backgroundColor: locked ? '#E0E0E0' : colorPalette.textSecondary,
+      color: locked ? '#999' : 'white',
+      border: 'none',
+      padding: '10px 16px',
+      borderRadius: '16px',
+      fontSize: '12px',
+      cursor: locked ? 'not-allowed' : 'pointer',
+      opacity: isSaving ? 0.7 : (locked ? 0.6 : 1),
+      minHeight: '44px',
+      fontWeight: '500',
+      fontFamily: 'system-ui, -apple-system, sans-serif'
+    }}
+  >
+    🗑️ Remove
+  </button>
+)}
                           </>
                         )}
                       </>
@@ -4194,8 +4197,95 @@ const handleQuizComplete = async (answers) => {
           </div>
         )}
         
-        {/* SUCCESS MESSAGE */}
-        {showSuccess && (
+        {/* REMOVE BOOK CONFIRMATION MODAL */}
+{showRemoveConfirmation && selectedBook && (
+  <div style={{
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    zIndex: 2001,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '20px'
+  }}>
+    <div style={{
+      backgroundColor: '#FFFFFF',
+      borderRadius: '16px',
+      maxWidth: '340px',
+      width: '100%',
+      padding: '24px',
+      textAlign: 'center',
+      boxShadow: '0 20px 40px rgba(0,0,0,0.3)'
+    }}>
+      <div style={{ fontSize: '32px', marginBottom: '16px' }}>🗑️</div>
+      <h3 style={{
+        fontSize: '18px',
+        fontWeight: '600',
+        color: currentTheme.textPrimary,
+        margin: '0 0 12px 0',
+        fontFamily: 'Didot, "Times New Roman", serif'
+      }}>
+        Remove "{selectedBook.details.title}"?
+      </h3>
+      <p style={{
+        fontSize: '14px',
+        color: currentTheme.textSecondary,
+        margin: '0 0 24px 0',
+        lineHeight: '1.4'
+      }}>
+        You'll lose all progress, ratings, and notes for this book. This cannot be undone.
+      </p>
+      
+      <div style={{ display: 'flex', gap: '12px' }}>
+        <button
+          onClick={() => setShowRemoveConfirmation(false)}
+          style={{
+            flex: 1,
+            backgroundColor: '#F5F5F5',
+            color: '#666',
+            border: 'none',
+            borderRadius: '12px',
+            padding: '12px',
+            fontSize: '14px',
+            fontWeight: '500',
+            cursor: 'pointer'
+          }}
+        >
+          Cancel
+        </button>
+        
+        <button
+          onClick={() => {
+            deleteBook(selectedBook.bookId);
+            setShowRemoveConfirmation(false);
+          }}
+          disabled={isSaving}
+          style={{
+            flex: 1,
+            backgroundColor: isSaving ? '#E0E0E0' : '#F44336',
+            color: 'white',
+            border: 'none',
+            borderRadius: '12px',
+            padding: '12px',
+            fontSize: '14px',
+            fontWeight: '600',
+            cursor: isSaving ? 'wait' : 'pointer',
+            opacity: isSaving ? 0.7 : 1
+          }}
+        >
+          {isSaving ? 'Removing...' : 'Remove Book'}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+{/* SUCCESS MESSAGE */}
+{showSuccess && (
           <div style={{
             position: 'fixed',
             bottom: '30px',
