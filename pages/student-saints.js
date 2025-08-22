@@ -2065,7 +2065,7 @@ borderRadius: '12px'
                     
                     <div style={{ marginBottom: '12px', textAlign: 'center' }}>
                       <strong style={{ color: fixedTextColor }}>Sacred Circle</strong><br />
-                      <em>Jesus&apos chosen twelve disciples plus Mary Magdalene - the original followers who changed everything</em>
+                      <em>Jesus&apos; chosen twelve disciples plus Mary Magdalene - the original followers who changed everything</em>
                     </div>
                     
                     <div style={{ marginBottom: '12px', textAlign: 'center' }}>

@@ -31,6 +31,11 @@ const [isSliderLocked, setIsSliderLocked] = useState(false);
 
 // NEW: Remove confirmation dialog state
 const [showRemoveConfirmation, setShowRemoveConfirmation] = useState(false);
+
+// Fix text colors for lavender space theme
+const isLavenderSpace = currentTheme?.assetPrefix === 'lavender_space';
+const fixedTextColor = isLavenderSpace ? '#2A1B3D' : currentTheme?.textPrimary;
+const fixedTextSecondary = isLavenderSpace ? '#4A3B5C' : currentTheme?.textSecondary;
   
   // NEW: Warning dialog state for unlocking slider
   const [showUnlockWarning, setShowUnlockWarning] = useState(false);
@@ -3832,23 +3837,23 @@ const handleQuizComplete = async (answers) => {
                   </div>
 
                   <button
-                    onClick={() => {
-                      setShowParentPermission(false);
-                      setParentCode('');
-                    }}
-                    style={{
-                      width: '100%',
-                      backgroundColor: 'transparent',
-                      color: '#999',
-                      border: 'none',
-                      padding: '16px',
-                      fontSize: '14px',
-                      cursor: 'pointer',
-                      fontFamily: 'Avenir, system-ui, sans-serif'
-                    }}
-                  >
-                    Cancel
-                  </button>
+  onClick={() => {
+    setShowParentPermission(false);
+    setParentCode('');
+  }}
+  style={{
+    width: '100%',
+    backgroundColor: 'transparent',
+    color: fixedTextSecondary,
+    border: 'none',
+    padding: '16px',
+    fontSize: '14px',
+    cursor: 'pointer',
+    fontFamily: 'Avenir, system-ui, sans-serif'
+  }}
+>
+  Cancel
+</button>
                 </div>
               </div>
             </div>
@@ -3949,15 +3954,15 @@ const handleQuizComplete = async (answers) => {
                   {currentQuestion && (
                     <>
                       <div style={{
-                        fontSize: '16px',
-                        fontWeight: '600',
-                        color: colorPalette.textPrimary,
-                        marginBottom: '24px',
-                        lineHeight: '1.5',
-                        fontFamily: 'Avenir, system-ui, sans-serif'
-                      }}>
-                        {currentQuestion.question}
-                      </div>
+  fontSize: '16px',
+  fontWeight: '600',
+  color: fixedTextColor,
+  marginBottom: '24px',
+  lineHeight: '1.5',
+  fontFamily: 'Avenir, system-ui, sans-serif'
+}}>
+  {currentQuestion.question}
+</div>
 
                       <div style={{ marginBottom: '24px' }}>
                         {currentQuestion.options.map((option, optionIndex) => (
@@ -3965,27 +3970,27 @@ const handleQuizComplete = async (answers) => {
                             key={optionIndex}
                             onClick={() => handleQuizAnswer(currentQuestionIndex, option)}
                             style={{
-                              width: '100%',
-                              backgroundColor: quizAnswers[currentQuestionIndex] === option 
-                                ? colorPalette.primary 
-                                : '#F8F8F8',
-                              color: quizAnswers[currentQuestionIndex] === option 
-                                ? 'white' 
-                                : colorPalette.textPrimary,
-                              border: quizAnswers[currentQuestionIndex] === option 
-                                ? `2px solid ${colorPalette.primary}` 
-                                : '2px solid #E0E0E0',
-                              borderRadius: '12px',
-                              padding: '16px',
-                              marginBottom: '12px',
-                              fontSize: '14px',
-                              cursor: 'pointer',
-                              textAlign: 'left',
-                              transition: 'all 0.2s ease',
-                              fontFamily: 'Avenir, system-ui, sans-serif',
-                              lineHeight: '1.4',
-                              minHeight: '44px'
-                            }}
+  width: '100%',
+  backgroundColor: quizAnswers[currentQuestionIndex] === option 
+    ? colorPalette.primary 
+    : '#F8F8F8',
+  color: quizAnswers[currentQuestionIndex] === option 
+    ? 'white' 
+    : fixedTextColor,
+  border: quizAnswers[currentQuestionIndex] === option 
+    ? `2px solid ${colorPalette.primary}` 
+    : '2px solid #E0E0E0',
+  borderRadius: '12px',
+  padding: '16px',
+  marginBottom: '12px',
+  fontSize: '14px',
+  cursor: 'pointer',
+  textAlign: 'left',
+  transition: 'all 0.2s ease',
+  fontFamily: 'Avenir, system-ui, sans-serif',
+  lineHeight: '1.4',
+  minHeight: '44px'
+}}
                           >
                             <span style={{ 
                               fontWeight: '600', 
@@ -4008,17 +4013,17 @@ const handleQuizComplete = async (answers) => {
                           <button
                             onClick={() => setCurrentQuestionIndex(currentQuestionIndex - 1)}
                             style={{
-                              backgroundColor: '#F5F5F5',
-                              color: '#666',
-                              border: 'none',
-                              borderRadius: '12px',
-                              padding: '12px 20px',
-                              fontSize: '14px',
-                              fontWeight: '500',
-                              cursor: 'pointer',
-                              fontFamily: 'Avenir, system-ui, sans-serif',
-                              minHeight: '44px'
-                            }}
+  backgroundColor: '#F5F5F5',
+  color: fixedTextSecondary,
+  border: 'none',
+  borderRadius: '12px',
+  padding: '12px 20px',
+  fontSize: '14px',
+  fontWeight: '500',
+  cursor: 'pointer',
+  fontFamily: 'Avenir, system-ui, sans-serif',
+  minHeight: '44px'
+}}
                           >
                             ← Previous
                           </button>
@@ -4081,32 +4086,32 @@ const handleQuizComplete = async (answers) => {
                 </div>
 
                 <div style={{ 
-                  padding: '0 24px 24px',
-                  borderTop: '1px solid #F0F0F0'
-                }}>
-                  <button
-                    onClick={() => {
-                      setShowQuizModal(false);
-                      setCurrentQuestionIndex(0);
-                      setQuizAnswers([]);
-                      setParentCode('');
-                      setTimerActive(false);
-                      setTimeRemaining(30 * 60);
-                    }}
-                    style={{
-                      width: '100%',
-                      backgroundColor: 'transparent',
-                      color: '#999',
-                      border: 'none',
-                      padding: '16px',
-                      fontSize: '13px',
-                      cursor: 'pointer',
-                      fontFamily: 'Avenir, system-ui, sans-serif'
-                    }}
-                  >
-                    Exit Quiz
-                  </button>
-                </div>
+  padding: '0 24px 24px',
+  borderTop: '1px solid #F0F0F0'
+}}>
+  <button
+    onClick={() => {
+      setShowQuizModal(false);
+      setCurrentQuestionIndex(0);
+      setQuizAnswers([]);
+      setParentCode('');
+      setTimerActive(false);
+      setTimeRemaining(30 * 60);
+    }}
+    style={{
+      width: '100%',
+      backgroundColor: 'transparent',
+      color: fixedTextSecondary,
+      border: 'none',
+      padding: '16px',
+      fontSize: '13px',
+      cursor: 'pointer',
+      fontFamily: 'Avenir, system-ui, sans-serif'
+    }}
+  >
+    Exit Quiz
+  </button>
+</div>
               </div>
             </div>
           );
