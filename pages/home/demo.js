@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useState } from 'react'
 
 export default function Demo() {
-  const [activeVideo, setActiveVideo] = useState('overview')
+  const [activeVideo, setActiveVideo] = useState('student')
 
   return (
     <Layout 
@@ -33,115 +33,66 @@ export default function Demo() {
           {/* Video Selector */}
           <div className="flex flex-wrap justify-center gap-4 mb-12">
             <VideoTab
-              active={activeVideo === 'overview'}
-              onClick={() => setActiveVideo('overview')}
-              icon="🎬"
-              label="Platform Overview"
-              duration="3:47"
-            />
-            <VideoTab
               active={activeVideo === 'student'}
               onClick={() => setActiveVideo('student')}
               icon="🎒"
               label="Student Experience"
-              duration="5:23"
+              duration="3:47"
             />
             <VideoTab
-              active={activeVideo === 'teacher'}
-              onClick={() => setActiveVideo('teacher')}
+              active={false}
+              onClick={() => {}}
+              icon="🎬"
+              label="Platform Overview"
+              duration="Coming Soon"
+              disabled
+            />
+            <VideoTab
+              active={false}
+              onClick={() => {}}
               icon="👩‍🏫"
               label="Teacher Dashboard"
-              duration="4:15"
+              duration="Coming Soon"
+              disabled
             />
             <VideoTab
-              active={activeVideo === 'parent'}
-              onClick={() => setActiveVideo('parent')}
+              active={false}
+              onClick={() => {}}
               icon="👨‍👩‍👧"
               label="Parent Features"
-              duration="3:52"
+              duration="Coming Soon"
+              disabled
             />
           </div>
         </div>
       </section>
 
-      {/* Video Content Section - FIXED CENTERING */}
+      {/* Video Content Section */}
       <section className="bg-white py-20">
         <div className="max-w-6xl mx-auto px-6">
-          {/* Platform Overview Video */}
-          {activeVideo === 'overview' && (
-            <div className="animate-fadeIn">
-              <div className="rounded-3xl p-8 shadow-xl" style={{background: 'linear-gradient(to bottom right, #A1E5DB20, #ADD4EA20)'}}>
-                {/* Video Container - FIXED */}
-                <div className="relative w-full mb-8" style={{paddingBottom: '56.25%'}}>
-                  <div className="absolute inset-0 bg-slate-200 rounded-2xl flex items-center justify-center">
-                    <div className="text-center">
-                      <div className="text-6xl mb-4">🎬</div>
-                      <p className="mb-4" style={{color: '#223848'}}>Platform Overview Video</p>
-                      <p className="text-sm" style={{color: '#223848'}}>
-                        YouTube embed: https://youtube.com/watch?v=luxlibris-overview
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="grid md:grid-cols-2 gap-8">
-                  <div>
-                    <h3 className="text-2xl font-bold mb-4" style={{fontFamily: 'Didot, Georgia, serif', color: '#223848'}}>
-                      Welcome to Lux Libris
-                    </h3>
-                    <p className="mb-4" style={{color: '#223848'}}>
-                      Get a complete overview of how Lux Libris transforms Catholic school 
-                      reading programs through gamification, 234 collectible Luxlings™ saints, and family engagement.
-                    </p>
-                    <ul className="space-y-2">
-                      <VideoHighlight text="Lux Libris Award (grades 4-8) and Classroom Reading programs" />
-                      <VideoHighlight text="Complete ecosystem for diocese, school, teacher, student, and parent users" />
-                      <VideoHighlight text="Faith-integrated gamification with exclusive Luxlings™ saints" />
-                      <VideoHighlight text="Pilot program launching September 1st" />
-                    </ul>
-                  </div>
-                  
-                  <div className="bg-white rounded-2xl p-6 shadow-lg">
-                    <h4 className="font-bold mb-4" style={{color: '#223848'}}>In This Video:</h4>
-                    <ul className="space-y-3">
-                      <TimeStamp time="0:00" label="Introduction" />
-                      <TimeStamp time="0:45" label="Program Options" />
-                      <TimeStamp time="1:30" label="Student Features" />
-                      <TimeStamp time="2:15" label="Teacher Tools" />
-                      <TimeStamp time="2:50" label="Parent Engagement" />
-                      <TimeStamp time="3:20" label="Getting Started" />
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Student Experience Video */}
           {activeVideo === 'student' && (
             <div className="animate-fadeIn">
               <div className="rounded-3xl p-8 shadow-xl" style={{background: 'linear-gradient(to bottom right, #ADD4EA20, #A1E5DB20)'}}>
-                {/* Video Container - FIXED */}
+                {/* Video Container with actual YouTube embed */}
                 <div className="relative w-full mb-8" style={{paddingBottom: '56.25%'}}>
-                  <div className="absolute inset-0 bg-slate-200 rounded-2xl flex items-center justify-center">
-                    <div className="text-center">
-                      <div className="text-6xl mb-4">🎒</div>
-                      <p className="mb-4" style={{color: '#223848'}}>Student App Walkthrough</p>
-                      <p className="text-sm" style={{color: '#223848'}}>
-                        YouTube embed: https://youtube.com/watch?v=luxlibris-student
-                      </p>
-                    </div>
-                  </div>
+                  <iframe 
+                    className="absolute inset-0 w-full h-full rounded-2xl"
+                    src="https://www.youtube.com/embed/c_l2NjcYlyg"
+                    title="Lux Libris Student Experience Demo"
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
                 </div>
                 
                 <div className="grid md:grid-cols-2 gap-8">
                   <div>
                     <h3 className="text-2xl font-bold mb-4" style={{fontFamily: 'Didot, Georgia, serif', color: '#223848'}}>
-                      The Student Journey
+                      Take a Sneak Peek at the World&apos;s First Catholic Literacy Platform
                     </h3>
                     <p className="mb-4" style={{color: '#223848'}}>
-                      Follow Emma, a 4th grader, as she explores the Lux Libris student app, 
-                      collects Luxlings™ saints through reading achievements, and builds her daily reading habits.
+                      Explore the Lux Libris student app and see how students collect Luxlings™ saints through reading achievements and build daily reading habits.
                     </p>
                     <ul className="space-y-2">
                       <VideoHighlight text="Personal dashboard with 20 annual book nominees" />
@@ -155,111 +106,14 @@ export default function Demo() {
                     <h4 className="font-bold mb-4" style={{color: '#223848'}}>Featured Elements:</h4>
                     <ul className="space-y-3">
                       <TimeStamp time="0:00" label="Student Dashboard" />
-                      <TimeStamp time="0:50" label="Book Selection Process" />
-                      <TimeStamp time="1:45" label="Reading Timer Demo" />
-                      <TimeStamp time="2:40" label="Luxlings™ Collection" />
-                      <TimeStamp time="3:35" label="Quiz System" />
-                      <TimeStamp time="4:30" label="Achievements & Rewards" />
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Teacher Dashboard Video */}
-          {activeVideo === 'teacher' && (
-            <div className="animate-fadeIn">
-              <div className="rounded-3xl p-8 shadow-xl" style={{background: 'linear-gradient(to bottom right, #A1E5DB20, #E5E8EB20)'}}>
-                {/* Video Container - FIXED */}
-                <div className="relative w-full mb-8" style={{paddingBottom: '56.25%'}}>
-                  <div className="absolute inset-0 bg-slate-200 rounded-2xl flex items-center justify-center">
-                    <div className="text-center">
-                      <div className="text-6xl mb-4">👩‍🏫</div>
-                      <p className="mb-4" style={{color: '#223848'}}>Teacher Dashboard Tour</p>
-                      <p className="text-sm" style={{color: '#223848'}}>
-                        YouTube embed: https://youtube.com/watch?v=luxlibris-teacher
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="grid md:grid-cols-2 gap-8">
-                  <div>
-                    <h3 className="text-2xl font-bold mb-4" style={{fontFamily: 'Didot, Georgia, serif', color: '#223848'}}>
-                      Powerful Teaching Tools
-                    </h3>
-                    <p className="mb-4" style={{color: '#223848'}}>
-                      Join Mrs. Rodriguez as she manages her 4th-grade class through the Lux Libris Award program, 
-                      customizes achievement milestones, and celebrates student reading success.
-                    </p>
-                    <ul className="space-y-2">
-                      <VideoHighlight text="Quick 5-minute setup with school teacher code" />
-                      <VideoHighlight text="Managing digital and manual student rosters" />
-                      <VideoHighlight text="Customizing book lists and reward intervals" />
-                      <VideoHighlight text="Generating printable achievement reports" />
-                    </ul>
-                  </div>
-                  
-                  <div className="bg-white rounded-2xl p-6 shadow-lg">
-                    <h4 className="font-bold mb-4" style={{color: '#223848'}}>Key Features:</h4>
-                    <ul className="space-y-3">
-                      <TimeStamp time="0:00" label="Dashboard Overview" />
-                      <TimeStamp time="0:40" label="Adding Students" />
-                      <TimeStamp time="1:25" label="Program Setup" />
-                      <TimeStamp time="2:10" label="Progress Tracking" />
-                      <TimeStamp time="2:55" label="Reward Management" />
-                      <TimeStamp time="3:40" label="Reports & Analytics" />
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Parent Features Video */}
-          {activeVideo === 'parent' && (
-            <div className="animate-fadeIn">
-              <div className="rounded-3xl p-8 shadow-xl" style={{background: 'linear-gradient(to bottom right, #FFAB9120, #A1E5DB20)'}}>
-                {/* Video Container - FIXED */}
-                <div className="relative w-full mb-8" style={{paddingBottom: '56.25%'}}>
-                  <div className="absolute inset-0 bg-slate-200 rounded-2xl flex items-center justify-center">
-                    <div className="text-center">
-                      <div className="text-6xl mb-4">👨‍👩‍👧</div>
-                      <p className="mb-4" style={{color: '#223848'}}>Parent App Features</p>
-                      <p className="text-sm" style={{color: '#223848'}}>
-                        YouTube embed: https://youtube.com/watch?v=luxlibris-parent
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="grid md:grid-cols-2 gap-8">
-                  <div>
-                    <h3 className="text-2xl font-bold mb-4" style={{fontFamily: 'Didot, Georgia, serif', color: '#223848'}}>
-                      Family Reading Partnership
-                    </h3>
-                    <p className="mb-4" style={{color: '#223848'}}>
-                      See how the Johnson family uses the parent app (FREE with school subscription) to support their 
-                      children&apos;s reading journey and explore premium features like the Reading DNA Lab.
-                    </p>
-                    <ul className="space-y-2">
-                      <VideoHighlight text="Multi-child tracking across multiple schools" />
-                      <VideoHighlight text="Book guidance with discussion questions" />
-                      <VideoHighlight text="Premium: Family reading battles and parent timer" />
-                      <VideoHighlight text="Premium: Science-based Reading DNA analysis" />
-                    </ul>
-                  </div>
-                  
-                  <div className="bg-white rounded-2xl p-6 shadow-lg">
-                    <h4 className="font-bold mb-4" style={{color: '#223848'}}>App Walkthrough:</h4>
-                    <ul className="space-y-3">
-                      <TimeStamp time="0:00" label="Parent Dashboard" />
-                      <TimeStamp time="0:35" label="Child Progress View" />
-                      <TimeStamp time="1:20" label="Book Information" />
-                      <TimeStamp time="2:00" label="Premium Features" />
-                      <TimeStamp time="2:45" label="Reading DNA Lab" />
-                      <TimeStamp time="3:25" label="Family Challenges" />
+                      <TimeStamp time="0:16" label="Nominees and Bookshelf" />
+                      <TimeStamp time="0:34" label="Healthy Habits" />
+                      <TimeStamp time="1:04" label="Book Submissions" />
+                      <TimeStamp time="1:27" label="Saints Shelf" />
+                      <TimeStamp time="1:42" label="Stats Dashboard" />
+                      <TimeStamp time="2:35" label="Lux DNA" />
+                      <TimeStamp time="3:00" label="Family Battle" />
+                      <TimeStamp time="3:10" label="Themes" />
                     </ul>
                   </div>
                 </div>
@@ -289,8 +143,8 @@ export default function Demo() {
               icon="📄"
               title="Download Guide"
               description="Get our comprehensive PDF guide with screenshots and tutorials"
-              buttonText="Download PDF"
-              link="/resources/lux-libris-guide.pdf"
+              buttonText="Coming Soon"
+              buttonDisabled
             />
             
             <ResourceCard
@@ -303,8 +157,6 @@ export default function Demo() {
           </div>
         </div>
       </section>
-
-
 
       {/* CTA Section */}
       <section className="py-20" style={{background: 'linear-gradient(to right, #ADD4EA, #A1E5DB)'}}>
@@ -354,14 +206,17 @@ export default function Demo() {
 }
 
 // Supporting Components
-function VideoTab({ active, onClick, icon, label, duration }) {
+function VideoTab({ active, onClick, icon, label, duration, disabled }) {
   return (
     <button
       onClick={onClick}
-      className="px-6 py-3 rounded-full font-semibold transition-all transform flex items-center gap-2"
+      disabled={disabled}
+      className={`px-6 py-3 rounded-full font-semibold transition-all transform flex items-center gap-2 ${
+        disabled ? 'cursor-not-allowed opacity-60' : ''
+      }`}
       style={{
-        backgroundColor: active ? '#A1E5DB' : 'white',
-        color: active ? 'white' : '#223848',
+        backgroundColor: active ? '#A1E5DB' : disabled ? '#E5E8EB' : 'white',
+        color: active ? 'white' : disabled ? '#9CA3AF' : '#223848',
         boxShadow: active ? '0 10px 25px rgba(0, 0, 0, 0.15)' : '0 4px 10px rgba(0, 0, 0, 0.1)',
         transform: active ? 'scale(1.05)' : 'scale(1)'
       }}
