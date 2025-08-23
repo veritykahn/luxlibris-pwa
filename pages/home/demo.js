@@ -79,7 +79,7 @@ export default function Demo() {
                 <div className="relative w-full mb-6 md:mb-8" style={{paddingBottom: '56.25%'}}>
                   <iframe 
                     className="absolute inset-0 w-full h-full rounded-lg sm:rounded-xl md:rounded-2xl"
-                    src="https://www.youtube.com/embed/m5MrOQiHyTU"
+                    src="https://www.youtube.com/embed/m5MrOQiHyTU?rel=0&modestbranding=1&showinfo=0&controls=1&autoplay=0&iv_load_policy=3&color=white&playsinline=1"
                     title="Lux Libris Student Experience Demo"
                     frameBorder="0"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
