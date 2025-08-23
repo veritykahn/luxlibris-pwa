@@ -2085,12 +2085,12 @@ borderRadius: '12px'
                     
                     <div style={{ marginBottom: '12px', textAlign: 'center' }}>
                       <strong style={{ color: fixedTextColor }}>Cherub Chibis</strong><br />
-                      <em>The mighty archangels - heaven&aposs warrior messengers in adorable form</em>
+                      <em>The mighty archangels - heaven&apos;s warrior messengers in adorable form</em>
                     </div>
                     
                     <div style={{ marginBottom: '12px', textAlign: 'center' }}>
                       <strong style={{ color: fixedTextColor }}>Contemplative Cuties</strong><br />
-                      <em>Mystics and visionaries who experienced God&aposs love in extraordinary ways</em>
+                      <em>Mystics and visionaries who experienced God&apos;s love in extraordinary ways</em>
                     </div>
                     
                     <div style={{ marginBottom: '12px', textAlign: 'center' }}>
@@ -2110,7 +2110,7 @@ borderRadius: '12px'
                     
                     <div style={{ marginBottom: '12px', textAlign: 'center' }}>
                       <strong style={{ color: fixedTextColor }}>Culture Carriers</strong><br />
-                      <em>Beloved patron saints of countries - collect your homeland&aposs heavenly protector</em>
+                      <em>Beloved patron saints of countries - collect your homeland&apos;s heavenly protector</em>
                     </div>
                     
                     <div style={{ marginBottom: '12px', textAlign: 'center' }}>
