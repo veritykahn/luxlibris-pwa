@@ -91,7 +91,7 @@ export default function Demo() {
                   <div>
                     <h3 className="text-xl sm:text-2xl font-bold mb-3 md:mb-4" 
                         style={{fontFamily: 'Didot, Georgia, serif', color: '#223848'}}>
-                      Take a Sneak Peek at the World's First Catholic Literacy Platform
+                      Take a Sneak Peek at the World&apos;s First Catholic Literacy Platform
                     </h3>
                     <p className="text-sm sm:text-base mb-4" style={{color: '#223848'}}>
                       Explore the Lux Libris student app and see how students collect Luxlings™ saints through reading achievements and build daily reading habits.
