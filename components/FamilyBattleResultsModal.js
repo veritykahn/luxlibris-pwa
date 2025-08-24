@@ -204,8 +204,8 @@ export default function FamilyBattleResultsModal({
   const processedBattleData = battleData ? {
     winner: battleData.winner,
     margin: battleData.margin || 0,
-    childrenMinutes: battleData.children?.total || 0,  // FIXED: children.total
-    parentMinutes: battleData.parents?.total || 0,      // FIXED: parents.total
+   childrenMinutes: battleData.children?.total || battleData.childrenMinutes || 0,
+parentMinutes: battleData.parents?.total || battleData.parentMinutes || 0,
     studentBreakdown: battleData.children?.breakdown || {},  // FIXED: children.breakdown
     parentBreakdown: battleData.parents?.breakdown || {},    // FIXED: parents.breakdown
     weekNumber: battleData.number || battleData.weekNumber || 1,  // FIXED: number

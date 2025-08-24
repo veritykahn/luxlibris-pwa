@@ -6,13 +6,134 @@ admin.initializeApp();
 const db = admin.firestore();
 
 // ============================================================================
-// RUNS EVERY SUNDAY AT 11:59 PM (YOUR TIMEZONE)
+// HELPER FUNCTIONS FOR CALCULATING FRESH TOTALS
+// ============================================================================
+
+/**
+ * Get student's reading minutes for the week
+ */
+const getStudentMinutes = async (student, week) => {
+  try {
+    const sessionsRef = db.collection(
+      `entities/${student.entityId}/schools/${student.schoolId}/students/${student.studentId || student.id}/readingSessions`
+    );
+    
+    const weekQuery = sessionsRef
+      .where('date', '>=', week.startDate)
+      .where('date', '<=', week.endDate);
+    
+    const snapshot = await weekQuery.get();
+    let total = 0;
+    
+    snapshot.forEach(doc => {
+      const session = doc.data();
+      if (session.duration > 0) {
+        total += session.duration;
+      }
+    });
+    
+    return total;
+  } catch (error) {
+    console.error(`Error getting minutes for student:`, error);
+    return 0;
+  }
+};
+
+/**
+ * Get parent's reading minutes for the week
+ */
+const getParentMinutes = async (parentId, week) => {
+  try {
+    const sessionsRef = db.collection(`parents/${parentId}/readingSessions`);
+    
+    const weekQuery = sessionsRef
+      .where('date', '>=', week.startDate)
+      .where('date', '<=', week.endDate);
+    
+    const snapshot = await weekQuery.get();
+    let total = 0;
+    
+    snapshot.forEach(doc => {
+      const session = doc.data();
+      if (session.duration > 0) {
+        total += session.duration;
+      }
+    });
+    
+    return total;
+  } catch (error) {
+    console.error(`Error getting minutes for parent ${parentId}:`, error);
+    return 0;
+  }
+};
+
+/**
+ * Calculate week totals for both teams from actual reading sessions
+ */
+const calculateWeekTotals = async (familyData, week) => {
+  // Get children's minutes
+  const linkedStudents = familyData.linkedStudents || [];
+  const studentBreakdown = {};
+  let childrenTotal = 0;
+  
+  for (const student of linkedStudents) {
+    const minutes = await getStudentMinutes(student, week);
+    studentBreakdown[student.studentId || student.id] = {
+      name: student.studentName || student.firstName || 'Student',
+      minutes,
+      entityId: student.entityId,
+      schoolId: student.schoolId
+    };
+    childrenTotal += minutes;
+  }
+  
+  // Get parents' minutes
+  const linkedParents = familyData.linkedParents || [];
+  const parentBreakdown = {};
+  let parentsTotal = 0;
+  
+  for (const parentId of linkedParents) {
+    const minutes = await getParentMinutes(parentId, week);
+    
+    // Get parent's name
+    let parentName = 'Parent';
+    try {
+      const parentDoc = await db.doc(`parents/${parentId}`).get();
+      if (parentDoc.exists()) {
+        const data = parentDoc.data();
+        parentName = `${data.firstName || ''} ${data.lastName || ''}`.trim() || 'Parent';
+      }
+    } catch (e) {
+      console.error('Error getting parent name:', e);
+    }
+    
+    parentBreakdown[parentId] = {
+      name: parentName,
+      minutes
+    };
+    parentsTotal += minutes;
+  }
+  
+  return {
+    children: {
+      total: childrenTotal,
+      breakdown: studentBreakdown
+    },
+    parents: {
+      total: parentsTotal,
+      breakdown: parentBreakdown
+    }
+  };
+};
+
+// ============================================================================
+// RUNS EVERY SATURDAY AT 11:59 PM (CHANGED FROM SUNDAY)
 // ============================================================================
 exports.completeFamilyBattleWeeks = functions.pubsub
-  .schedule('59 23 * * 0') // Sunday 11:59 PM
+  .schedule('59 23 * * 6') // Saturday 11:59 PM (CHANGED from Sunday)
   .timeZone('America/Chicago') // CHANGE THIS TO YOUR TIMEZONE
   .onRun(async (context) => {
-    console.log('🏁 Starting weekly family battle completion...');
+    console.log('🏁 Starting weekly family battle completion (Saturday night)...');
     
     try {
       // Get all families with active battles
@@ -34,10 +155,19 @@ exports.completeFamilyBattleWeeks = functions.pubsub
           continue;
         }
         
-        // Determine winner
-        const parentTotal = currentWeek.parents?.total || 0;
-        const childrenTotal = currentWeek.children?.total || 0;
+        // CALCULATE FRESH TOTALS FROM ACTUAL READING SESSIONS
+        console.log(`📊 Calculating fresh totals for family ${familyDoc.id}, week ${currentWeek.number}`);
+        const freshTotals = await calculateWeekTotals(familyData, {
+          startDate: currentWeek.startDate,
+          endDate: currentWeek.endDate
+        });
         
+        const parentTotal = freshTotals.parents.total;
+        const childrenTotal = freshTotals.children.total;
+        
+        console.log(`Fresh totals - Kids: ${childrenTotal}, Parents: ${parentTotal}`);
+        
+        // Determine winner based on FRESH TOTALS
         let winner = 'tie';
         let margin = 0;
         
@@ -49,15 +179,32 @@ exports.completeFamilyBattleWeeks = functions.pubsub
           margin = childrenTotal - parentTotal;
         }
         
-        // Create completed week object
+        // Create completed week object with BOTH STRUCTURES for compatibility
         const completedWeek = {
-          ...currentWeek,
+          // NEW NESTED STRUCTURE (for client compatibility)
+          children: freshTotals.children,
+          parents: freshTotals.parents,
+          // OLD FLAT STRUCTURE (for backward compatibility)
+          childrenMinutes: childrenTotal,
+          parentMinutes: parentTotal,
+          studentBreakdown: freshTotals.children.breakdown,
+          parentBreakdown: freshTotals.parents.breakdown,
+          // COMMON FIELDS
+          number: currentWeek.number,
+          week: currentWeek.number,
+          weekNumber: currentWeek.number,
+          startDate: currentWeek.startDate,
+          endDate: currentWeek.endDate,
           completed: true,
           completedAt: new Date().toISOString(),
           winner: winner,
           margin: margin,
-          parentMinutes: parentTotal,
-          childrenMinutes: childrenTotal
+          isResultsDay: false, // Will be true when viewed on Sunday
+          finalStatus: winner === 'children' ? 
+            `🏆 Kids won by ${margin} minutes!` :
+            winner === 'parents' ? 
+            `👑 Parents won by ${margin} minutes!` :
+            '🤝 It was a tie!'
         };
         
         // Update family document
@@ -73,7 +220,7 @@ exports.completeFamilyBattleWeeks = functions.pubsub
           parentTrophies: 0
         };
         
-        // Update stats
+        // Update stats for familyBattleHistory (legacy)
         const updatedHistory = {
           battles: currentHistory.battles + 1,
           childrenWins: winner === 'children' ? currentHistory.childrenWins + 1 : currentHistory.childrenWins,
@@ -82,6 +229,43 @@ exports.completeFamilyBattleWeeks = functions.pubsub
           childrenTrophies: winner === 'children' ? currentHistory.childrenTrophies + 1 : currentHistory.childrenTrophies,
           parentTrophies: winner === 'parents' ? currentHistory.parentTrophies + 1 : currentHistory.parentTrophies,
           lastBattle: completedWeek
+        };
+        
+        // Update stats for familyBattle.history (new structure)
+        const currentBattleHistory = familyData.familyBattle?.history || {
+          totalBattles: 0,
+          childrenWins: 0,
+          parentWins: 0,
+          ties: 0,
+          currentStreak: { team: null, count: 0 },
+          recentBattles: [],
+          xpAwarded: {}
+        };
+        
+        const updatedBattleHistory = {
+          totalBattles: currentBattleHistory.totalBattles + 1,
+          childrenWins: winner === 'children' ? currentBattleHistory.childrenWins + 1 : currentBattleHistory.childrenWins,
+          parentWins: winner === 'parents' ? currentBattleHistory.parentWins + 1 : currentBattleHistory.parentWins,
+          ties: winner === 'tie' ? (currentBattleHistory.ties || 0) + 1 : currentBattleHistory.ties || 0,
+          currentStreak: winner === 'tie' ? 
+            { team: null, count: 0 } :
+            (!currentBattleHistory.currentStreak || currentBattleHistory.currentStreak.team !== winner) ?
+            { team: winner, count: 1 } :
+            { team: winner, count: currentBattleHistory.currentStreak.count + 1 },
+          recentBattles: [
+            {
+              weekNumber: currentWeek.number,
+              winner: winner,
+              margin: margin,
+              childrenTotal: childrenTotal,
+              parentsTotal: parentTotal,
+              startDate: currentWeek.startDate,
+              endDate: currentWeek.endDate,
+              timestamp: new Date().toISOString()
+            },
+            ...(currentBattleHistory.recentBattles || [])
+          ].slice(0, 10), // Keep last 10 battles
+          xpAwarded: currentBattleHistory.xpAwarded || {}
         };
         
         // Add to week history
@@ -93,30 +277,30 @@ exports.completeFamilyBattleWeeks = functions.pubsub
           weekHistory.shift();
         }
         
-        // BUG FIX #2: Add lastCompletedWeek field
         batch.update(familyRef, {
           'familyBattle.currentWeek': null, // Clear current week
-          'familyBattle.lastCompletedWeek': completedWeek, // ✅ ADD THIS LINE
+          'familyBattle.lastCompletedWeek': completedWeek, // Store completed week
           'familyBattle.weekHistory': weekHistory,
-          'familyBattleHistory': updatedHistory
+          'familyBattle.history': updatedBattleHistory, // New structure
+          'familyBattleHistory': updatedHistory // Legacy structure
         });
         
         // AWARD XP IF CHILDREN WON
         if (winner === 'children' && familyData.linkedStudents) {
           await awardXPToWinningChildren(
             familyData.linkedStudents,
-            currentWeek.children?.breakdown || {},
-            currentWeek.week
+            freshTotals.children.breakdown,
+            currentWeek.number
           );
         }
         
         completedCount++;
         
-        console.log(`✅ Completed battle for family ${familyDoc.id}: ${winner} won by ${margin} minutes`);
+        console.log(`✅ Completed battle for family ${familyDoc.id}: ${winner} won by ${margin} minutes (Kids: ${childrenTotal}, Parents: ${parentTotal})`);
       }
       
       await batch.commit();
-      console.log(`🎉 Completed ${completedCount} family battles`);
+      console.log(`🎉 Completed ${completedCount} family battles on Saturday night`);
       
     } catch (error) {
       console.error('❌ Error completing family battles:', error);
@@ -165,12 +349,19 @@ const weekNumber = Math.floor(daysSinceStart / 7) + 1;
           endDate.setHours(23, 59, 59, 999); // Set to end of day
           
           if (now > endDate) {
-            // Force complete the expired week
+            // Force complete the expired week with FRESH TOTALS
             console.log(`⚠️ Forcing completion of expired week for family ${familyDoc.id}`);
             
             const currentWeek = familyData.familyBattle.currentWeek;
-            const parentTotal = currentWeek.parents?.total || 0;
-            const childrenTotal = currentWeek.children?.total || 0;
+            
+            // Calculate fresh totals instead of using stale data
+            const freshTotals = await calculateWeekTotals(familyData, {
+              startDate: currentWeek.startDate,
+              endDate: currentWeek.endDate
+            });
+            
+            const parentTotal = freshTotals.parents.total;
+            const childrenTotal = freshTotals.children.total;
             
             let winner = 'tie';
             let margin = 0;
@@ -183,15 +374,26 @@ const weekNumber = Math.floor(daysSinceStart / 7) + 1;
               margin = childrenTotal - parentTotal;
             }
             
-            // Create completed week object
+            // Create completed week object with fresh data and BOTH structures
             const completedWeek = {
-              ...currentWeek,
+              // NEW NESTED STRUCTURE
+              children: freshTotals.children,
+              parents: freshTotals.parents,
+              // OLD FLAT STRUCTURE
+              childrenMinutes: childrenTotal,
+              parentMinutes: parentTotal,
+              studentBreakdown: freshTotals.children.breakdown,
+              parentBreakdown: freshTotals.parents.breakdown,
+              // COMMON FIELDS
+              number: currentWeek.number,
+              week: currentWeek.number,
+              weekNumber: currentWeek.number,
+              startDate: currentWeek.startDate,
+              endDate: currentWeek.endDate,
               completed: true,
               completedAt: new Date().toISOString(),
               winner: winner,
               margin: margin,
-              parentMinutes: parentTotal,
-              childrenMinutes: childrenTotal,
               forcedCompletion: true // Mark as forced completion
             };
             
@@ -204,7 +406,7 @@ const weekNumber = Math.floor(daysSinceStart / 7) + 1;
               weekHistory.shift();
             }
             
-            // Update history stats
+            // Update history stats (both structures)
             const currentHistory = familyData.familyBattleHistory || {
               battles: 0,
               childrenWins: 0,
@@ -236,8 +438,8 @@ const weekNumber = Math.floor(daysSinceStart / 7) + 1;
             if (winner === 'children' && familyData.linkedStudents) {
               await awardXPToWinningChildren(
                 familyData.linkedStudents,
-                currentWeek.children?.breakdown || {},
-                currentWeek.week
+                freshTotals.children.breakdown,
+                currentWeek.number
               );
             }
             
@@ -249,14 +451,20 @@ const weekNumber = Math.floor(daysSinceStart / 7) + 1;
           }
         }
         
-        // Create new week
+        // Create new week (Saturday end date since completion happens Saturday night)
+        const saturday = new Date(weekStart);
+        saturday.setDate(saturday.getDate() + 5); // Saturday
+        
         const newWeek = {
-          week: weekNumber,
-          startDate: format(weekStart, 'yyyy-MM-dd'),
-          endDate: format(weekEnd, 'yyyy-MM-dd'),
-          parents: { total: 0, breakdown: {} },
+          number: weekNumber,
+          startDate: format(weekStart, 'yyyy-MM-dd'), // Monday
+          endDate: format(saturday, 'yyyy-MM-dd'), // Saturday
           children: { total: 0, breakdown: {} },
+          parents: { total: 0, breakdown: {} },
           completed: false,
+          leader: 'tie',
+          margin: 0,
+          status: 'New week! The battle begins!',
           startedAt: admin.firestore.FieldValue.serverTimestamp()
         };
         
@@ -266,7 +474,7 @@ const weekNumber = Math.floor(daysSinceStart / 7) + 1;
         });
         
         startedCount++;
-        console.log(`✅ Started week ${weekNumber} for family ${familyDoc.id}`);
+        console.log(`✅ Started week ${weekNumber} for family ${familyDoc.id} (Monday-Saturday)`);
       }
       
       await batch.commit();
@@ -283,7 +491,7 @@ const weekNumber = Math.floor(daysSinceStart / 7) + 1;
   });
 
 // ============================================================================
-// HELPER FUNCTION: Award XP to winning children (BUG FIX #1 APPLIED)
+// HELPER FUNCTION: Award XP to winning children
 // ============================================================================
 async function awardXPToWinningChildren(linkedStudents, childrenBreakdown, weekNumber) {
   try {
@@ -291,9 +499,9 @@ async function awardXPToWinningChildren(linkedStudents, childrenBreakdown, weekN
     let mvpStudentId = null;
     let maxMinutes = 0;
     
-    Object.entries(childrenBreakdown).forEach(([studentId, minutes]) => {
-      if (minutes > maxMinutes) {
-        maxMinutes = minutes;
+    Object.entries(childrenBreakdown).forEach(([studentId, data]) => {
+      if (data.minutes > maxMinutes) {
+        maxMinutes = data.minutes;
         mvpStudentId = studentId;
       }
     });
@@ -317,7 +525,7 @@ async function awardXPToWinningChildren(linkedStudents, childrenBreakdown, weekN
           `entities/${entityId}/schools/${schoolId}/students/${studentId}`
         );
         
-        // BUG FIX #1: Build update object dynamically
+        // Build update object dynamically
         const updateData = {
           totalXP: admin.firestore.FieldValue.increment(xpAmount),
           [`familyBattleWeek${weekNumber}XPAwarded`]: true,
@@ -362,13 +570,6 @@ async function awardXPToWinningChildren(linkedStudents, childrenBreakdown, weekN
 
 // ============================================================================
 // MANUAL TRIGGER (for testing or manual intervention) - WITH SECURITY
-// ============================================================================
-// Usage: https://your-project.cloudfunctions.net/manualCompleteBattles?token=your-secret-token-2025-change-this
-// Usage: https://your-project.cloudfunctions.net/manualStartBattles?token=your-secret-token-2025-change-this
-// 
-// IMPORTANT: Change the SECRET_TOKEN to something secure before deploying!
-// Consider using Firebase environment config for production:
-// functions.config().familybattle.secret_token
 // ============================================================================
 exports.manualCompleteBattles = functions.https.onRequest(async (req, res) => {
   // SECURITY: Change this token to something secure and unique!
