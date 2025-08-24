@@ -170,7 +170,7 @@ export default function ForSchools() {
               <div className="rounded-xl p-4 text-center" style={{backgroundColor: 'rgba(255, 171, 145, 0.3)'}}>
                 <span className="inline-flex items-center text-white px-4 py-2 rounded-full text-sm font-semibold" style={{backgroundColor: '#FFAB91'}}>
                   <span className="mr-2">🚀</span>
-                  Pilot Launch: Spring 2025
+                  Pilot Launch: Spring 2026
                 </span>
               </div>
             </div>
