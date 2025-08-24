@@ -1,9 +1,15 @@
-// pages/school/signup.js - FIXED SCHOOL SIGNUP WITH GREEN PALETTE & TYPOGRAPHY
+// pages/school/signup.js - ENHANCED WITH CAPACITY CHECKING
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { db, authHelpers } from '../../lib/firebase'
 import { collection, getDocs, addDoc, updateDoc, doc, getDoc } from 'firebase/firestore'
+import {
+  canAddSchool,
+  formatCurrency,
+  checkOverageStatus,
+  PRICING_CONFIG
+} from '../../lib/pricing-config'
 
 export default function SchoolSignup() {
   const router = useRouter()
@@ -26,6 +32,7 @@ export default function SchoolSignup() {
   // Validation and feedback
   const [errors, setErrors] = useState({})
   const [dioceseInfo, setDioceseInfo] = useState(null)
+  const [capacityInfo, setCapacityInfo] = useState(null)
   const [isValidatingCode, setIsValidatingCode] = useState(false)
 
   // Auto-populate from URL parameters if available
@@ -46,17 +53,41 @@ export default function SchoolSignup() {
           if (diocese) {
             setDioceseInfo(diocese)
             setErrors(prev => ({ ...prev, dioceseJoinCode: '' }))
+            
+            // ENHANCED: Check capacity and overage status
+            const capacity = canAddSchool(
+              diocese.currentSubEntities || 0,
+              diocese.maxSubEntities || 15,
+              false // Don't enforce limit yet - just check
+            )
+            
+            const overage = checkOverageStatus(
+              (diocese.currentSubEntities || 0) + 1, // +1 for the school being added
+              diocese.maxSubEntities || 15
+            )
+            
+            setCapacityInfo({
+              ...capacity,
+              overage,
+              currentSchools: diocese.currentSubEntities || 0,
+              maxSchools: diocese.maxSubEntities || 15,
+              tierName: PRICING_CONFIG.tiers[diocese.tier]?.displayName || diocese.tier
+            })
+            
           } else {
             setDioceseInfo(null)
+            setCapacityInfo(null)
             setErrors(prev => ({ ...prev, dioceseJoinCode: 'Diocese not found with this join code' }))
           }
         } catch (error) {
           setDioceseInfo(null)
+          setCapacityInfo(null)
           setErrors(prev => ({ ...prev, dioceseJoinCode: 'Error validating diocese code' }))
         }
         setIsValidatingCode(false)
       } else {
         setDioceseInfo(null)
+        setCapacityInfo(null)
         setErrors(prev => ({ ...prev, dioceseJoinCode: '' }))
       }
     }
@@ -65,7 +96,7 @@ export default function SchoolSignup() {
     return () => clearTimeout(timeoutId)
   }, [formData.dioceseJoinCode])
 
-  // Find diocese by join code (diocese access code = principal join code)
+  // Find diocese by join code
   const findDioceseByJoinCode = async (joinCode) => {
     try {
       const entitiesRef = collection(db, 'entities')
@@ -87,7 +118,7 @@ export default function SchoolSignup() {
     }
   }
 
-  // Generate school codes based on geographic and school data
+  // Generate school codes
   const generateSchoolCodes = (schoolData, diocese) => {
     const year = new Date().getFullYear()
     const stateCode = schoolData.state.substring(0, 2).toUpperCase()
@@ -95,10 +126,7 @@ export default function SchoolSignup() {
     const schoolPrefix = schoolData.schoolName.replace(/[^A-Za-z]/g, '').substring(0, 4).toUpperCase()
     const principalLastName = schoolData.principalLastName.replace(/[^A-Za-z]/g, '').substring(0, 6).toUpperCase()
     
-    // School access code: TXAUS-HOLY-SMITH-2025
     const schoolAccessCode = `${stateCode}${cityCode}-${schoolPrefix}-${principalLastName}-${year}`
-    
-    // Teacher join code: TXAUS-HOLY-TEACHER-2025  
     const teacherJoinCode = `${stateCode}${cityCode}-${schoolPrefix}-TEACHER-${year}`
     
     return {
@@ -157,19 +185,34 @@ export default function SchoolSignup() {
     return Object.keys(newErrors).length === 0
   }
 
-  // Handle school registration
+  // Handle school registration with capacity checking
   const handleSchoolRegistration = async () => {
     if (!validateForm()) return
     
-    // Check diocese capacity
-    if (dioceseInfo.currentSubEntities >= dioceseInfo.maxSubEntities) {
-      alert(`Diocese has reached capacity (${dioceseInfo.maxSubEntities} schools). Please contact your diocese administrator to upgrade.`)
+    // ENHANCED: Check capacity before proceeding
+    if (!capacityInfo?.allowed) {
+      alert(capacityInfo?.message || 'Cannot add school due to capacity limits')
       return
+    }
+    
+    // Show overage warning if applicable
+    if (capacityInfo.overageFee > 0) {
+      const proceedWithOverage = confirm(
+        `⚠️ CAPACITY WARNING\n\n` +
+        `This will exceed your ${capacityInfo.tierName} tier limit.\n` +
+        `Current: ${capacityInfo.currentSchools}/${capacityInfo.maxSchools} schools\n` +
+        `Additional cost: ${formatCurrency(capacityInfo.overageFee)}/year\n\n` +
+        `Proceed with overage billing?`
+      )
+      
+      if (!proceedWithOverage) {
+        return
+      }
     }
 
     setLoading(true)
     try {
-      console.log('🏫 Creating school registration...')
+      console.log('🏫 Creating school registration with capacity check...')
       
       // Generate school codes
       const schoolCodes = generateSchoolCodes(formData, dioceseInfo)
@@ -184,50 +227,42 @@ export default function SchoolSignup() {
       
       console.log('✅ Principal Firebase Auth created:', principalAuth.uid)
       
-      // Create school document in diocese subcollection
+      // Create school document
       const schoolData = {
-        // Basic school info
         name: formData.schoolName,
         city: formData.city,
         state: formData.state,
-        
-        // Principal info
         principalEmail: formData.principalEmail,
         principalLastName: formData.principalLastName,
         principalAuthUid: principalAuth.uid,
-        
-        // Access codes
         schoolAccessCode: schoolCodes.schoolAccessCode,
         teacherJoinCode: schoolCodes.teacherJoinCode,
-        
-        // Diocese relationship
         parentEntityId: dioceseInfo.id,
         parentEntityType: dioceseInfo.type,
         parentEntityName: dioceseInfo.name,
-        
-        // Program configuration - ENHANCED: inherit from diocese
         selectedPrograms: dioceseInfo.selectedPrograms || ['luxlibris'],
         programsIncluded: dioceseInfo.selectedPrograms?.length || 1,
         selectedNominees: [],
         achievementTiers: [],
         submissionOptions: { quiz: true, presentation: false },
-        
-        // Counts
         teacherCount: 0,
         studentCount: 0,
         
-        // Status
+        // ENHANCED: Add capacity tracking
+        addedWithOverage: capacityInfo.overageFee > 0,
+        overageFeeAtCreation: capacityInfo.overageFee || 0,
+        
         status: 'active',
         setupCompleted: false,
         createdAt: new Date(),
         lastModified: new Date()
       }
       
-      // Save school to entities subcollection
+      // Save school
       const schoolRef = await addDoc(collection(db, `entities/${dioceseInfo.id}/schools`), schoolData)
       console.log('✅ School created with ID:', schoolRef.id)
       
-      // Create the first admin account in the admins subcollection
+      // Create first admin
       const firstAdminData = {
         email: formData.principalEmail,
         firstName: formData.principalFirstName,
@@ -237,37 +272,65 @@ export default function SchoolSignup() {
         schoolId: schoolRef.id,
         dioceseId: dioceseInfo.id,
         schoolName: formData.schoolName,
-        isFounder: true, // Mark as the school founder
+        isFounder: true,
         createdAt: new Date(),
         status: 'active'
       }
       
-      // Save first admin to admins subcollection
       await addDoc(collection(db, `entities/${dioceseInfo.id}/schools/${schoolRef.id}/admins`), firstAdminData)
       console.log('✅ First admin account created')
       
-      // Update diocese school count
-      await updateDoc(doc(db, 'entities', dioceseInfo.id), {
+      // ENHANCED: Update diocese count and billing if overage
+      const updateData = {
         currentSubEntities: (dioceseInfo.currentSubEntities || 0) + 1,
         lastModified: new Date()
-      })
+      }
       
-      // Show success message with school codes
-      alert(`🎉 SCHOOL REGISTRATION SUCCESSFUL!
-
-🏫 School: ${formData.schoolName}
-🔑 Your School Access Code: ${schoolCodes.schoolAccessCode}
-👨‍🏫 Teacher Join Code: ${schoolCodes.teacherJoinCode}
-
-NEXT STEPS:
-1. You will now be taken to your school dashboard
-2. Use your school code + email/password to sign in
-3. Share the teacher join code with your teachers
-4. Configure your reading program
-
-Save these codes securely!`)
+      // If there's overage, flag for billing update
+      if (capacityInfo.overageFee > 0) {
+        updateData.hasOverageSchools = true
+        updateData.lastOverageDate = new Date()
+        
+        // Log overage event for billing tracking
+        try {
+          await addDoc(collection(db, 'billingEvents'), {
+            entityId: dioceseInfo.id,
+            entityName: dioceseInfo.name,
+            eventType: 'school_overage',
+            schoolId: schoolRef.id,
+            schoolName: formData.schoolName,
+            overageFee: capacityInfo.overageFee,
+            currentSchools: (dioceseInfo.currentSubEntities || 0) + 1,
+            tierLimit: dioceseInfo.maxSubEntities,
+            createdAt: new Date()
+          })
+        } catch (logError) {
+          console.log('Could not log billing event:', logError)
+        }
+      }
       
-      // Redirect to school dashboard with pre-filled school code
+      await updateDoc(doc(db, 'entities', dioceseInfo.id), updateData)
+      
+      // Success message with overage info
+      let successMessage = `🎉 SCHOOL REGISTRATION SUCCESSFUL!\n\n` +
+        `🏫 School: ${formData.schoolName}\n` +
+        `🔑 School Access Code: ${schoolCodes.schoolAccessCode}\n` +
+        `👨‍🏫 Teacher Join Code: ${schoolCodes.teacherJoinCode}\n\n`
+      
+      if (capacityInfo.overageFee > 0) {
+        successMessage += `💰 OVERAGE NOTICE:\n` +
+          `Your diocese will be billed an additional ${formatCurrency(capacityInfo.overageFee)}/year for exceeding the ${capacityInfo.tierName} tier limit.\n\n`
+      }
+      
+      successMessage += `NEXT STEPS:\n` +
+        `1. You will now be taken to your school dashboard\n` +
+        `2. Use your school code + email/password to sign in\n` +
+        `3. Share the teacher join code with your teachers\n\n` +
+        `Save these codes securely!`
+      
+      alert(successMessage)
+      
+      // Redirect to school dashboard
       router.push(`/school/dashboard?school=${schoolCodes.schoolAccessCode}`)
       
     } catch (error) {
@@ -285,7 +348,6 @@ Save these codes securely!`)
   // Handle input changes
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }))
-    // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }))
     }
@@ -442,7 +504,7 @@ Save these codes securely!`)
                   <p style={{
                     color: '#065F46',
                     fontSize: '0.875rem',
-                    margin: 0,
+                    margin: '0 0 0.5rem 0',
                     fontWeight: '600',
                     fontFamily: 'Avenir'
                   }}>
@@ -451,12 +513,48 @@ Save these codes securely!`)
                   <p style={{
                     color: '#065F46',
                     fontSize: '0.75rem',
-                    margin: '0.25rem 0 0 0',
+                    margin: '0.25rem 0',
                     fontFamily: 'Avenir'
                   }}>
-                    Schools: {dioceseInfo.currentSubEntities || 0}/{dioceseInfo.maxSubEntities || 0} • 
-                    {dioceseInfo.city}, {dioceseInfo.state}
+                    📊 {capacityInfo?.tierName} Tier • Schools: {capacityInfo?.currentSchools}/{capacityInfo?.maxSchools} • {dioceseInfo.city}, {dioceseInfo.state}
                   </p>
+                  
+                  {/* ENHANCED: Capacity Status Display */}
+                  {capacityInfo && (
+                    <div style={{
+                      marginTop: '0.5rem',
+                      padding: '0.5rem',
+                      borderRadius: '0.25rem',
+                      background: capacityInfo.overageFee > 0 
+                        ? 'rgba(245, 158, 11, 0.2)' 
+                        : 'rgba(16, 185, 129, 0.2)',
+                      border: `1px solid ${capacityInfo.overageFee > 0 ? '#F59E0B' : '#10B981'}`
+                    }}>
+                      {capacityInfo.overageFee > 0 ? (
+                        <p style={{
+                          color: '#F59E0B',
+                          fontSize: '0.75rem',
+                          margin: 0,
+                          fontWeight: '600',
+                          fontFamily: 'Avenir'
+                        }}>
+                          ⚠️ Adding this school will exceed tier limit
+                          <br />Additional cost: {formatCurrency(capacityInfo.overageFee)}/year
+                        </p>
+                      ) : (
+                        <p style={{
+                          color: '#10B981',
+                          fontSize: '0.75rem',
+                          margin: 0,
+                          fontWeight: '600',
+                          fontFamily: 'Avenir'
+                        }}>
+                          ✅ Capacity available - no additional cost
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  
                   {dioceseInfo.selectedPrograms && dioceseInfo.selectedPrograms.length > 0 && (
                     <p style={{
                       color: '#065F46',
@@ -471,9 +569,10 @@ Save these codes securely!`)
               )}
             </div>
 
-            {/* Principal Account Section */}
+            {/* Rest of the form - Principal Account Section */}
             {dioceseInfo && (
               <>
+                {/* Principal account fields (same as before) */}
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
@@ -555,14 +654,13 @@ Save these codes securely!`)
                   </div>
                 </div>
 
+                {/* Name fields */}
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
                   gap: '1rem',
                   marginBottom: '1.5rem'
                 }}>
-
-                  {/* Principal First Name */}
                   <div>
                     <label style={{
                       display: 'block',
@@ -599,7 +697,6 @@ Save these codes securely!`)
                     )}
                   </div>
 
-                  {/* Principal Last Name */}
                   <div>
                     <label style={{
                       display: 'block',
@@ -637,15 +734,13 @@ Save these codes securely!`)
                   </div>
                 </div>
 
-                {/* Password Section */}
+                {/* Password fields */}
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
                   gap: '1rem',
                   marginBottom: '1.5rem'
                 }}>
-                  
-                  {/* Password */}
                   <div>
                     <label style={{
                       display: 'block',
@@ -682,7 +777,6 @@ Save these codes securely!`)
                     )}
                   </div>
 
-                  {/* Confirm Password */}
                   <div>
                     <label style={{
                       display: 'block',
@@ -720,15 +814,13 @@ Save these codes securely!`)
                   </div>
                 </div>
 
-                {/* School Information Section */}
+                {/* School Information */}
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
                   gap: '1rem',
                   marginBottom: '1.5rem'
                 }}>
-                  
-                  {/* School Name */}
                   <div style={{ gridColumn: 'span 2' }}>
                     <label style={{
                       display: 'block',
@@ -765,7 +857,6 @@ Save these codes securely!`)
                     )}
                   </div>
 
-                  {/* City */}
                   <div>
                     <label style={{
                       display: 'block',
@@ -802,7 +893,6 @@ Save these codes securely!`)
                     )}
                   </div>
 
-                  {/* State */}
                   <div>
                     <label style={{
                       display: 'block',
@@ -842,7 +932,7 @@ Save these codes securely!`)
                   </div>
                 </div>
 
-                {/* Code Preview Section */}
+                {/* Code Preview (same as before) */}
                 {formData.schoolName && formData.principalLastName && formData.city && formData.state && (
                   <div style={{
                     background: '#A1E5DB',
@@ -908,22 +998,22 @@ Save these codes securely!`)
                   </div>
                 )}
 
-                {/* Register Button */}
+                {/* ENHANCED: Register Button with capacity validation */}
                 <button
                   onClick={handleSchoolRegistration}
-                  disabled={loading || !dioceseInfo || Object.keys(errors).some(key => errors[key])}
+                  disabled={loading || !dioceseInfo || Object.keys(errors).some(key => errors[key]) || !capacityInfo?.allowed}
                   style={{
                     width: '100%',
                     padding: '1rem',
-                    background: loading 
+                    background: loading || !capacityInfo?.allowed
                       ? '#D1FAE5' 
                       : 'linear-gradient(135deg, #065F46, #A1E5DB)',
-                    color: loading ? '#065F46' : 'white',
+                    color: loading || !capacityInfo?.allowed ? '#065F46' : 'white',
                     border: 'none',
                     borderRadius: '0.75rem',
                     fontSize: '1.125rem',
                     fontWeight: '600',
-                    cursor: loading ? 'not-allowed' : 'pointer',
+                    cursor: loading || !capacityInfo?.allowed ? 'not-allowed' : 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -942,7 +1032,10 @@ Save these codes securely!`)
                       animation: 'spin 1s linear infinite'
                     }}></div>
                   )}
-                  {loading ? 'Creating School...' : '🚀 Register School'}
+                  {loading ? 'Creating School...' : 
+                   !capacityInfo?.allowed ? 'Capacity Limit Reached' :
+                   capacityInfo?.overageFee > 0 ? `Register School (${formatCurrency(capacityInfo.overageFee)} overage)` :
+                   'Register School'}
                 </button>
               </>
             )}
@@ -962,8 +1055,12 @@ Save these codes securely!`)
                 fontFamily: 'Avenir'
               }}>
                 🎯 <strong>How it works:</strong> Enter your diocese join code, create your principal account, 
-                and your school will be automatically added to your diocese. You will receive unique school 
-                codes to manage teachers and students.
+                and your school will be automatically added to your diocese. 
+                {capacityInfo?.overageFee > 0 && (
+                  <span style={{ fontWeight: 'bold', color: '#F59E0B' }}>
+                    {' '}Note: This registration will trigger overage billing for your diocese.
+                  </span>
+                )}
               </p>
             </div>
           </div>

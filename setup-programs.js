@@ -1,8 +1,9 @@
-// setup-programs.js - Enhanced with flexible tier system and custom overrides
+// setup-programs.js - SIMPLIFIED VERSION that works with unified pricing-config.js
 import { db } from './lib/firebase'
 import { collection, doc, setDoc, getDocs } from 'firebase/firestore'
+import { PRICING_CONFIG } from './lib/pricing-config'
 
-// PROGRAMS CATALOG DATA
+// PROGRAMS CATALOG DATA - Just the program definitions, no pricing
 const PROGRAMS_CATALOG = [
   {
     id: "luxlibris",
@@ -32,7 +33,7 @@ const PROGRAMS_CATALOG = [
     ],
     
     // Program availability (available to all tiers)
-    availableForTiers: ["small", "medium", "large", "enterprise"],
+    availableForTiers: ["starter", "small", "medium", "large", "xlarge", "enterprise", "unlimited"],
     
     // UI/Branding
     color: "#fbbf24",              // Beautiful yellow theme
@@ -81,7 +82,7 @@ const PROGRAMS_CATALOG = [
       "Environmental action portfolio"
     ],
     
-    availableForTiers: ["small", "medium", "large", "enterprise"], // All tiers can choose
+    availableForTiers: ["starter", "small", "medium", "large", "xlarge", "enterprise", "unlimited"],
     
     color: "#10b981",             // Green for environmental theme
     icon: "🌱",
@@ -106,7 +107,7 @@ const PROGRAMS_CATALOG = [
     name: "Texas Bluebonnet Award Program", 
     description: "Official Texas Bluebonnet reading list program for K-12",
     type: "reading",
-    status: "coming soon",        // Future program
+    status: "coming_soon",        // Future program
     
     collections: {
       books: "bluebonnetBooks",
@@ -125,7 +126,7 @@ const PROGRAMS_CATALOG = [
       "Library partnerships"
     ],
     
-    availableForTiers: ["small", "medium", "large", "enterprise"], // Available to all tiers
+    availableForTiers: ["starter", "small", "medium", "large", "xlarge", "enterprise", "unlimited"],
     
     color: "#6366f1", 
     icon: "🌼",
@@ -143,38 +144,10 @@ const PROGRAMS_CATALOG = [
   }
 ]
 
-// FLEXIBLE TIER CONFIGURATION - Number of programs each tier includes
-const TIER_PROGRAM_LIMITS = {
-  small: {
-    maxPrograms: 1,
-    basePrice: 2000,
-    description: "Choose 1 reading program",
-    extraListPrice: 500          // $500 per additional list
-  },
-  medium: {
-    maxPrograms: 2,
-    basePrice: 4500, 
-    description: "Choose up to 2 reading programs",
-    extraListPrice: 400          // $400 per additional list
-  },
-  large: {
-    maxPrograms: 3,
-    basePrice: 8000,
-    description: "Choose up to 3 reading programs", 
-    extraListPrice: 300          // $300 per additional list
-  },
-  enterprise: {
-    maxPrograms: 4,              // 4+ programs
-    basePrice: 15000,
-    description: "Choose up to 4+ reading programs",
-    extraListPrice: 200          // $200 per additional list
-  }
-}
-
 // MAIN SETUP FUNCTION
 const setupProgramsCollection = async () => {
   try {
-    console.log('🚀 Setting up Enhanced Programs Collection...')
+    console.log('🚀 Setting up Programs Collection...')
     
     // Check if programs collection already exists
     const programsRef = collection(db, 'programs')
@@ -182,7 +155,7 @@ const setupProgramsCollection = async () => {
     
     if (!existingPrograms.empty) {
       console.log('⚠️ Programs collection already exists with', existingPrograms.size, 'programs')
-      const overwrite = window.confirm('Programs collection already exists. Overwrite with enhanced version?')
+      const overwrite = window.confirm('Programs collection already exists. Overwrite with new version?')
       if (!overwrite) {
         console.log('❌ Setup cancelled by user')
         return { success: false, message: 'Setup cancelled' }
@@ -201,34 +174,14 @@ const setupProgramsCollection = async () => {
       }
     }
     
-    // Create enhanced tier configuration document
-    try {
-      await setDoc(doc(db, 'systemConfig', 'tierPrograms'), {
-        tiers: TIER_PROGRAM_LIMITS,
-        flexibleTierSystem: true,     // Flag for new system
-        allowCustomOverrides: true,    // GOD MODE can override limits
-        extraListPricing: {
-          enabled: true,
-          basePrice: 500,              // Default extra list price
-          tierSpecificPricing: true    // Use tier-specific pricing
-        },
-        lastModified: new Date(),
-        createdBy: 'Dr. Verity Kahn',
-        version: '2.0'               // Enhanced version
-      })
-      console.log('✅ Created enhanced tier configuration')
-    } catch (error) {
-      console.error('❌ Error creating tier config:', error)
-    }
-    
-    console.log(`🎉 Enhanced Programs setup complete! Created ${createdCount} programs`)
+    console.log(`🎉 Programs setup complete! Created ${createdCount} programs`)
     console.log('📚 Lux Libris: Elementary/Middle (grades 4-8)')
     console.log('🌱 Laudato Literary: High School (grades 9-12) with advanced features')
     console.log('🌼 Bluebonnet: Coming Soon (K-12)')
     
     return {
       success: true,
-      message: `Successfully created ${createdCount} programs with flexible tier system`,
+      message: `Successfully created ${createdCount} programs`,
       programs: PROGRAMS_CATALOG.map(p => ({ 
         id: p.id, 
         name: p.name, 
@@ -238,7 +191,7 @@ const setupProgramsCollection = async () => {
     }
     
   } catch (error) {
-    console.error('❌ Error setting up enhanced programs:', error)
+    console.error('❌ Error setting up programs:', error)
     return {
       success: false, 
       message: 'Setup failed: ' + error.message
@@ -246,7 +199,7 @@ const setupProgramsCollection = async () => {
   }
 }
 
-// ENHANCED UTILITY FUNCTIONS FOR GOD MODE
+// UTILITY FUNCTIONS - Now use pricing-config.js for all pricing logic
 
 // Get all active programs available for selection
 const getAllActivePrograms = async () => {
@@ -270,10 +223,10 @@ const getAllActivePrograms = async () => {
   }
 }
 
-// Get available programs for a specific tier (with tier limits)
+// Get available programs for a specific tier - now uses pricing-config.js
 const getAvailableProgramsForTier = async (tierName) => {
   try {
-    const tierConfig = TIER_PROGRAM_LIMITS[tierName]
+    const tierConfig = PRICING_CONFIG.tiers[tierName]
     if (!tierConfig) return []
     
     // Get all active programs (flexible system - any program available to any tier)
@@ -291,59 +244,24 @@ const getAvailableProgramsForTier = async (tierName) => {
   }
 }
 
-// Get tier display info for GOD MODE UI
+// Get tier display info - now uses pricing-config.js
 const getTierDisplayInfo = (tierName) => {
-  const tierConfig = TIER_PROGRAM_LIMITS[tierName]
+  const tierConfig = PRICING_CONFIG.tiers[tierName]
   if (!tierConfig) return null
   
   return {
     tierName,
-    maxPrograms: tierConfig.maxPrograms,
-    basePrice: tierConfig.basePrice,
-    extraListPrice: tierConfig.extraListPrice,
-    description: tierConfig.description,
-    selectionType: 'flexible',
+    maxPrograms: tierConfig.programs.max,
+    includedPrograms: tierConfig.programs.included,
+    extraCost: tierConfig.programs.extraCost,
+    description: `${tierConfig.programs.included} included, up to ${tierConfig.programs.max} total`,
     canOverride: true             // GOD MODE can override limits
   }
 }
 
-// Calculate pricing for program selection (including overrides)
-const calculateProgramPricing = (tierName, selectedProgramCount, customOverride = false) => {
-  const tierConfig = TIER_PROGRAM_LIMITS[tierName]
-  if (!tierConfig) return { totalPrice: 0, breakdown: {} }
-  
-  const maxIncluded = tierConfig.maxPrograms
-  const basePrice = tierConfig.basePrice
-  const extraListPrice = tierConfig.extraListPrice
-  
-  let totalPrice = basePrice
-  let extraLists = 0
-  let breakdown = {
-    baseTier: basePrice,
-    extraLists: 0,
-    extraListCount: 0
-  }
-  
-  if (selectedProgramCount > maxIncluded) {
-    extraLists = selectedProgramCount - maxIncluded
-    const extraCost = extraLists * extraListPrice
-    totalPrice += extraCost
-    
-    breakdown.extraLists = extraCost
-    breakdown.extraListCount = extraLists
-  }
-  
-  return {
-    totalPrice,
-    breakdown,
-    extraListsAdded: extraLists,
-    pricePerExtraList: extraListPrice
-  }
-}
-
-// Validate program selection with flexible rules and override support
+// Validate program selection - now uses pricing-config.js
 const validateProgramSelection = (tierName, selectedPrograms, customOverride = false, maxOverride = null) => {
-  const tierConfig = TIER_PROGRAM_LIMITS[tierName]
+  const tierConfig = PRICING_CONFIG.tiers[tierName]
   if (!tierConfig) return { valid: false, error: 'Invalid tier' }
   
   // Check minimum programs (at least 1)
@@ -355,33 +273,67 @@ const validateProgramSelection = (tierName, selectedPrograms, customOverride = f
   }
   
   // If custom override is enabled, use override limit
-  const effectiveMaxPrograms = customOverride && maxOverride ? maxOverride : tierConfig.maxPrograms
+  const effectiveMaxPrograms = customOverride && maxOverride ? maxOverride : tierConfig.programs.max
   
   // Check against effective limit (but allow GOD MODE overrides)
   if (!customOverride && selectedPrograms.length > effectiveMaxPrograms) {
-    const pricing = calculateProgramPricing(tierName, selectedPrograms.length)
+    const extraPrograms = selectedPrograms.length - tierConfig.programs.included
+    const extraCost = Math.max(0, extraPrograms) * tierConfig.programs.extraCost
+    
     return {
       valid: false,
-      error: `${tierName} tier includes ${effectiveMaxPrograms} programs. ${pricing.extraListsAdded} extra lists would cost $${pricing.breakdown.extraLists} additional.`,
+      error: `${tierName} tier includes ${tierConfig.programs.included} programs. ${extraPrograms} extra programs would cost $${extraCost} additional.`,
       suggestOverride: true,
-      pricingInfo: pricing
+      pricingInfo: {
+        extraPrograms,
+        extraCost
+      }
     }
   }
   
   // All validations passed
+  const extraPrograms = Math.max(0, selectedPrograms.length - tierConfig.programs.included)
+  const extraCost = extraPrograms * tierConfig.programs.extraCost
+  
   return { 
     valid: true,
-    pricingInfo: calculateProgramPricing(tierName, selectedPrograms.length, customOverride)
+    pricingInfo: {
+      extraPrograms,
+      extraCost
+    }
   }
 }
 
-// Get default programs for a tier (no defaults in flexible system)
-const getDefaultProgramsForTier = async (tierName) => {
-  // Flexible system has no defaults - user/admin chooses
-  return []
+// Calculate program pricing - now uses pricing-config.js
+const calculateProgramPricing = (tierName, selectedProgramCount, customOverride = false) => {
+  const tierConfig = PRICING_CONFIG.tiers[tierName]
+  if (!tierConfig) return { totalPrice: 0, breakdown: {} }
+  
+  const includedPrograms = tierConfig.programs.included
+  const extraCost = tierConfig.programs.extraCost
+  
+  let extraPrograms = 0
+  let breakdown = {
+    includedPrograms,
+    extraPrograms: 0,
+    extraCost: 0
+  }
+  
+  if (selectedProgramCount > includedPrograms) {
+    extraPrograms = selectedProgramCount - includedPrograms
+    const totalExtraCost = extraPrograms * extraCost
+    
+    breakdown.extraPrograms = extraPrograms
+    breakdown.extraCost = totalExtraCost
+  }
+  
+  return {
+    totalPrice: breakdown.extraCost,
+    breakdown,
+    extraProgramsAdded: extraPrograms,
+    pricePerExtraProgram: extraCost
+  }
 }
-
-// PROGRAM COLLECTION HELPERS
 
 // Get program by ID
 const getProgramById = async (programId) => {
@@ -418,19 +370,17 @@ const getProgramsByIds = async (programIds) => {
   }
 }
 
-// SINGLE EXPORT SECTION - ONLY ONE SET OF EXPORTS
+// SINGLE EXPORT SECTION
 export { 
   setupProgramsCollection,
   getAllActivePrograms,
   getAvailableProgramsForTier, 
-  getDefaultProgramsForTier,
   getTierDisplayInfo,
   validateProgramSelection,
   calculateProgramPricing,
   getProgramById,
   getProgramsByIds,
-  PROGRAMS_CATALOG,
-  TIER_PROGRAM_LIMITS
+  PROGRAMS_CATALOG
 }
 
 export default {
@@ -440,6 +390,5 @@ export default {
   getTierDisplayInfo,
   validateProgramSelection,
   calculateProgramPricing,
-  PROGRAMS_CATALOG,
-  TIER_PROGRAM_LIMITS
+  PROGRAMS_CATALOG
 }

@@ -1,9 +1,18 @@
-// pages/diocese/dashboard.js - ENHANCED DIOCESE DASHBOARD WITH PROGRAM MANAGEMENT
+// pages/diocese/dashboard.js - COMPLETE DIOCESE DASHBOARD WITH BILLING
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { db, authHelpers } from '../../lib/firebase'
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, getDoc } from 'firebase/firestore'
+
+// Import pricing functions
+import {
+  calculateBilling,
+  checkOverageStatus,
+  formatCurrency,
+  getTierInfo,
+  PRICING_CONFIG
+} from '../../lib/pricing-config'
 
 // Import program functions
 import { 
@@ -36,6 +45,10 @@ export default function DioceseDashboard() {
     remaining: 15
   })
 
+  // NEW: Billing state
+  const [billingInfo, setBillingInfo] = useState(null)
+  const [showBillingDetails, setShowBillingDetails] = useState(false)
+
   // Program Management State
   const [availablePrograms, setAvailablePrograms] = useState([])
   const [diocesePrograms, setDiocesePrograms] = useState([])
@@ -53,6 +66,14 @@ export default function DioceseDashboard() {
 
   // Session timeout (2 hours = 7200000 ms)
   const SESSION_TIMEOUT = 2 * 60 * 60 * 1000
+
+  // NEW: Load billing info when diocese data is loaded
+  useEffect(() => {
+    if (dioceseData) {
+      const billing = calculateBilling(dioceseData)
+      setBillingInfo(billing)
+    }
+  }, [dioceseData, schools])
 
   // Load program data when diocese data is loaded
   useEffect(() => {
@@ -264,7 +285,7 @@ export default function DioceseDashboard() {
     }
   }
 
-  // Load diocese data
+  // UPDATED: Load diocese data with capacity checking
   const loadDioceseData = async (dioceseId) => {
     try {
       // Load schools under this diocese from entities subcollection
@@ -281,34 +302,34 @@ export default function DioceseDashboard() {
       
       setSchools(schoolsData)
       
-      // Calculate usage stats with proper null checks
-      console.log('📊 Loading fresh diocese data for tier limits...')
-      
-      // Get fresh diocese data to ensure we have current maxSubEntities
+      // Get fresh diocese data to ensure we have current limits
       const freshDioceseDoc = await getDoc(doc(db, 'entities', dioceseId))
       const freshDioceseData = freshDioceseDoc.exists() ? freshDioceseDoc.data() : dioceseData
       
-      const maxEntities = freshDioceseData?.maxSubEntities || dioceseData?.maxSubEntities || 15
-      console.log('📊 Diocese data:', freshDioceseData)
-      console.log('📊 Max entities (tier limit):', maxEntities)
-      console.log('📊 Schools found:', schoolsData.length)
+      // Calculate billing and overage
+      const billing = calculateBilling(freshDioceseData)
+      setBillingInfo(billing)
+      
+      const tierInfo = getTierInfo(freshDioceseData.tier)
+      const overage = checkOverageStatus(schoolsData.length, freshDioceseData.maxSubEntities)
       
       const stats = {
         totalSchools: schoolsData.length,
         activeSchools: schoolsData.filter(s => s.status === 'active').length,
         totalTeachers: schoolsData.reduce((sum, s) => sum + (s.teacherCount || 0), 0),
         totalStudents: schoolsData.reduce((sum, s) => sum + (s.studentCount || 0), 0),
-        tierLimit: maxEntities,
-        remaining: Math.max(0, maxEntities - schoolsData.length)
+        tierLimit: freshDioceseData.maxSubEntities,
+        remaining: Math.max(0, freshDioceseData.maxSubEntities - schoolsData.length),
+        overage: overage
       }
       
-      console.log('📊 Final usage stats:', stats)
       setUsageStats(stats)
       
       // Update the diocese entity with current school count
       try {
         await updateDoc(doc(db, 'entities', dioceseId), {
           currentSubEntities: schoolsData.length,
+          actualSchoolCount: schoolsData.length,
           lastModified: new Date()
         })
       } catch (error) {
@@ -713,45 +734,267 @@ Click OK to confirm deletion.`)
           padding: '2rem 1.5rem'
         }}>
           
-          {/* Diocese Stats Cards */}
+          {/* UPDATED Diocese Stats Cards with Pricing */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minWidth(200px, 1fr))',
             gap: '1rem',
             marginBottom: '2rem'
           }}>
             <StatCard 
               title="School Capacity" 
               value={`${usageStats.totalSchools}/${usageStats.tierLimit}`} 
-              subtitle={`${usageStats.remaining} slots remaining`}
+              subtitle={
+                usageStats.overage?.isOver 
+                  ? usageStats.overage.message
+                  : `${usageStats.remaining} slots remaining`
+              }
               icon="🏫" 
               color="#223848"
-              warning={usageStats.remaining <= 2}
+              warning={usageStats.remaining <= 2 || usageStats.overage?.isOver}
             />
             <StatCard 
-              title="Active Schools" 
-              value={schools.filter(s => s.status === 'active').length} 
-              subtitle="Currently running"
-              icon="✅" 
+              title="Billing Status" 
+              value={PRICING_CONFIG.billing.statuses[dioceseData?.billingStatus] || 'Pending'} 
+              subtitle={`Tier: ${getTierInfo(dioceseData?.tier)?.displayName}`}
+              icon="💰" 
               color="#A1E5DB"
+              warning={dioceseData?.billingStatus !== 'active'}
             />
             <StatCard 
-              title="Teachers" 
-              value={schools.reduce((sum, s) => sum + (s.teacherCount || 0), 0)} 
-              subtitle="Across all schools"
-              icon="👨‍🏫" 
+              title="Annual Cost" 
+              value={formatCurrency(billingInfo?.totalDue || 0)} 
+              subtitle={`${formatCurrency(billingInfo?.perSchoolEffective || 0)}/school`}
+              icon="💳" 
               color="#ADD4EA"
             />
             <StatCard 
-              title="Students" 
-              value={schools.reduce((sum, s) => sum + (s.studentCount || 0), 0)} 
-              subtitle="Total enrollment"
+              title="Total Students" 
+              value={usageStats.totalStudents} 
+              subtitle="Across all schools"
               icon="🎓" 
               color="#B6DFEB"
             />
           </div>
 
-          {/* NEW: Program Management Section */}
+          {/* NEW: Billing Details Section */}
+          <div style={{
+            background: 'white',
+            borderRadius: '0.75rem',
+            padding: '1.5rem',
+            marginBottom: '2rem',
+            border: '1px solid #C3E0DE',
+            boxShadow: '0 4px 15px rgba(34, 56, 72, 0.05)'
+          }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '1.5rem'
+            }}>
+              <h2 style={{
+                fontSize: '1.5rem',
+                fontWeight: '300',
+                color: '#223848',
+                margin: 0,
+                fontFamily: 'Didot, Georgia, serif',
+                letterSpacing: '1.2px'
+              }}>
+                Billing & Contract Information
+              </h2>
+              <button
+                onClick={() => setShowBillingDetails(!showBillingDetails)}
+                style={{
+                  background: 'linear-gradient(135deg, #223848, #ADD4EA)',
+                  color: 'white',
+                  padding: '0.5rem 1rem',
+                  borderRadius: '0.5rem',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  fontFamily: 'Avenir'
+                }}
+              >
+                {showBillingDetails ? 'Hide Details' : 'View Details'}
+              </button>
+            </div>
+
+            {showBillingDetails && billingInfo && (
+              <div style={{
+                background: '#FFFCF5',
+                borderRadius: '0.5rem',
+                padding: '1.5rem',
+                border: '1px solid #C3E0DE'
+              }}>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minWidth(250px, 1fr))',
+                  gap: '1.5rem'
+                }}>
+                  {/* Contract Details */}
+                  <div>
+                    <h3 style={{
+                      color: '#223848',
+                      fontSize: '1.125rem',
+                      marginBottom: '0.75rem',
+                      fontFamily: 'Didot, Georgia, serif'
+                    }}>
+                      Contract Details
+                    </h3>
+                    <div style={{ fontSize: '0.875rem', color: '#223848' }}>
+                      <p style={{ margin: '0.5rem 0' }}>
+                        <strong>Tier:</strong> {getTierInfo(dioceseData?.tier)?.displayName}
+                      </p>
+                      <p style={{ margin: '0.5rem 0' }}>
+                        <strong>School Limit:</strong> {dioceseData?.maxSubEntities}
+                      </p>
+                      <p style={{ margin: '0.5rem 0' }}>
+                        <strong>Programs Included:</strong> {dioceseData?.selectedPrograms?.length || 0}
+                      </p>
+                      <p style={{ margin: '0.5rem 0' }}>
+                        <strong>Contract Expires:</strong> {dioceseData?.licenseExpiration || 'Not set'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Pricing Breakdown */}
+                  <div>
+                    <h3 style={{
+                      color: '#223848',
+                      fontSize: '1.125rem',
+                      marginBottom: '0.75rem',
+                      fontFamily: 'Didot, Georgia, serif'
+                    }}>
+                      Pricing Breakdown
+                    </h3>
+                    <div style={{ fontSize: '0.875rem', color: '#223848' }}>
+                      <p style={{ margin: '0.5rem 0' }}>
+                        <strong>Base Price:</strong> {formatCurrency(billingInfo.basePrice)}
+                      </p>
+                      {billingInfo.programCost > 0 && (
+                        <p style={{ margin: '0.5rem 0' }}>
+                          <strong>Extra Programs:</strong> +{formatCurrency(billingInfo.programCost)}
+                        </p>
+                      )}
+                      {billingInfo.overage?.overageCost > 0 && (
+                        <p style={{ margin: '0.5rem 0', color: '#F6AD55' }}>
+                          <strong>Overage Fee:</strong> +{formatCurrency(billingInfo.overage.overageCost)}
+                        </p>
+                      )}
+                      <p style={{ 
+                        margin: '0.5rem 0', 
+                        paddingTop: '0.5rem',
+                        borderTop: '1px solid #C3E0DE',
+                        fontSize: '1rem',
+                        fontWeight: 'bold'
+                      }}>
+                        <strong>Total Annual:</strong> {formatCurrency(billingInfo.totalDue)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Usage Status */}
+                  <div>
+                    <h3 style={{
+                      color: '#223848',
+                      fontSize: '1.125rem',
+                      marginBottom: '0.75rem',
+                      fontFamily: 'Didot, Georgia, serif'
+                    }}>
+                      Usage Status
+                    </h3>
+                    <div style={{ fontSize: '0.875rem', color: '#223848' }}>
+                      <p style={{ margin: '0.5rem 0' }}>
+                        <strong>Current Schools:</strong> {usageStats.totalSchools}
+                      </p>
+                      <p style={{ margin: '0.5rem 0' }}>
+                        <strong>Active Schools:</strong> {usageStats.activeSchools}
+                      </p>
+                      {usageStats.overage?.isOver && (
+                        <>
+                          <p style={{ margin: '0.5rem 0', color: '#F6AD55' }}>
+                            <strong>Overage:</strong> {usageStats.overage.overage} schools
+                          </p>
+                          <p style={{ margin: '0.5rem 0', fontSize: '0.75rem', color: '#F6AD55' }}>
+                            {usageStats.overage.message}
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Billing Contact Info */}
+                <div style={{
+                  marginTop: '1.5rem',
+                  padding: '1rem',
+                  background: '#C3E0DE',
+                  borderRadius: '0.5rem'
+                }}>
+                  <p style={{
+                    color: '#223848',
+                    fontSize: '0.875rem',
+                    margin: 0,
+                    fontFamily: 'Avenir'
+                  }}>
+                    💼 <strong>Billing Support:</strong> For questions about your contract or to upgrade your tier, 
+                    contact Dr. Verity Kahn at billing@luxlibris.org or call 1-800-LUX-READ
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* UPDATED Capacity Warnings with Overage Info */}
+          {usageStats && usageStats.overage?.status === 'soft_warning' && (
+            <div style={{
+              background: '#FEF3C7',
+              border: '1px solid #F59E0B',
+              borderRadius: '0.75rem',
+              padding: '1rem',
+              marginBottom: '2rem',
+              textAlign: 'center'
+            }}>
+              <p style={{
+                color: '#B45309',
+                fontSize: '0.875rem',
+                margin: 0,
+                fontWeight: '600',
+                fontFamily: 'Avenir',
+                letterSpacing: '1.2px'
+              }}>
+                ⚠️ {usageStats.overage.message}
+                {usageStats.overage.overageCost > 0 && (
+                  <span> - Additional annual fee: {formatCurrency(usageStats.overage.overageCost)}</span>
+                )}
+              </p>
+            </div>
+          )}
+
+          {usageStats && usageStats.overage?.status === 'upgrade_recommended' && (
+            <div style={{
+              background: '#FED7D7',
+              border: '1px solid #E53E3E',
+              borderRadius: '0.75rem',
+              padding: '1rem',
+              marginBottom: '2rem',
+              textAlign: 'center'
+            }}>
+              <p style={{
+                color: '#E53E3E',
+                fontSize: '0.875rem',
+                margin: 0,
+                fontWeight: '600',
+                fontFamily: 'Avenir',
+                letterSpacing: '1.2px'
+              }}>
+                🚨 {usageStats.overage.message}. Contact Dr. Kahn to upgrade your tier.
+              </p>
+            </div>
+          )}
+
+          {/* Program Management Section */}
           <div style={{
             background: 'white',
             borderRadius: '0.75rem',
@@ -774,7 +1017,7 @@ Click OK to confirm deletion.`)
             {/* Program Overview Cards */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minWidth(250px, 1fr))',
               gap: '1rem',
               marginBottom: '1.5rem'
             }}>
@@ -891,7 +1134,7 @@ Click OK to confirm deletion.`)
               </h4>
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fit, minWidth(150px, 1fr))',
                 gap: '1rem',
                 fontSize: '0.875rem',
                 fontFamily: 'Avenir'
@@ -911,29 +1154,6 @@ Click OK to confirm deletion.`)
               </div>
             </div>
           </div>
-
-          {/* Capacity Warning */}
-          {usageStats && usageStats.totalSchools > 0 && usageStats.remaining <= 2 && (
-            <div style={{
-              background: '#FED7D7',
-              border: '1px solid #E53E3E',
-              borderRadius: '0.75rem',
-              padding: '1rem',
-              marginBottom: '2rem',
-              textAlign: 'center'
-            }}>
-              <p style={{
-                color: '#E53E3E',
-                fontSize: '0.875rem',
-                margin: 0,
-                fontWeight: '600',
-                fontFamily: 'Avenir',
-                letterSpacing: '1.2px'
-              }}>
-                🚨 Almost at capacity! Contact Dr. Kahn to upgrade your tier before adding more schools.
-              </p>
-            </div>
-          )}
 
           {/* Password Change Section */}
           <div style={{
@@ -988,7 +1208,7 @@ Click OK to confirm deletion.`)
               }}>
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                  gridTemplateColumns: 'repeat(auto-fit, minWidth(250px, 1fr))',
                   gap: '1rem',
                   marginBottom: '1rem'
                 }}>

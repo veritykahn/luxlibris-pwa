@@ -1,27 +1,36 @@
-// pages/god-mode/entities.js - ENTITY MANAGEMENT
+// pages/god-mode/entities.js - ENTITY MANAGEMENT WITH NEW PRICING MODEL
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import GodModeAuth from '../../components/god-mode/GodModeAuth'
 import GodModeHeader from '../../components/god-mode/GodModeHeader'
 import { db } from '../../lib/firebase'
-import { collection, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore'
+import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, getDoc } from 'firebase/firestore'
 import { 
   getAllActivePrograms,
   getAvailableProgramsForTier,
   validateProgramSelection,
-  calculateProgramPricing
+  getProgramsByIds
 } from '../../setup-programs'
+import {
+  PRICING_CONFIG,
+  calculateDiocesePrice,
+  recommendTier,
+  checkOverageStatus,
+  calculateBilling,
+  getTierInfo,
+  formatCurrency
+} from '../../lib/pricing-config'
 
 export default function EntitiesManagement() {
   const [entities, setEntities] = useState([])
   const [loading, setLoading] = useState(false)
   const [showCreateEntity, setShowCreateEntity] = useState(false)
+  const [showBillingModal, setShowBillingModal] = useState(false)
+  const [selectedEntityForBilling, setSelectedEntityForBilling] = useState(null)
   
   // Program Management State
   const [availablePrograms, setAvailablePrograms] = useState([])
   const [customOverride, setCustomOverride] = useState(false)
-  const [customMaxPrograms, setCustomMaxPrograms] = useState(null)
-  const [programPricing, setProgramPricing] = useState(null)
 
   const [newEntity, setNewEntity] = useState({
     entityType: 'diocese',
@@ -31,8 +40,22 @@ export default function EntitiesManagement() {
     principalLastName: '',
     tier: 'medium',
     selectedPrograms: [],
-    customProgramCount: null,
-    contactInfo: {}
+    contactInfo: {},
+    // Billing fields
+    billingStatus: 'pending_contract',
+    contractSigned: false,
+    paymentReceived: false,
+    specialDiscounts: {}
+  })
+
+  // Billing management state
+  const [billingUpdate, setBillingUpdate] = useState({
+    status: '',
+    paymentMethod: '',
+    paymentAmount: '',
+    paymentDate: '',
+    invoiceNumber: '',
+    notes: ''
   })
 
   // Load all available programs
@@ -48,38 +71,15 @@ export default function EntitiesManagement() {
 
   // Load programs when tier changes
   useEffect(() => {
-    const loadProgramsForTier = async () => {
-      if (newEntity.tier && ['diocese', 'isd'].includes(newEntity.entityType)) {
-        try {
-          const tierPrograms = await getAvailableProgramsForTier(newEntity.tier)
-          setAvailablePrograms(tierPrograms)
-          setNewEntity(prev => ({
-            ...prev,
-            selectedPrograms: [],
-            customProgramCount: null
-          }))
-          setCustomOverride(false)
-          setCustomMaxPrograms(null)
-        } catch (error) {
-          console.error('Error loading tier programs:', error)
-        }
+    if (newEntity.tier && ['diocese', 'isd'].includes(newEntity.entityType)) {
+      const tierConfig = getTierInfo(newEntity.tier)
+      if (tierConfig) {
+        // Auto-select recommended number of schools based on tier
+        const recommended = recommendTier(tierConfig.maxSchools)
+        console.log('Tier config:', tierConfig, 'Recommended:', recommended)
       }
     }
-    loadProgramsForTier()
   }, [newEntity.tier, newEntity.entityType])
-
-  // Calculate pricing when selections change
-  useEffect(() => {
-    if (newEntity.tier && newEntity.selectedPrograms.length > 0) {
-      const pricing = calculateProgramPricing(
-        newEntity.tier, 
-        newEntity.selectedPrograms.length, 
-        customOverride,
-        customMaxPrograms
-      )
-      setProgramPricing(pricing)
-    }
-  }, [newEntity.tier, newEntity.selectedPrograms, customOverride, customMaxPrograms])
 
   const fetchAllEntities = async () => {
     setLoading(true)
@@ -110,6 +110,10 @@ export default function EntitiesManagement() {
             
             entityData.totalStudents = totalStudents
             entityData.totalTeachers = totalTeachers
+            
+            // Calculate billing info
+            entityData.billing = calculateBilling(entityData)
+            
           } catch (error) {
             console.log('No schools found for entity:', doc.id)
             entityData.actualSchoolCount = 0
@@ -121,7 +125,7 @@ export default function EntitiesManagement() {
         entitiesData.push(entityData)
       }
       
-      // Fetch from schools collection (single schools and libraries)
+      // Fetch from schools collection (single schools)
       const schoolsRef = collection(db, 'schools')
       const schoolsSnapshot = await getDocs(schoolsRef)
       
@@ -142,7 +146,7 @@ export default function EntitiesManagement() {
     setLoading(false)
   }
 
-  // Entity creation functions
+  // Generate entity codes
   const generateEntityCodes = async (entityData, entityType) => {
     const year = new Date().getFullYear()
     const stateCode = entityData.location.split(',')[1]?.trim().substring(0,2).toUpperCase() || 'US'
@@ -153,25 +157,16 @@ export default function EntitiesManagement() {
     
     switch (entityType) {
       case 'diocese':
-        const dioceseBaseCode = `${geoPrefix}-DIOCESE-${year}`
-        const dioceseCode = await generateUniqueCode(dioceseBaseCode, existingCodes)
-        const diocesePassword = generateSecurePassword(16)
-        return {
-          accessCode: dioceseCode,
-          passwordHash: diocesePassword,
-          type: 'diocese',
-          principalJoinCode: dioceseCode
-        }
-      
       case 'isd':
-        const isdBaseCode = `${geoPrefix}-ISD-${year}`
-        const isdCode = await generateUniqueCode(isdBaseCode, existingCodes)
-        const isdPassword = generateSecurePassword(16)
+        const entityPrefix = entityType === 'diocese' ? 'DIOCESE' : 'ISD'
+        const baseCode = `${geoPrefix}-${entityPrefix}-${year}`
+        const code = await generateUniqueCode(baseCode, existingCodes)
+        const password = generateSecurePassword(16)
         return {
-          accessCode: isdCode,
-          passwordHash: isdPassword,
-          type: 'isd',
-          principalJoinCode: isdCode
+          accessCode: code,
+          passwordHash: password,
+          type: entityType,
+          principalJoinCode: code
         }
       
       case 'single_school':
@@ -184,18 +179,6 @@ export default function EntitiesManagement() {
           passwordHash: schoolPassword,
           type: 'single_school',
           teacherJoinCode: `${geoPrefix}-${schoolPrefix}-TEACHER-${year}`
-        }
-      
-      case 'single_library':
-        const libraryPrefix = entityData.name.replace(/[^A-Za-z]/g, '').substring(0, 4).toUpperCase()
-        const librarianLastName = entityData.principalLastName.replace(/[^A-Za-z]/g, '').substring(0, 6).toUpperCase()
-        const libraryBaseCode = `${geoPrefix}-${libraryPrefix}-${librarianLastName}-${year}`
-        const libraryPassword = generateSecurePassword(16)
-        return {
-          accessCode: await generateUniqueCode(libraryBaseCode, existingCodes),
-          passwordHash: libraryPassword,
-          type: 'single_library',
-          staffJoinCode: `${geoPrefix}-${libraryPrefix}-STAFF-${year}`
         }
       
       default:
@@ -269,6 +252,12 @@ export default function EntitiesManagement() {
   const handleAddProgram = (programId) => {
     if (!programId || newEntity.selectedPrograms.includes(programId)) return
     
+    const tierConfig = getTierInfo(newEntity.tier)
+    if (newEntity.selectedPrograms.length >= tierConfig.programs.max) {
+      alert(`Maximum ${tierConfig.programs.max} programs allowed for ${tierConfig.displayName} tier`)
+      return
+    }
+    
     setNewEntity(prev => ({
       ...prev,
       selectedPrograms: [...prev.selectedPrograms, programId]
@@ -288,58 +277,20 @@ export default function EntitiesManagement() {
     )
   }
 
-  const getTierInfo = () => {
-    const tiers = {
-      small: { maxPrograms: 1, price: 2000, extraListPrice: 500 },
-      medium: { maxPrograms: 2, price: 4500, extraListPrice: 750 },
-      large: { maxPrograms: 3, price: 8000, extraListPrice: 1000 },
-      enterprise: { maxPrograms: 4, price: 15000, extraListPrice: 1250 }
-    }
-    return tiers[newEntity.tier] || tiers.medium
-  }
-
-  const getTierLimits = (tier) => {
-    const tiers = {
-      small: { maxSchools: 5, price: 2000 },
-      medium: { maxSchools: 15, price: 4500 },
-      large: { maxSchools: 30, price: 8000 },
-      enterprise: { maxSchools: 100, price: 15000 }
-    }
-    return tiers[tier] || tiers.medium
-  }
-
   const handleCreateEntity = async () => {
     if (!newEntity.name || !newEntity.location) {
       alert('Please fill in all required fields')
       return
     }
 
-    if ((newEntity.entityType === 'single_school' || newEntity.entityType === 'single_library') && !newEntity.principalLastName) {
-      alert('Principal/Librarian last name is required for single institutions')
+    if ((newEntity.entityType === 'single_school') && !newEntity.principalLastName) {
+      alert('Principal last name is required for single schools')
       return
     }
 
     if (['diocese', 'isd'].includes(newEntity.entityType)) {
       if (newEntity.selectedPrograms.length === 0) {
-        alert('Please select at least one reading program for this ' + newEntity.entityType)
-        return
-      }
-      
-      const programValidation = validateProgramSelection(
-        newEntity.tier, 
-        newEntity.selectedPrograms, 
-        customOverride,
-        customMaxPrograms
-      )
-      
-      if (!programValidation.valid && !customOverride) {
-        const confirmOverride = window.confirm(
-          `${programValidation.error}\n\nWould you like to override the tier limit? This will add custom pricing.`
-        )
-        if (!confirmOverride) return
-        
-        setCustomOverride(true)
-        setCustomMaxPrograms(newEntity.selectedPrograms.length)
+        alert('Please select at least one reading program')
         return
       }
     }
@@ -348,10 +299,11 @@ export default function EntitiesManagement() {
       setLoading(true)
       
       const entityCodes = await generateEntityCodes(newEntity, newEntity.entityType)
+      const tierConfig = getTierInfo(newEntity.tier)
       
       let entityData
       
-      if (newEntity.entityType === 'single_school' || newEntity.entityType === 'single_library') {
+      if (newEntity.entityType === 'single_school') {
         entityData = {
           type: newEntity.entityType,
           name: newEntity.name,
@@ -360,7 +312,6 @@ export default function EntitiesManagement() {
           accessCode: entityCodes.accessCode,
           passwordHash: entityCodes.passwordHash,
           teacherJoinCode: entityCodes.teacherJoinCode || null,
-          staffJoinCode: entityCodes.staffJoinCode || null,
           principalLastName: newEntity.principalLastName,
           adminEmail: newEntity.adminEmail,
           selectedPrograms: ['luxlibris'],
@@ -368,17 +319,28 @@ export default function EntitiesManagement() {
           parentEntityId: null,
           parentEntityType: null,
           contactInfo: newEntity.contactInfo,
-          selectedNominees: [],
-          achievementTiers: [],
-          submissionOptions: { quiz: true },
+          
+          // Billing
+          billingStatus: 'pending_payment',
+          annualPrice: PRICING_CONFIG.singleSchool,
+          
+          // Metadata
           teacherCount: 0,
           studentCount: 0,
-          status: 'active',
+          status: 'pending',
           createdAt: new Date(),
           createdBy: 'Dr. Verity Kahn',
           lastModified: new Date()
         }
       } else {
+        // Calculate pricing
+        const pricing = calculateDiocesePrice(
+          tierConfig.maxSchools,
+          newEntity.tier,
+          newEntity.selectedPrograms.length,
+          newEntity.specialDiscounts
+        )
+        
         entityData = {
           type: newEntity.entityType,
           name: newEntity.name,
@@ -389,16 +351,26 @@ export default function EntitiesManagement() {
           principalJoinCode: entityCodes.principalJoinCode,
           selectedPrograms: newEntity.selectedPrograms,
           programsIncluded: newEntity.selectedPrograms.length,
-          customProgramOverride: customOverride,
-          customMaxPrograms: customMaxPrograms,
-          programPricing: programPricing,
           tier: newEntity.tier,
-          maxSubEntities: getTierLimits(newEntity.tier).maxSchools,
+          maxSubEntities: tierConfig.maxSchools,
           currentSubEntities: 0,
+          
+          // Billing
+          billingStatus: 'pending_contract',
+          contractSigned: false,
+          paymentReceived: false,
+          annualPrice: pricing.totalPrice,
+          perSchoolPrice: pricing.perSchoolEffective,
+          billingDetails: pricing,
+          specialDiscounts: newEntity.specialDiscounts,
+          
+          // Contract
           licenseExpiration: `${new Date().getFullYear() + 1}-08-31`,
           adminEmail: newEntity.adminEmail,
           contactInfo: newEntity.contactInfo,
-          status: 'active',
+          
+          // Metadata
+          status: 'pending',
           createdAt: new Date(),
           createdBy: 'Dr. Verity Kahn',
           lastModified: new Date()
@@ -406,7 +378,7 @@ export default function EntitiesManagement() {
       }
 
       let entityDocRef
-      if (newEntity.entityType === 'single_school' || newEntity.entityType === 'single_library') {
+      if (newEntity.entityType === 'single_school') {
         entityDocRef = await addDoc(collection(db, 'schools'), entityData)
       } else {
         entityDocRef = await addDoc(collection(db, 'entities'), entityData)
@@ -423,11 +395,12 @@ export default function EntitiesManagement() {
         principalLastName: '',
         tier: 'medium',
         selectedPrograms: [],
-        customProgramCount: null,
-        contactInfo: {}
+        contactInfo: {},
+        billingStatus: 'pending_contract',
+        contractSigned: false,
+        paymentReceived: false,
+        specialDiscounts: {}
       })
-      setCustomOverride(false)
-      setCustomMaxPrograms(null)
       setShowCreateEntity(false)
       
       fetchAllEntities()
@@ -441,32 +414,101 @@ export default function EntitiesManagement() {
 
   const showEntityCreatedSuccess = (entityData, codes) => {
     const instructions = generateEntityInstructions(entityData, codes)
-    alert(`🎉 ${entityData.type.toUpperCase()} CREATED SUCCESSFULLY!\n\n${instructions}\n\nAccess these credentials securely!`)
+    alert(instructions)
   }
 
   const generateEntityInstructions = (entityData, codes) => {
-    const programsList = entityData.selectedPrograms?.join(', ') || 'Lux Libris'
-    const programCount = entityData.programsIncluded || 1
-    const pricing = entityData.programPricing
-    
-    const programInfo = `📚 Programs: ${programsList} (${programCount} lists)\n${pricing?.extraListsAdded > 0 ? `💰 Extra Lists: ${pricing.extraListsAdded} (+$${pricing.breakdown.extraLists})\n` : ''}${pricing?.totalPrice ? `💳 Total Price: $${pricing.totalPrice}` : ''}`
+    if (entityData.type === 'single_school') {
+      return `🎉 SINGLE SCHOOL CREATED!
 
-    switch (entityData.type) {
-      case 'diocese':
-        return `📋 DIOCESE SETUP COMPLETE:\n🏛️ Entity: ${entityData.name}\n${programInfo}\n🔑 Diocese Access Code: ${codes.accessCode}\n🔒 Diocese Password: ${codes.passwordHash}\n📍 Dashboard: luxlibris.org/diocese/dashboard\n\n👥 PRINCIPAL JOIN CODE: ${codes.principalJoinCode}`
-      case 'isd':
-        return `📋 ISD SETUP COMPLETE:\n🏫 Entity: ${entityData.name}\n${programInfo}\n🔑 ISD Access Code: ${codes.accessCode}\n🔒 ISD Password: ${codes.passwordHash}\n📍 Dashboard: luxlibris.org/diocese/dashboard\n\n👥 PRINCIPAL JOIN CODE: ${codes.principalJoinCode}`
-      case 'single_school':
-        return `📋 SINGLE SCHOOL SETUP COMPLETE:\n🏫 School: ${entityData.name}\n📚 Program: Lux Libris (default)\n🔑 Principal Login Code: ${codes.accessCode}\n🔒 Principal Password: ${codes.passwordHash}\n👨‍🏫 Teacher Join Code: ${codes.teacherJoinCode}\n📍 Dashboard: luxlibris.org/school/dashboard`
-      case 'single_library':
-        return `📋 SINGLE LIBRARY SETUP COMPLETE:\n📚 Library: ${entityData.name}\n📚 Program: Lux Libris (default)\n🔑 Librarian Login Code: ${codes.accessCode}\n🔒 Librarian Password: ${codes.passwordHash}\n👥 Staff Join Code: ${codes.staffJoinCode}\n📍 Dashboard: luxlibris.org/library/dashboard`
-      default:
-        return 'Entity created successfully!'
+🏫 School: ${entityData.name}
+📍 Location: ${entityData.city}, ${entityData.state}
+💰 Annual Price: ${formatCurrency(PRICING_CONFIG.singleSchool)}
+
+🔑 ACCESS CODES:
+• Principal Login: ${codes.accessCode}
+• Principal Password: ${codes.passwordHash}
+• Teacher Join Code: ${codes.teacherJoinCode}
+
+📋 NEXT STEPS:
+1. Send invoice for ${formatCurrency(PRICING_CONFIG.singleSchool)}
+2. Upon payment, update status to ACTIVE
+3. Share credentials with principal`
     }
+    
+    const pricing = entityData.billingDetails
+    const tierConfig = getTierInfo(entityData.tier)
+    
+    return `🎉 ${entityData.type.toUpperCase()} CREATED!
+
+🏛️ Entity: ${entityData.name}
+📍 Location: ${entityData.city}, ${entityData.state}
+📊 Tier: ${tierConfig.displayName} (up to ${entityData.maxSubEntities} schools)
+
+💰 PRICING BREAKDOWN:
+• Base: ${formatCurrency(pricing.basePrice)} (${pricing.numSchools} schools × ${formatCurrency(pricing.perSchoolPrice)})
+• Programs: ${pricing.programCost > 0 ? formatCurrency(pricing.programCost) : 'Included'}
+• Total Annual: ${formatCurrency(pricing.totalPrice)}
+• Per School: ${formatCurrency(pricing.perSchoolEffective)}
+• Savings: ${formatCurrency(pricing.savings)} (${pricing.savingsPercent}% off)
+
+🔑 ACCESS CODES:
+• Diocese Admin: ${codes.accessCode}
+• Diocese Password: ${codes.passwordHash}
+• Principal Join Code: ${codes.principalJoinCode}
+
+📋 NEXT STEPS:
+1. Send contract for signature
+2. Generate invoice for ${formatCurrency(pricing.totalPrice)}
+3. Upon payment, update status to ACTIVE
+4. Share principal join code with schools`
+  }
+
+  const handleUpdateBilling = async (entityId) => {
+    try {
+      setLoading(true)
+      
+      const updates = {
+        billingStatus: billingUpdate.status,
+        lastPayment: {
+          amount: parseFloat(billingUpdate.paymentAmount),
+          date: billingUpdate.paymentDate,
+          method: billingUpdate.paymentMethod,
+          invoiceNumber: billingUpdate.invoiceNumber
+        },
+        notes: billingUpdate.notes,
+        lastModified: new Date()
+      }
+      
+      if (billingUpdate.status === 'active') {
+        updates.status = 'active'
+        updates.contractSigned = true
+        updates.paymentReceived = true
+      }
+      
+      await updateDoc(doc(db, 'entities', entityId), updates)
+      
+      alert('✅ Billing status updated successfully')
+      setShowBillingModal(false)
+      fetchAllEntities()
+      
+    } catch (error) {
+      console.error('Error updating billing:', error)
+      alert('Error updating billing: ' + error.message)
+    }
+    setLoading(false)
   }
 
   const handleDeleteEntity = async (entityId, entityName, entityType) => {
-    const confirmed = window.confirm(`⚠️ DELETE ENTIRE ${entityType.toUpperCase()}?\n\nThis will permanently delete:\n• Entity: ${entityName}\n• ALL schools/branches under this entity\n• ALL users in these schools\n• ALL data associated with this entity\n\nThis action CANNOT be undone!\n\nType "DELETE" to confirm:`)
+    const confirmed = window.confirm(`⚠️ DELETE ENTIRE ${entityType.toUpperCase()}?
+
+This will permanently delete:
+• Entity: ${entityName}
+• ALL schools/branches under this entity
+• ALL users in these schools
+• ALL data associated with this entity
+
+This action CANNOT be undone!`)
     
     if (confirmed) {
       const userInput = window.prompt('Type "DELETE" to confirm:')
@@ -474,7 +516,7 @@ export default function EntitiesManagement() {
         try {
           setLoading(true)
           
-          if (entityType === 'single_school' || entityType === 'single_library') {
+          if (entityType === 'single_school') {
             await deleteDoc(doc(db, 'schools', entityId))
           } else {
             await deleteDoc(doc(db, 'entities', entityId))
@@ -487,7 +529,7 @@ export default function EntitiesManagement() {
                 await deleteDoc(schoolDoc.ref)
               }
             } catch (error) {
-              console.log('No entities subcollection to clean up')
+              console.log('No schools subcollection to clean up')
             }
           }
           
@@ -507,13 +549,6 @@ export default function EntitiesManagement() {
   useEffect(() => {
     fetchAllEntities()
     loadAllPrograms()
-  }, [])
-
-  // Check for hash navigation
-  useEffect(() => {
-    if (window.location.hash === '#create') {
-      setShowCreateEntity(true)
-    }
   }, [])
 
   return (
@@ -553,49 +588,43 @@ export default function EntitiesManagement() {
                 <GlobalStatCard 
                   title="Dioceses" 
                   value={entities.filter(e => e.type === 'diocese').length}
-                  subtitle="Catholic dioceses active"
+                  subtitle="Catholic dioceses"
                   icon="⛪" 
                   color="#3b82f6"
                 />
                 <GlobalStatCard 
                   title="ISDs" 
                   value={entities.filter(e => e.type === 'isd').length}
-                  subtitle="School districts active"
+                  subtitle="School districts"
                   icon="🏫" 
                   color="#8b5cf6"
                 />
                 <GlobalStatCard 
                   title="Total Schools" 
                   value={
-                    entities.filter(e => e.type === 'single_school' || e.type === 'single_library').length + 
-                    entities.filter(e => e.type === 'diocese' || e.type === 'isd').reduce((sum, e) => sum + (e.actualSchoolCount || 0), 0)
+                    entities.filter(e => e.type === 'single_school').length + 
+                    entities.filter(e => e.type === 'diocese' || e.type === 'isd')
+                      .reduce((sum, e) => sum + (e.actualSchoolCount || 0), 0)
                   }
-                  subtitle="All schools & libraries"
+                  subtitle="All schools"
                   icon="🎓" 
                   color="#10b981"
                 />
                 <GlobalStatCard 
-                  title="Active Programs" 
-                  value={availablePrograms.length}
-                  subtitle="Reading programs available"
-                  icon="📚" 
+                  title="Annual Revenue" 
+                  value={formatCurrency(
+                    entities.reduce((sum, e) => sum + (e.annualPrice || 0), 0)
+                  )}
+                  subtitle="Total contracted"
+                  icon="💰" 
                   color="#f59e0b"
                 />
                 <GlobalStatCard 
-                  title="Students" 
-                  value={
-                    entities.reduce((sum, e) => {
-                      if (e.type === 'single_school' || e.type === 'single_library') {
-                        return sum + (e.studentCount || 0)
-                      } else if (e.type === 'diocese' || e.type === 'isd') {
-                        return sum + (e.totalStudents || 0)
-                      }
-                      return sum
-                    }, 0)
-                  }
-                  subtitle="Total enrollment"
-                  icon="👨‍🎓" 
-                  color="#ef4444"
+                  title="Active Entities" 
+                  value={entities.filter(e => e.status === 'active' || e.billingStatus === 'active').length}
+                  subtitle="Paid & active"
+                  icon="✅" 
+                  color="#10b981"
                 />
               </div>
               
@@ -680,7 +709,6 @@ export default function EntitiesManagement() {
                           <option value="diocese">🏛️ Catholic Diocese</option>
                           <option value="isd">🏫 Independent School District</option>
                           <option value="single_school">🎓 Single School</option>
-                          <option value="single_library">📚 Single Library</option>
                         </select>
                       </div>
 
@@ -695,14 +723,12 @@ export default function EntitiesManagement() {
                         }}>
                           {newEntity.entityType === 'diocese' ? 'Diocese Name *' : 
                            newEntity.entityType === 'isd' ? 'ISD Name *' :
-                           newEntity.entityType === 'single_library' ? 'Library Name *' :
                            'School Name *'}
                         </label>
                         <input
                           type="text"
                           placeholder={newEntity.entityType === 'diocese' ? 'Diocese of Austin' : 
                                      newEntity.entityType === 'isd' ? 'Austin ISD' :
-                                     newEntity.entityType === 'single_library' ? 'Austin Central Library' :
                                      'Holy Family Catholic School'}
                           value={newEntity.name}
                           onChange={(e) => setNewEntity({...newEntity, name: e.target.value})}
@@ -727,7 +753,7 @@ export default function EntitiesManagement() {
                           fontWeight: '600',
                           marginBottom: '0.5rem'
                         }}>
-                          Location *
+                          Location (City, State) *
                         </label>
                         <input
                           type="text"
@@ -755,17 +781,11 @@ export default function EntitiesManagement() {
                           fontWeight: '600',
                           marginBottom: '0.5rem'
                         }}>
-                          {newEntity.entityType === 'diocese' ? 'Diocese Admin Email' : 
-                           newEntity.entityType === 'isd' ? 'ISD Admin Email' :
-                           newEntity.entityType === 'single_library' ? 'Librarian Email' :
-                           'Principal Email'}
+                          Admin Email
                         </label>
                         <input
                           type="email"
-                          placeholder={newEntity.entityType === 'diocese' ? 'admin@diocese.org' : 
-                                     newEntity.entityType === 'isd' ? 'admin@austinisd.org' :
-                                     newEntity.entityType === 'single_library' ? 'librarian@library.org' :
-                                     'principal@school.edu'}
+                          placeholder="admin@diocese.org"
                           value={newEntity.adminEmail}
                           onChange={(e) => setNewEntity({...newEntity, adminEmail: e.target.value})}
                           style={{
@@ -780,8 +800,8 @@ export default function EntitiesManagement() {
                         />
                       </div>
 
-                      {/* Principal/Librarian Last Name (for single schools/libraries) */}
-                      {(newEntity.entityType === 'single_school' || newEntity.entityType === 'single_library') && (
+                      {/* Principal Last Name (for single schools) */}
+                      {newEntity.entityType === 'single_school' && (
                         <div>
                           <label style={{
                             display: 'block',
@@ -790,11 +810,11 @@ export default function EntitiesManagement() {
                             fontWeight: '600',
                             marginBottom: '0.5rem'
                           }}>
-                            {newEntity.entityType === 'single_library' ? 'Librarian Last Name *' : 'Principal Last Name *'}
+                            Principal Last Name *
                           </label>
                           <input
                             type="text"
-                            placeholder={newEntity.entityType === 'single_library' ? 'Johnson' : 'Smith'}
+                            placeholder="Smith"
                             value={newEntity.principalLastName}
                             onChange={(e) => setNewEntity({...newEntity, principalLastName: e.target.value})}
                             style={{
@@ -810,7 +830,7 @@ export default function EntitiesManagement() {
                         </div>
                       )}
 
-                      {/* Tier Selection (only for multi-school entities) */}
+                      {/* Tier Selection (for multi-school entities) */}
                       {['diocese', 'isd'].includes(newEntity.entityType) && (
                         <div>
                           <label style={{
@@ -820,7 +840,7 @@ export default function EntitiesManagement() {
                             fontWeight: '600',
                             marginBottom: '0.5rem'
                           }}>
-                            License Tier *
+                            Select Tier *
                           </label>
                           <select
                             value={newEntity.tier}
@@ -835,16 +855,64 @@ export default function EntitiesManagement() {
                               fontSize: '1rem'
                             }}
                           >
-                            <option value="small">Small (1 program) - $2,000/year</option>
-                            <option value="medium">Medium (2 programs) - $4,500/year</option>
-                            <option value="large">Large (3 programs) - $8,000/year</option>
-                            <option value="enterprise">Enterprise (4+ programs) - $15,000/year</option>
+                            {Object.entries(PRICING_CONFIG.tiers).map(([key, tier]) => (
+                              <option key={key} value={key}>
+                                {tier.displayName} ({tier.minSchools}-{tier.maxSchools} schools) - {formatCurrency(tier.perSchoolPrice)}/school
+                              </option>
+                            ))}
                           </select>
+                        </div>
+                      )}
+
+                      {/* Special Discounts */}
+                      {['diocese', 'isd'].includes(newEntity.entityType) && (
+                        <div>
+                          <label style={{
+                            display: 'block',
+                            color: 'white',
+                            fontSize: '0.875rem',
+                            fontWeight: '600',
+                            marginBottom: '0.5rem'
+                          }}>
+                            Special Discounts
+                          </label>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                            <label style={{ color: '#c084fc', fontSize: '0.75rem' }}>
+                              <input
+                                type="checkbox"
+                                checked={newEntity.specialDiscounts.founding || false}
+                                onChange={(e) => setNewEntity({
+                                  ...newEntity,
+                                  specialDiscounts: {
+                                    ...newEntity.specialDiscounts,
+                                    founding: e.target.checked
+                                  }
+                                })}
+                                style={{ marginRight: '0.5rem' }}
+                              />
+                              Founding Diocese (15% off)
+                            </label>
+                            <label style={{ color: '#c084fc', fontSize: '0.75rem' }}>
+                              <input
+                                type="checkbox"
+                                checked={newEntity.specialDiscounts.referral || false}
+                                onChange={(e) => setNewEntity({
+                                  ...newEntity,
+                                  specialDiscounts: {
+                                    ...newEntity.specialDiscounts,
+                                    referral: e.target.checked
+                                  }
+                                })}
+                                style={{ marginRight: '0.5rem' }}
+                              />
+                              Referral (10% off)
+                            </label>
+                          </div>
                         </div>
                       )}
                     </div>
 
-                    {/* Program Selection Section (only for multi-school entities) */}
+                    {/* Program Selection (only for multi-school entities) */}
                     {['diocese', 'isd'].includes(newEntity.entityType) && (
                       <div style={{
                         marginTop: '1.5rem',
@@ -863,204 +931,53 @@ export default function EntitiesManagement() {
                           📚 Reading Programs *
                         </label>
                         
-                        {/* Tier Information */}
-                        <div style={{ 
-                          marginBottom: '1rem', 
-                          padding: '0.75rem',
-                          background: 'rgba(59, 130, 246, 0.1)',
-                          borderRadius: '0.375rem',
-                          border: '1px solid rgba(59, 130, 246, 0.3)'
-                        }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: '0.875rem', color: '#a78bfa' }}>
-                              🎯 <strong>{newEntity.tier.toUpperCase()}</strong> tier includes: {getTierInfo().maxPrograms} programs
-                            </span>
-                            <span style={{ fontSize: '0.875rem', color: '#10b981' }}>
-                              💰 Base price: ${getTierInfo().price.toLocaleString()}/year
-                            </span>
-                          </div>
-                          
-                          {customOverride && (
-                            <div style={{ 
-                              marginTop: '0.5rem', 
-                              padding: '0.5rem',
-                              background: 'rgba(245, 158, 11, 0.2)',
-                              borderRadius: '0.25rem',
-                              border: '1px solid rgba(245, 158, 11, 0.3)'
-                            }}>
-                              <span style={{ fontSize: '0.875rem', color: '#f59e0b', fontWeight: '600' }}>
-                                ⚠️ OVERRIDE ACTIVE: {customMaxPrograms} max programs
-                              </span>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Currently Selected Programs */}
-                        {newEntity.selectedPrograms.length > 0 && (
-                          <div style={{ marginBottom: '1rem' }}>
-                            <h4 style={{ 
-                              color: 'white', 
-                              fontSize: '0.875rem', 
-                              fontWeight: '600', 
-                              marginBottom: '0.5rem' 
-                            }}>
-                              Selected Programs ({newEntity.selectedPrograms.length}):
-                            </h4>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                              {newEntity.selectedPrograms.map((programId, index) => {
-                                const program = availablePrograms.find(p => p.id === programId)
-                                const isIncludedInTier = index < getTierInfo().maxPrograms
-                                const isExtra = !isIncludedInTier && !customOverride
-                                
-                                return (
-                                  <div key={programId} style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    padding: '0.75rem',
-                                    background: isExtra 
-                                      ? 'rgba(245, 158, 11, 0.2)' 
-                                      : 'rgba(16, 185, 129, 0.2)',
-                                    borderRadius: '0.375rem',
-                                    border: isExtra 
-                                      ? '1px solid rgba(245, 158, 11, 0.3)' 
-                                      : '1px solid rgba(16, 185, 129, 0.3)'
-                                  }}>
-                                    <div>
-                                      <span style={{ 
-                                        color: 'white', 
-                                        fontWeight: '600',
-                                        marginRight: '0.5rem'
-                                      }}>
-                                        {program ? `${program.icon} ${program.name}` : programId}
-                                      </span>
-                                      {isExtra && (
-                                        <span style={{ 
-                                          fontSize: '0.75rem', 
-                                          color: '#f59e0b',
-                                          fontWeight: '600'
-                                        }}>
-                                          (+${getTierInfo().extraListPrice} extra)
-                                        </span>
-                                      )}
-                                      {!isIncludedInTier && customOverride && (
-                                        <span style={{ 
-                                          fontSize: '0.75rem', 
-                                          color: '#8b5cf6',
-                                          fontWeight: '600'
-                                        }}>
-                                          (Override)
-                                        </span>
-                                      )}
-                                    </div>
-                                    <button
-                                      onClick={() => handleRemoveProgram(programId)}
-                                      style={{
-                                        background: 'rgba(239, 68, 68, 0.8)',
-                                        color: 'white',
-                                        border: 'none',
-                                        borderRadius: '0.25rem',
-                                        padding: '0.25rem 0.5rem',
-                                        cursor: 'pointer',
-                                        fontSize: '0.75rem',
-                                        fontWeight: '600'
-                                      }}
-                                    >
-                                      ❌ Remove
-                                    </button>
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Add Program Dropdown */}
-                        <div style={{ marginBottom: '1rem' }}>
-                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
-                            <div style={{ flex: 1 }}>
-                              <label style={{
-                                display: 'block',
-                                color: 'white',
-                                fontSize: '0.875rem',
-                                fontWeight: '600',
-                                marginBottom: '0.5rem'
-                              }}>
-                                Add Reading Program:
-                              </label>
-                              <select
-                                onChange={(e) => {
-                                  if (e.target.value) {
-                                    handleAddProgram(e.target.value)
-                                    e.target.value = ''
-                                  }
-                                }}
-                                style={{
-                                  width: '100%',
-                                  padding: '0.75rem',
-                                  borderRadius: '0.5rem',
-                                  border: '1px solid rgba(168, 85, 247, 0.3)',
-                                  background: 'rgba(0, 0, 0, 0.3)',
-                                  color: 'white',
-                                  fontSize: '0.875rem'
-                                }}
-                              >
-                                <option value="">
-                                  {getAvailableToAdd().length === 0 
-                                    ? 'All programs selected' 
-                                    : 'Choose a program to add...'}
-                                </option>
-                                {getAvailableToAdd().map(program => (
-                                  <option key={program.id} value={program.id}>
-                                    {program.icon} {program.name} - {program.targetAudience}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Pricing Calculation */}
-                        {newEntity.selectedPrograms.length > 0 && (
-                          <div style={{
+                        {/* Show pricing preview */}
+                        {newEntity.tier && (
+                          <div style={{ 
+                            marginBottom: '1rem',
                             padding: '0.75rem',
-                            background: 'rgba(139, 92, 246, 0.1)',
+                            background: 'rgba(59, 130, 246, 0.1)',
                             borderRadius: '0.375rem',
-                            border: '1px solid rgba(139, 92, 246, 0.3)',
-                            marginBottom: '1rem'
+                            border: '1px solid rgba(59, 130, 246, 0.3)'
                           }}>
-                            <h4 style={{ 
-                              color: 'white', 
-                              fontSize: '0.875rem', 
-                              fontWeight: '600', 
-                              marginBottom: '0.5rem' 
-                            }}>
-                              💰 Pricing Breakdown:
-                            </h4>
                             {(() => {
-                              const tierInfo = getTierInfo()
-                              const includedPrograms = Math.min(newEntity.selectedPrograms.length, tierInfo.maxPrograms)
-                              const extraPrograms = Math.max(0, newEntity.selectedPrograms.length - tierInfo.maxPrograms)
-                              const extraCost = extraPrograms * tierInfo.extraListPrice
-                              const totalCost = tierInfo.price + extraCost
+                              const tierConfig = getTierInfo(newEntity.tier)
+                              const pricing = calculateDiocesePrice(
+                                tierConfig.maxSchools,
+                                newEntity.tier,
+                                newEntity.selectedPrograms.length,
+                                newEntity.specialDiscounts
+                              )
                               
                               return (
-                                <div style={{ fontSize: '0.75rem', color: '#c084fc' }}>
-                                  <div>• Base ({tierInfo.maxPrograms} programs): ${tierInfo.price.toLocaleString()}</div>
-                                  {extraPrograms > 0 && (
-                                    <div style={{ color: '#f59e0b' }}>
-                                      • Extra programs ({extraPrograms}): ${extraCost.toLocaleString()}
+                                <div>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                                    <span style={{ color: '#a78bfa' }}>
+                                      <strong>{tierConfig.displayName} Tier:</strong> {tierConfig.minSchools}-{tierConfig.maxSchools} schools
+                                    </span>
+                                    <span style={{ color: '#10b981' }}>
+                                      {formatCurrency(pricing.perSchoolPrice)}/school
+                                    </span>
+                                  </div>
+                                  <div style={{ fontSize: '0.875rem', color: '#60a5fa' }}>
+                                    • Includes {tierConfig.programs.included} program(s)
+                                    • Max {tierConfig.programs.max} programs total
+                                    • Extra programs: {formatCurrency(tierConfig.programs.extraCost)} each
+                                  </div>
+                                  {pricing.discounts.amount > 0 && (
+                                    <div style={{ fontSize: '0.875rem', color: '#f59e0b', marginTop: '0.5rem' }}>
+                                      Discounts Applied: {formatCurrency(pricing.discounts.amount)}
                                     </div>
                                   )}
                                   <div style={{ 
-                                    fontWeight: '600', 
-                                    fontSize: '0.875rem', 
+                                    fontSize: '1rem', 
                                     color: 'white', 
-                                    marginTop: '0.25rem',
+                                    fontWeight: 'bold',
+                                    marginTop: '0.5rem',
                                     borderTop: '1px solid rgba(168, 85, 247, 0.3)',
-                                    paddingTop: '0.25rem'
+                                    paddingTop: '0.5rem'
                                   }}>
-                                    Total Annual Cost: ${totalCost.toLocaleString()}
+                                    Total Annual: {formatCurrency(pricing.totalPrice)}
                                   </div>
                                 </div>
                               )
@@ -1068,18 +985,87 @@ export default function EntitiesManagement() {
                           </div>
                         )}
 
-                        {/* Validation Message */}
-                        {newEntity.selectedPrograms.length === 0 && (
-                          <div style={{
-                            marginTop: '0.5rem',
-                            padding: '0.5rem',
-                            background: 'rgba(239, 68, 68, 0.2)',
-                            borderRadius: '0.25rem',
-                            border: '1px solid rgba(239, 68, 68, 0.3)'
-                          }}>
-                            <span style={{ fontSize: '0.75rem', color: '#fca5a5' }}>
-                              ⚠️ Please select at least one reading program
-                            </span>
+                        {/* Program selection UI */}
+                        <div style={{ marginBottom: '1rem' }}>
+                          <select
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                handleAddProgram(e.target.value)
+                                e.target.value = ''
+                              }
+                            }}
+                            style={{
+                              width: '100%',
+                              padding: '0.75rem',
+                              borderRadius: '0.5rem',
+                              border: '1px solid rgba(168, 85, 247, 0.3)',
+                              background: 'rgba(0, 0, 0, 0.3)',
+                              color: 'white',
+                              fontSize: '0.875rem'
+                            }}
+                          >
+                            <option value="">Add a reading program...</option>
+                            {getAvailableToAdd().map(program => (
+                              <option key={program.id} value={program.id}>
+                                {program.icon} {program.name} - {program.targetAudience}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Selected programs */}
+                        {newEntity.selectedPrograms.length > 0 && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            {newEntity.selectedPrograms.map((programId, index) => {
+                              const program = availablePrograms.find(p => p.id === programId)
+                              const tierConfig = getTierInfo(newEntity.tier)
+                              const isIncluded = index < tierConfig.programs.included
+                              
+                              return (
+                                <div key={programId} style={{
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center',
+                                  padding: '0.75rem',
+                                  background: isIncluded 
+                                    ? 'rgba(16, 185, 129, 0.2)' 
+                                    : 'rgba(245, 158, 11, 0.2)',
+                                  borderRadius: '0.375rem',
+                                  border: isIncluded 
+                                    ? '1px solid rgba(16, 185, 129, 0.3)' 
+                                    : '1px solid rgba(245, 158, 11, 0.3)'
+                                }}>
+                                  <div>
+                                    <span style={{ color: 'white', fontWeight: '600' }}>
+                                      {program ? `${program.icon} ${program.name}` : programId}
+                                    </span>
+                                    {!isIncluded && (
+                                      <span style={{ 
+                                        fontSize: '0.75rem', 
+                                        color: '#f59e0b',
+                                        marginLeft: '0.5rem'
+                                      }}>
+                                        (+{formatCurrency(tierConfig.programs.extraCost)})
+                                      </span>
+                                    )}
+                                  </div>
+                                  <button
+                                    onClick={() => handleRemoveProgram(programId)}
+                                    style={{
+                                      background: 'rgba(239, 68, 68, 0.8)',
+                                      color: 'white',
+                                      border: 'none',
+                                      borderRadius: '0.25rem',
+                                      padding: '0.25rem 0.5rem',
+                                      cursor: 'pointer',
+                                      fontSize: '0.75rem'
+                                    }}
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+                              )
+                            })}
                           </div>
                         )}
                       </div>
@@ -1087,9 +1073,7 @@ export default function EntitiesManagement() {
 
                     <button
                       onClick={handleCreateEntity}
-                      disabled={loading || !newEntity.name || !newEntity.location || 
-                               ((newEntity.entityType === 'single_school' || newEntity.entityType === 'single_library') && !newEntity.principalLastName) ||
-                               (['diocese', 'isd'].includes(newEntity.entityType) && newEntity.selectedPrograms.length === 0)}
+                      disabled={loading}
                       style={{
                         background: loading ? '#6b7280' : 'linear-gradient(135deg, #10b981, #059669)',
                         color: 'white',
@@ -1102,7 +1086,7 @@ export default function EntitiesManagement() {
                         marginTop: '1rem'
                       }}
                     >
-                      {loading ? '⏳ Creating...' : `✅ Create ${newEntity.entityType.charAt(0).toUpperCase() + newEntity.entityType.slice(1).replace('_', ' ')}`}
+                      {loading ? '⏳ Creating...' : '✅ Create Entity'}
                     </button>
                   </div>
                 )}
@@ -1116,65 +1100,43 @@ export default function EntitiesManagement() {
                 backdropFilter: 'blur(8px)',
                 border: '1px solid rgba(168, 85, 247, 0.3)'
               }}>
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: '1.5rem'
+                <h2 style={{
+                  fontSize: '1.5rem',
+                  fontWeight: 'bold',
+                  color: 'white',
+                  marginBottom: '1.5rem',
+                  fontFamily: 'Georgia, serif'
                 }}>
-                  <h2 style={{
-                    fontSize: '1.5rem',
-                    fontWeight: 'bold',
-                    color: 'white',
-                    margin: 0,
-                    fontFamily: 'Georgia, serif'
-                  }}>
-                    All Entities ({entities.length})
-                  </h2>
-                  
-                  <button
-                    onClick={() => fetchAllEntities()}
-                    disabled={loading}
-                    style={{
-                      background: loading ? '#6b7280' : 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
-                      color: 'white',
-                      padding: '0.5rem 1rem',
-                      borderRadius: '0.5rem',
-                      border: 'none',
-                      cursor: loading ? 'not-allowed' : 'pointer',
-                      fontSize: '0.875rem',
-                      fontWeight: '600'
-                    }}
-                  >
-                    {loading ? '⏳ Loading...' : '🔄 Refresh'}
-                  </button>
-                </div>
+                  All Entities ({entities.length})
+                </h2>
 
-                {entities.length === 0 ? (
-                  <div style={{
-                    textAlign: 'center',
-                    color: '#c084fc',
-                    padding: '2rem'
-                  }}>
-                    <p>No entities created yet. Create your first entity above!</p>
-                  </div>
-                ) : (
-                  <div style={{
-                    display: 'grid',
-                    gap: '1rem'
-                  }}>
-                    {entities.map(entity => (
-                      <EntityCard 
-                        key={entity.id} 
-                        entity={entity} 
-                        onDelete={handleDeleteEntity}
-                        availablePrograms={availablePrograms}
-                      />
-                    ))}
-                  </div>
-                )}
+                <div style={{ display: 'grid', gap: '1rem' }}>
+                  {entities.map(entity => (
+                    <EntityCard 
+                      key={entity.id} 
+                      entity={entity} 
+                      onDelete={handleDeleteEntity}
+                      onBilling={(e) => {
+                        setSelectedEntityForBilling(e)
+                        setShowBillingModal(true)
+                      }}
+                      availablePrograms={availablePrograms}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
+
+            {/* Billing Modal */}
+            {showBillingModal && selectedEntityForBilling && (
+              <BillingModal
+                entity={selectedEntityForBilling}
+                onClose={() => setShowBillingModal(false)}
+                onUpdate={handleUpdateBilling}
+                billingUpdate={billingUpdate}
+                setBillingUpdate={setBillingUpdate}
+              />
+            )}
           </div>
         </>
       )}
@@ -1193,10 +1155,7 @@ function GlobalStatCard({ title, value, subtitle, icon, color }) {
       border: '1px solid rgba(168, 85, 247, 0.3)',
       textAlign: 'center'
     }}>
-      <div style={{
-        fontSize: '2rem',
-        marginBottom: '0.5rem'
-      }}>
+      <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>
         {icon}
       </div>
       <div style={{
@@ -1205,7 +1164,7 @@ function GlobalStatCard({ title, value, subtitle, icon, color }) {
         color: 'white',
         marginBottom: '0.25rem'
       }}>
-        {value.toLocaleString()}
+        {value}
       </div>
       <div style={{
         fontSize: '0.875rem',
@@ -1226,56 +1185,27 @@ function GlobalStatCard({ title, value, subtitle, icon, color }) {
 }
 
 // Entity Card Component
-function EntityCard({ entity, onDelete, availablePrograms }) {
+function EntityCard({ entity, onDelete, onBilling, availablePrograms }) {
   const getEntityIcon = (type) => {
     switch (type) {
       case 'diocese': return '🏛️'
       case 'isd': return '🏫'
       case 'single_school': return '🎓'
-      case 'single_library': return '📚'
       default: return '🏢'
     }
   }
 
-  const getEntityLabel = (type) => {
-    switch (type) {
-      case 'diocese': return 'Catholic Diocese'
-      case 'isd': return 'Independent School District'
-      case 'single_school': return 'Single School'
-      case 'single_library': return 'Single Library'
-      default: return 'Entity'
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'active': return '#10b981'
+      case 'pending_payment': return '#f59e0b'
+      case 'pending_contract': return '#ef4444'
+      case 'suspended': return '#dc2626'
+      default: return '#6b7280'
     }
   }
 
-  const getUsageDisplay = (entity) => {
-    if (entity.type === 'single_school' || entity.type === 'single_library') {
-      const staffLabel = entity.type === 'single_library' ? 'staff' : 'teachers'
-      const patronLabel = entity.type === 'single_library' ? 'patrons' : 'students'
-      return `👨‍🏫 ${entity.teacherCount || 0} ${staffLabel} • 🎓 ${entity.studentCount || 0} ${patronLabel}`
-    } else {
-      const actual = entity.actualSchoolCount || 0
-      const max = entity.maxSubEntities || 0
-      const isNearLimit = actual >= max * 0.8
-      const isOverLimit = actual > max
-      
-      return (
-        <span style={{ 
-          color: isOverLimit ? '#ef4444' : isNearLimit ? '#f59e0b' : '#a78bfa'
-        }}>
-          🏫 {actual}/{max} schools {isOverLimit ? '(OVER LIMIT!)' : ''}
-        </span>
-      )
-    }
-  }
-
-  const getProgramNames = (programIds) => {
-    if (!programIds || programIds.length === 0) return ['Lux Libris (default)']
-    
-    return programIds.map(id => {
-      const program = availablePrograms.find(p => p.id === id)
-      return program ? `${program.icon} ${program.name}` : id
-    })
-  }
+  const billing = entity.billing || calculateBilling(entity)
 
   return (
     <div style={{
@@ -1302,75 +1232,84 @@ function EntityCard({ entity, onDelete, availablePrograms }) {
           }}>
             {getEntityIcon(entity.type)} {entity.name}
           </h3>
+          
           <p style={{ color: '#c084fc', margin: '0.25rem 0', fontSize: '0.875rem' }}>
-            📍 {entity.city}, {entity.state} • {getEntityLabel(entity.type)}
+            📍 {entity.city}, {entity.state}
           </p>
 
-          {/* Program Info */}
-          {entity.selectedPrograms && entity.selectedPrograms.length > 0 && (
-            <div style={{ margin: '0.5rem 0' }}>
-              <p style={{ color: '#10b981', margin: '0.25rem 0', fontSize: '0.875rem', fontWeight: '600' }}>
-                📚 Programs ({entity.programsIncluded || entity.selectedPrograms.length}):
-              </p>
-              <div style={{ marginLeft: '1rem' }}>
-                {getProgramNames(entity.selectedPrograms).map((programName, index) => (
-                  <p key={index} style={{ color: '#a78bfa', margin: '0.125rem 0', fontSize: '0.75rem' }}>
-                    • {programName}
-                  </p>
-                ))}
-              </div>
-              {entity.customProgramOverride && (
-                <p style={{ color: '#f59e0b', margin: '0.25rem 0', fontSize: '0.75rem' }}>
-                  ⚠️ Custom override: {entity.customMaxPrograms} max programs
-                </p>
-              )}
-              {entity.programPricing && entity.programPricing.extraListsAdded > 0 && (
-                <p style={{ color: '#f59e0b', margin: '0.25rem 0', fontSize: '0.75rem' }}>
-                  💰 Extra lists: +${entity.programPricing.breakdown.extraLists} (Total: ${entity.programPricing.totalPrice})
-                </p>
-              )}
-            </div>
-          )}
-          
-          <p style={{ color: '#a78bfa', margin: '0.25rem 0', fontSize: '0.875rem' }}>
-            🔑 {entity.type === 'diocese' || entity.type === 'isd' ? 'Admin Access' : 'Login Code'}: <strong>{entity.accessCode}</strong>
-          </p>
-          
-          {(entity.type === 'diocese' || entity.type === 'isd') && entity.passwordHash && (
-            <p style={{ color: '#a78bfa', margin: '0.25rem 0', fontSize: '0.875rem' }}>
-              🔒 Admin Password: <strong>{entity.passwordHash}</strong>
-            </p>
-          )}
-          
-          {entity.type === 'single_school' && entity.teacherJoinCode && (
-            <p style={{ color: '#a78bfa', margin: '0.25rem 0', fontSize: '0.875rem' }}>
-              👨‍🏫 Teacher Code: <strong>{entity.teacherJoinCode}</strong>
-            </p>
-          )}
-          
-          {entity.type === 'single_library' && entity.staffJoinCode && (
-            <p style={{ color: '#a78bfa', margin: '0.25rem 0', fontSize: '0.875rem' }}>
-              👥 Staff Code: <strong>{entity.staffJoinCode}</strong>
-            </p>
-          )}
-          
-          {(entity.type === 'single_school' || entity.type === 'single_library') && entity.principalLastName && (
-            <p style={{ color: '#c084fc', margin: '0.25rem 0', fontSize: '0.875rem' }}>
-              👤 {entity.type === 'single_library' ? 'Librarian' : 'Principal'}: {entity.principalLastName}
-            </p>
-          )}
-          
-          <p style={{ margin: '0.25rem 0', fontSize: '0.875rem' }}>
-            {getUsageDisplay(entity)}
-          </p>
-          
+          {/* Tier and Usage */}
           {entity.tier && (
             <p style={{ color: '#a78bfa', margin: '0.25rem 0', fontSize: '0.875rem' }}>
-              📊 Tier: <strong>{entity.tier}</strong> • Status: {entity.status || 'active'}
+              📊 Tier: <strong>{PRICING_CONFIG.tiers[entity.tier]?.displayName}</strong> • 
+              🏫 Schools: {entity.actualSchoolCount || 0}/{entity.maxSubEntities || 0}
+              {billing?.overage?.isOver && (
+                <span style={{ color: '#f59e0b', marginLeft: '0.5rem' }}>
+                  ({billing.overage.message})
+                </span>
+              )}
             </p>
           )}
+
+          {/* Billing Info */}
+          {billing && (
+            <div style={{
+              marginTop: '0.5rem',
+              padding: '0.5rem',
+              background: 'rgba(0, 0, 0, 0.3)',
+              borderRadius: '0.25rem'
+            }}>
+              <p style={{ color: '#10b981', margin: '0.25rem 0', fontSize: '0.875rem' }}>
+                💰 Annual: {formatCurrency(billing.totalDue || entity.annualPrice || 0)}
+                {entity.type !== 'single_school' && (
+                  <span style={{ color: '#a78bfa', marginLeft: '0.5rem' }}>
+                    ({formatCurrency(billing.perSchoolEffective || 0)}/school)
+                  </span>
+                )}
+              </p>
+              <p style={{ 
+                color: getStatusColor(entity.billingStatus), 
+                margin: '0.25rem 0', 
+                fontSize: '0.875rem',
+                fontWeight: '600'
+              }}>
+                Status: {PRICING_CONFIG.billing.statuses[entity.billingStatus] || entity.billingStatus || 'Pending'}
+              </p>
+            </div>
+          )}
+
+          {/* Access Codes */}
+          <div style={{
+            marginTop: '0.5rem',
+            fontSize: '0.75rem',
+            color: '#c084fc'
+          }}>
+            <p style={{ margin: '0.125rem 0' }}>
+              🔑 Access: <strong>{entity.accessCode}</strong>
+            </p>
+            {entity.principalJoinCode && (
+              <p style={{ margin: '0.125rem 0' }}>
+                👥 Principal Code: <strong>{entity.principalJoinCode}</strong>
+              </p>
+            )}
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+        
+        <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'column' }}>
+          <button
+            onClick={() => onBilling(entity)}
+            style={{
+              background: 'rgba(16, 185, 129, 0.8)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '0.375rem',
+              padding: '0.5rem',
+              cursor: 'pointer',
+              fontSize: '0.75rem',
+              fontWeight: '600'
+            }}
+          >
+            💰 Billing
+          </button>
           <button
             onClick={() => onDelete(entity.id, entity.name, entity.type)}
             style={{
@@ -1380,12 +1319,236 @@ function EntityCard({ entity, onDelete, availablePrograms }) {
               borderRadius: '0.375rem',
               padding: '0.5rem',
               cursor: 'pointer',
-              fontSize: '0.875rem',
+              fontSize: '0.75rem',
               fontWeight: '600'
             }}
-            title={`Delete ${entity.type}`}
           >
             🗑️ Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Billing Modal Component
+function BillingModal({ entity, onClose, onUpdate, billingUpdate, setBillingUpdate }) {
+  const billing = calculateBilling(entity)
+  
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: 'rgba(0, 0, 0, 0.8)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1000
+    }}>
+      <div style={{
+        background: 'linear-gradient(135deg, #1e1b4b, #312e81)',
+        borderRadius: '1rem',
+        padding: '2rem',
+        maxWidth: '600px',
+        width: '90%',
+        maxHeight: '90vh',
+        overflow: 'auto',
+        border: '2px solid rgba(168, 85, 247, 0.3)'
+      }}>
+        <h2 style={{
+          color: 'white',
+          marginBottom: '1.5rem',
+          fontSize: '1.5rem'
+        }}>
+          💰 Billing Management: {entity.name}
+        </h2>
+
+        {/* Current Billing Details */}
+        <div style={{
+          background: 'rgba(0, 0, 0, 0.3)',
+          padding: '1rem',
+          borderRadius: '0.5rem',
+          marginBottom: '1.5rem'
+        }}>
+          <h3 style={{ color: '#c084fc', fontSize: '1rem', marginBottom: '0.5rem' }}>
+            Current Contract
+          </h3>
+          <div style={{ color: '#a78bfa', fontSize: '0.875rem' }}>
+            <p>Tier: {PRICING_CONFIG.tiers[entity.tier]?.displayName}</p>
+            <p>Schools: {entity.actualSchoolCount}/{entity.maxSubEntities}</p>
+            <p>Annual: {formatCurrency(billing.totalDue)}</p>
+            <p>Status: {PRICING_CONFIG.billing.statuses[entity.billingStatus] || 'Pending'}</p>
+            {billing.overage?.overageCost > 0 && (
+              <p style={{ color: '#f59e0b' }}>
+                Overage Fee: {formatCurrency(billing.overage.overageCost)}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Update Billing */}
+        <div style={{ display: 'grid', gap: '1rem' }}>
+          <div>
+            <label style={{ color: 'white', fontSize: '0.875rem' }}>
+              Update Status
+            </label>
+            <select
+              value={billingUpdate.status}
+              onChange={(e) => setBillingUpdate({...billingUpdate, status: e.target.value})}
+              style={{
+                width: '100%',
+                padding: '0.5rem',
+                borderRadius: '0.25rem',
+                background: 'rgba(0, 0, 0, 0.3)',
+                color: 'white',
+                border: '1px solid rgba(168, 85, 247, 0.3)'
+              }}
+            >
+              <option value="">Select status...</option>
+              {Object.entries(PRICING_CONFIG.billing.statuses).map(([key, label]) => (
+                <option key={key} value={key}>{label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label style={{ color: 'white', fontSize: '0.875rem' }}>
+              Payment Method
+            </label>
+            <select
+              value={billingUpdate.paymentMethod}
+              onChange={(e) => setBillingUpdate({...billingUpdate, paymentMethod: e.target.value})}
+              style={{
+                width: '100%',
+                padding: '0.5rem',
+                borderRadius: '0.25rem',
+                background: 'rgba(0, 0, 0, 0.3)',
+                color: 'white',
+                border: '1px solid rgba(168, 85, 247, 0.3)'
+              }}
+            >
+              <option value="">Select method...</option>
+              <option value="check">Check</option>
+              <option value="wire">Wire Transfer</option>
+              <option value="card">Credit Card</option>
+              <option value="po">Purchase Order</option>
+            </select>
+          </div>
+
+          <div>
+            <label style={{ color: 'white', fontSize: '0.875rem' }}>
+              Payment Amount
+            </label>
+            <input
+              type="number"
+              value={billingUpdate.paymentAmount}
+              onChange={(e) => setBillingUpdate({...billingUpdate, paymentAmount: e.target.value})}
+              placeholder={billing.totalDue}
+              style={{
+                width: '100%',
+                padding: '0.5rem',
+                borderRadius: '0.25rem',
+                background: 'rgba(0, 0, 0, 0.3)',
+                color: 'white',
+                border: '1px solid rgba(168, 85, 247, 0.3)'
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ color: 'white', fontSize: '0.875rem' }}>
+              Payment Date
+            </label>
+            <input
+              type="date"
+              value={billingUpdate.paymentDate}
+              onChange={(e) => setBillingUpdate({...billingUpdate, paymentDate: e.target.value})}
+              style={{
+                width: '100%',
+                padding: '0.5rem',
+                borderRadius: '0.25rem',
+                background: 'rgba(0, 0, 0, 0.3)',
+                color: 'white',
+                border: '1px solid rgba(168, 85, 247, 0.3)'
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ color: 'white', fontSize: '0.875rem' }}>
+              Invoice Number
+            </label>
+            <input
+              type="text"
+              value={billingUpdate.invoiceNumber}
+              onChange={(e) => setBillingUpdate({...billingUpdate, invoiceNumber: e.target.value})}
+              placeholder="INV-2025-001"
+              style={{
+                width: '100%',
+                padding: '0.5rem',
+                borderRadius: '0.25rem',
+                background: 'rgba(0, 0, 0, 0.3)',
+                color: 'white',
+                border: '1px solid rgba(168, 85, 247, 0.3)'
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ color: 'white', fontSize: '0.875rem' }}>
+              Notes
+            </label>
+            <textarea
+              value={billingUpdate.notes}
+              onChange={(e) => setBillingUpdate({...billingUpdate, notes: e.target.value})}
+              rows={3}
+              style={{
+                width: '100%',
+                padding: '0.5rem',
+                borderRadius: '0.25rem',
+                background: 'rgba(0, 0, 0, 0.3)',
+                color: 'white',
+                border: '1px solid rgba(168, 85, 247, 0.3)'
+              }}
+            />
+          </div>
+        </div>
+
+        <div style={{
+          display: 'flex',
+          gap: '1rem',
+          marginTop: '1.5rem',
+          justifyContent: 'flex-end'
+        }}>
+          <button
+            onClick={onClose}
+            style={{
+              padding: '0.75rem 1.5rem',
+              background: 'rgba(107, 114, 128, 0.5)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '0.5rem',
+              cursor: 'pointer'
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => onUpdate(entity.id)}
+            style={{
+              padding: '0.75rem 1.5rem',
+              background: 'linear-gradient(135deg, #10b981, #059669)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '0.5rem',
+              cursor: 'pointer',
+              fontWeight: '600'
+            }}
+          >
+            Update Billing
           </button>
         </div>
       </div>
