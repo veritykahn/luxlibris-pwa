@@ -96,16 +96,24 @@ const calculateWeekTotals = async (familyData, week) => {
     const minutes = await getParentMinutes(parentId, week);
     
     // Get parent's name
-    let parentName = 'Parent';
-    try {
-      const parentDoc = await db.doc(`parents/${parentId}`).get();
-      if (parentDoc.exists()) {
-        const data = parentDoc.data();
-        parentName = `${data.firstName || ''} ${data.lastName || ''}`.trim() || 'Parent';
-      }
-    } catch (e) {
-      console.error('Error getting parent name:', e);
-    }
+let parentName = 'Parent';
+try {
+  console.log(`🔍 Fetching name for parent: ${parentId}`);
+  const parentDoc = await db.doc(`parents/${parentId}`).get();
+  
+  if (parentDoc.exists()) {
+    const data = parentDoc.data();
+    console.log(`📋 Parent data:`, data);
+    const firstName = data.firstName || '';
+    const lastName = data.lastName || '';
+    parentName = `${firstName} ${lastName}`.trim() || data.displayName || data.name || 'Parent';
+    console.log(`✅ Parent name resolved to: ${parentName}`);
+  } else {
+    console.log(`❌ Parent document not found: ${parentId}`);
+  }
+} catch (e) {
+  console.error('❌ Error getting parent name:', e);
+}
     
     parentBreakdown[parentId] = {
       name: parentName,
