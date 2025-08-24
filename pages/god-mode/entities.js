@@ -888,7 +888,7 @@ This action CANNOT be undone!`)
                         </div>
                       )}
 
-                      {/* FIXED: Special Discounts with proper click handling */}
+                      {/* Special Discounts - Dropdown Version */}
                       {['diocese', 'isd'].includes(newEntity.entityType) && (
                         <div>
                           <label style={{
@@ -902,66 +902,64 @@ This action CANNOT be undone!`)
                           </label>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                             
-                            {/* Founding Diocese Checkbox */}
-                            <label style={{ 
-                              display: 'flex', 
-                              alignItems: 'center',
-                              cursor: 'pointer',
-                              color: '#c084fc', 
-                              fontSize: '0.75rem',
-                              userSelect: 'none'
-                            }}>
-                              <input
-                                type="checkbox"
-                                checked={newEntity.specialDiscounts.founding || false}
-                                onChange={(e) => {
-                                  console.log('Founding checkbox clicked:', e.target.checked)
-                                  handleSpecialDiscountChange('founding', e.target.checked)
-                                }}
+                            {/* Founding Diocese Discount */}
+                            <div>
+                              <label style={{
+                                display: 'block',
+                                color: '#c084fc',
+                                fontSize: '0.75rem',
+                                marginBottom: '0.25rem'
+                              }}>
+                                Founding Diocese Program (15% off)
+                              </label>
+                              <select
+                                value={newEntity.specialDiscounts.founding ? 'yes' : 'no'}
+                                onChange={(e) => handleSpecialDiscountChange('founding', e.target.value === 'yes')}
                                 style={{
-                                  marginRight: '0.5rem',
-                                  width: '14px',
-                                  height: '14px',
-                                  cursor: 'pointer',
-                                  accentColor: '#a855f7'
+                                  width: '100%',
+                                  padding: '0.5rem',
+                                  borderRadius: '0.25rem',
+                                  border: '1px solid rgba(168, 85, 247, 0.3)',
+                                  background: 'rgba(0, 0, 0, 0.5)',
+                                  color: 'white',
+                                  fontSize: '0.75rem'
                                 }}
-                              />
-                              <span style={{ cursor: 'pointer' }}>
-                                Founding Diocese (15% off)
-                              </span>
-                            </label>
+                              >
+                                <option value="no">Not a Founding Diocese</option>
+                                <option value="yes">Apply Founding Diocese Discount (15% off)</option>
+                              </select>
+                            </div>
 
-                            {/* Referral Checkbox */}
-                            <label style={{ 
-                              display: 'flex', 
-                              alignItems: 'center',
-                              cursor: 'pointer',
-                              color: '#c084fc', 
-                              fontSize: '0.75rem',
-                              userSelect: 'none'
-                            }}>
-                              <input
-                                type="checkbox"
-                                checked={newEntity.specialDiscounts.referral || false}
-                                onChange={(e) => {
-                                  console.log('Referral checkbox clicked:', e.target.checked)
-                                  handleSpecialDiscountChange('referral', e.target.checked)
-                                }}
+                            {/* Referral Discount */}
+                            <div>
+                              <label style={{
+                                display: 'block',
+                                color: '#c084fc',
+                                fontSize: '0.75rem',
+                                marginBottom: '0.25rem'
+                              }}>
+                                Referral Program (10% off)
+                              </label>
+                              <select
+                                value={newEntity.specialDiscounts.referral ? 'yes' : 'no'}
+                                onChange={(e) => handleSpecialDiscountChange('referral', e.target.value === 'yes')}
                                 style={{
-                                  marginRight: '0.5rem',
-                                  width: '14px',
-                                  height: '14px',
-                                  cursor: 'pointer',
-                                  accentColor: '#a855f7'
+                                  width: '100%',
+                                  padding: '0.5rem',
+                                  borderRadius: '0.25rem',
+                                  border: '1px solid rgba(168, 85, 247, 0.3)',
+                                  background: 'rgba(0, 0, 0, 0.5)',
+                                  color: 'white',
+                                  fontSize: '0.75rem'
                                 }}
-                              />
-                              <span style={{ cursor: 'pointer' }}>
-                                Referral (10% off)
-                              </span>
-                            </label>
+                              >
+                                <option value="no">No Referral</option>
+                                <option value="yes">Apply Referral Discount (10% off)</option>
+                              </select>
+                            </div>
 
                             {/* Multi-Year Discount */}
-                            <div style={{ marginTop: '0.5rem' }}>
+                            <div>
                               <label style={{
                                 display: 'block',
                                 color: '#c084fc',
@@ -988,6 +986,36 @@ This action CANNOT be undone!`)
                                 <option value={3}>3 Years (10% off)</option>
                               </select>
                             </div>
+
+                            {/* Show Applied Discounts Summary */}
+                            {(newEntity.specialDiscounts.founding || newEntity.specialDiscounts.referral || newEntity.specialDiscounts.multiYear > 0) && (
+                              <div style={{
+                                marginTop: '0.5rem',
+                                padding: '0.5rem',
+                                background: 'rgba(245, 158, 11, 0.2)',
+                                borderRadius: '0.25rem',
+                                border: '1px solid rgba(245, 158, 11, 0.3)'
+                              }}>
+                                <div style={{ color: '#f59e0b', fontSize: '0.75rem', fontWeight: '600' }}>
+                                  Applied Discounts:
+                                </div>
+                                {newEntity.specialDiscounts.founding && (
+                                  <div style={{ color: '#f59e0b', fontSize: '0.75rem' }}>
+                                    • Founding Diocese: 15% off
+                                  </div>
+                                )}
+                                {newEntity.specialDiscounts.referral && (
+                                  <div style={{ color: '#f59e0b', fontSize: '0.75rem' }}>
+                                    • Referral: 10% off
+                                  </div>
+                                )}
+                                {newEntity.specialDiscounts.multiYear > 0 && (
+                                  <div style={{ color: '#f59e0b', fontSize: '0.75rem' }}>
+                                    • Multi-Year ({newEntity.specialDiscounts.multiYear} years): {(newEntity.specialDiscounts.multiYear - 1) * 5}% off
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
                       )}
