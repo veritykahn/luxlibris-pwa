@@ -1294,6 +1294,10 @@ function GlobalStatCard({ title, value, subtitle, icon, color }) {
 }
 
 function EntityCard({ entity, onDelete, onBilling, availablePrograms }) {
+  const [editingEmail, setEditingEmail] = useState(false)
+  const [newEmail, setNewEmail] = useState(entity.adminEmail || '')
+  const [updating, setUpdating] = useState(false)
+
   const getEntityIcon = (type) => {
     switch (type) {
       case 'diocese': return '🏛️'
@@ -1311,6 +1315,33 @@ function EntityCard({ entity, onDelete, onBilling, availablePrograms }) {
       case 'suspended': return '#dc2626'
       default: return '#6b7280'
     }
+  }
+
+  const handleEmailUpdate = async () => {
+    if (!newEmail || newEmail === entity.adminEmail) {
+      setEditingEmail(false)
+      return
+    }
+
+    setUpdating(true)
+    try {
+      const docRef = entity.type === 'single_school' 
+        ? doc(db, 'schools', entity.id)
+        : doc(db, 'entities', entity.id)
+      
+      await updateDoc(docRef, {
+        adminEmail: newEmail,
+        lastModified: new Date()
+      })
+      
+      // Update local entity data
+      entity.adminEmail = newEmail
+      setEditingEmail(false)
+    } catch (error) {
+      console.error('Error updating email:', error)
+      alert('Failed to update email: ' + error.message)
+    }
+    setUpdating(false)
   }
 
   const billing = entity.billing || calculateBilling(entity)
@@ -1344,6 +1375,87 @@ function EntityCard({ entity, onDelete, onBilling, availablePrograms }) {
           <p style={{ color: '#c084fc', margin: '0.25rem 0', fontSize: '0.875rem' }}>
             📍 {entity.city}, {entity.state}
           </p>
+
+          {/* Admin Email - Now Editable */}
+          <div style={{ 
+            color: '#a78bfa', 
+            margin: '0.25rem 0', 
+            fontSize: '0.875rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
+          }}>
+            <span>📧 Admin:</span>
+            {editingEmail ? (
+              <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+                <input
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  style={{
+                    padding: '0.25rem',
+                    borderRadius: '0.25rem',
+                    border: '1px solid rgba(168, 85, 247, 0.3)',
+                    background: 'rgba(0, 0, 0, 0.3)',
+                    color: 'white',
+                    fontSize: '0.75rem',
+                    width: '200px'
+                  }}
+                  onKeyPress={(e) => e.key === 'Enter' && handleEmailUpdate()}
+                />
+                <button
+                  onClick={handleEmailUpdate}
+                  disabled={updating}
+                  style={{
+                    background: 'rgba(16, 185, 129, 0.8)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.25rem',
+                    padding: '0.25rem 0.5rem',
+                    cursor: updating ? 'not-allowed' : 'pointer',
+                    fontSize: '0.75rem'
+                  }}
+                >
+                  {updating ? '...' : '✓'}
+                </button>
+                <button
+                  onClick={() => {
+                    setEditingEmail(false)
+                    setNewEmail(entity.adminEmail || '')
+                  }}
+                  style={{
+                    background: 'rgba(239, 68, 68, 0.8)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.25rem',
+                    padding: '0.25rem 0.5rem',
+                    cursor: 'pointer',
+                    fontSize: '0.75rem'
+                  }}
+                >
+                  ✗
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span>{entity.adminEmail || 'Not set'}</span>
+                <button
+                  onClick={() => setEditingEmail(true)}
+                  style={{
+                    background: 'rgba(168, 85, 247, 0.6)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.25rem',
+                    padding: '0.25rem 0.5rem',
+                    cursor: 'pointer',
+                    fontSize: '0.75rem'
+                  }}
+                >
+                  Edit
+                </button>
+              </div>
+            )}
+          </div>
 
           {entity.tier && (
             <p style={{ color: '#a78bfa', margin: '0.25rem 0', fontSize: '0.875rem' }}>

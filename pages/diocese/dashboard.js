@@ -60,10 +60,12 @@ export default function DioceseDashboard() {
     totalCost: 0
   })
 
-  // Password Change
-  const [showPasswordChange, setShowPasswordChange] = useState(false)
+  // Security Settings
+  const [showSecuritySettings, setShowSecuritySettings] = useState(false)
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [newAdminEmail, setNewAdminEmail] = useState('')
+  const [confirmAdminEmail, setConfirmAdminEmail] = useState('')
 
   // Session timeout (2 hours = 7200000 ms)
   const SESSION_TIMEOUT = 2 * 60 * 60 * 1000
@@ -369,11 +371,66 @@ export default function DioceseDashboard() {
       alert('Password changed successfully!')
       setNewPassword('')
       setConfirmPassword('')
-      setShowPasswordChange(false)
       
     } catch (error) {
       console.error('Error changing password:', error)
       alert('Error changing password: ' + error.message)
+    }
+    setLoading(false)
+  }
+
+  // Change admin email
+  const handleEmailChange = async () => {
+    if (!newAdminEmail || !confirmAdminEmail) {
+      alert('Please fill in both email fields')
+      return
+    }
+
+    if (newAdminEmail !== confirmAdminEmail) {
+      alert('Email addresses do not match')
+      return
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(newAdminEmail)) {
+      alert('Please enter a valid email address')
+      return
+    }
+
+    if (newAdminEmail === dioceseData.adminEmail) {
+      alert('New email must be different from current email')
+      return
+    }
+
+    try {
+      setLoading(true)
+      
+      await updateDoc(doc(db, 'entities', dioceseData.id), {
+        adminEmail: newAdminEmail,
+        lastModified: new Date()
+      })
+      
+      const updatedDioceseData = {
+        ...dioceseData,
+        adminEmail: newAdminEmail
+      }
+      setDioceseData(updatedDioceseData)
+      
+      localStorage.setItem('dioceseSession', JSON.stringify({
+        authenticated: true,
+        accessCode: authData.accessCode,
+        dioceseData: updatedDioceseData,
+        lastActivity: lastActivity
+      }))
+      
+      alert('Admin email changed successfully!')
+      setNewAdminEmail('')
+      setConfirmAdminEmail('')
+      
+    } catch (error) {
+      console.error('Error changing email:', error)
+      alert('Error changing email: ' + error.message)
     }
     setLoading(false)
   }
@@ -1017,7 +1074,7 @@ Click OK to confirm deletion.`)
             marginBottom: '1.5rem'
           }}>
             
-            {/* SECURITY SETTINGS - COMPACT */}
+            {/* SECURITY SETTINGS - UPDATED WITH EMAIL CHANGE */}
             <div style={{
               background: 'white',
               borderRadius: '0.75rem',
@@ -1029,7 +1086,7 @@ Click OK to confirm deletion.`)
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                marginBottom: showPasswordChange ? '1rem' : '0'
+                marginBottom: showSecuritySettings ? '1rem' : '0'
               }}>
                 <h2 style={{
                   fontSize: '1.25rem',
@@ -1041,7 +1098,7 @@ Click OK to confirm deletion.`)
                   Security Settings
                 </h2>
                 <button
-                  onClick={() => setShowPasswordChange(!showPasswordChange)}
+                  onClick={() => setShowSecuritySettings(!showSecuritySettings)}
                   style={{
                     background: 'linear-gradient(135deg, #F6AD55, #ED8936)',
                     color: 'white',
@@ -1054,61 +1111,247 @@ Click OK to confirm deletion.`)
                     fontFamily: 'Avenir'
                   }}
                 >
-                  {showPasswordChange ? 'Cancel' : 'Change Password'}
+                  {showSecuritySettings ? 'Close Settings' : 'Manage Security'}
                 </button>
               </div>
 
-              {showPasswordChange && (
+              {showSecuritySettings && (
                 <div style={{
                   background: '#FFFCF5',
                   borderRadius: '0.5rem',
                   padding: '1rem'
                 }}>
-                  <div style={{ marginBottom: '0.75rem' }}>
-                    <input
-                      type="password"
-                      placeholder="New password (min 8 characters)"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '0.5rem',
-                        borderRadius: '0.375rem',
-                        border: '1px solid #C3E0DE',
-                        fontSize: '0.875rem',
-                        marginBottom: '0.5rem'
-                      }}
-                    />
-                    <input
-                      type="password"
-                      placeholder="Confirm new password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '0.5rem',
-                        borderRadius: '0.375rem',
-                        border: '1px solid #C3E0DE',
-                        fontSize: '0.875rem'
-                      }}
-                    />
-                  </div>
-                  <button
-                    onClick={handlePasswordChange}
-                    disabled={loading || !newPassword || !confirmPassword || newPassword !== confirmPassword}
-                    style={{
-                      background: loading ? '#B6DFEB' : 'linear-gradient(135deg, #A1E5DB, #68D391)',
+                  {/* Current Information Display */}
+                  <div style={{
+                    background: '#C3E0DE',
+                    borderRadius: '0.5rem',
+                    padding: '1rem',
+                    marginBottom: '1.5rem'
+                  }}>
+                    <h3 style={{
+                      fontSize: '1rem',
+                      fontWeight: '600',
                       color: '#223848',
-                      padding: '0.5rem 1rem',
+                      marginBottom: '0.75rem',
+                      fontFamily: 'Avenir'
+                    }}>
+                      Current Account Information
+                    </h3>
+                    <div style={{
+                      display: 'grid',
+                      gap: '0.5rem',
+                      fontSize: '0.875rem',
+                      color: '#223848',
+                      fontFamily: 'Avenir'
+                    }}>
+                      <div>
+                        <strong>Access Code:</strong> {dioceseData?.accessCode}
+                      </div>
+                      <div>
+                        <strong>Admin Email:</strong> {dioceseData?.adminEmail}
+                      </div>
+                      <div>
+                        <strong>Last Modified:</strong> {dioceseData?.lastModified ? 
+                          new Date(dioceseData.lastModified.seconds * 1000).toLocaleDateString() : 
+                          'Recently'
+                        }
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Password Change Section */}
+                  <div style={{
+                    borderBottom: '1px solid #C3E0DE',
+                    paddingBottom: '1.5rem',
+                    marginBottom: '1.5rem'
+                  }}>
+                    <h3 style={{
+                      fontSize: '1rem',
+                      fontWeight: '600',
+                      color: '#223848',
+                      marginBottom: '1rem',
+                      fontFamily: 'Avenir'
+                    }}>
+                      Change Password
+                    </h3>
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                      gap: '1rem',
+                      marginBottom: '1rem'
+                    }}>
+                      <div>
+                        <label style={{
+                          display: 'block',
+                          color: '#223848',
+                          fontSize: '0.75rem',
+                          fontWeight: '600',
+                          marginBottom: '0.5rem',
+                          fontFamily: 'Avenir'
+                        }}>
+                          New Password *
+                        </label>
+                        <input
+                          type="password"
+                          placeholder="Enter new password (min 8 characters)"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '0.5rem',
+                            borderRadius: '0.375rem',
+                            border: '1px solid #C3E0DE',
+                            fontSize: '0.875rem',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{
+                          display: 'block',
+                          color: '#223848',
+                          fontSize: '0.75rem',
+                          fontWeight: '600',
+                          marginBottom: '0.5rem',
+                          fontFamily: 'Avenir'
+                        }}>
+                          Confirm Password *
+                        </label>
+                        <input
+                          type="password"
+                          placeholder="Confirm new password"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '0.5rem',
+                            borderRadius: '0.375rem',
+                            border: '1px solid #C3E0DE',
+                            fontSize: '0.875rem',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <button
+                      onClick={handlePasswordChange}
+                      disabled={loading || !newPassword || !confirmPassword || newPassword !== confirmPassword}
+                      style={{
+                        background: loading ? '#B6DFEB' : 'linear-gradient(135deg, #A1E5DB, #68D391)',
+                        color: '#223848',
+                        padding: '0.5rem 1rem',
+                        borderRadius: '0.375rem',
+                        border: 'none',
+                        cursor: loading ? 'not-allowed' : 'pointer',
+                        fontSize: '0.75rem',
+                        fontWeight: '600',
+                        fontFamily: 'Avenir'
+                      }}
+                    >
+                      {loading ? 'Updating Password...' : 'Change Password'}
+                    </button>
+                  </div>
+
+                  {/* Admin Email Change Section */}
+                  <div>
+                    <h3 style={{
+                      fontSize: '1rem',
+                      fontWeight: '600',
+                      color: '#223848',
+                      marginBottom: '1rem',
+                      fontFamily: 'Avenir'
+                    }}>
+                      Change Admin Email
+                    </h3>
+                    <div style={{
+                      background: '#FEF3C7',
+                      border: '1px solid #F59E0B',
                       borderRadius: '0.375rem',
-                      border: 'none',
-                      cursor: loading ? 'not-allowed' : 'pointer',
+                      padding: '0.75rem',
+                      marginBottom: '1rem',
                       fontSize: '0.75rem',
-                      fontWeight: '600'
-                    }}
-                  >
-                    {loading ? 'Updating...' : 'Change Password'}
-                  </button>
+                      color: '#B45309',
+                      fontFamily: 'Avenir'
+                    }}>
+                      <strong>Important:</strong> This email is used for password recovery and important diocese notifications. Make sure you have access to the new email address.
+                    </div>
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                      gap: '1rem',
+                      marginBottom: '1rem'
+                    }}>
+                      <div>
+                        <label style={{
+                          display: 'block',
+                          color: '#223848',
+                          fontSize: '0.75rem',
+                          fontWeight: '600',
+                          marginBottom: '0.5rem',
+                          fontFamily: 'Avenir'
+                        }}>
+                          New Admin Email *
+                        </label>
+                        <input
+                          type="email"
+                          placeholder="new-admin@diocese.org"
+                          value={newAdminEmail}
+                          onChange={(e) => setNewAdminEmail(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '0.5rem',
+                            borderRadius: '0.375rem',
+                            border: '1px solid #C3E0DE',
+                            fontSize: '0.875rem',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{
+                          display: 'block',
+                          color: '#223848',
+                          fontSize: '0.75rem',
+                          fontWeight: '600',
+                          marginBottom: '0.5rem',
+                          fontFamily: 'Avenir'
+                        }}>
+                          Confirm Email *
+                        </label>
+                        <input
+                          type="email"
+                          placeholder="Confirm new email address"
+                          value={confirmAdminEmail}
+                          onChange={(e) => setConfirmAdminEmail(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '0.5rem',
+                            borderRadius: '0.375rem',
+                            border: '1px solid #C3E0DE',
+                            fontSize: '0.875rem',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleEmailChange}
+                      disabled={loading || !newAdminEmail || !confirmAdminEmail || newAdminEmail !== confirmAdminEmail}
+                      style={{
+                        background: loading ? '#B6DFEB' : 'linear-gradient(135deg, #ADD4EA, #B6DFEB)',
+                        color: '#223848',
+                        padding: '0.5rem 1rem',
+                        borderRadius: '0.375rem',
+                        border: 'none',
+                        cursor: loading ? 'not-allowed' : 'pointer',
+                        fontSize: '0.75rem',
+                        fontWeight: '600',
+                        fontFamily: 'Avenir'
+                      }}
+                    >
+                      {loading ? 'Updating Email...' : 'Change Admin Email'}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
