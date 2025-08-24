@@ -414,7 +414,7 @@ Diocese Administrator`)
                   lineHeight: '1.4',
                   fontFamily: 'Avenir'
                 }}>
-                  🔒 <strong>Security Note:</strong> We can only display credentials when both your diocese name and admin email match exactly what's in our system.
+                  🔒 <strong>Security Note:</strong> We can only display credentials when both your diocese name and admin email match exactly what&apos;s in our system.
                 </p>
               </div>
             </div>
@@ -438,7 +438,7 @@ Diocese Administrator`)
                 marginBottom: '1.5rem',
                 fontFamily: 'Avenir'
               }}>
-                We'll prepare an email to our support team with your information.
+                We&apos;ll prepare an email to our support team with your information.
               </p>
 
               {error && (
@@ -841,10 +841,10 @@ Diocese Administrator`)
                     2. <strong>Send the email</strong> - Send it to support@luxlibris.org
                   </div>
                   <div style={{ marginBottom: '0.75rem' }}>
-                    3. <strong>Wait for response</strong> - We'll respond within 24 hours during business days
+                    3. <strong>Wait for response</strong> - We&apos;ll respond within 24 hours during business days
                   </div>
                   <div>
-                    4. <strong>Check your email</strong> - We'll send your credentials to your admin email address
+                    4. <strong>Check your email</strong> - We&apos;ll send your credentials to your admin email address
                   </div>
                 </div>
               </div>
@@ -904,7 +904,7 @@ Diocese Administrator`)
                   lineHeight: '1.4',
                   fontFamily: 'Avenir'
                 }}>
-                  <strong>Didn't see an email compose window?</strong> You can manually send an email to support@luxlibris.org with your diocese name and admin email address.
+                  <strong>Didn&apos;t see an email compose window?</strong> You can manually send an email to support@luxlibris.org with your diocese name and admin email address.
                 </p>
               </div>
             </div>
