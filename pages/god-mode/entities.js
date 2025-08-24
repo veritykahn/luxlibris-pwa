@@ -1389,8 +1389,13 @@ function EntityCard({ entity, onDelete, onBilling, availablePrograms }) {
             color: '#c084fc'
           }}>
             <p style={{ margin: '0.125rem 0' }}>
-              🔑 Access: <strong>{entity.accessCode}</strong>
+              🔑 Access Code: <strong>{entity.accessCode}</strong>
             </p>
+            {entity.passwordHash && (
+              <p style={{ margin: '0.125rem 0' }}>
+                🔐 Password: <strong>{entity.passwordHash}</strong>
+              </p>
+            )}
             {entity.principalJoinCode && (
               <p style={{ margin: '0.125rem 0' }}>
                 👥 Principal Code: <strong>{entity.principalJoinCode}</strong>
@@ -1400,6 +1405,50 @@ function EntityCard({ entity, onDelete, onBilling, availablePrograms }) {
         </div>
         
         <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'column' }}>
+          <button
+            onClick={() => {
+              const credentialsText = `DIOCESE CREDENTIALS - ${entity.name}
+
+ADMIN LOGIN:
+Dashboard: luxlibris.org/diocese/dashboard
+Access Code: ${entity.accessCode}
+Password: ${entity.passwordHash || 'Not set'}
+
+PRINCIPAL REGISTRATION:
+URL: luxlibris.org/school/signup
+Join Code: ${entity.principalJoinCode || entity.accessCode}
+
+BILLING INFO:
+Tier: ${PRICING_CONFIG.tiers[entity.tier]?.displayName || 'Not set'}
+Annual Cost: ${formatCurrency(billing.totalDue || entity.annualPrice || 0)}
+Status: ${PRICING_CONFIG.billing.statuses[entity.billingStatus] || 'Pending'}
+
+Share the Admin Login with your IT administrator.
+Share the Principal Registration info with all school principals.
+
+Support: support@luxlibris.org
+Billing: billing@luxlibris.org`
+
+              navigator.clipboard.writeText(credentialsText).then(() => {
+                alert('Credentials copied to clipboard! Ready to paste into email.')
+              }).catch(err => {
+                console.error('Failed to copy: ', err)
+                alert('Failed to copy. Please copy manually.')
+              })
+            }}
+            style={{
+              background: 'rgba(59, 130, 246, 0.8)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '0.375rem',
+              padding: '0.5rem',
+              cursor: 'pointer',
+              fontSize: '0.75rem',
+              fontWeight: '600'
+            }}
+          >
+            📋 Copy Credentials
+          </button>
           <button
             onClick={() => onBilling(entity)}
             style={{
