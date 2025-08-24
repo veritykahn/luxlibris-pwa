@@ -1,4 +1,4 @@
-// pages/god-mode/entities.js - ENTITY MANAGEMENT WITH NEW PRICING MODEL
+// pages/god-mode/entities.js - COMPLETE FIXED VERSION with Working Discounts
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import GodModeAuth from '../../components/god-mode/GodModeAuth'
@@ -68,6 +68,14 @@ export default function EntitiesManagement() {
       console.error('Error loading programs:', error)
     }
   }
+
+  // FIXED: Add useEffect to trigger pricing recalculation when discounts change
+  useEffect(() => {
+    if (newEntity.tier && ['diocese', 'isd'].includes(newEntity.entityType)) {
+      console.log('Discounts changed, triggering recalculation:', newEntity.specialDiscounts)
+      // The component will re-render automatically due to state change
+    }
+  }, [newEntity.specialDiscounts, newEntity.tier, newEntity.selectedPrograms])
 
   // Load programs when tier changes
   useEffect(() => {
@@ -864,7 +872,7 @@ This action CANNOT be undone!`)
                         </div>
                       )}
 
-                      {/* Special Discounts */}
+                      {/* FIXED: Special Discounts Section */}
                       {['diocese', 'isd'].includes(newEntity.entityType) && (
                         <div>
                           <label style={{
@@ -876,37 +884,99 @@ This action CANNOT be undone!`)
                           }}>
                             Special Discounts
                           </label>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                            <label style={{ color: '#c084fc', fontSize: '0.75rem' }}>
+                          <div style={{ 
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            gap: '0.5rem',
+                            padding: '0.75rem',
+                            background: 'rgba(168, 85, 247, 0.1)',
+                            borderRadius: '0.375rem',
+                            border: '1px solid rgba(168, 85, 247, 0.3)'
+                          }}>
+                            <label style={{ 
+                              color: 'white', 
+                              fontSize: '0.875rem',
+                              display: 'flex',
+                              alignItems: 'center',
+                              cursor: 'pointer'
+                            }}>
                               <input
                                 type="checkbox"
                                 checked={newEntity.specialDiscounts.founding || false}
-                                onChange={(e) => setNewEntity({
-                                  ...newEntity,
-                                  specialDiscounts: {
-                                    ...newEntity.specialDiscounts,
-                                    founding: e.target.checked
-                                  }
-                                })}
-                                style={{ marginRight: '0.5rem' }}
+                                onChange={(e) => {
+                                  console.log('Founding discount changed:', e.target.checked)
+                                  setNewEntity({
+                                    ...newEntity,
+                                    specialDiscounts: {
+                                      ...newEntity.specialDiscounts,
+                                      founding: e.target.checked
+                                    }
+                                  })
+                                }}
+                                style={{ 
+                                  marginRight: '0.75rem',
+                                  width: '16px',
+                                  height: '16px',
+                                  cursor: 'pointer'
+                                }}
                               />
-                              Founding Diocese (15% off)
+                              Founding Diocese (15% off first 10 dioceses)
                             </label>
-                            <label style={{ color: '#c084fc', fontSize: '0.75rem' }}>
+                            
+                            <label style={{ 
+                              color: 'white', 
+                              fontSize: '0.875rem',
+                              display: 'flex',
+                              alignItems: 'center',
+                              cursor: 'pointer'
+                            }}>
                               <input
                                 type="checkbox"
                                 checked={newEntity.specialDiscounts.referral || false}
-                                onChange={(e) => setNewEntity({
-                                  ...newEntity,
-                                  specialDiscounts: {
-                                    ...newEntity.specialDiscounts,
-                                    referral: e.target.checked
-                                  }
-                                })}
-                                style={{ marginRight: '0.5rem' }}
+                                onChange={(e) => {
+                                  console.log('Referral discount changed:', e.target.checked)
+                                  setNewEntity({
+                                    ...newEntity,
+                                    specialDiscounts: {
+                                      ...newEntity.specialDiscounts,
+                                      referral: e.target.checked
+                                    }
+                                  })
+                                }}
+                                style={{ 
+                                  marginRight: '0.75rem',
+                                  width: '16px',
+                                  height: '16px',
+                                  cursor: 'pointer'
+                                }}
                               />
-                              Referral (10% off)
+                              Referral Discount (10% off for referrals)
                             </label>
+
+                            {/* Show active discounts */}
+                            {(newEntity.specialDiscounts.founding || newEntity.specialDiscounts.referral) && (
+                              <div style={{
+                                marginTop: '0.5rem',
+                                padding: '0.5rem',
+                                background: 'rgba(16, 185, 129, 0.1)',
+                                borderRadius: '0.25rem',
+                                border: '1px solid rgba(16, 185, 129, 0.3)'
+                              }}>
+                                <div style={{ color: '#10b981', fontSize: '0.75rem', fontWeight: '600' }}>
+                                  Active Discounts:
+                                </div>
+                                {newEntity.specialDiscounts.founding && (
+                                  <div style={{ color: '#10b981', fontSize: '0.75rem' }}>
+                                    • Founding Diocese: 15% off
+                                  </div>
+                                )}
+                                {newEntity.specialDiscounts.referral && (
+                                  <div style={{ color: '#10b981', fontSize: '0.75rem' }}>
+                                    • Referral Bonus: 10% off  
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
                       )}
@@ -931,7 +1001,7 @@ This action CANNOT be undone!`)
                           📚 Reading Programs *
                         </label>
                         
-                        {/* Show pricing preview */}
+                        {/* FIXED: Show pricing preview with proper discount handling */}
                         {newEntity.tier && (
                           <div style={{ 
                             marginBottom: '1rem',
@@ -946,7 +1016,7 @@ This action CANNOT be undone!`)
                                 tierConfig.maxSchools,
                                 newEntity.tier,
                                 newEntity.selectedPrograms.length,
-                                newEntity.specialDiscounts
+                                newEntity.specialDiscounts || {} // FIXED: Make sure to pass specialDiscounts
                               )
                               
                               return (
@@ -959,16 +1029,28 @@ This action CANNOT be undone!`)
                                       {formatCurrency(pricing.perSchoolPrice)}/school
                                     </span>
                                   </div>
-                                  <div style={{ fontSize: '0.875rem', color: '#60a5fa' }}>
-                                    • Includes {tierConfig.programs.included} program(s)
-                                    • Max {tierConfig.programs.max} programs total
-                                    • Extra programs: {formatCurrency(tierConfig.programs.extraCost)} each
+                                  
+                                  <div style={{ fontSize: '0.875rem', color: '#60a5fa', marginBottom: '0.5rem' }}>
+                                    • Base: {formatCurrency(pricing.basePrice)} ({pricing.numSchools} schools × {formatCurrency(pricing.perSchoolPrice)})
+                                    <br />
+                                    • Programs: {pricing.programCost > 0 ? formatCurrency(pricing.programCost) : 'Included'} ({pricing.programsIncluded} included + {pricing.extraPrograms} extra)
                                   </div>
+                                  
+                                  {/* FIXED: Show discount breakdown if any discounts applied */}
                                   {pricing.discounts.amount > 0 && (
-                                    <div style={{ fontSize: '0.875rem', color: '#f59e0b', marginTop: '0.5rem' }}>
-                                      Discounts Applied: {formatCurrency(pricing.discounts.amount)}
+                                    <div style={{ fontSize: '0.875rem', color: '#f59e0b', marginBottom: '0.5rem' }}>
+                                      <strong>Discounts Applied:</strong>
+                                      <br />
+                                      {newEntity.specialDiscounts.founding && (
+                                        <span>• Founding Diocese: -15% = -{formatCurrency(pricing.subtotal * 0.15)}<br /></span>
+                                      )}
+                                      {newEntity.specialDiscounts.referral && (
+                                        <span>• Referral: -10% = -{formatCurrency(pricing.subtotal * 0.10)}<br /></span>
+                                      )}
+                                      <strong>Total Discount: -{formatCurrency(pricing.discounts.amount)}</strong>
                                     </div>
                                   )}
+                                  
                                   <div style={{ 
                                     fontSize: '1rem', 
                                     color: 'white', 
@@ -977,7 +1059,20 @@ This action CANNOT be undone!`)
                                     borderTop: '1px solid rgba(168, 85, 247, 0.3)',
                                     paddingTop: '0.5rem'
                                   }}>
-                                    Total Annual: {formatCurrency(pricing.totalPrice)}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                      <span>Total Annual:</span>
+                                      <span style={{ fontSize: '1.25rem' }}>
+                                        {pricing.discounts.amount > 0 && (
+                                          <span style={{ textDecoration: 'line-through', color: '#9ca3af', fontSize: '0.875rem', marginRight: '0.5rem' }}>
+                                            {formatCurrency(pricing.subtotal)}
+                                          </span>
+                                        )}
+                                        {formatCurrency(pricing.totalPrice)}
+                                      </span>
+                                    </div>
+                                    <div style={{ fontSize: '0.75rem', color: '#c084fc' }}>
+                                      {formatCurrency(pricing.perSchoolEffective)}/school effective • Saves {formatCurrency(pricing.savings)} ({pricing.savingsPercent}% off individual pricing)
+                                    </div>
                                   </div>
                                 </div>
                               )
@@ -1272,7 +1367,7 @@ function EntityCard({ entity, onDelete, onBilling, availablePrograms }) {
                 fontSize: '0.875rem',
                 fontWeight: '600'
               }}>
-                Status: {PRICING_CONFIG.billing.statuses[entity.billingStatus] || entity.billingStatus || 'Pending'}
+                Status: {PRICING_CONFIG.billing.statuses[entity.billingStatus] || entity.billingStatus || 'pending'}
               </p>
             </div>
           )}
