@@ -310,32 +310,18 @@ export default function StudentAccountCreation() {
                 <div style={{
                   background: 'linear-gradient(135deg, #fef3cd, #fed7aa)',
                   border: '2px solid #f59e0b',
-                  borderRadius: '0.75rem',
-                  padding: '1.25rem',
-                  marginBottom: '1.5rem',
+                  borderRadius: '0.5rem',
+                  padding: '0.875rem',
+                  marginBottom: '1.25rem',
                   textAlign: 'center'
                 }}>
-                  <div style={{
-                    fontSize: '1.5rem',
-                    marginBottom: '0.5rem'
-                  }}>
-                    ⚠️
-                  </div>
-                  <h3 style={{
-                    fontSize: '1rem',
-                    fontWeight: 'bold',
-                    color: '#92400e',
-                    margin: '0 0 0.5rem 0'
-                  }}>
-                    Already have an account?
-                  </h3>
                   <p style={{
-                    fontSize: '0.875rem',
+                    fontSize: '0.8rem',
                     color: '#92400e',
-                    margin: '0 0 1rem 0',
-                    lineHeight: '1.4'
+                    margin: '0 0 0.5rem 0',
+                    lineHeight: '1.3'
                   }}>
-                    If you&apos;ve already created your Lux Libris account, don&apos;t create another one! Please sign in instead.
+                    ⚠️ <strong>Already have an account?</strong> Don&apos;t create another one!
                   </p>
                   <button
                     onClick={handleSignInRedirect}
@@ -343,21 +329,21 @@ export default function StudentAccountCreation() {
                       background: 'linear-gradient(135deg, #f59e0b, #d97706)',
                       color: 'white',
                       border: 'none',
-                      borderRadius: '0.5rem',
-                      padding: '0.75rem 1.5rem',
-                      fontSize: '0.875rem',
+                      borderRadius: '0.375rem',
+                      padding: '0.5rem 1rem',
+                      fontSize: '0.75rem',
                       fontWeight: '600',
                       cursor: 'pointer',
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: '0.5rem',
+                      gap: '0.375rem',
                       transition: 'transform 0.2s',
                       textDecoration: 'none'
                     }}
                     onMouseOver={(e) => e.target.style.transform = 'scale(1.05)'}
                     onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
                   >
-                    🔑 Go to Sign-In Page
+                    🔑 Go to Sign-In
                   </button>
                 </div>
 
