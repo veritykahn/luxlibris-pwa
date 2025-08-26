@@ -1,4 +1,4 @@
-// pages/student-account-creation.js - FIXED: Teacher Code Input Validation
+// pages/student-account-creation.js - FIXED: Teacher Code Input Validation + Existing User Warning
 import { useState } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
@@ -176,6 +176,11 @@ export default function StudentAccountCreation() {
     }
   };
 
+  // Handle sign-in redirect
+  const handleSignInRedirect = () => {
+    window.location.href = 'https://www.luxlibris.org/sign-in';
+  };
+
   return (
     <>
       <Head>
@@ -233,58 +238,6 @@ export default function StudentAccountCreation() {
             }}>
               Enter the teacher code to connect to your reading program
             </p>
-          </div>
-
-          {/* Already Have Account Warning */}
-          <div style={{
-            background: '#fff7ed',
-            border: '2px solid #fb923c',
-            borderRadius: '0.75rem',
-            padding: '1rem',
-            marginBottom: '1.5rem',
-            textAlign: 'center'
-          }}>
-            <div style={{
-              fontSize: '1.25rem',
-              marginBottom: '0.5rem'
-            }}>
-              📱
-            </div>
-            <p style={{
-              fontSize: '0.875rem',
-              fontWeight: '600',
-              color: '#9a3412',
-              margin: '0 0 0.5rem 0'
-            }}>
-              Already have a Lux Libris account?
-            </p>
-            <p style={{
-              fontSize: '0.75rem',
-              color: '#9a3412',
-              margin: '0 0 0.75rem 0',
-              lineHeight: '1.4'
-            }}>
-              Don&apos;t create a new account! Use your existing login instead.
-            </p>
-            <button
-              onClick={() => window.location.href = 'https://www.luxlibris.org/sign-in'}
-              style={{
-                background: '#fb923c',
-                color: 'white',
-                border: 'none',
-                borderRadius: '0.5rem',
-                padding: '0.5rem 1rem',
-                fontSize: '0.8rem',
-                fontWeight: '600',
-                cursor: 'pointer',
-                textDecoration: 'none',
-                display: 'inline-block'
-              }}
-              onMouseOver={(e) => e.target.style.background = '#ea580c'}
-              onMouseOut={(e) => e.target.style.background = '#fb923c'}
-            >
-              Go to Sign In →
-            </button>
           </div>
 
           {/* Progress Steps */}
@@ -352,6 +305,61 @@ export default function StudentAccountCreation() {
                 }}>
                   Your teacher will have given you a special code that connects you to their reading program
                 </p>
+
+                {/* EXISTING USER WARNING */}
+                <div style={{
+                  background: 'linear-gradient(135deg, #fef3cd, #fed7aa)',
+                  border: '2px solid #f59e0b',
+                  borderRadius: '0.75rem',
+                  padding: '1.25rem',
+                  marginBottom: '1.5rem',
+                  textAlign: 'center'
+                }}>
+                  <div style={{
+                    fontSize: '1.5rem',
+                    marginBottom: '0.5rem'
+                  }}>
+                    ⚠️
+                  </div>
+                  <h3 style={{
+                    fontSize: '1rem',
+                    fontWeight: 'bold',
+                    color: '#92400e',
+                    margin: '0 0 0.5rem 0'
+                  }}>
+                    Already have an account?
+                  </h3>
+                  <p style={{
+                    fontSize: '0.875rem',
+                    color: '#92400e',
+                    margin: '0 0 1rem 0',
+                    lineHeight: '1.4'
+                  }}>
+                    If you've already created your Lux Libris account, don't create another one! Please sign in instead.
+                  </p>
+                  <button
+                    onClick={handleSignInRedirect}
+                    style={{
+                      background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '0.5rem',
+                      padding: '0.75rem 1.5rem',
+                      fontSize: '0.875rem',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      transition: 'transform 0.2s',
+                      textDecoration: 'none'
+                    }}
+                    onMouseOver={(e) => e.target.style.transform = 'scale(1.05)'}
+                    onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
+                  >
+                    🔑 Go to Sign-In Page
+                  </button>
+                </div>
 
                 <div style={{ marginBottom: '1.5rem' }}>
                   <label style={{
