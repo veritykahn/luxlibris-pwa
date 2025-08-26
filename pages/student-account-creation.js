@@ -235,6 +235,58 @@ export default function StudentAccountCreation() {
             </p>
           </div>
 
+          {/* Already Have Account Warning */}
+          <div style={{
+            background: '#fff7ed',
+            border: '2px solid #fb923c',
+            borderRadius: '0.75rem',
+            padding: '1rem',
+            marginBottom: '1.5rem',
+            textAlign: 'center'
+          }}>
+            <div style={{
+              fontSize: '1.25rem',
+              marginBottom: '0.5rem'
+            }}>
+              📱
+            </div>
+            <p style={{
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              color: '#9a3412',
+              margin: '0 0 0.5rem 0'
+            }}>
+              Already have a Lux Libris account?
+            </p>
+            <p style={{
+              fontSize: '0.75rem',
+              color: '#9a3412',
+              margin: '0 0 0.75rem 0',
+              lineHeight: '1.4'
+            }}>
+              Don't create a new account! Use your existing login instead.
+            </p>
+            <button
+              onClick={() => window.location.href = 'https://www.luxlibris.org/sign-in'}
+              style={{
+                background: '#fb923c',
+                color: 'white',
+                border: 'none',
+                borderRadius: '0.5rem',
+                padding: '0.5rem 1rem',
+                fontSize: '0.8rem',
+                fontWeight: '600',
+                cursor: 'pointer',
+                textDecoration: 'none',
+                display: 'inline-block'
+              }}
+              onMouseOver={(e) => e.target.style.background = '#ea580c'}
+              onMouseOut={(e) => e.target.style.background = '#fb923c'}
+            >
+              Go to Sign In →
+            </button>
+          </div>
+
           {/* Progress Steps */}
           <div style={{
             display: 'flex',
