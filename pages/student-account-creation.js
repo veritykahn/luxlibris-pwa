@@ -335,7 +335,7 @@ export default function StudentAccountCreation() {
                     margin: '0 0 1rem 0',
                     lineHeight: '1.4'
                   }}>
-                    If you've already created your Lux Libris account, don't create another one! Please sign in instead.
+                    If you&apos;ve already created your Lux Libris account, don&apos;t create another one! Please sign in instead.
                   </p>
                   <button
                     onClick={handleSignInRedirect}
