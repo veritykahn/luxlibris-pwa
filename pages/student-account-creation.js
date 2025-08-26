@@ -264,7 +264,7 @@ export default function StudentAccountCreation() {
               margin: '0 0 0.75rem 0',
               lineHeight: '1.4'
             }}>
-              Don't create a new account! Use your existing login instead.
+              Don&apos;t create a new account! Use your existing login instead.
             </p>
             <button
               onClick={() => window.location.href = 'https://www.luxlibris.org/sign-in'}
