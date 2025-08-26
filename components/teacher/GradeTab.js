@@ -219,6 +219,10 @@ Continue?`)) {
       student.booksSubmitted.forEach(submission => {
         if (submission.bookId) completedBookIds.add(submission.bookId)
       })
+    } else if (student.type === 'app' && student.bookshelf) {
+      student.bookshelf.forEach(book => {
+        if (book.completed && book.bookId) completedBookIds.add(book.bookId)
+      })
     }
     
     return teacherNominees.filter(book => !completedBookIds.has(book.id))
@@ -1424,39 +1428,26 @@ function StudentForm({ student, onChange, onSubmit, onCancel, isProcessing, grad
   )
 }
 
-// Books List Modal Component
+// FIXED Books List Modal Component
 function BooksListModal({ student, teacherNominees, onClose }) {
   const [studentBooks, setStudentBooks] = useState([])
   const [loading, setLoading] = useState(true)
   
   // Load books on mount
   React.useEffect(() => {
-    const loadBooks = async () => {
+    const loadBooks = () => {
       setLoading(true)
       
       if (student.type === 'manual') {
         // For manual students, books are already in the student object
         setStudentBooks(student.booksSubmitted || [])
-        setLoading(false)
-      } else {
-        // For app students, we need to load from Firebase
-        try {
-          const userProfile = JSON.parse(localStorage.getItem('luxlibris_user_profile') || '{}')
-          const studentRef = doc(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/students`, student.id)
-          const studentDoc = await getDoc(studentRef)
-          
-          if (studentDoc.exists()) {
-            const data = studentDoc.data()
-            const bookshelf = data.bookshelf || []
-            // Filter for completed books only
-            const completedBooks = bookshelf.filter(book => book.completed === true)
-            setStudentBooks(completedBooks)
-          }
-        } catch (error) {
-          console.error('Error loading app student books:', error)
-        }
-        setLoading(false)
+      } else if (student.type === 'app') {
+        // For app students, use the bookshelf data that's already available
+        const completedBooks = (student.bookshelf || []).filter(book => book.completed === true)
+        setStudentBooks(completedBooks)
       }
+      
+      setLoading(false)
     }
     
     loadBooks()
@@ -1539,7 +1530,9 @@ function BooksListModal({ student, teacherNominees, onClose }) {
           gap: '0.75rem'
         }}>
           {studentBooks.map((bookEntry, index) => {
+            // For both app and manual students, try to find book details
             const bookDetails = teacherNominees.find(b => b.id === bookEntry.bookId)
+            
             return (
               <div
                 key={index}
@@ -1555,7 +1548,7 @@ function BooksListModal({ student, teacherNominees, onClose }) {
                   justifyContent: 'space-between',
                   alignItems: 'flex-start'
                 }}>
-                  <div>
+                  <div style={{ flex: 1 }}>
                     <h5 style={{
                       fontSize: '0.875rem',
                       fontWeight: '600',
@@ -1571,46 +1564,86 @@ function BooksListModal({ student, teacherNominees, onClose }) {
                     }}>
                       by {bookDetails?.authors || 'Unknown Author'}
                     </p>
+                    
+                    {/* Book metadata */}
                     <div style={{
                       fontSize: '0.75rem',
-                      color: '#374151'
+                      color: '#374151',
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '0.5rem',
+                      alignItems: 'center'
                     }}>
+                      {/* Submission/Format type */}
                       <span style={{
                         background: '#e5e7eb',
                         padding: '0.25rem 0.5rem',
-                        borderRadius: '0.25rem',
-                        marginRight: '0.5rem'
+                        borderRadius: '0.25rem'
                       }}>
                         {bookEntry.submissionType || bookEntry.format || 'Completed'}
                       </span>
-                      {bookEntry.submittedDate && (
-                        <span>
-                          {new Date(bookEntry.submittedDate.seconds 
-                            ? bookEntry.submittedDate.seconds * 1000 
-                            : bookEntry.submittedDate).toLocaleDateString()}
+                      
+                      {/* App students: quiz score */}
+                      {student.type === 'app' && bookEntry.quizScore && (
+                        <span style={{
+                          background: '#dbeafe',
+                          color: '#1e40af',
+                          padding: '0.25rem 0.5rem',
+                          borderRadius: '0.25rem'
+                        }}>
+                          Quiz: {bookEntry.quizScore}
                         </span>
                       )}
-                      {bookEntry.completedAt && (
-                        <span>
-                          {new Date(bookEntry.completedAt.seconds 
-                            ? bookEntry.completedAt.seconds * 1000 
-                            : bookEntry.completedAt).toLocaleDateString()}
+                      
+                      {/* App students: rating */}
+                      {student.type === 'app' && bookEntry.rating && (
+                        <span style={{
+                          background: '#fef3c7',
+                          color: '#92400e',
+                          padding: '0.25rem 0.5rem',
+                          borderRadius: '0.25rem'
+                        }}>
+                          ⭐ {bookEntry.rating}/5
                         </span>
                       )}
                     </div>
-                  </div>
-                  {(bookEntry.approved || student.type === 'app') && (
-                    <span style={{
+                    
+                    {/* Date */}
+                    <div style={{
                       fontSize: '0.75rem',
-                      padding: '0.25rem 0.5rem',
-                      background: '#ECFDF5',
-                      color: '#065F46',
-                      borderRadius: '0.25rem',
-                      fontWeight: '500'
+                      color: '#6b7280',
+                      marginTop: '0.25rem'
                     }}>
-                      ✅ {student.type === 'app' ? 'Completed' : 'Approved'}
-                    </span>
-                  )}
+                      {(() => {
+                        let dateToShow = null
+                        if (bookEntry.submittedAt) {
+                          dateToShow = bookEntry.submittedAt.seconds 
+                            ? new Date(bookEntry.submittedAt.seconds * 1000) 
+                            : new Date(bookEntry.submittedAt)
+                        } else if (bookEntry.submittedDate) {
+                          dateToShow = bookEntry.submittedDate.seconds 
+                            ? new Date(bookEntry.submittedDate.seconds * 1000) 
+                            : new Date(bookEntry.submittedDate)
+                        }
+                        
+                        return dateToShow ? `Completed: ${dateToShow.toLocaleDateString()}` : ''
+                      })()}
+                    </div>
+                  </div>
+                  
+                  {/* Status badge */}
+                  <span style={{
+                    fontSize: '0.75rem',
+                    padding: '0.25rem 0.5rem',
+                    background: '#ECFDF5',
+                    color: '#065F46',
+                    borderRadius: '0.25rem',
+                    fontWeight: '500',
+                    marginLeft: '0.5rem',
+                    flexShrink: 0
+                  }}>
+                    ✅ {student.type === 'app' ? 'Completed' : 'Approved'}
+                  </span>
                 </div>
               </div>
             )

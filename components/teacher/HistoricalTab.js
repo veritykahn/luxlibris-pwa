@@ -379,7 +379,7 @@ This action cannot be undone.`);
               Student *
             </label>
             <select
-              value={selectedStudent?.id || ''}
+              value={selectedStudent ? `${selectedStudent.type}-${selectedStudent.id}` : ''}
               onChange={(e) => {
                 const student = filteredStudents.find(s => `${s.type}-${s.id}` === e.target.value);
                 setSelectedStudent(student || null);
