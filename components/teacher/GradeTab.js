@@ -1595,7 +1595,7 @@ function BooksListModal({ student, teacherNominees, onClose }) {
                         marginTop: '0.25rem',
                         fontStyle: 'italic'
                       }}>
-                        "{bookEntry.notes}"
+                        &apos;{bookEntry.notes}&apos;
                       </div>
                     )}
                     
