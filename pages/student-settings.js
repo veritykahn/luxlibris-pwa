@@ -744,11 +744,11 @@ export default function StudentSettings() {
                 </p>
               </div>
               <div>
-                <p style={{ fontSize: '14px', color: previewTheme.textSecondary, margin: '0 0 4px 0' }}>School Code</p>
-                <p style={{ fontSize: '16px', color: previewTheme.textPrimary, margin: 0, fontWeight: '600', fontFamily: 'monospace' }}>
-                  {studentData.schoolCode || 'TEST-STUDENT-2025'}
-                </p>
-              </div>
+  <p style={{ fontSize: '14px', color: previewTheme.textSecondary, margin: '0 0 4px 0' }}>Teacher Join Code</p>
+  <p style={{ fontSize: '16px', color: previewTheme.textPrimary, margin: 0, fontWeight: '600', fontFamily: 'monospace' }}>
+    {studentData.signInCode || 'TXTEST-DEMO-TEST85-STUDENT'}
+  </p>
+</div>
               <div>
                 <p style={{ fontSize: '14px', color: previewTheme.textSecondary, margin: '0 0 4px 0' }}>School</p>
                 <p style={{ fontSize: '16px', color: previewTheme.textPrimary, margin: 0, fontWeight: '600' }}>
