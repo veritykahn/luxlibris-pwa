@@ -1,9 +1,9 @@
-// pages/teacher/submissions.js - Updated with real-time phase updates
+// pages/teacher/submissions.js - Updated with reverse submission feature
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
-import { usePhaseAccess } from '../../hooks/usePhaseAccess' // Use the updated hook
+import { usePhaseAccess } from '../../hooks/usePhaseAccess'
 import { db } from '../../lib/firebase'
 import { collection, getDocs, updateDoc, doc, query, where, getDoc } from 'firebase/firestore'
 
@@ -19,7 +19,6 @@ export default function TeacherSubmissions() {
     updateLastActivity
   } = useAuth()
 
-  // Use the updated phase access hook
   const { 
     phaseData, 
     permissions, 
@@ -39,8 +38,11 @@ export default function TeacherSubmissions() {
   // Notes modal state
   const [showNotesModal, setShowNotesModal] = useState(false)
   const [selectedSubmission, setSelectedSubmission] = useState(null)
-  const [actionType, setActionType] = useState('') // 'approve' or 'revise'
+  const [actionType, setActionType] = useState('') // 'approve', 'revise', or 'cancel'
   const [teacherNotes, setTeacherNotes] = useState('')
+
+  // NEW: Cancel confirmation modal state
+  const [showCancelConfirmation, setShowCancelConfirmation] = useState(false)
 
   // Authentication check
   useEffect(() => {
@@ -194,12 +196,18 @@ export default function TeacherSubmissions() {
     }
   }
 
-  // Open notes modal
+  // Open notes modal for approve/revise
   const openNotesModal = (submission, action) => {
     setSelectedSubmission(submission)
     setActionType(action)
     setTeacherNotes('')
     setShowNotesModal(true)
+  }
+
+  // NEW: Open cancel confirmation modal
+  const openCancelConfirmation = (submission) => {
+    setSelectedSubmission(submission)
+    setShowCancelConfirmation(true)
   }
 
   // Close notes modal
@@ -210,6 +218,12 @@ export default function TeacherSubmissions() {
     setTeacherNotes('')
   }
 
+  // NEW: Close cancel confirmation modal
+  const closeCancelConfirmation = () => {
+    setShowCancelConfirmation(false)
+    setSelectedSubmission(null)
+  }
+
   // Handle submission approval/revision
   const handleSubmissionAction = async () => {
     if (!selectedSubmission) return
@@ -218,33 +232,32 @@ export default function TeacherSubmissions() {
     try {
       const studentRef = doc(db, `entities/${selectedSubmission.entityId}/schools/${selectedSubmission.schoolId}/students`, selectedSubmission.studentId)
       
-      // Get current student data using getDoc instead of getDocs
-const studentDocSnapshot = await getDoc(studentRef)
+      const studentDocSnapshot = await getDoc(studentRef)
 
-if (!studentDocSnapshot.exists()) {
-  throw new Error('Student not found')
-}
+      if (!studentDocSnapshot.exists()) {
+        throw new Error('Student not found')
+      }
 
-const studentData = studentDocSnapshot.data()
+      const studentData = studentDocSnapshot.data()
       const updatedBookshelf = studentData.bookshelf.map(book => {
         if (book.bookId === selectedSubmission.bookId && book.status === 'pending_approval') {
           if (actionType === 'approve') {
-  return {
-    ...book,
-    status: 'completed',
-    approvedAt: new Date(),
-    teacherNotes: teacherNotes.trim(),
-    completed: true
-  }
-} else if (actionType === 'revise') {
-  return {
-    ...book,
-    status: 'revision_requested',
-    revisionRequestedAt: new Date(),
-    teacherNotes: teacherNotes.trim(),
-    completed: false
-  }
-}
+            return {
+              ...book,
+              status: 'completed',
+              approvedAt: new Date(),
+              teacherNotes: teacherNotes.trim(),
+              completed: true
+            }
+          } else if (actionType === 'revise') {
+            return {
+              ...book,
+              status: 'revision_requested',
+              revisionRequestedAt: new Date(),
+              teacherNotes: teacherNotes.trim(),
+              completed: false
+            }
+          }
         }
         return book
       })
@@ -272,6 +285,76 @@ const studentData = studentDocSnapshot.data()
     } catch (error) {
       console.error('❌ Error processing submission:', error)
       setShowSuccess('❌ Error processing submission. Please try again.')
+      setTimeout(() => setShowSuccess(''), 3000)
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  // NEW: Handle submission cancellation/reversal
+  const handleSubmissionCancellation = async () => {
+    if (!selectedSubmission) return
+
+    setIsProcessing(true)
+    try {
+      const studentRef = doc(db, `entities/${selectedSubmission.entityId}/schools/${selectedSubmission.schoolId}/students`, selectedSubmission.studentId)
+      
+      const studentDocSnapshot = await getDoc(studentRef)
+
+      if (!studentDocSnapshot.exists()) {
+        throw new Error('Student not found')
+      }
+
+      const studentData = studentDocSnapshot.data()
+      const updatedBookshelf = studentData.bookshelf.map(book => {
+        if (book.bookId === selectedSubmission.bookId && book.status === 'pending_approval') {
+          // Revert to in-progress state
+          const revertedBook = {
+            ...book,
+            status: 'in_progress',
+            completed: false,
+            // Remove submission-related fields
+            submissionType: undefined,
+            submittedAt: undefined,
+            // Keep progress data
+            currentProgress: book.currentProgress,
+            rating: book.rating,
+            notes: book.notes,
+            // Remove any teacher feedback from previous submissions
+            teacherNotes: undefined,
+            approvedAt: undefined,
+            revisionRequestedAt: undefined
+          }
+          
+          // Clean up undefined fields
+          Object.keys(revertedBook).forEach(key => {
+            if (revertedBook[key] === undefined) {
+              delete revertedBook[key]
+            }
+          })
+          
+          return revertedBook
+        }
+        return book
+      })
+
+      // Update student's bookshelf
+      await updateDoc(studentRef, {
+        bookshelf: updatedBookshelf,
+        lastModified: new Date()
+      })
+
+      // Remove from local state
+      setSubmissions(prev => prev.filter(sub => sub.id !== selectedSubmission.id))
+      
+      setShowSuccess(`🔄 ${selectedSubmission.studentName}'s "${selectedSubmission.bookTitle}" submission cancelled - book returned to in-progress`)
+      
+      closeCancelConfirmation()
+      setTimeout(() => setShowSuccess(''), 4000)
+
+    } catch (error) {
+      console.error('❌ Error cancelling submission:', error)
+      setShowSuccess('❌ Error cancelling submission. Please try again.')
       setTimeout(() => setShowSuccess(''), 3000)
     } finally {
       setIsProcessing(false)
@@ -580,7 +663,7 @@ const studentData = studentDocSnapshot.data()
           padding: '1rem'
         }}>
 
-          {/* Phase Status Alerts - Using real-time data */}
+          {/* Phase Status Alerts */}
           {phaseData.currentPhase === 'TEACHER_SELECTION' && (
             <div style={{
               background: 'linear-gradient(135deg, #DBEAFE, #BFDBFE)',
@@ -635,7 +718,6 @@ const studentData = studentDocSnapshot.data()
             </div>
           )}
 
-          {/* Rest of the component remains the same... */}
           {/* Summary */}
           <div style={{
             background: 'white',
@@ -685,7 +767,7 @@ const studentData = studentDocSnapshot.data()
             </div>
           </div>
 
-          {/* Submissions List (same as before...) */}
+          {/* Submissions List */}
           {submissions.length === 0 ? (
             <div style={{
               background: 'white',
@@ -770,7 +852,7 @@ const studentData = studentDocSnapshot.data()
                           margin: '0 0 0.5rem 0',
                           fontWeight: '500'
                         }}>
-                          &quot;{submission.bookTitle}&quot;
+                          "{submission.bookTitle}"
                         </p>
                         
                         <div style={{
@@ -806,7 +888,7 @@ const studentData = studentDocSnapshot.data()
                             fontSize: '0.875rem',
                             fontWeight: '600',
                             cursor: 'pointer',
-                            minWidth: '100px',
+                            minWidth: '120px',
                             opacity: isProcessing ? 0.7 : 1
                           }}
                         >
@@ -825,11 +907,31 @@ const studentData = studentDocSnapshot.data()
                             fontSize: '0.875rem',
                             fontWeight: '600',
                             cursor: 'pointer',
-                            minWidth: '100px',
+                            minWidth: '120px',
                             opacity: isProcessing ? 0.7 : 1
                           }}
                         >
                           📝 Request Revisions
+                        </button>
+
+                        {/* NEW: Cancel Submission Button */}
+                        <button
+                          onClick={() => openCancelConfirmation(submission)}
+                          disabled={isProcessing}
+                          style={{
+                            padding: '0.5rem 1rem',
+                            backgroundColor: '#6C757D',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '0.375rem',
+                            fontSize: '0.875rem',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            minWidth: '120px',
+                            opacity: isProcessing ? 0.7 : 1
+                          }}
+                        >
+                          🔄 Cancel Submission
                         </button>
                       </div>
                     </div>
@@ -840,8 +942,7 @@ const studentData = studentDocSnapshot.data()
           )}
         </div>
 
-        {/* Notes Modal and Bottom Navigation remain the same... */}
-        {/* Notes Modal */}
+        {/* Notes Modal (Approve/Revise) */}
         {showNotesModal && selectedSubmission && (
           <div style={{
             position: 'fixed',
@@ -908,7 +1009,7 @@ const studentData = studentDocSnapshot.data()
                   margin: '0 0 0.5rem 0',
                   fontWeight: '500'
                 }}>
-                  <strong>{selectedSubmission.studentName}</strong> - &quot;{selectedSubmission.bookTitle}&quot;
+                  <strong>{selectedSubmission.studentName}</strong> - "{selectedSubmission.bookTitle}"
                 </p>
                 <p style={{
                   fontSize: '0.75rem',
@@ -921,66 +1022,66 @@ const studentData = studentDocSnapshot.data()
 
               <div style={{ marginBottom: '1.5rem' }}>
                 <label style={{
-  display: 'block',
-  fontSize: '0.875rem',
-  fontWeight: '600',
-  color: '#374151',
-  marginBottom: '0.5rem'
-}}>
-  {actionType === 'approve' 
-    ? 'Feedback for student (required)' 
-    : 'What needs to be revised? (required)'
-  }
-  <span style={{ color: '#EF4444' }}> *</span>
-</label>
+                  display: 'block',
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  color: '#374151',
+                  marginBottom: '0.5rem'
+                }}>
+                  {actionType === 'approve' 
+                    ? 'Feedback for student (required)' 
+                    : 'What needs to be revised? (required)'
+                  }
+                  <span style={{ color: '#EF4444' }}> *</span>
+                </label>
                 <textarea
-  value={teacherNotes}
-  onChange={(e) => setTeacherNotes(e.target.value)}
-  placeholder={actionType === 'approve' 
-    ? "Great work! Your presentation was engaging..."
-    : "Please add more details about the main character..."
-  }
-  rows={4}
-  style={{
-    width: '100%',
-    padding: '0.75rem',
-    border: teacherNotes.trim().length < 10 ? '2px solid #FCA5A5' : '1px solid #e5e7eb',
-    borderRadius: '0.5rem',
-    fontSize: '0.875rem',
-    fontFamily: 'inherit',
-    boxSizing: 'border-box',
-    outline: 'none',
-    resize: 'vertical',
-    backgroundColor: 'white',
-    color: '#1f2937',
-    lineHeight: '1.5'
-  }}
-  maxLength={500}
-/>
+                  value={teacherNotes}
+                  onChange={(e) => setTeacherNotes(e.target.value)}
+                  placeholder={actionType === 'approve' 
+                    ? "Great work! Your presentation was engaging..."
+                    : "Please add more details about the main character..."
+                  }
+                  rows={4}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: teacherNotes.trim().length < 10 ? '2px solid #FCA5A5' : '1px solid #e5e7eb',
+                    borderRadius: '0.5rem',
+                    fontSize: '0.875rem',
+                    fontFamily: 'inherit',
+                    boxSizing: 'border-box',
+                    outline: 'none',
+                    resize: 'vertical',
+                    backgroundColor: 'white',
+                    color: '#1f2937',
+                    lineHeight: '1.5'
+                  }}
+                  maxLength={500}
+                />
                 <div style={{
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  marginTop: '0.5rem'
-}}>
-  <p style={{
-    fontSize: '0.75rem',
-    color: teacherNotes.trim().length < 10 ? '#EF4444' : '#6b7280',
-    margin: 0
-  }}>
-    {teacherNotes.trim().length < 10 
-      ? `Need at least ${10 - teacherNotes.trim().length} more characters for meaningful feedback`
-      : 'Great! Your feedback will help the student.'
-    }
-  </p>
-  <p style={{
-    fontSize: '0.75rem',
-    color: '#6b7280',
-    margin: 0
-  }}>
-    {teacherNotes.length}/500
-  </p>
-</div>
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginTop: '0.5rem'
+                }}>
+                  <p style={{
+                    fontSize: '0.75rem',
+                    color: teacherNotes.trim().length < 10 ? '#EF4444' : '#6b7280',
+                    margin: 0
+                  }}>
+                    {teacherNotes.trim().length < 10 
+                      ? `Need at least ${10 - teacherNotes.trim().length} more characters for meaningful feedback`
+                      : 'Great! Your feedback will help the student.'
+                    }
+                  </p>
+                  <p style={{
+                    fontSize: '0.75rem',
+                    color: '#6b7280',
+                    margin: 0
+                  }}>
+                    {teacherNotes.length}/500
+                  </p>
+                </div>
               </div>
 
               <div style={{
@@ -1003,32 +1104,196 @@ const studentData = studentDocSnapshot.data()
                   Cancel
                 </button>
                 <button
-  onClick={handleSubmissionAction}
-  disabled={isProcessing || teacherNotes.trim().length < 10}
-  style={{
-    padding: '0.75rem 1.5rem',
-    backgroundColor: teacherNotes.trim().length < 10 
-      ? '#D1D5DB' 
-      : actionType === 'approve' ? '#4CAF50' : '#FF9800',
-    color: teacherNotes.trim().length < 10 ? '#6B7280' : 'white',
-    border: 'none',
-    borderRadius: '0.5rem',
-    cursor: teacherNotes.trim().length < 10 ? 'not-allowed' : 'pointer',
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    opacity: isProcessing ? 0.7 : 1,
-    transition: 'all 0.2s ease'
-  }}
->
-  {isProcessing 
-    ? 'Processing...' 
-    : teacherNotes.trim().length < 10
-      ? `Need ${10 - teacherNotes.trim().length} more characters`
-      : actionType === 'approve' 
-        ? '✅ Approve with Feedback' 
-        : '📝 Request Revisions'
-  }
-</button>
+                  onClick={handleSubmissionAction}
+                  disabled={isProcessing || teacherNotes.trim().length < 10}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    backgroundColor: teacherNotes.trim().length < 10 
+                      ? '#D1D5DB' 
+                      : actionType === 'approve' ? '#4CAF50' : '#FF9800',
+                    color: teacherNotes.trim().length < 10 ? '#6B7280' : 'white',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    cursor: teacherNotes.trim().length < 10 ? 'not-allowed' : 'pointer',
+                    fontSize: '0.875rem',
+                    fontWeight: '600',
+                    opacity: isProcessing ? 0.7 : 1,
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  {isProcessing 
+                    ? 'Processing...' 
+                    : teacherNotes.trim().length < 10
+                      ? `Need ${10 - teacherNotes.trim().length} more characters`
+                      : actionType === 'approve' 
+                        ? '✅ Approve with Feedback' 
+                        : '📝 Request Revisions'
+                  }
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* NEW: Cancel Confirmation Modal */}
+        {showCancelConfirmation && selectedSubmission && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10001,
+            padding: '1rem'
+          }}>
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '1rem',
+              padding: '1.5rem',
+              maxWidth: '450px',
+              width: '100%',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: '1.5rem'
+              }}>
+                <h2 style={{
+                  fontSize: '1.25rem',
+                  fontWeight: 'bold',
+                  color: '#223848',
+                  margin: 0
+                }}>
+                  🔄 Cancel Submission
+                </h2>
+                <button
+                  onClick={closeCancelConfirmation}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '1.5rem',
+                    cursor: 'pointer',
+                    color: '#6b7280',
+                    padding: '0.25rem',
+                    borderRadius: '0.25rem'
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div style={{
+                backgroundColor: '#FEF3C7',
+                borderRadius: '0.5rem',
+                padding: '1rem',
+                marginBottom: '1.5rem',
+                border: '1px solid #FBBF24'
+              }}>
+                <p style={{
+                  fontSize: '0.875rem',
+                  color: '#92400E',
+                  margin: '0 0 0.5rem 0',
+                  fontWeight: '600'
+                }}>
+                  <strong>{selectedSubmission.studentName}</strong> - "{selectedSubmission.bookTitle}"
+                </p>
+                <p style={{
+                  fontSize: '0.75rem',
+                  color: '#92400E',
+                  margin: 0
+                }}>
+                  Submission type: {formatSubmissionType(selectedSubmission.submissionType)}
+                </p>
+              </div>
+
+              <div style={{
+                backgroundColor: '#F3F4F6',
+                borderRadius: '0.5rem',
+                padding: '1rem',
+                marginBottom: '1.5rem'
+              }}>
+                <h3 style={{
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  color: '#374151',
+                  margin: '0 0 0.5rem 0'
+                }}>
+                  This will:
+                </h3>
+                <ul style={{
+                  fontSize: '0.75rem',
+                  color: '#6b7280',
+                  margin: 0,
+                  paddingLeft: '1rem',
+                  lineHeight: '1.4'
+                }}>
+                  <li>Return the book to "in progress" status</li>
+                  <li>Remove the submission from your review queue</li>
+                  <li>Allow the student to choose a different submission type</li>
+                  <li>Preserve the student's reading progress, rating, and notes</li>
+                </ul>
+              </div>
+
+              <div style={{
+                backgroundColor: '#E0F7FA',
+                borderRadius: '0.5rem',
+                padding: '1rem',
+                marginBottom: '1.5rem',
+                border: '1px solid #4DD0E1'
+              }}>
+                <p style={{
+                  fontSize: '0.75rem',
+                  color: '#006064',
+                  margin: 0,
+                  fontWeight: '500'
+                }}>
+                  💡 <strong>Use case:</strong> Student accidentally selected "Present to Teacher" 
+                  instead of "Take Quiz" - this lets them resubmit with the correct option.
+                </p>
+              </div>
+
+              <div style={{
+                display: 'flex',
+                gap: '0.75rem',
+                justifyContent: 'flex-end'
+              }}>
+                <button
+                  onClick={closeCancelConfirmation}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    backgroundColor: '#f3f4f6',
+                    color: '#374151',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem'
+                  }}
+                >
+                  Keep Submission
+                </button>
+                <button
+                  onClick={handleSubmissionCancellation}
+                  disabled={isProcessing}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    backgroundColor: isProcessing ? '#D1D5DB' : '#6C757D',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    cursor: isProcessing ? 'wait' : 'pointer',
+                    fontSize: '0.875rem',
+                    fontWeight: '600',
+                    opacity: isProcessing ? 0.7 : 1
+                  }}
+                >
+                  {isProcessing ? 'Processing...' : '🔄 Cancel & Return to Student'}
+                </button>
               </div>
             </div>
           </div>
@@ -1133,7 +1398,7 @@ const studentData = studentDocSnapshot.data()
             bottom: '100px',
             left: '50%',
             transform: 'translateX(-50%)',
-            backgroundColor: '#4CAF50',
+            backgroundColor: showSuccess.includes('❌') ? '#F44336' : '#4CAF50',
             color: 'white',
             padding: '12px 24px',
             borderRadius: '20px',
