@@ -221,7 +221,10 @@ Continue?`)) {
       })
     } else if (student.type === 'app' && student.bookshelf) {
       student.bookshelf.forEach(book => {
-        if (book.completed && book.bookId) completedBookIds.add(book.bookId)
+        // Only consider truly completed books (not pending approval)
+        if (book.status === 'completed' && book.bookId) {
+          completedBookIds.add(book.bookId)
+        }
       })
     }
     
@@ -1430,7 +1433,11 @@ function StudentForm({ student, onChange, onSubmit, onCancel, isProcessing, grad
 
 // FIXED Books List Modal Component
 function BooksListModal({ student, teacherNominees, onClose }) {
-  const [studentBooks, setStudentBooks] = useState([])
+  const [studentBooks, setStudentBooks] = useState({
+    completed: [],
+    pending: [],
+    failed: []
+  })
   const [loading, setLoading] = useState(true)
   
   // Load books on mount
@@ -1440,11 +1447,25 @@ function BooksListModal({ student, teacherNominees, onClose }) {
       
       if (student.type === 'manual') {
         // For manual students, books are already in the student object
-        setStudentBooks(student.booksSubmitted || [])
+        const completedBooks = student.booksSubmitted || []
+        setStudentBooks({
+          completed: completedBooks,
+          pending: [],
+          failed: []
+        })
       } else if (student.type === 'app') {
-        // For app students, use the bookshelf data that's already available
-        const completedBooks = (student.bookshelf || []).filter(book => book.completed === true)
-        setStudentBooks(completedBooks)
+        // For app students, categorize books by status
+        const bookshelf = student.bookshelf || []
+        
+        const completed = bookshelf.filter(book => book.status === 'completed')
+        const pending = bookshelf.filter(book => book.status === 'pending_approval')
+        const failed = bookshelf.filter(book => book.status === 'quiz_failed')
+        
+        setStudentBooks({
+          completed,
+          pending,
+          failed
+        })
       }
       
       setLoading(false)
@@ -1453,6 +1474,9 @@ function BooksListModal({ student, teacherNominees, onClose }) {
     loadBooks()
   }, [student])
 
+  const totalCompleted = studentBooks.completed.length
+  const totalPending = studentBooks.pending.length
+  const totalFailed = studentBooks.failed.length
   const totalBooks = student.type === 'app' 
     ? (student.booksSubmittedThisYear || 0)
     : (student.totalBooksThisYear || 0)
@@ -1467,6 +1491,172 @@ function BooksListModal({ student, teacherNominees, onClose }) {
       </div>
     )
   }
+
+  const renderBookSection = (books, title, statusColor, statusBg) => {
+    if (books.length === 0) return null
+    
+    return (
+      <div style={{ marginBottom: '1.5rem' }}>
+        <h5 style={{
+          fontSize: '1rem',
+          fontWeight: '600',
+          color: '#223848',
+          margin: '0 0 0.75rem 0'
+        }}>
+          {title} ({books.length})
+        </h5>
+        <div style={{
+          display: 'grid',
+          gap: '0.75rem'
+        }}>
+          {books.map((bookEntry, index) => {
+            const bookDetails = teacherNominees.find(b => b.id === bookEntry.bookId)
+            
+            return (
+              <div
+                key={index}
+                style={{
+                  background: 'white',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '0.5rem',
+                  padding: '1rem'
+                }}
+              >
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start'
+                }}>
+                  <div style={{ flex: 1 }}>
+                    <h6 style={{
+                      fontSize: '0.875rem',
+                      fontWeight: '600',
+                      color: '#223848',
+                      margin: '0 0 0.25rem 0'
+                    }}>
+                      {bookDetails?.title || bookEntry.bookTitle || 'Unknown Book'}
+                    </h6>
+                    <p style={{
+                      fontSize: '0.75rem',
+                      color: '#6b7280',
+                      margin: '0 0 0.25rem 0'
+                    }}>
+                      by {bookDetails?.authors || 'Unknown Author'}
+                    </p>
+                    
+                    {/* Book metadata */}
+                    <div style={{
+                      fontSize: '0.75rem',
+                      color: '#374151',
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '0.5rem',
+                      alignItems: 'center'
+                    }}>
+                      {/* Submission/Format type */}
+                      <span style={{
+                        background: '#e5e7eb',
+                        padding: '0.25rem 0.5rem',
+                        borderRadius: '0.25rem'
+                      }}>
+                        {bookEntry.submissionType || bookEntry.format || 'Book'}
+                      </span>
+                      
+                      {/* App students: quiz score */}
+                      {student.type === 'app' && (bookEntry.quizScore || bookEntry.lastQuizScore) && (
+                        <span style={{
+                          background: bookEntry.status === 'quiz_failed' ? '#fee2e2' : '#dbeafe',
+                          color: bookEntry.status === 'quiz_failed' ? '#991b1b' : '#1e40af',
+                          padding: '0.25rem 0.5rem',
+                          borderRadius: '0.25rem'
+                        }}>
+                          Quiz: {bookEntry.quizScore || bookEntry.lastQuizScore}
+                        </span>
+                      )}
+                      
+                      {/* App students: rating */}
+                      {student.type === 'app' && bookEntry.rating > 0 && (
+                        <span style={{
+                          background: '#fef3c7',
+                          color: '#92400e',
+                          padding: '0.25rem 0.5rem',
+                          borderRadius: '0.25rem'
+                        }}>
+                          ⭐ {bookEntry.rating}/5
+                        </span>
+                      )}
+                    </div>
+                    
+                    {/* Notes */}
+                    {bookEntry.notes && (
+                      <div style={{
+                        fontSize: '0.75rem',
+                        color: '#6b7280',
+                        marginTop: '0.25rem',
+                        fontStyle: 'italic'
+                      }}>
+                        "{bookEntry.notes}"
+                      </div>
+                    )}
+                    
+                    {/* Date */}
+                    <div style={{
+                      fontSize: '0.75rem',
+                      color: '#6b7280',
+                      marginTop: '0.25rem'
+                    }}>
+                      {(() => {
+                        let dateToShow = null
+                        let dateLabel = ''
+                        
+                        if (bookEntry.submittedAt) {
+                          dateToShow = bookEntry.submittedAt.seconds 
+                            ? new Date(bookEntry.submittedAt.seconds * 1000) 
+                            : new Date(bookEntry.submittedAt)
+                          dateLabel = bookEntry.status === 'pending_approval' ? 'Submitted: ' : 'Completed: '
+                        } else if (bookEntry.submittedDate) {
+                          dateToShow = bookEntry.submittedDate.seconds 
+                            ? new Date(bookEntry.submittedDate.seconds * 1000) 
+                            : new Date(bookEntry.submittedDate)
+                          dateLabel = 'Completed: '
+                        } else if (bookEntry.failedAt && bookEntry.status === 'quiz_failed') {
+                          dateToShow = bookEntry.failedAt.seconds 
+                            ? new Date(bookEntry.failedAt.seconds * 1000) 
+                            : new Date(bookEntry.failedAt)
+                          dateLabel = 'Failed: '
+                        }
+                        
+                        return dateToShow ? `${dateLabel}${dateToShow.toLocaleDateString()}` : ''
+                      })()}
+                    </div>
+                  </div>
+                  
+                  {/* Status badge */}
+                  <span style={{
+                    fontSize: '0.75rem',
+                    padding: '0.25rem 0.5rem',
+                    background: statusBg,
+                    color: statusColor,
+                    borderRadius: '0.25rem',
+                    fontWeight: '500',
+                    marginLeft: '0.5rem',
+                    flexShrink: 0
+                  }}>
+                    {bookEntry.status === 'completed' && '✅ Completed'}
+                    {bookEntry.status === 'pending_approval' && '⏳ Pending Review'}
+                    {bookEntry.status === 'quiz_failed' && '❌ Quiz Failed'}
+                    {student.type === 'manual' && '✅ Approved'}
+                  </span>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
+  const hasAnyBooks = totalCompleted > 0 || totalPending > 0 || totalFailed > 0
 
   return (
     <div style={{ display: 'grid', gap: '1rem' }}>
@@ -1492,7 +1682,9 @@ function BooksListModal({ student, teacherNominees, onClose }) {
           fontSize: '0.875rem',
           color: '#6b7280'
         }}>
-          <div>Books: {totalBooks}</div>
+          <div>Completed: {totalCompleted}</div>
+          {totalPending > 0 && <div>Pending: {totalPending}</div>}
+          {totalFailed > 0 && <div>Failed: {totalFailed}</div>}
           <div>Goal: {student.personalGoal}</div>
           <div>Progress: {Math.round(progress)}%</div>
         </div>
@@ -1512,142 +1704,44 @@ function BooksListModal({ student, teacherNominees, onClose }) {
         </div>
       </div>
 
-      {/* Books List */}
-      {studentBooks.length === 0 ? (
+      {/* Books Lists */}
+      {!hasAnyBooks ? (
         <div style={{
           textAlign: 'center',
           padding: '2rem',
           color: '#6b7280'
         }}>
           <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>📚</div>
-          <p>No books completed yet.</p>
+          <p>No books submitted yet.</p>
         </div>
       ) : (
         <div style={{
           maxHeight: '400px',
-          overflowY: 'auto',
-          display: 'grid',
-          gap: '0.75rem'
+          overflowY: 'auto'
         }}>
-          {studentBooks.map((bookEntry, index) => {
-            // For both app and manual students, try to find book details
-            const bookDetails = teacherNominees.find(b => b.id === bookEntry.bookId)
-            
-            return (
-              <div
-                key={index}
-                style={{
-                  background: 'white',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '0.5rem',
-                  padding: '1rem'
-                }}
-              >
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'flex-start'
-                }}>
-                  <div style={{ flex: 1 }}>
-                    <h5 style={{
-                      fontSize: '0.875rem',
-                      fontWeight: '600',
-                      color: '#223848',
-                      margin: '0 0 0.25rem 0'
-                    }}>
-                      {bookDetails?.title || bookEntry.bookTitle || 'Unknown Book'}
-                    </h5>
-                    <p style={{
-                      fontSize: '0.75rem',
-                      color: '#6b7280',
-                      margin: '0 0 0.25rem 0'
-                    }}>
-                      by {bookDetails?.authors || 'Unknown Author'}
-                    </p>
-                    
-                    {/* Book metadata */}
-                    <div style={{
-                      fontSize: '0.75rem',
-                      color: '#374151',
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      gap: '0.5rem',
-                      alignItems: 'center'
-                    }}>
-                      {/* Submission/Format type */}
-                      <span style={{
-                        background: '#e5e7eb',
-                        padding: '0.25rem 0.5rem',
-                        borderRadius: '0.25rem'
-                      }}>
-                        {bookEntry.submissionType || bookEntry.format || 'Completed'}
-                      </span>
-                      
-                      {/* App students: quiz score */}
-                      {student.type === 'app' && bookEntry.quizScore && (
-                        <span style={{
-                          background: '#dbeafe',
-                          color: '#1e40af',
-                          padding: '0.25rem 0.5rem',
-                          borderRadius: '0.25rem'
-                        }}>
-                          Quiz: {bookEntry.quizScore}
-                        </span>
-                      )}
-                      
-                      {/* App students: rating */}
-                      {student.type === 'app' && bookEntry.rating && (
-                        <span style={{
-                          background: '#fef3c7',
-                          color: '#92400e',
-                          padding: '0.25rem 0.5rem',
-                          borderRadius: '0.25rem'
-                        }}>
-                          ⭐ {bookEntry.rating}/5
-                        </span>
-                      )}
-                    </div>
-                    
-                    {/* Date */}
-                    <div style={{
-                      fontSize: '0.75rem',
-                      color: '#6b7280',
-                      marginTop: '0.25rem'
-                    }}>
-                      {(() => {
-                        let dateToShow = null
-                        if (bookEntry.submittedAt) {
-                          dateToShow = bookEntry.submittedAt.seconds 
-                            ? new Date(bookEntry.submittedAt.seconds * 1000) 
-                            : new Date(bookEntry.submittedAt)
-                        } else if (bookEntry.submittedDate) {
-                          dateToShow = bookEntry.submittedDate.seconds 
-                            ? new Date(bookEntry.submittedDate.seconds * 1000) 
-                            : new Date(bookEntry.submittedDate)
-                        }
-                        
-                        return dateToShow ? `Completed: ${dateToShow.toLocaleDateString()}` : ''
-                      })()}
-                    </div>
-                  </div>
-                  
-                  {/* Status badge */}
-                  <span style={{
-                    fontSize: '0.75rem',
-                    padding: '0.25rem 0.5rem',
-                    background: '#ECFDF5',
-                    color: '#065F46',
-                    borderRadius: '0.25rem',
-                    fontWeight: '500',
-                    marginLeft: '0.5rem',
-                    flexShrink: 0
-                  }}>
-                    ✅ {student.type === 'app' ? 'Completed' : 'Approved'}
-                  </span>
-                </div>
-              </div>
-            )
-          })}
+          {/* Completed Books */}
+          {renderBookSection(
+            studentBooks.completed,
+            '✅ Completed Books',
+            '#065F46',
+            '#ECFDF5'
+          )}
+          
+          {/* Pending Approval Books */}
+          {renderBookSection(
+            studentBooks.pending,
+            '⏳ Pending Teacher Review',
+            '#92400E',
+            '#FEF3C7'
+          )}
+          
+          {/* Failed Quiz Books */}
+          {renderBookSection(
+            studentBooks.failed,
+            '❌ Quiz Failed (Can Retake)',
+            '#991B1B',
+            '#FEE2E2'
+          )}
         </div>
       )}
 
