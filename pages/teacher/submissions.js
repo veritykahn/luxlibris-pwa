@@ -852,7 +852,7 @@ export default function TeacherSubmissions() {
                           margin: '0 0 0.5rem 0',
                           fontWeight: '500'
                         }}>
-                          "{submission.bookTitle}"
+                          &quot;{submission.bookTitle}&quot;
                         </p>
                         
                         <div style={{
@@ -1009,7 +1009,7 @@ export default function TeacherSubmissions() {
                   margin: '0 0 0.5rem 0',
                   fontWeight: '500'
                 }}>
-                  <strong>{selectedSubmission.studentName}</strong> - "{selectedSubmission.bookTitle}"
+                  <strong>{selectedSubmission.studentName}</strong> - &quot;{selectedSubmission.bookTitle}&quot;
                 </p>
                 <p style={{
                   fontSize: '0.75rem',
@@ -1201,7 +1201,7 @@ export default function TeacherSubmissions() {
                   margin: '0 0 0.5rem 0',
                   fontWeight: '600'
                 }}>
-                  <strong>{selectedSubmission.studentName}</strong> - "{selectedSubmission.bookTitle}"
+                  <strong>{selectedSubmission.studentName}</strong> - &apos;{selectedSubmission.bookTitle}&apos;
                 </p>
                 <p style={{
                   fontSize: '0.75rem',
@@ -1233,10 +1233,10 @@ export default function TeacherSubmissions() {
                   paddingLeft: '1rem',
                   lineHeight: '1.4'
                 }}>
-                  <li>Return the book to "in progress" status</li>
+                  <li>Return the book to &quot;in progress&quot; status</li>
                   <li>Remove the submission from your review queue</li>
                   <li>Allow the student to choose a different submission type</li>
-                  <li>Preserve the student's reading progress, rating, and notes</li>
+                  <li>Preserve the student&apos;s reading progress, rating, and notes</li>
                 </ul>
               </div>
 
@@ -1253,8 +1253,8 @@ export default function TeacherSubmissions() {
                   margin: 0,
                   fontWeight: '500'
                 }}>
-                  💡 <strong>Use case:</strong> Student accidentally selected "Present to Teacher" 
-                  instead of "Take Quiz" - this lets them resubmit with the correct option.
+                  💡 <strong>Use case:</strong> Student accidentally selected &quot;Present to Teacher&quot; 
+                  instead of &quot;Take Quiz&quot; - this lets them resubmit with the correct option.
                 </p>
               </div>
 
