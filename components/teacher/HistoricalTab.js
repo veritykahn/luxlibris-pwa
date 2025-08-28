@@ -393,7 +393,8 @@ This action cannot be undone.`);
                 borderRadius: '0.5rem',
                 fontSize: '1rem',
                 boxSizing: 'border-box',
-                backgroundColor: '#FAFAFF'
+                backgroundColor: 'white',
+                color: '#223848'
               }}
             >
               <option value="">Select student...</option>
@@ -429,7 +430,8 @@ This action cannot be undone.`);
                 borderRadius: '0.5rem',
                 fontSize: '1rem',
                 boxSizing: 'border-box',
-                backgroundColor: selectedStudent ? '#FAFAFF' : '#F3F4F6',
+                backgroundColor: selectedStudent ? 'white' : '#F3F4F6',
+                color: '#223848',
                 cursor: selectedStudent ? 'pointer' : 'not-allowed'
               }}
             >
@@ -470,7 +472,8 @@ This action cannot be undone.`);
                 borderRadius: '0.5rem',
                 fontSize: '1rem',
                 boxSizing: 'border-box',
-                backgroundColor: (selectedStudent && selectedGrade) ? '#FAFAFF' : '#F3F4F6',
+                backgroundColor: (selectedStudent && selectedGrade) ? 'white' : '#F3F4F6',
+                color: '#223848',
                 cursor: (selectedStudent && selectedGrade) ? 'text' : 'not-allowed'
               }}
             />
