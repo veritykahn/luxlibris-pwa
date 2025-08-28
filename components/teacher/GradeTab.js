@@ -259,11 +259,13 @@ Continue?`)) {
       const currentSubmissions = selectedStudent.booksSubmitted || []
       const updatedSubmissions = [...currentSubmissions, submission]
       const newTotalBooks = (selectedStudent.totalBooksThisYear || 0) + 1
+      const newLifetimeBooks = (selectedStudent.lifetimeBooksSubmitted || 0) + 1
 
       const studentRef = doc(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers/${teacherId}/manualStudents`, selectedStudent.id)
       await updateDoc(studentRef, {
         booksSubmitted: updatedSubmissions,
         totalBooksThisYear: newTotalBooks,
+        lifetimeBooksSubmitted: newLifetimeBooks,
         lastModified: new Date()
       })
 
