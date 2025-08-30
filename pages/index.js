@@ -213,7 +213,7 @@ export default function Home() {
             {/* Bottom highlight */}
             <div className="mt-8 text-center">
               <p className="text-sm mb-6" style={{color: '#223848'}}>
-                📚 20 Curated Books • ⛪ Faith-Integrated • 🏆 Real Rewards • 📱 Complete Ecosystem
+                📚 Curated Book Programs • ⛪ Faith-Integrated • 🏆 Real Rewards • 📱 Complete Ecosystem
               </p>
               
               {/* Demo Pill */}
