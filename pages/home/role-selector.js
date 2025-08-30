@@ -1,4 +1,4 @@
-// pages/role-selector.js - Updated with consistent styling
+// pages/role-selector.js - Updated with clearer account creation wording
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
@@ -287,8 +287,8 @@ export default function RoleSelector() {
             {/* Student Card */}
             <RoleCard
               icon="🧑‍🎓"
-              title="I'm a Student"
-              description="Connect to your school's reading program and start your journey!"
+              title="Create Student Account"
+              description="Join your school's reading program and track your progress!"
               features={[
                 "🏫 Connect to your school",
                 "📚 Interactive bookshelf",
@@ -296,7 +296,7 @@ export default function RoleSelector() {
                 "🔥 Build reading streaks",
                 "🎯 Track your goals"
               ]}
-              buttonText="Join My School's Program"
+              buttonText="Start Student Journey"
               onClick={() => router.push('/student-account-creation')}
               gradient="from-blue-400 to-purple-500"
             />
@@ -304,8 +304,8 @@ export default function RoleSelector() {
             {/* Parent Card */}
             <RoleCard
               icon="👨‍👩‍👧‍👦"
-              title="I'm a Parent"
-              description="Support your child's school reading program"
+              title="Create Parent Account"
+              description="Monitor and support your child's reading journey"
               features={[
                 "🏫 Connect to your child's reading program",
                 "👀 View reading progress (FREE)",
@@ -313,7 +313,7 @@ export default function RoleSelector() {
                 "⭐ Premium family battles and reading analytics, ($10/yr)",
                 "🎉 Celebrate achievements together"
               ]}
-              buttonText="Support My Child"
+              buttonText="Start Parent Journey"
               onClick={() => router.push('/parent/account-creation')}
               gradient="from-green-400 to-teal-500"
               highlight="Basic access FREE!"
