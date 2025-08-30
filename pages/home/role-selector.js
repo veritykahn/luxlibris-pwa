@@ -294,7 +294,8 @@ export default function RoleSelector() {
                 "📚 Interactive bookshelf",
                 "🏆 Collect Luxlings™ saints", 
                 "🔥 Build reading streaks",
-                "🎯 Track your goals"
+                "🎯 Track your goals",
+                "📝 Have pen & paper ready for login info"
               ]}
               buttonText="Start Student Journey"
               onClick={() => router.push('/student-account-creation')}
@@ -310,13 +311,13 @@ export default function RoleSelector() {
                 "🏫 Connect to your child's reading program",
                 "👀 View reading progress (FREE)",
                 "🔐 Unlock quizzes and leaderboard",
-                "⭐ Premium family battles and reading analytics, ($10/yr)",
+                "⭐ Premium features FREE during pilot ($10/yr after launch)",
                 "🎉 Celebrate achievements together"
               ]}
               buttonText="Start Parent Journey"
               onClick={() => router.push('/parent/account-creation')}
               gradient="from-green-400 to-teal-500"
-              highlight="Basic access FREE!"
+              highlight="Everything FREE in pilot!"
             />
           </div>
 
