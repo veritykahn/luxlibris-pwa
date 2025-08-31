@@ -783,7 +783,7 @@ export default function RoleSelector() {
                       lineHeight: '1.4',
                       fontFamily: 'Avenir, -apple-system, BlinkMacSystemFont, system-ui, sans-serif'
                     }}>
-                      Parents create their account using the special invite code to automatically link to their child's reading progress.
+                      Parents create their account using the special invite code to automatically link to their child&apos;s reading progress.
                     </div>
                   </div>
                 </div>
