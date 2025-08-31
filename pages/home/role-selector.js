@@ -288,14 +288,15 @@ export default function RoleSelector() {
           {/* Brief Family Info + Modal Trigger */}
           <div style={{
             textAlign: 'center',
-            marginBottom: '2rem'
+            marginBottom: '1rem',
+            marginTop: '-0.5rem'
           }}>
             <button
               onClick={() => setShowFamilyModal(true)}
               style={{
-                background: 'rgba(255, 255, 255, 0.9)',
-                border: '2px solid rgba(173, 212, 234, 0.6)',
-                borderRadius: '2rem',
+                background: 'linear-gradient(135deg, rgba(173, 212, 234, 0.3), rgba(161, 229, 219, 0.3))',
+                border: 'none',
+                borderRadius: '0.75rem',
                 padding: '0.75rem 1.5rem',
                 cursor: 'pointer',
                 fontSize: 'clamp(0.85rem, 2.5vw, 0.95rem)',
@@ -305,35 +306,22 @@ export default function RoleSelector() {
                 fontWeight: '500',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                 transition: 'all 0.2s ease',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                minHeight: '44px'
+                minHeight: '44px',
+                backdropFilter: 'blur(10px)'
               }}
               onMouseEnter={(e) => {
-                e.target.style.background = 'rgba(173, 212, 234, 0.2)'
+                e.target.style.background = 'linear-gradient(135deg, rgba(173, 212, 234, 0.5), rgba(161, 229, 219, 0.5))'
                 e.target.style.transform = 'translateY(-2px)'
                 e.target.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)'
               }}
               onMouseLeave={(e) => {
-                e.target.style.background = 'rgba(255, 255, 255, 0.9)'
+                e.target.style.background = 'linear-gradient(135deg, rgba(173, 212, 234, 0.3), rgba(161, 229, 219, 0.3))'
                 e.target.style.transform = 'translateY(0)'
                 e.target.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'
               }}
             >
-              <span>❓</span>
-              <span>How do family accounts work?</span>
+              How do family accounts work?
             </button>
-            <p style={{
-              fontSize: 'clamp(0.75rem, 2vw, 0.85rem)',
-              color: '#223848',
-              margin: '0.5rem 0 0 0',
-              opacity: 0.8,
-              fontFamily: 'Avenir, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
-              letterSpacing: '0.08em'
-            }}>
-              Student accounts must be created first
-            </p>
           </div>
 
           {/* 2 Role Cards - Mobile Responsive Grid */}
