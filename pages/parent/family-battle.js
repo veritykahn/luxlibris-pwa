@@ -61,7 +61,7 @@ const loadLinkedStudentsData = async (linkedStudentIds) => {
 export default function ParentFamilyBattle() {
   const router = useRouter()
   const { user, userProfile, isAuthenticated, loading: authLoading } = useAuth()
-  const { hasFeature, isPilotPhase } = usePremiumFeatures()
+  const { hasFeature, isPilotPhase, loading: premiumLoading } = usePremiumFeatures()
   
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -195,39 +195,45 @@ export default function ParentFamilyBattle() {
   }, [parentData?.familyId, linkedStudents])
 
   // Initialize family battle
-  const handleInitializeBattle = async () => {
-    if (!hasFeature('familyBattle')) {
-      alert('Family Battle requires premium features!')
-      return
-    }
-    
-    if (!parentData?.familyId) {
-      alert('No family ID found. Please ensure your family is set up correctly.')
-      return
-    }
-    
-    try {
-      setLoading(true)
-      
-      // Initialize battle
-      await initializeFamilyBattle(parentData.familyId, user.uid)
-      
-      // Enable for all linked students
-      if (linkedStudents.length > 0) {
-        await enableFamilyBattleForStudents(parentData.familyId, linkedStudents)
-      }
-      
-      setShowSuccess('🏆 Family Battle arena opened! Let the games begin! ⚔️')
-      setTimeout(() => setShowSuccess(''), 4000)
-      
-      await loadBattleData()
-    } catch (error) {
-      console.error('Error initializing family battle:', error)
-      alert('Error setting up Family Battle. Please try again.')
-    } finally {
-      setLoading(false)
-    }
+const handleInitializeBattle = async () => {
+  // NEW: Wait for premium status to load completely
+  if (premiumLoading) {
+    alert('Please wait for premium features to load...')
+    return
   }
+  
+  if (!hasFeature('familyBattle')) {
+    alert('Family Battle requires premium features!')
+    return
+  }
+  
+  if (!parentData?.familyId) {
+    alert('No family ID found. Please ensure your family is set up correctly.')
+    return
+  }
+  
+  try {
+    setLoading(true)
+    
+    // Initialize battle
+    await initializeFamilyBattle(parentData.familyId, user.uid)
+    
+    // Enable for all linked students
+    if (linkedStudents.length > 0) {
+      await enableFamilyBattleForStudents(parentData.familyId, linkedStudents)
+    }
+    
+    setShowSuccess('🏆 Family Battle arena opened! Let the games begin! ⚔️')
+    setTimeout(() => setShowSuccess(''), 4000)
+    
+    await loadBattleData()
+  } catch (error) {
+    console.error('Error initializing family battle:', error)
+    alert('Error setting up Family Battle. Please try again.')
+  } finally {
+    setLoading(false)
+  }
+}
 
   // Load initial data
   useEffect(() => {
@@ -719,34 +725,36 @@ export default function ParentFamilyBattle() {
                   Challenge your children to epic weekly reading battles!
                 </p>
                 <button
-                  onClick={handleInitializeBattle}
-                  disabled={loading || !parentData?.familyId || !hasFeature('familyBattle')}
-                  style={{
-                    background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary})`,
-                    color: theme.textPrimary,
-                    border: 'none',
-                    borderRadius: '12px',
-                    padding: '14px 24px',
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    cursor: loading || !parentData?.familyId ? 'not-allowed' : 'pointer',
-                    opacity: loading || !parentData?.familyId ? 0.7 : 1,
-                    boxShadow: `0 4px 16px ${theme.primary}40`,
-                    transition: 'all 0.3s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!loading && parentData?.familyId) {
-                      e.target.style.transform = 'translateY(-2px)'
-                      e.target.style.boxShadow = `0 6px 20px ${theme.primary}50`
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.transform = 'translateY(0)'
-                    e.target.style.boxShadow = `0 4px 16px ${theme.primary}40`
-                  }}
-                >
-                  {loading ? '⏳ Opening Arena...' : '🚀 Start Family Battle!'}
-                </button>
+  onClick={handleInitializeBattle}
+  disabled={loading || !parentData?.familyId || !hasFeature('familyBattle') || premiumLoading}
+  style={{
+    background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary})`,
+    color: theme.textPrimary,
+    border: 'none',
+    borderRadius: '12px',
+    padding: '14px 24px',
+    fontSize: '16px',
+    fontWeight: '600',
+    cursor: (loading || !parentData?.familyId || premiumLoading) ? 'not-allowed' : 'pointer',
+    opacity: (loading || !parentData?.familyId || premiumLoading) ? 0.7 : 1,
+    boxShadow: `0 4px 16px ${theme.primary}40`,
+    transition: 'all 0.3s ease'
+  }}
+  onMouseEnter={(e) => {
+    if (!loading && parentData?.familyId && !premiumLoading) {
+      e.target.style.transform = 'translateY(-2px)'
+      e.target.style.boxShadow = `0 6px 20px ${theme.primary}50`
+    }
+  }}
+  onMouseLeave={(e) => {
+    e.target.style.transform = 'translateY(0)'
+    e.target.style.boxShadow = `0 4px 16px ${theme.primary}40`
+  }}
+>
+  {premiumLoading ? '⏳ Loading Premium...' : 
+   loading ? '⏳ Opening Arena...' : 
+   '🚀 Start Family Battle!'}
+</button>
               </div>
             )}
           </div>
