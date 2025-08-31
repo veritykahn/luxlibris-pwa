@@ -101,7 +101,7 @@ try {
   console.log(`🔍 Fetching name for parent: ${parentId}`);
   const parentDoc = await db.doc(`parents/${parentId}`).get();
   
-  if (parentDoc.exists()) {
+  if (parentDoc.exists) {
     const data = parentDoc.data();
     console.log(`📋 Parent data:`, data);
     const firstName = data.firstName || '';
@@ -581,7 +581,7 @@ async function awardXPToWinningChildren(linkedStudents, childrenBreakdown, weekN
 // ============================================================================
 exports.manualCompleteBattles = functions.https.onRequest(async (req, res) => {
   // SECURITY: Change this token to something secure and unique!
-  const SECRET_TOKEN = 'your-secret-token-2025-change-this';
+  const SECRET_TOKEN = 'kahn-family-battle-fix-2025';
   
   // Check for authentication token
   if (req.query.token !== SECRET_TOKEN) {
