@@ -10,6 +10,7 @@ export default function RoleSelector() {
   const [isInstalled, setIsInstalled] = useState(false)
   const [canInstall, setCanInstall] = useState(false)
   const [showInstallModal, setShowInstallModal] = useState(false)
+  const [showFamilyModal, setShowFamilyModal] = useState(false)
 
   useEffect(() => {
     // Check if already installed (standalone mode)
@@ -175,7 +176,7 @@ export default function RoleSelector() {
                 style={{
                   background: 'linear-gradient(135deg, #A1E5DB, #ADD4EA)',
                   color: 'white',
-                  padding: '1.25rem 2rem',
+                  padding: 'clamp(1rem, 3vw, 1.25rem) clamp(1rem, 4vw, 2rem)',
                   borderRadius: '1rem',
                   marginBottom: '2.5rem',
                   cursor: 'pointer',
@@ -197,37 +198,47 @@ export default function RoleSelector() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '1rem',
+                  gap: 'clamp(0.75rem, 3vw, 1rem)',
                   flexWrap: 'wrap'
                 }}>
-                  <div style={{ fontSize: '2rem' }}>📱</div>
-                  <div style={{ textAlign: 'left', flex: '1', minWidth: '200px' }}>
+                  <div style={{ 
+                    fontSize: 'clamp(1.5rem, 6vw, 2rem)',
+                    flexShrink: 0
+                  }}>📱</div>
+                  <div style={{ 
+                    textAlign: window.innerWidth < 768 ? 'center' : 'left',
+                    flex: '1', 
+                    minWidth: '200px' 
+                  }}>
                     <h3 style={{
                       margin: '0 0 0.5rem 0',
-                      fontSize: 'clamp(1.1rem, 3vw, 1.3rem)',
+                      fontSize: 'clamp(1rem, 3.5vw, 1.3rem)',
                       fontWeight: '700',
-                      fontFamily: 'Avenir, -apple-system, BlinkMacSystemFont, system-ui, sans-serif'
+                      fontFamily: 'Avenir, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
+                      lineHeight: '1.2'
                     }}>
                       Install Lux Libris as an App First!
                     </h3>
                     <p style={{
                       margin: 0,
-                      fontSize: 'clamp(0.9rem, 2.5vw, 1rem)',
-                      opacity: 0.9
+                      fontSize: 'clamp(0.85rem, 2.8vw, 1rem)',
+                      opacity: 0.9,
+                      lineHeight: '1.3'
                     }}>
                       Get the best reading experience with faster loading & native app experience
                     </p>
                   </div>
                   <div style={{
                     background: 'rgba(255, 255, 255, 0.2)',
-                    padding: '0.75rem 1.5rem',
+                    padding: 'clamp(0.6rem, 2vw, 0.75rem) clamp(1rem, 3vw, 1.5rem)',
                     borderRadius: '0.5rem',
                     fontWeight: '600',
-                    fontSize: 'clamp(0.9rem, 2.5vw, 1rem)',
+                    fontSize: 'clamp(0.85rem, 2.8vw, 1rem)',
                     border: '2px solid rgba(255, 255, 255, 0.3)',
                     minHeight: '44px',
                     display: 'flex',
-                    alignItems: 'center'
+                    alignItems: 'center',
+                    whiteSpace: 'nowrap'
                   }}>
                     🚀 Install Now
                   </div>
@@ -274,101 +285,64 @@ export default function RoleSelector() {
             )}
           </div>
 
-          {/* 2-Step Process Explanation */}
+          {/* Brief Family Info + Modal Trigger */}
           <div style={{
-            background: 'rgba(255, 255, 255, 0.9)',
-            borderRadius: '1rem',
-            padding: '1.5rem',
-            border: '2px solid rgba(173, 212, 234, 0.4)',
-            marginBottom: '2rem',
-            maxWidth: '45rem',
-            margin: '0 auto 2rem auto',
-            textAlign: 'left'
+            textAlign: 'center',
+            marginBottom: '2rem'
           }}>
-            <h3 style={{
-              fontSize: 'clamp(1rem, 3vw, 1.125rem)',
-              fontWeight: '600',
+            <button
+              onClick={() => setShowFamilyModal(true)}
+              style={{
+                background: 'rgba(255, 255, 255, 0.9)',
+                border: '2px solid rgba(173, 212, 234, 0.6)',
+                borderRadius: '2rem',
+                padding: '0.75rem 1.5rem',
+                cursor: 'pointer',
+                fontSize: 'clamp(0.85rem, 2.5vw, 0.95rem)',
+                color: '#223848',
+                fontFamily: 'Avenir, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
+                letterSpacing: '0.08em',
+                fontWeight: '500',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                transition: 'all 0.2s ease',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                minHeight: '44px'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = 'rgba(173, 212, 234, 0.2)'
+                e.target.style.transform = 'translateY(-2px)'
+                e.target.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)'
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = 'rgba(255, 255, 255, 0.9)'
+                e.target.style.transform = 'translateY(0)'
+                e.target.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'
+              }}
+            >
+              <span>❓</span>
+              <span>How do family accounts work?</span>
+            </button>
+            <p style={{
+              fontSize: 'clamp(0.75rem, 2vw, 0.85rem)',
               color: '#223848',
-              marginBottom: '0.75rem',
+              margin: '0.5rem 0 0 0',
+              opacity: 0.8,
               fontFamily: 'Avenir, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
-              letterSpacing: '0.08em',
-              textAlign: 'center'
+              letterSpacing: '0.08em'
             }}>
-              📋 How Family Accounts Work
-            </h3>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'auto 1fr',
-              gap: '1rem',
-              fontSize: 'clamp(0.85rem, 2.5vw, 0.95rem)',
-              color: '#223848',
-              fontFamily: 'Avenir, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
-              letterSpacing: '0.08em',
-              lineHeight: '1.5'
-            }}>
-              <div style={{ 
-                background: 'linear-gradient(135deg, #ADD4EA, #B6DFEB)',
-                borderRadius: '50%',
-                width: '24px',
-                height: '24px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '14px',
-                fontWeight: '700',
-                color: '#223848',
-                flexShrink: 0,
-                marginTop: '2px'
-              }}>1</div>
-              <div>
-                <strong>Student creates account first</strong> - Set up your reading profile, connect to your school, and start tracking books
-              </div>
-              
-              <div style={{ 
-                background: 'linear-gradient(135deg, #A1E5DB, #C3E0DE)',
-                borderRadius: '50%',
-                width: '24px',
-                height: '24px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '14px',
-                fontWeight: '700',
-                color: '#223848',
-                flexShrink: 0,
-                marginTop: '2px'
-              }}>2</div>
-              <div>
-                <strong>Student generates parent invite code</strong> - Go to Settings → Family Connection → Generate Parent Invite Code
-              </div>
-              
-              <div style={{ 
-                background: 'linear-gradient(135deg, #D4C5E8, #E6D9F2)',
-                borderRadius: '50%',
-                width: '24px',
-                height: '24px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '14px',
-                fontWeight: '700',
-                color: '#223848',
-                flexShrink: 0,
-                marginTop: '2px'
-              }}>3</div>
-              <div>
-                <strong>Parent uses invite code</strong> - Parents create their account using the special code to link to their child
-              </div>
-            </div>
+              Student accounts must be created first
+            </p>
           </div>
 
           {/* 2 Role Cards - Mobile Responsive Grid */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-            gap: '2rem',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+            gap: 'clamp(1.5rem, 4vw, 2rem)',
             marginBottom: '3rem',
-            maxWidth: '45rem',
+            maxWidth: '55rem',
             margin: '0 auto 3rem auto'
           }}>
             
@@ -501,9 +475,10 @@ export default function RoleSelector() {
             
             <div style={{
               display: 'flex',
-              gap: '1rem',
+              gap: 'clamp(0.75rem, 3vw, 1rem)',
               justifyContent: 'center',
-              flexWrap: 'wrap'
+              flexWrap: 'wrap',
+              alignItems: 'center'
             }}>
               <a href="mailto:admin@luxlibris.org?subject=School Interest&body=Hi! I'd like my school to participate in Lux Libris." style={{
                 background: 'linear-gradient(135deg, #223848, #374a5a)',
@@ -575,6 +550,266 @@ export default function RoleSelector() {
             </p>
           </div>
         </div>
+
+        {/* Family Accounts Modal */}
+        {showFamilyModal && (
+          <>
+            {/* Backdrop */}
+            <div 
+              onClick={() => setShowFamilyModal(false)}
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'rgba(0, 0, 0, 0.5)',
+                zIndex: 9998,
+                backdropFilter: 'blur(4px)'
+              }}
+            />
+            
+            {/* Bottom Sheet Modal */}
+            <div style={{
+              position: 'fixed',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              background: 'white',
+              borderTopLeftRadius: '1.5rem',
+              borderTopRightRadius: '1.5rem',
+              padding: '1.5rem',
+              zIndex: 9999,
+              maxHeight: '85vh',
+              overflowY: 'auto',
+              boxShadow: '0 -10px 40px rgba(0, 0, 0, 0.2)',
+              animation: 'slideUp 0.3s ease-out'
+            }}>
+              {/* Handle bar */}
+              <div style={{
+                width: '40px',
+                height: '4px',
+                background: '#d1d5db',
+                borderRadius: '2px',
+                margin: '0 auto 1.5rem auto'
+              }} />
+
+              {/* Close button */}
+              <button
+                onClick={() => setShowFamilyModal(false)}
+                style={{
+                  position: 'absolute',
+                  top: '1rem',
+                  right: '1rem',
+                  background: 'rgba(107, 114, 128, 0.1)',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '32px',
+                  height: '32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  fontSize: '18px',
+                  color: '#223848',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.background = 'rgba(107, 114, 128, 0.2)'
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = 'rgba(107, 114, 128, 0.1)'
+                }}
+              >
+                ×
+              </button>
+
+              <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>👨‍👩‍👧‍👦</div>
+                <h3 style={{
+                  fontSize: 'clamp(1.25rem, 4vw, 1.5rem)',
+                  fontWeight: '600',
+                  color: '#223848',
+                  marginBottom: '0.5rem',
+                  fontFamily: 'Didot, Georgia, serif',
+                  letterSpacing: '0.02em'
+                }}>
+                  How Family Accounts Work
+                </h3>
+                <p style={{
+                  color: '#223848',
+                  fontSize: 'clamp(0.9rem, 3vw, 1rem)',
+                  fontFamily: 'Avenir, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
+                  letterSpacing: '0.08em'
+                }}>
+                  Follow these 3 simple steps to connect your family
+                </p>
+              </div>
+
+              {/* Process Steps */}
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1.25rem',
+                marginBottom: '1.5rem'
+              }}>
+                {/* Step 1 */}
+                <div style={{
+                  background: 'rgba(173, 212, 234, 0.1)',
+                  padding: '1.25rem',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(173, 212, 234, 0.3)',
+                  display: 'flex',
+                  gap: '1rem',
+                  alignItems: 'flex-start'
+                }}>
+                  <div style={{ 
+                    background: 'linear-gradient(135deg, #ADD4EA, #B6DFEB)',
+                    borderRadius: '50%',
+                    width: '40px',
+                    height: '40px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '18px',
+                    fontWeight: '700',
+                    color: '#223848',
+                    flexShrink: 0
+                  }}>1</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ 
+                      fontWeight: '600', 
+                      marginBottom: '0.5rem',
+                      fontSize: '1.1rem',
+                      color: '#223848',
+                      fontFamily: 'Avenir, -apple-system, BlinkMacSystemFont, system-ui, sans-serif'
+                    }}>
+                      Student creates account first
+                    </div>
+                    <div style={{ 
+                      fontSize: '0.9rem',
+                      color: '#223848',
+                      opacity: 0.8,
+                      lineHeight: '1.4',
+                      fontFamily: 'Avenir, -apple-system, BlinkMacSystemFont, system-ui, sans-serif'
+                    }}>
+                      Set up your reading profile, connect to your school, and start tracking books. This must be done first!
+                    </div>
+                  </div>
+                </div>
+
+                {/* Step 2 */}
+                <div style={{
+                  background: 'rgba(161, 229, 219, 0.1)',
+                  padding: '1.25rem',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(161, 229, 219, 0.3)',
+                  display: 'flex',
+                  gap: '1rem',
+                  alignItems: 'flex-start'
+                }}>
+                  <div style={{ 
+                    background: 'linear-gradient(135deg, #A1E5DB, #C3E0DE)',
+                    borderRadius: '50%',
+                    width: '40px',
+                    height: '40px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '18px',
+                    fontWeight: '700',
+                    color: '#223848',
+                    flexShrink: 0
+                  }}>2</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ 
+                      fontWeight: '600', 
+                      marginBottom: '0.5rem',
+                      fontSize: '1.1rem',
+                      color: '#223848',
+                      fontFamily: 'Avenir, -apple-system, BlinkMacSystemFont, system-ui, sans-serif'
+                    }}>
+                      Student generates parent invite code
+                    </div>
+                    <div style={{ 
+                      fontSize: '0.9rem',
+                      color: '#223848',
+                      opacity: 0.8,
+                      lineHeight: '1.4',
+                      fontFamily: 'Avenir, -apple-system, BlinkMacSystemFont, system-ui, sans-serif'
+                    }}>
+                      Go to Settings → Family Connection → Generate Parent Invite Code. Share this special code with your parents.
+                    </div>
+                  </div>
+                </div>
+
+                {/* Step 3 */}
+                <div style={{
+                  background: 'rgba(212, 197, 232, 0.1)',
+                  padding: '1.25rem',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(212, 197, 232, 0.3)',
+                  display: 'flex',
+                  gap: '1rem',
+                  alignItems: 'flex-start'
+                }}>
+                  <div style={{ 
+                    background: 'linear-gradient(135deg, #D4C5E8, #E6D9F2)',
+                    borderRadius: '50%',
+                    width: '40px',
+                    height: '40px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '18px',
+                    fontWeight: '700',
+                    color: '#223848',
+                    flexShrink: 0
+                  }}>3</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ 
+                      fontWeight: '600', 
+                      marginBottom: '0.5rem',
+                      fontSize: '1.1rem',
+                      color: '#223848',
+                      fontFamily: 'Avenir, -apple-system, BlinkMacSystemFont, system-ui, sans-serif'
+                    }}>
+                      Parent uses invite code
+                    </div>
+                    <div style={{ 
+                      fontSize: '0.9rem',
+                      color: '#223848',
+                      opacity: 0.8,
+                      lineHeight: '1.4',
+                      fontFamily: 'Avenir, -apple-system, BlinkMacSystemFont, system-ui, sans-serif'
+                    }}>
+                      Parents create their account using the special invite code to automatically link to their child's reading progress.
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Important Note */}
+              <div style={{
+                background: 'rgba(34, 56, 72, 0.03)',
+                padding: '1rem',
+                borderRadius: '0.75rem',
+                textAlign: 'center',
+                border: '1px solid rgba(34, 56, 72, 0.1)'
+              }}>
+                <p style={{
+                  color: '#223848',
+                  fontSize: '0.85rem',
+                  margin: 0,
+                  fontWeight: '500',
+                  fontFamily: 'Avenir, -apple-system, BlinkMacSystemFont, system-ui, sans-serif'
+                }}>
+                  💡 <strong>Remember:</strong> Student accounts must be created first. Parents cannot create accounts without a student invite code.
+                </p>
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Install Modal/Bottom Sheet */}
         {showInstallModal && (
@@ -815,6 +1050,107 @@ export default function RoleSelector() {
           }
           to {
             transform: translateY(0);
+          }
+        }
+
+        /* Mobile-specific optimizations */
+        @media (max-width: 480px) {
+          .install-banner {
+            padding: 1rem !important;
+          }
+          
+          .install-banner h3 {
+            font-size: 1rem !important;
+            line-height: 1.2 !important;
+          }
+          
+          .install-banner p {
+            font-size: 0.85rem !important;
+            line-height: 1.3 !important;
+          }
+          
+          .role-card {
+            min-height: 380px !important;
+          }
+        }
+
+        /* Small mobile optimizations */
+        @media (max-width: 360px) {
+          .process-steps {
+            gap: 1rem !important;
+          }
+          
+          .process-step {
+            padding: 0.75rem !important;
+          }
+          
+          .main-container {
+            padding: 1rem !important;
+          }
+        }
+
+        /* Tablet portrait optimizations */
+        @media (min-width: 481px) and (max-width: 768px) {
+          .role-cards-grid {
+            gap: 1.5rem !important;
+            max-width: 48rem !important;
+          }
+          
+          .process-steps {
+            flex-direction: row !important;
+          }
+          
+          .process-step {
+            flex-direction: column !important;
+            text-align: center !important;
+          }
+        }
+
+        /* Tablet landscape and desktop optimizations */
+        @media (min-width: 769px) {
+          .role-cards-grid {
+            max-width: 55rem !important;
+            gap: 2rem !important;
+          }
+          
+          .process-steps {
+            flex-direction: row !important;
+          }
+          
+          .process-step {
+            flex-direction: column !important;
+            text-align: center !important;
+          }
+          
+          .install-banner .install-content {
+            text-align: left !important;
+          }
+        }
+
+        /* Large desktop optimizations */
+        @media (min-width: 1200px) {
+          .main-container {
+            max-width: 65rem !important;
+          }
+          
+          .role-cards-grid {
+            max-width: 60rem !important;
+          }
+        }
+
+        /* Touch-friendly improvements */
+        button, [role="button"] {
+          -webkit-tap-highlight-color: transparent;
+          -webkit-user-select: none;
+          user-select: none;
+          cursor: pointer;
+        }
+
+        /* Improve text readability on small screens */
+        @media (max-width: 480px) {
+          body, div, p, span {
+            text-size-adjust: 100%;
+            -webkit-text-size-adjust: 100%;
           }
         }
       `}</style>
