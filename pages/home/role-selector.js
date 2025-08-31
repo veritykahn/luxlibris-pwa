@@ -274,6 +274,94 @@ export default function RoleSelector() {
             )}
           </div>
 
+          {/* 2-Step Process Explanation */}
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.9)',
+            borderRadius: '1rem',
+            padding: '1.5rem',
+            border: '2px solid rgba(173, 212, 234, 0.4)',
+            marginBottom: '2rem',
+            maxWidth: '45rem',
+            margin: '0 auto 2rem auto',
+            textAlign: 'left'
+          }}>
+            <h3 style={{
+              fontSize: 'clamp(1rem, 3vw, 1.125rem)',
+              fontWeight: '600',
+              color: '#223848',
+              marginBottom: '0.75rem',
+              fontFamily: 'Avenir, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
+              letterSpacing: '0.08em',
+              textAlign: 'center'
+            }}>
+              📋 How Family Accounts Work
+            </h3>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'auto 1fr',
+              gap: '1rem',
+              fontSize: 'clamp(0.85rem, 2.5vw, 0.95rem)',
+              color: '#223848',
+              fontFamily: 'Avenir, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
+              letterSpacing: '0.08em',
+              lineHeight: '1.5'
+            }}>
+              <div style={{ 
+                background: 'linear-gradient(135deg, #ADD4EA, #B6DFEB)',
+                borderRadius: '50%',
+                width: '24px',
+                height: '24px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '14px',
+                fontWeight: '700',
+                color: '#223848',
+                flexShrink: 0,
+                marginTop: '2px'
+              }}>1</div>
+              <div>
+                <strong>Student creates account first</strong> - Set up your reading profile, connect to your school, and start tracking books
+              </div>
+              
+              <div style={{ 
+                background: 'linear-gradient(135deg, #A1E5DB, #C3E0DE)',
+                borderRadius: '50%',
+                width: '24px',
+                height: '24px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '14px',
+                fontWeight: '700',
+                color: '#223848',
+                flexShrink: 0,
+                marginTop: '2px'
+              }}>2</div>
+              <div>
+                <strong>Student generates parent invite code</strong> - Go to Settings → Family Connection → Generate Parent Invite Code
+              </div>
+              
+              <div style={{ 
+                background: 'linear-gradient(135deg, #D4C5E8, #E6D9F2)',
+                borderRadius: '50%',
+                width: '24px',
+                height: '24px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '14px',
+                fontWeight: '700',
+                color: '#223848',
+                flexShrink: 0,
+                marginTop: '2px'
+              }}>3</div>
+              <div>
+                <strong>Parent uses invite code</strong> - Parents create their account using the special code to link to their child
+              </div>
+            </div>
+          </div>
+
           {/* 2 Role Cards - Mobile Responsive Grid */}
           <div style={{
             display: 'grid',
@@ -300,6 +388,7 @@ export default function RoleSelector() {
               buttonText="Start Student Journey"
               onClick={() => router.push('/student-account-creation')}
               gradient="from-blue-400 to-purple-500"
+              highlight="Create this first!"
             />
 
             {/* Parent Card */}
@@ -308,7 +397,7 @@ export default function RoleSelector() {
               title="Create Parent Account"
               description="Monitor and support your child's reading journey"
               features={[
-                "🏫 Connect to your child's reading program",
+                "🔗 Requires student invite code first",
                 "👀 View reading progress (FREE)",
                 "🔐 Unlock quizzes and leaderboard",
                 "⭐ Premium features FREE during pilot ($10/yr after launch)",
