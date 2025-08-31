@@ -206,7 +206,7 @@ export default function RoleSelector() {
                     flexShrink: 0
                   }}>📱</div>
                   <div style={{ 
-                    textAlign: window.innerWidth < 768 ? 'center' : 'left',
+                    textAlign: 'left',
                     flex: '1', 
                     minWidth: '200px' 
                   }}>
@@ -1069,6 +1069,10 @@ export default function RoleSelector() {
             line-height: 1.3 !important;
           }
           
+          .install-content {
+            text-align: center !important;
+          }
+          
           .role-card {
             min-height: 380px !important;
           }
@@ -1096,13 +1100,8 @@ export default function RoleSelector() {
             max-width: 48rem !important;
           }
           
-          .process-steps {
-            flex-direction: row !important;
-          }
-          
-          .process-step {
-            flex-direction: column !important;
-            text-align: center !important;
+          .install-content {
+            text-align: left !important;
           }
         }
 
@@ -1113,16 +1112,7 @@ export default function RoleSelector() {
             gap: 2rem !important;
           }
           
-          .process-steps {
-            flex-direction: row !important;
-          }
-          
-          .process-step {
-            flex-direction: column !important;
-            text-align: center !important;
-          }
-          
-          .install-banner .install-content {
+          .install-content {
             text-align: left !important;
           }
         }
