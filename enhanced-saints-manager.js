@@ -1694,8 +1694,8 @@ const EXISTING_SAINTS_CATALOG = [
     "short_blurb": "Prince of Poland known for his deep piety and care for the poor.",
     "extra_fact": "Refused to marry to maintain his vow of chastity, died young at 25.",
     "icon_asset": "assets/saints/saint_casimir.png",
-    "rarity": "rare",
-    "unlockCondition": "streak_30_days",
+    "rarity": "common",
+    "unlockCondition": "streak_14_days",
     "luxlings_series": "Culture Carriers"
   },
   {
@@ -1945,7 +1945,7 @@ const EXISTING_SAINTS_CATALOG = [
     "feast_day": "February 27",
     "short_blurb": "Young Passionist who died at 24 and is known for his devotion to Our Lady.",
     "extra_fact": "Patron of handgunners after reportedly disarming a soldier with a single shot.",
-    "icon_asset": "assets/saints/saint_gabriel.png",
+    "icon_asset": "assets/saints/saint_possenti.png",
     "rarity": "common",
     "unlockCondition": "streak_14_days",
     "luxlings_series": "Halo Hatchlings"
@@ -2300,15 +2300,15 @@ const EXISTING_SAINTS_CATALOG = [
   },
   {
     "id": "saint_192",
-    "name": "St. Casimir of Poland",
-    "patronage": "Poland, Lithuania",
-    "feast_day": "March 4",
-    "short_blurb": "Prince known for piety and care for the poor.",
-    "extra_fact": "Refused marriage to maintain celibacy.",
-    "icon_asset": "assets/saints/saint_casimirpoland.png",
-    "rarity": "common",
-    "unlockCondition": "streak_14_days",
-    "luxlings_series": "Regal Royals"
+    "name": "St. Thomas More",
+    "patronage": "Lawyers, Politicians, Statesmen, Civil Servants",
+    "feast_day": "June 22",
+    "short_blurb": "Lord Chancellor of England who died rather than betray his conscience.",
+    "extra_fact": "Martyred by Henry VIII for refusing to accept the King's supremacy over the Church.",
+    "icon_asset": "assets/saints/saint_more.png",
+    "rarity": "rare",
+    "unlockCondition": "streak_30_days",
+    "luxlings_series": "Virtue Vignettes"
   },
   {
     "id": "saint_193",
