@@ -2693,9 +2693,9 @@ if (sessionDay === 0 || sessionDay === 6) weekendSessions++;
               }
             }}
             title={isEarned ? 
-              `${badge.name} - Week ${week} - Click for bird fact!` : 
-              `${badge.name} - Week ${week} - Complete this week's challenge to unlock!`
-            }
+  `${badge.name} - Week ${week} - Click for bird fact!` : 
+  `${badge.name} - Week ${week} - Complete weekly challenge to unlock`
+}
           >
             <img 
               src={`/badges/${badge.pngName}`}
@@ -2727,21 +2727,6 @@ if (sessionDay === 0 || sessionDay === 6) weekendSessions++;
             }}>
               {week}
             </div>
-            
-            {/* Lock icon for unearned badges */}
-            {!isEarned && (
-              <div style={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                fontSize: '16px',
-                pointerEvents: 'none',
-                textShadow: '0 1px 2px rgba(0,0,0,0.5)'
-              }}>
-                🔒
-              </div>
-            )}
             
             {/* Shine effect for earned badges */}
             {isEarned && (
@@ -2829,23 +2814,23 @@ if (sessionDay === 0 || sessionDay === 6) weekendSessions++;
 
               {/* Extra Large Badge Image */}
               <div style={{
-                width: '220px',
-                height: '220px',
-                margin: '0 auto 24px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                position: 'relative'
-              }}>
-                <img 
-                  src={`/badges/${selectedBadge.pngName}`}
-                  alt={selectedBadge.name}
-                  style={{
-                    width: '220px',
-                    height: '220px',
-                    objectFit: 'contain',
-                    filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.2))'
-                  }}
+  width: '280px',
+  height: '280px',
+  margin: '0 auto 24px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  position: 'relative'
+}}>
+  <img 
+    src={`/badges/${selectedBadge.pngName}`}
+    alt={selectedBadge.name}
+    style={{
+      width: '280px',
+      height: '280px',
+      objectFit: 'contain',
+      filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.2))'
+    }}
                   onError={(e) => {
                     e.target.src = '/badges/hummingbird.png';
                   }}
