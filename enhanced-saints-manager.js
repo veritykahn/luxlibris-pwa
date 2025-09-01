@@ -458,8 +458,8 @@ const EXISTING_SAINTS_CATALOG = [
     "short_blurb": "Early Church Father and martyr.",
     "extra_fact": "Disciple of St. John the Apostle.",
     "icon_asset": "assets/saints/saint_polycarp.png",
-    "rarity": "rare",
-    "unlockCondition": "streak_30_days",
+    "rarity": "common",
+    "unlockCondition": "streak_14_days",
     "luxlings_series": "Apostolic All-Stars"
   },
   {

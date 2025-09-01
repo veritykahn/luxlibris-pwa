@@ -22,7 +22,7 @@ export default function HelpCenter() {
         },
         {
           question: "What are Luxlings™ saints?",
-          answer: "Luxlings™ are 234 collectible vinyl chibi-style saint figures (digital in-app) created by Dr. Verity Kahn. Students unlock different series (Common, Rare, Legendary) through reading streaks, book completions, and grade achievements. Each saint includes feast days, patronage info, biographies, and fun facts."
+          answer: "Luxlings™ are 227 collectible vinyl chibi-style saint figures (digital in-app) created by Dr. Verity Kahn. Students unlock different series (Common, Rare, Legendary) through reading streaks, book completions, and grade achievements. Each saint includes feast days, patronage info, biographies, and fun facts."
         },
         {
           question: "When is the program available each year?",

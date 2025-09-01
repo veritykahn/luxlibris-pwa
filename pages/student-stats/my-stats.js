@@ -2634,81 +2634,134 @@ if (sessionDay === 0 || sessionDay === 6) weekendSessions++;
                   marginTop: '4px',
                   opacity: 0.8
                 }}>
-                  Click any badge to see the bird fact! 🐦
+                  ✨ Earned badges are clickable for bird facts! 🔒 Complete weekly challenges to unlock more!
                 </div>
               </div>
               
-              {earnedBadges.length > 0 ? (
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(50px, 1fr))',
-                  gap: '12px',
-                  marginBottom: '16px',
-                  padding: '8px'
-                }}>
-                  {earnedBadges.map((badge, index) => (
-                    <div
-                      key={index}
-                      onClick={() => handleBadgeClick(badge)}
-                      style={{
-                        width: '50px',
-                        height: '50px',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        borderRadius: '8px',
-                        padding: '4px',
-                        backgroundColor: 'transparent',
-                        touchAction: 'manipulation',
-                        WebkitTapHighlightColor: 'transparent',
-                        position: 'relative'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.target.style.transform = 'scale(1.1)';
-                        e.target.style.backgroundColor = `${currentTheme.primary}20`;
-                      }}
-                      onMouseLeave={(e) => {
-                        e.target.style.transform = 'scale(1)';
-                        e.target.style.backgroundColor = 'transparent';
-                      }}
-                      title={`${badge.name} - Click for bird fact!`}
-                    >
-                      <img 
-                        src={`/badges/${badge.pngName}`}
-                        alt={badge.name}
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'contain',
-                          pointerEvents: 'none'
-                        }}
-                        onError={(e) => {
-                          e.target.src = '/badges/hummingbird.png';
-                        }}
-                      />
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{
-                  textAlign: 'center',
-                  padding: '20px'
-                }}>
-                  <div style={{ fontSize: '32px', marginBottom: '12px' }}>🏅</div>
-                  <div style={{
-                    fontSize: '14px',
-                    color: currentTheme.textPrimary,
-                    marginBottom: '8px'
-                  }}>
-                    No Lux Libris badges earned yet
-                  </div>
-                  <div style={{
-                    fontSize: '12px',
-                    color: currentTheme.textSecondary
-                  }}>
-                    Complete reading challenges to earn your first bird badge!
-                  </div>
-                </div>
-              )}
+              {(() => {
+  // Create a map of earned badges by week for quick lookup
+  const earnedBadgesByWeek = {};
+  earnedBadges.forEach(badge => {
+    earnedBadgesByWeek[badge.week] = badge;
+  });
+
+  // Get all badge weeks and sort them
+  const allBadgeWeeks = Object.keys(BADGE_CALENDAR).map(Number).sort((a, b) => a - b);
+
+  return (
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(50px, 1fr))',
+      gap: '12px',
+      marginBottom: '16px',
+      padding: '8px'
+    }}>
+      {allBadgeWeeks.map((week) => {
+        const badge = BADGE_CALENDAR[week];
+        const isEarned = earnedBadgesByWeek[week] !== undefined;
+        const earnedBadge = earnedBadgesByWeek[week];
+        
+        return (
+          <div
+            key={week}
+            onClick={isEarned ? () => handleBadgeClick(earnedBadge) : undefined}
+            style={{
+              width: '50px',
+              height: '50px',
+              cursor: isEarned ? 'pointer' : 'default',
+              transition: 'all 0.2s ease',
+              borderRadius: '8px',
+              padding: '4px',
+              backgroundColor: 'transparent',
+              touchAction: 'manipulation',
+              WebkitTapHighlightColor: 'transparent',
+              position: 'relative',
+              opacity: 1,
+              filter: isEarned ? 'none' : 'grayscale(1)',
+              transform: 'scale(1)'
+            }}
+            onMouseEnter={(e) => {
+              if (isEarned) {
+                e.target.style.transform = 'scale(1.1)';
+                e.target.style.backgroundColor = `${currentTheme.primary}20`;
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (isEarned) {
+                e.target.style.transform = 'scale(1)';
+                e.target.style.backgroundColor = 'transparent';
+              }
+            }}
+            title={isEarned ? 
+              `${badge.name} - Week ${week} - Click for bird fact!` : 
+              `${badge.name} - Week ${week} - Complete this week's challenge to unlock!`
+            }
+          >
+            <img 
+              src={`/badges/${badge.pngName}`}
+              alt={badge.name}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain',
+                pointerEvents: 'none'
+              }}
+              onError={(e) => {
+                e.target.src = '/badges/hummingbird.png';
+              }}
+            />
+            
+            {/* Week number indicator */}
+            <div style={{
+              position: 'absolute',
+              bottom: '-2px',
+              right: '-2px',
+              backgroundColor: isEarned ? currentTheme.primary : currentTheme.textSecondary,
+              color: 'white',
+              fontSize: '8px',
+              fontWeight: '600',
+              padding: '2px 4px',
+              borderRadius: '6px',
+              pointerEvents: 'none',
+              opacity: isEarned ? 1 : 0.8
+            }}>
+              {week}
+            </div>
+            
+            {/* Lock icon for unearned badges */}
+            {!isEarned && (
+              <div style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                fontSize: '16px',
+                pointerEvents: 'none',
+                textShadow: '0 1px 2px rgba(0,0,0,0.5)'
+              }}>
+                🔒
+              </div>
+            )}
+            
+            {/* Shine effect for earned badges */}
+            {isEarned && (
+              <div style={{
+                position: 'absolute',
+                top: '2px',
+                right: '2px',
+                fontSize: '10px',
+                pointerEvents: 'none',
+                animation: 'sparkle 2s ease-in-out infinite'
+              }}>
+                ✨
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+})()}
               
               <button
                 onClick={() => setShowBadgeModal(false)}

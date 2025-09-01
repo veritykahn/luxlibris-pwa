@@ -116,7 +116,7 @@ export default function Features() {
                     },
                     {
                       title: "Luxlings™ Saints Collection",
-                      description: "234 collectible saints earned through streaks and achievements"
+                      description: "227 collectible saints earned through streaks and achievements"
                     },
                     {
                       title: "Bragging Rights Certificate",

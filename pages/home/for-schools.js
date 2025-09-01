@@ -356,7 +356,7 @@ export default function ForSchools() {
 
           <div className="grid md:grid-cols-4 gap-6 text-center">
             <MetricCard
-              number="234"
+              number="227"
               label="Collectible Luxlings™ Saints"
               icon="⛪"
             />

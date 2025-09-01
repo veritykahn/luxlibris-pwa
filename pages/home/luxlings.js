@@ -25,8 +25,8 @@ export default function Luxlings() {
 
   return (
     <Layout 
-      title="Luxlings™ Collection - 234 Saints to Discover" 
-      description="Collect all 234 Luxlings™ saints! Vinyl chibi-style figures earned through reading achievements. Each saint includes feast days, virtues, and inspiring stories."
+      title="Luxlings™ Collection - 227 Saints to Discover" 
+      description="Collect all 227 Luxlings™ saints! Vinyl chibi-style figures earned through reading achievements. Each saint includes feast days, virtues, and inspiring stories."
     >
       {/* Hero Section */}
       <section className="relative overflow-hidden py-20" style={{background: 'linear-gradient(to bottom, #FFF5F0, #F5EBDC)'}}>
@@ -50,14 +50,14 @@ export default function Luxlings() {
           </h2>
           
           <p className="text-xl max-w-3xl mx-auto mb-8 leading-relaxed" style={{color: '#223848'}}>
-            234 adorable chibi-style saints waiting to join your collection! 
+            227 adorable chibi-style saints waiting to join your collection! 
             Each Luxling™ brings faith to life with stories, feast days, and virtues 
             that inspire young readers on their journey.
           </p>
 
           {/* Collection Stats */}
           <div className="flex flex-wrap justify-center gap-6 mb-12">
-            <StatBubble number="234" label="Total Saints" color="amber" />
+            <StatBubble number="227" label="Total Saints" color="amber" />
             <StatBubble number="17" label="Series" color="mint" />
             <StatBubble number="4" label="Rarity Levels" color="blue" />
             <StatBubble number="5" label="Years to Complete" color="purple" />
@@ -335,7 +335,7 @@ export default function Luxlings() {
               Click the filters above to see samples of each rarity type!
             </p>
             <p className="text-sm mt-2" style={{color: '#223848'}}>
-              234 total saints to discover in the app!
+              227 total saints to discover in the app!
             </p>
           </div>
         </div>
@@ -436,7 +436,7 @@ export default function Luxlings() {
             Ready to Start Your Collection?
           </h3>
           <p className="text-xl mb-8 max-w-2xl mx-auto" style={{color: '#223848'}}>
-            Join Lux Libris today and begin your journey to collect all 234 saints 
+            Join Lux Libris today and begin your journey to collect all 227 saints 
             while building a lifelong love of reading.
           </p>
           

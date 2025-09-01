@@ -115,7 +115,7 @@ export default function LicensingInquiries() {
                     </li>
                     <li className="flex items-start" style={{color: '#223848'}}>
                       <span className="mr-3 font-bold" style={{color: '#4A8B7C'}}>✓</span>
-                      Complete Luxlings™ saints collection (234 saints)
+                      Complete Luxlings™ saints collection (227 saints)
                     </li>
                     <li className="flex items-start" style={{color: '#223848'}}>
                       <span className="mr-3 font-bold" style={{color: '#4A8B7C'}}>✓</span>
@@ -308,7 +308,7 @@ export default function LicensingInquiries() {
                 <span className="text-3xl">⛪</span>
               </div>
               <h3 className="font-bold mb-3" style={{color: '#223848'}}>
-                234 Luxlings™ Saints
+                227 Luxlings™ Saints
               </h3>
               <p style={{color: '#223848'}}>
                 Complete collection of exclusive saint characters with feast days, 
