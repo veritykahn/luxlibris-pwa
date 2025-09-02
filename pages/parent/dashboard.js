@@ -1,4 +1,4 @@
-// pages/parent/dashboard.js - Enhanced with daily rotations, persistent colors, and time-based background
+// pages/parent/dashboard.js - Enhanced with daily rotations, persistent colors, time-based background, and Weekly Reading Wisdom
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
@@ -8,6 +8,7 @@ import { collection, getDocs, doc, getDoc, updateDoc, query, where } from 'fireb
 import { db, getSchoolNomineesEntities, getCurrentAcademicYear } from '../../lib/firebase'
 import useUnlockNotifications from '../../hooks/useUnlockNotifications'
 import { NotificationToastContainer } from '../../components/NotificationToast'
+import { getCurrentWeekContent, categoryColors, bottomLineMessages } from '../../lib/weekly-tips-facts'
 
 export default function ParentDashboard() {
   const router = useRouter()
@@ -39,6 +40,10 @@ export default function ParentDashboard() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false)
   const [showNotificationPrompt, setShowNotificationPrompt] = useState(false)
 
+  // Weekly Reading Wisdom states
+  const [expandedTip, setExpandedTip] = useState(null)
+  const [showBottomLine, setShowBottomLine] = useState(false)
+
   // Real-time unlock notifications
   const {
     notifications,
@@ -51,6 +56,13 @@ export default function ParentDashboard() {
     newCount,
     loading: notificationsLoading
   } = useUnlockNotifications()
+
+  // Get current week's content
+  const weeklyContent = useMemo(() => {
+    const content = getCurrentWeekContent();
+    const randomBottomLine = bottomLineMessages[Math.floor(Math.random() * bottomLineMessages.length)];
+    return { ...content, bottomLine: randomBottomLine };
+  }, []);
 
   // Track window width for responsive layout
   useEffect(() => {
@@ -107,9 +119,9 @@ export default function ParentDashboard() {
       primary: '#ADD4EA',
       secondary: '#C3E0DE',
       accent: '#A1E5DB',
-      background: timeTheme.backgroundGradient, // Now uses time-based gradient
-      surface: isNight ? 'rgba(255, 255, 255, 0.95)' : '#FFFFFF', // Slightly transparent for night mode
-      textPrimary: isNight ? '#1F2937' : '#223848', // Darker for night mode contrast
+      background: timeTheme.backgroundGradient,
+      surface: isNight ? 'rgba(255, 255, 255, 0.95)' : '#FFFFFF',
+      textPrimary: isNight ? '#1F2937' : '#223848',
       textSecondary: isNight ? '#374151' : '#556B7A',
       timeOverlay: timeTheme.overlay,
       timeGlow: timeTheme.glow
@@ -323,12 +335,14 @@ export default function ParentDashboard() {
     }
 
     const handleEscape = (event) => {
-      if (event.key === 'Escape' && showNavMenu) {
-        setShowNavMenu(false)
+      if (event.key === 'Escape') {
+        if (showNavMenu) setShowNavMenu(false)
+        if (showBottomLine) setShowBottomLine(false)
+        if (showNotificationPrompt) setShowNotificationPrompt(false)
       }
     }
 
-    if (showNavMenu) {
+    if (showNavMenu || showBottomLine || showNotificationPrompt) {
       document.addEventListener('mousedown', handleClickOutside)
       document.addEventListener('keydown', handleEscape)
     }
@@ -337,7 +351,7 @@ export default function ParentDashboard() {
       document.removeEventListener('mousedown', handleClickOutside)
       document.removeEventListener('keydown', handleEscape)
     }
-  }, [showNavMenu])
+  }, [showNavMenu, showBottomLine, showNotificationPrompt])
 
   // Request notification permission
   const requestNotificationPermission = async () => {
@@ -1847,6 +1861,258 @@ export default function ParentDashboard() {
             </div>
           </div>
 
+          {/* Weekly Tips & Facts Section - MOVED FROM DNA LAB */}
+          <div style={{
+            backgroundColor: luxTheme.surface,
+            borderRadius: '16px',
+            padding: '24px',
+            marginBottom: '20px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            border: `2px solid ${luxTheme.primary}20`,
+            animation: 'slideInUp 0.8s ease-out 0.6s both'
+          }}>
+            <h3 style={{
+              fontSize: 'clamp(16px, 4vw, 18px)',
+              fontWeight: '600',
+              color: luxTheme.textPrimary,
+              margin: '0 0 20px 0',
+              textAlign: 'center',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px'
+            }}>
+              <span>✨</span> This Week&apos;s Reading Wisdom <span>✨</span>
+            </h3>
+
+            {/* Weekly Strategy Card */}
+            <div 
+              style={{
+                backgroundColor: expandedTip === 'strategy' ? `${categoryColors[weeklyContent.strategy.category]}10` : `${luxTheme.primary}05`,
+                borderRadius: '12px',
+                padding: '16px',
+                marginBottom: '16px',
+                border: `1px solid ${expandedTip === 'strategy' ? categoryColors[weeklyContent.strategy.category] : luxTheme.primary}30`,
+                cursor: 'pointer',
+                transition: 'all 0.3s ease'
+              }}
+              onClick={() => setExpandedTip(expandedTip === 'strategy' ? null : 'strategy')}
+              onMouseOver={(e) => {
+                if (expandedTip !== 'strategy') {
+                  e.currentTarget.style.backgroundColor = `${categoryColors[weeklyContent.strategy.category]}10`;
+                  e.currentTarget.style.borderColor = `${categoryColors[weeklyContent.strategy.category]}60`;
+                }
+              }}
+              onMouseOut={(e) => {
+                if (expandedTip !== 'strategy') {
+                  e.currentTarget.style.backgroundColor = `${luxTheme.primary}05`;
+                  e.currentTarget.style.borderColor = `${luxTheme.primary}30`;
+                }
+              }}
+            >
+              <div style={{
+                display: 'flex',
+                alignItems: 'start',
+                gap: '12px'
+              }}>
+                <div style={{
+                  fontSize: '24px',
+                  flexShrink: 0
+                }}>
+                  💡
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    marginBottom: '8px',
+                    flexWrap: 'wrap'
+                  }}>
+                    <div style={{
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      color: luxTheme.textSecondary,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px'
+                    }}>
+                      Weekly Strategy
+                    </div>
+                    <div style={{
+                      backgroundColor: categoryColors[weeklyContent.strategy.category],
+                      color: 'white',
+                      fontSize: '10px',
+                      fontWeight: '600',
+                      padding: '3px 8px',
+                      borderRadius: '12px',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      {weeklyContent.strategy.category}
+                    </div>
+                  </div>
+                  <div style={{
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: luxTheme.textPrimary,
+                    marginBottom: expandedTip === 'strategy' ? '12px' : '0'
+                  }}>
+                    {weeklyContent.strategy.title}
+                  </div>
+                  {expandedTip === 'strategy' && (
+                    <div style={{
+                      fontSize: '14px',
+                      color: luxTheme.textSecondary,
+                      lineHeight: '1.6',
+                      animation: 'fadeIn 0.3s ease-out'
+                    }}>
+                      {weeklyContent.strategy.content}
+                    </div>
+                  )}
+                </div>
+                <div style={{
+                  fontSize: '14px',
+                  color: luxTheme.textSecondary,
+                  transform: expandedTip === 'strategy' ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.3s ease'
+                }}>
+                  ▼
+                </div>
+              </div>
+            </div>
+
+            {/* Weekly Fact Card */}
+            <div 
+              style={{
+                backgroundColor: expandedTip === 'fact' ? `${categoryColors[weeklyContent.fact.category]}10` : `${luxTheme.secondary}05`,
+                borderRadius: '12px',
+                padding: '16px',
+                marginBottom: '16px',
+                border: `1px solid ${expandedTip === 'fact' ? categoryColors[weeklyContent.fact.category] : luxTheme.secondary}30`,
+                cursor: 'pointer',
+                transition: 'all 0.3s ease'
+              }}
+              onClick={() => setExpandedTip(expandedTip === 'fact' ? null : 'fact')}
+              onMouseOver={(e) => {
+                if (expandedTip !== 'fact') {
+                  e.currentTarget.style.backgroundColor = `${categoryColors[weeklyContent.fact.category]}10`;
+                  e.currentTarget.style.borderColor = `${categoryColors[weeklyContent.fact.category]}60`;
+                }
+              }}
+              onMouseOut={(e) => {
+                if (expandedTip !== 'fact') {
+                  e.currentTarget.style.backgroundColor = `${luxTheme.secondary}05`;
+                  e.currentTarget.style.borderColor = `${luxTheme.secondary}30`;
+                }
+              }}
+            >
+              <div style={{
+                display: 'flex',
+                alignItems: 'start',
+                gap: '12px'
+              }}>
+                <div style={{
+                  fontSize: '24px',
+                  flexShrink: 0
+                }}>
+                  🤯
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    marginBottom: '8px',
+                    flexWrap: 'wrap'
+                  }}>
+                    <div style={{
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      color: luxTheme.textSecondary,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px'
+                    }}>
+                      Mind-Blowing Fact
+                    </div>
+                    <div style={{
+                      backgroundColor: categoryColors[weeklyContent.fact.category],
+                      color: 'white',
+                      fontSize: '10px',
+                      fontWeight: '600',
+                      padding: '3px 8px',
+                      borderRadius: '12px',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      {weeklyContent.fact.category}
+                    </div>
+                  </div>
+                  <div style={{
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: luxTheme.textPrimary,
+                    marginBottom: expandedTip === 'fact' ? '12px' : '0'
+                  }}>
+                    {weeklyContent.fact.title}
+                  </div>
+                  {expandedTip === 'fact' && (
+                    <div style={{
+                      fontSize: '14px',
+                      color: luxTheme.textSecondary,
+                      lineHeight: '1.6',
+                      animation: 'fadeIn 0.3s ease-out'
+                    }}>
+                      {weeklyContent.fact.fact}
+                    </div>
+                  )}
+                </div>
+                <div style={{
+                  fontSize: '14px',
+                  color: luxTheme.textSecondary,
+                  transform: expandedTip === 'fact' ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.3s ease'
+                }}>
+                  ▼
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Line Button */}
+            <div style={{
+              textAlign: 'center',
+              marginTop: '20px'
+            }}>
+              <button
+                onClick={() => setShowBottomLine(true)}
+                style={{
+                  backgroundColor: luxTheme.primary,
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '20px',
+                  padding: '10px 20px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                  transform: 'translateY(0)',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.15)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                }}
+              >
+                <span>🌟</span>
+                <span>Why Reading Matters</span>
+              </button>
+            </div>
+          </div>
+
           {/* Recent Achievements */}
           {recentAchievements.length > 0 && (
             <div style={{
@@ -1856,7 +2122,7 @@ export default function ParentDashboard() {
               marginBottom: '100px',
               boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
               border: `2px solid ${luxTheme.primary}30`,
-              animation: 'slideInUp 0.8s ease-out 0.6s both'
+              animation: 'slideInUp 0.8s ease-out 0.8s both'
             }}>
               <h3 style={{
                 fontSize: 'clamp(16px, 4vw, 18px)',
@@ -2030,6 +2296,78 @@ export default function ParentDashboard() {
             </div>
           )}
         </div>
+
+        {/* Bottom Line Modal */}
+        {showBottomLine && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            zIndex: 1001,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}>
+            <div style={{
+              backgroundColor: luxTheme.surface,
+              borderRadius: '20px',
+              maxWidth: '400px',
+              width: '100%',
+              padding: '24px',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+              textAlign: 'center'
+            }}>
+              <div style={{
+                fontSize: '48px',
+                marginBottom: '20px',
+                animation: 'bounce 1s ease-out'
+              }}>
+                🌟
+              </div>
+              
+              <h3 style={{
+                fontSize: '20px',
+                fontWeight: '600',
+                color: luxTheme.textPrimary,
+                margin: '0 0 16px 0',
+                fontFamily: 'Didot, serif'
+              }}>
+                Why Reading Matters
+              </h3>
+              
+              <p style={{
+                fontSize: '16px',
+                color: luxTheme.textSecondary,
+                lineHeight: '1.6',
+                marginBottom: '24px'
+              }}>
+                {weeklyContent.bottomLine}
+              </p>
+              
+              <button
+                onClick={() => setShowBottomLine(false)}
+                style={{
+                  backgroundColor: luxTheme.primary,
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '12px',
+                  padding: '12px 24px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  touchAction: 'manipulation',
+                  WebkitTapHighlightColor: 'transparent'
+                }}
+              >
+                Let&apos;s Build Readers! 📚
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Notification Prompt Modal */}
         {showNotificationPrompt && !notificationsEnabled && (

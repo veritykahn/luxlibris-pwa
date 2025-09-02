@@ -8,7 +8,6 @@ import Head from 'next/head';
 import { collection, getDocs, doc, getDoc, query, where, updateDoc, setDoc } from 'firebase/firestore';
 import { db } from '../../../lib/firebase';
 import { updateStudentDataEntities } from '../../../lib/firebase';
-import { getCurrentWeekContent, categoryColors, bottomLineMessages } from '../../../lib/weekly-tips-facts';
 import { READING_SCIENCE_RESEARCH, getScienceHelpers } from '../../../lib/science-of-reading';
 
 // DNA Type Configuration - Professional approach
@@ -19,17 +18,6 @@ const dnaTypeConfig = {
   'autonomy_supporter': { emoji: '🦅', color: '#F39C12' },
   'meaning_maker': { emoji: '🌟', color: '#1ABC9C' },
   'growth_facilitator': { emoji: '🌱', color: '#27AE60' }
-};
-
-// Daily 5-Minute Wins
-const dailyWins = {
-  Monday: { emoji: '🔮', task: 'Let your child predict what happens next', tip: 'Pause at an exciting moment and ask!' },
-  Tuesday: { emoji: '🎵', task: 'Find rhyming words together', tip: 'Try during meals or car rides' },
-  Wednesday: { emoji: '📍', task: 'New reading spot adventure', tip: 'Under a table? In a closet?' },
-  Thursday: { emoji: '🎭', task: 'Character voices make it fun', tip: 'Be silly - kids love it!' },
-  Friday: { emoji: '🎨', task: 'Draw the story together', tip: 'Stick figures are perfect!' },
-  Saturday: { emoji: '❓', task: 'Question time - they ask YOU', tip: 'No wrong questions exist!' },
-  Sunday: { emoji: '👑', task: 'Role reversal - they teach', tip: 'Let them teach you about a topic they love' }
 };
 
 // Reflection prompts for dashboard
@@ -171,30 +159,8 @@ export default function ParentDnaLabDashboard() {
   const [showResearchModal, setShowResearchModal] = useState(false);
   const [showRetakeInfo, setShowRetakeInfo] = useState(false);
   const [showDnaAnimation, setShowDnaAnimation] = useState(false);
-  const [showBottomLine, setShowBottomLine] = useState(false);
-  const [expandedTip, setExpandedTip] = useState(null);
   const [hoveredDna, setHoveredDna] = useState(null);
   const [hoveredTooltip, setHoveredTooltip] = useState(null);
-  
-  // Get current week's content
-  const weeklyContent = useMemo(() => {
-    const content = getCurrentWeekContent();
-    const randomBottomLine = bottomLineMessages[Math.floor(Math.random() * bottomLineMessages.length)];
-    return { ...content, bottomLine: randomBottomLine };
-  }, []);
-
-  // Get today's 5-minute win
-  const todaysWin = useMemo(() => {
-    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const today = days[new Date().getDay()];
-    return { day: today, ...dailyWins[today] };
-  }, []);
-
-  // Get today's reflection prompt
-  const todaysReflectionPrompt = useMemo(() => {
-    const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
-    return reflectionPrompts[dayOfYear % reflectionPrompts.length];
-  }, []);
 
   // Get current week number for superpower (Academic Year: June to May)
   const currentWeekNumber = useMemo(() => {
@@ -211,6 +177,12 @@ export default function ParentDnaLabDashboard() {
     
     const weeksSinceStart = Math.floor((now - academicYearStart) / (7 * 24 * 60 * 60 * 1000));
     return weeksSinceStart + 1;
+  }, []);
+
+  // Get today's reflection prompt
+  const todaysReflectionPrompt = useMemo(() => {
+    const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
+    return reflectionPrompts[dayOfYear % reflectionPrompts.length];
   }, []);
 
   // Get time-based theme with smoother transitions
@@ -795,7 +767,6 @@ export default function ParentDnaLabDashboard() {
         setShowNavMenu(false);
         setShowUnlockModal(false);
         setShowResearchModal(false);
-        setShowBottomLine(false);
         setShowSuccess('');
         setShowReadingDnaUnlockModal(false);
       }
@@ -1839,7 +1810,6 @@ export default function ParentDnaLabDashboard() {
               </div>
             </div>
 
-            {/* Rest of the content continues unchanged... */}
             {/* Divider */}
             <div style={{
               width: '60%',
@@ -1855,28 +1825,6 @@ export default function ParentDnaLabDashboard() {
               gap: '16px',
               marginBottom: '16px'
             }}>
-              {/* Daily 5-Minute Win */}
-              <DiscoveryCard
-                icon={todaysWin.emoji}
-                subtitle={`${todaysWin.day}'s 5-Minute Win`}
-                title="Quick Daily Challenge"
-                content={
-                  <>
-                    <div style={{ marginBottom: '8px' }}>{todaysWin.task}</div>
-                    <div style={{
-                      fontSize: '11px',
-                      color: luxTheme.textSecondary,
-                      fontStyle: 'italic'
-                    }}>
-                      💡 {todaysWin.tip}
-                    </div>
-                  </>
-                }
-                borderColor={`${categoryColors['Motivation & Engagement']}30`}
-                hoverColor={categoryColors['Motivation & Engagement']}
-                minHeight="auto"
-              />
-
               {/* Reflection Prompt */}
               <DiscoveryCard
                 icon="✍️"
@@ -2212,262 +2160,10 @@ export default function ParentDnaLabDashboard() {
               )}
             </div>
 
-            {/* Weekly Tips & Facts Section */}
-            <div style={{
-              backgroundColor: luxTheme.surface,
-              borderRadius: '16px',
-              padding: '24px',
-              marginBottom: '20px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              border: `2px solid ${hasParentDna && parentDnaType ? parentDnaType.color : luxTheme.primary}20`
-            }}>
-              <h3 style={{
-                fontSize: '18px',
-                fontWeight: '600',
-                color: luxTheme.textPrimary,
-                margin: '0 0 20px 0',
-                textAlign: 'center',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px'
-              }}>
-                <span>✨</span> This Week&apos;s Reading Wisdom <span>✨</span>
-              </h3>
-
-              {/* Weekly Strategy Card */}
-              <div 
-                style={{
-                  backgroundColor: expandedTip === 'strategy' ? `${categoryColors[weeklyContent.strategy.category]}10` : `${luxTheme.primary}05`,
-                  borderRadius: '12px',
-                  padding: '16px',
-                  marginBottom: '16px',
-                  border: `1px solid ${expandedTip === 'strategy' ? categoryColors[weeklyContent.strategy.category] : luxTheme.primary}30`,
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease'
-                }}
-                onClick={() => setExpandedTip(expandedTip === 'strategy' ? null : 'strategy')}
-                onMouseOver={(e) => {
-                  if (expandedTip !== 'strategy') {
-                    e.currentTarget.style.backgroundColor = `${categoryColors[weeklyContent.strategy.category]}10`;
-                    e.currentTarget.style.borderColor = `${categoryColors[weeklyContent.strategy.category]}60`;
-                  }
-                }}
-                onMouseOut={(e) => {
-                  if (expandedTip !== 'strategy') {
-                    e.currentTarget.style.backgroundColor = `${luxTheme.primary}05`;
-                    e.currentTarget.style.borderColor = `${luxTheme.primary}30`;
-                  }
-                }}
-              >
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'start',
-                  gap: '12px'
-                }}>
-                  <div style={{
-                    fontSize: '24px',
-                    flexShrink: 0
-                  }}>
-                    💡
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      marginBottom: '8px',
-                      flexWrap: 'wrap'
-                    }}>
-                      <div style={{
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        color: luxTheme.textSecondary,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.5px'
-                      }}>
-                        Weekly Strategy
-                      </div>
-                      <div style={{
-                        backgroundColor: categoryColors[weeklyContent.strategy.category],
-                        color: 'white',
-                        fontSize: '10px',
-                        fontWeight: '600',
-                        padding: '3px 8px',
-                        borderRadius: '12px',
-                        whiteSpace: 'nowrap'
-                      }}>
-                        {weeklyContent.strategy.category}
-                      </div>
-                    </div>
-                    <div style={{
-                      fontSize: '16px',
-                      fontWeight: '600',
-                      color: luxTheme.textPrimary,
-                      marginBottom: expandedTip === 'strategy' ? '12px' : '0'
-                    }}>
-                      {weeklyContent.strategy.title}
-                    </div>
-                    {expandedTip === 'strategy' && (
-                      <div style={{
-                        fontSize: '14px',
-                        color: luxTheme.textSecondary,
-                        lineHeight: '1.6',
-                        animation: 'fadeIn 0.3s ease-out'
-                      }}>
-                        {weeklyContent.strategy.content}
-                      </div>
-                    )}
-                  </div>
-                  <div style={{
-                    fontSize: '14px',
-                    color: luxTheme.textSecondary,
-                    transform: expandedTip === 'strategy' ? 'rotate(180deg)' : 'rotate(0deg)',
-                    transition: 'transform 0.3s ease'
-                  }}>
-                    ▼
-                  </div>
-                </div>
-              </div>
-
-              {/* Weekly Fact Card */}
-              <div 
-                style={{
-                  backgroundColor: expandedTip === 'fact' ? `${categoryColors[weeklyContent.fact.category]}10` : `${luxTheme.secondary}05`,
-                  borderRadius: '12px',
-                  padding: '16px',
-                  marginBottom: '16px',
-                  border: `1px solid ${expandedTip === 'fact' ? categoryColors[weeklyContent.fact.category] : luxTheme.secondary}30`,
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease'
-                }}
-                onClick={() => setExpandedTip(expandedTip === 'fact' ? null : 'fact')}
-                onMouseOver={(e) => {
-                  if (expandedTip !== 'fact') {
-                    e.currentTarget.style.backgroundColor = `${categoryColors[weeklyContent.fact.category]}10`;
-                    e.currentTarget.style.borderColor = `${categoryColors[weeklyContent.fact.category]}60`;
-                  }
-                }}
-                onMouseOut={(e) => {
-                  if (expandedTip !== 'fact') {
-                    e.currentTarget.style.backgroundColor = `${luxTheme.secondary}05`;
-                    e.currentTarget.style.borderColor = `${luxTheme.secondary}30`;
-                  }
-                }}
-              >
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'start',
-                  gap: '12px'
-                }}>
-                  <div style={{
-                    fontSize: '24px',
-                    flexShrink: 0
-                  }}>
-                    🤯
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      marginBottom: '8px',
-                      flexWrap: 'wrap'
-                    }}>
-                      <div style={{
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        color: luxTheme.textSecondary,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.5px'
-                      }}>
-                        Mind-Blowing Fact
-                      </div>
-                      <div style={{
-                        backgroundColor: categoryColors[weeklyContent.fact.category],
-                        color: 'white',
-                        fontSize: '10px',
-                        fontWeight: '600',
-                        padding: '3px 8px',
-                        borderRadius: '12px',
-                        whiteSpace: 'nowrap'
-                      }}>
-                        {weeklyContent.fact.category}
-                      </div>
-                    </div>
-                    <div style={{
-                      fontSize: '16px',
-                      fontWeight: '600',
-                      color: luxTheme.textPrimary,
-                      marginBottom: expandedTip === 'fact' ? '12px' : '0'
-                    }}>
-                      {weeklyContent.fact.title}
-                    </div>
-                    {expandedTip === 'fact' && (
-                      <div style={{
-                        fontSize: '14px',
-                        color: luxTheme.textSecondary,
-                        lineHeight: '1.6',
-                        animation: 'fadeIn 0.3s ease-out'
-                      }}>
-                        {weeklyContent.fact.fact}
-                      </div>
-                    )}
-                  </div>
-                  <div style={{
-                    fontSize: '14px',
-                    color: luxTheme.textSecondary,
-                    transform: expandedTip === 'fact' ? 'rotate(180deg)' : 'rotate(0deg)',
-                    transition: 'transform 0.3s ease'
-                  }}>
-                    ▼
-                  </div>
-                </div>
-              </div>
-
-              {/* Bottom Line Button */}
-              <div style={{
-                textAlign: 'center',
-                marginTop: '20px'
-              }}>
-                <button
-                  onClick={() => setShowBottomLine(true)}
-                  style={{
-                    backgroundColor: hasParentDna && parentDnaType ? parentDnaType.color : luxTheme.primary,
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '20px',
-                    padding: '10px 20px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                    transform: 'translateY(0)',
-                    transition: 'all 0.2s ease'
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.15)';
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
-                  }}
-                >
-                  <span>🌟</span>
-                  <span>Why Reading Matters</span>
-                </button>
-              </div>
-            </div>
-
           </div>
         </PremiumGate>
 
         {/* All modals remain the same... */}
-        {/* [Keep all the existing modals exactly as they are] */}
         
         {/* Family Reading DNA Unlock Modal */}
         {showReadingDnaUnlockModal && (
@@ -2982,78 +2678,6 @@ export default function ParentDnaLabDashboard() {
                 }}
               >
                 Got it! Let&apos;s explore
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Bottom Line Modal */}
-        {showBottomLine && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.8)',
-            zIndex: 1001,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '20px'
-          }}>
-            <div style={{
-              backgroundColor: luxTheme.surface,
-              borderRadius: '20px',
-              maxWidth: '400px',
-              width: '100%',
-              padding: '24px',
-              boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
-              textAlign: 'center'
-            }}>
-              <div style={{
-                fontSize: '48px',
-                marginBottom: '20px',
-                animation: 'bounce 1s ease-out'
-              }}>
-                🌟
-              </div>
-              
-              <h3 style={{
-                fontSize: '20px',
-                fontWeight: '600',
-                color: luxTheme.textPrimary,
-                margin: '0 0 16px 0',
-                fontFamily: 'Didot, serif'
-              }}>
-                Why Reading Matters
-              </h3>
-              
-              <p style={{
-                fontSize: '16px',
-                color: luxTheme.textSecondary,
-                lineHeight: '1.6',
-                marginBottom: '24px'
-              }}>
-                {weeklyContent.bottomLine}
-              </p>
-              
-              <button
-                onClick={() => setShowBottomLine(false)}
-                style={{
-                  backgroundColor: hasParentDna && parentDnaType ? parentDnaType.color : luxTheme.primary,
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '12px',
-                  padding: '12px 24px',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  touchAction: 'manipulation',
-                  WebkitTapHighlightColor: 'transparent'
-                }}
-              >
-                Let&apos;s Build Readers! 📚
               </button>
             </div>
           </div>
