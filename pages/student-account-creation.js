@@ -321,7 +321,7 @@ export default function StudentAccountCreation() {
                     margin: '0 0 0.5rem 0',
                     lineHeight: '1.3'
                   }}>
-                    ⚠️ <strong>Already have an account?</strong> Don&apos;t create another one!
+                    ⚠️ <strong>Already have an account?</strong> Don&apos;t create another one! Ask your teacher or librarian if you need your login details.
                   </p>
                   <button
                     onClick={handleSignInRedirect}
