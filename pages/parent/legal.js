@@ -1,4 +1,4 @@
-// pages/parent/legal.js - SCHOOL VERSION: Parents use join codes from educational staff
+// pages/parent/legal.js - FIXED: Prevents cross-account legal acceptance conflicts
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../contexts/AuthContext';
@@ -9,6 +9,7 @@ export default function ParentLegal() {
   const { userProfile, hasCompletedOnboarding } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isReturningUser, setIsReturningUser] = useState(false);
+  const [showClearDataOption, setShowClearDataOption] = useState(false);
 
   // Lux Libris Classic Theme
   const luxTheme = {
@@ -22,17 +23,61 @@ export default function ParentLegal() {
   }
 
   useEffect(() => {
-    if (userProfile && userProfile.accountType === 'parent' && hasCompletedOnboarding()) {
-      setIsReturningUser(true);
-    }
+    checkUserStatus();
   }, [userProfile, hasCompletedOnboarding]);
+
+  const checkUserStatus = async () => {
+    // Only show "returning user" if there's an actual authenticated parent who has completed onboarding
+    if (userProfile && userProfile.accountType === 'parent' && await hasCompletedOnboarding()) {
+      setIsReturningUser(true);
+      setShowClearDataOption(false);
+    } else {
+      // Check if there's orphaned legal acceptance data from a previous user
+      if (typeof window !== 'undefined') {
+        const hasOrphanedAcceptance = localStorage.getItem('hasAcceptedLegal') === 'true';
+        const hasCurrentFlow = localStorage.getItem('luxlibris_account_flow') || 
+                              localStorage.getItem('tempParentData') || 
+                              localStorage.getItem('parentOnboardingData');
+        
+        // If there's legal acceptance but no current account flow, show clear option
+        if (hasOrphanedAcceptance && !hasCurrentFlow && !userProfile) {
+          setShowClearDataOption(true);
+          console.log('⚠️ Detected orphaned legal acceptance from previous user');
+        }
+      }
+      setIsReturningUser(false);
+    }
+  };
+
+  const clearPreviousData = () => {
+    if (typeof window !== 'undefined') {
+      // Clear only the legal-related data, not all localStorage
+      localStorage.removeItem('hasAcceptedLegal');
+      localStorage.removeItem('acceptedTermsVersion');
+      localStorage.removeItem('parentTermsAccepted');
+      setShowClearDataOption(false);
+      console.log('🧹 Cleared previous legal acceptance data');
+    }
+  };
 
   const acceptAndProceed = async () => {
     setIsLoading(true);
     
-    localStorage.setItem('hasAcceptedLegal', 'true');
-    localStorage.setItem('acceptedTermsVersion', '2025.07.18');
-    localStorage.setItem('parentTermsAccepted', 'true');
+    // Create user-specific key if we have account flow data
+    const accountFlow = localStorage.getItem('luxlibris_account_flow');
+    const timestamp = Date.now();
+    
+    // Store acceptance with account flow context
+    if (accountFlow) {
+      localStorage.setItem(`hasAcceptedLegal_${accountFlow}_${timestamp}`, 'true');
+      localStorage.setItem(`acceptedTermsVersion_${accountFlow}_${timestamp}`, '2025.07.18');
+      localStorage.setItem(`parentTermsAccepted_${accountFlow}_${timestamp}`, 'true');
+    } else {
+      // Fallback to global if no flow context
+      localStorage.setItem('hasAcceptedLegal', 'true');
+      localStorage.setItem('acceptedTermsVersion', '2025.07.18');
+      localStorage.setItem('parentTermsAccepted', 'true');
+    }
     
     router.push('/parent/onboarding');
     setIsLoading(false);
@@ -103,6 +148,70 @@ export default function ParentLegal() {
           maxWidth: '800px',
           margin: '0 auto'
         }}>
+          {/* NEW: Clear Previous Data Option */}
+          {showClearDataOption && (
+            <div style={{
+              backgroundColor: '#fef3cd',
+              border: '2px solid #f59e0b',
+              borderRadius: '12px',
+              padding: '20px',
+              marginBottom: '24px',
+              textAlign: 'center'
+            }}>
+              <h3 style={{
+                fontSize: '18px',
+                fontWeight: 'bold',
+                color: '#92400e',
+                marginBottom: '12px',
+                margin: '0 0 12px 0'
+              }}>
+                ⚠️ Setting up a NEW family account?
+              </h3>
+              <p style={{
+                fontSize: '14px',
+                color: '#92400e',
+                marginBottom: '16px',
+                lineHeight: '1.4',
+                margin: '0 0 16px 0'
+              }}>
+                It looks like someone already accepted our terms on this computer. If you're setting up a <strong>different</strong> family account for <strong>different children</strong>, please clear the previous data first.
+              </p>
+              <button
+                onClick={clearPreviousData}
+                style={{
+                  backgroundColor: '#f59e0b',
+                  color: 'white',
+                  border: 'none',
+                  padding: '12px 24px',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                  marginRight: '12px'
+                }}
+              >
+                🧹 Clear & Start Fresh
+              </button>
+              <button
+                onClick={() => window.location.href = 'https://www.luxlibris.org/sign-in'}
+                style={{
+                  backgroundColor: '#ADD4EA',
+                  color: '#223848',
+                  border: 'none',
+                  padding: '12px 24px',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }}
+              >
+                🔑 Or Sign Into Existing Account
+              </button>
+            </div>
+          )}
+
           {/* Welcome Section */}
           <div style={{
             background: `linear-gradient(135deg, ${luxTheme.primary}, ${luxTheme.secondary})`,
@@ -129,7 +238,7 @@ export default function ParentLegal() {
               {isReturningUser ? (
                 <>You have already accepted our Terms of Service and Privacy Policy. This page is for reference only.</>
               ) : (
-                <>Your child&apos;s teacher or librarian provided a join code for Lux Libris! Support your child as they discover amazing books and unlock beautiful <strong>Luxlings™</strong> saint achievements as part of their school reading program.</>
+                <>Your child's teacher or librarian provided a join code for Lux Libris! Support your child as they discover amazing books and unlock beautiful <strong>Luxlings™</strong> saint achievements as part of their school reading program.</>
               )}
             </p>
           </div>
@@ -161,7 +270,7 @@ export default function ParentLegal() {
                 color: luxTheme.textPrimary
               }}>
                 <div style={{ padding: '12px', backgroundColor: '#E8F4FD', borderRadius: '8px' }}>
-                  <strong>📚 Your Child&apos;s Teacher/Librarian Sees:</strong><br/>
+                  <strong>📚 Your Child's Teacher/Librarian Sees:</strong><br/>
                   • Student name and grade<br/>
                   • Books submitted for reading<br/>
                   • Number of books completed
@@ -488,7 +597,7 @@ Our goal is to strengthen the partnership between home and school in supporting 
               color: luxTheme.textPrimary,
               margin: '0 0 8px 0'
             }}>
-              🌟 Supporting your child&apos;s reading journey at home and school!
+              🌟 Supporting your child's reading journey at home and school!
             </p>
             <p style={{
               fontSize: 'clamp(10px, 3vw, 12px)',

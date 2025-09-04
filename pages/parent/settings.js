@@ -1,4 +1,4 @@
-// pages/parent/settings.js - Enhanced with Time-Aware Colors
+// pages/parent/settings.js - COMPLETE FIXED VERSION for adding children through settings
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
@@ -155,6 +155,7 @@ export default function ParentSettings() {
     }
   }, [showNavMenu, showAddChildModal])
 
+  // FIXED: Load settings data with proper family loading
   const loadSettingsData = async () => {
     try {
       console.log('⚙️ Loading parent settings data...')
@@ -175,16 +176,40 @@ export default function ParentSettings() {
       
       console.log('✅ Parent profile loaded')
 
-      // Load family profile - search for family containing this parent
-const familiesRef = collection(db, 'families')
-const familyQuery = query(familiesRef, where('parents', 'array-contains', user.uid))
-const familySnapshot = await getDocs(familyQuery)
+      // FIXED: Load family profile using the parent's familyId, not user.uid
+      if (parentProfile.familyId) {
+        console.log('🏠 Loading family data with familyId:', parentProfile.familyId)
+        const familyDoc = await getDoc(doc(db, 'families', parentProfile.familyId))
+        
+        if (familyDoc.exists()) {
+          setFamilyData({ ...familyDoc.data(), id: familyDoc.id })
+          console.log('✅ Family profile loaded:', familyDoc.id)
+        } else {
+          console.warn('⚠️ Family document not found for familyId:', parentProfile.familyId)
+        }
+      } else {
+        console.log('📋 Parent has no familyId - checking if they need to join a family')
+        
+        // OPTIONAL: Search for families containing this parent (fallback for data inconsistencies)
+        const familiesRef = collection(db, 'families')
+        const familyQuery = query(familiesRef, where('parents', 'array-contains', user.uid))
+        const familySnapshot = await getDocs(familyQuery)
 
-if (!familySnapshot.empty) {
-  const familyDoc = familySnapshot.docs[0]
-  setFamilyData({ ...familyDoc.data(), id: familyDoc.id })
-  console.log('✅ Family profile loaded:', familyDoc.id)
-}
+        if (!familySnapshot.empty) {
+          const familyDoc = familySnapshot.docs[0]
+          const familyData = { ...familyDoc.data(), id: familyDoc.id }
+          setFamilyData(familyData)
+          
+          // Fix parent's familyId if it's missing
+          await updateDoc(parentRef, {
+            familyId: familyDoc.id,
+            lastUpdated: new Date()
+          })
+          
+          console.log('✅ Found and linked family:', familyDoc.id)
+          console.log('🔧 Fixed parent familyId field')
+        }
+      }
 
       // Load linked students and their teachers' quiz codes
       await loadLinkedStudentsAndTeachers(parentProfile.linkedStudents || [])
@@ -284,6 +309,7 @@ if (!familySnapshot.empty) {
     }
   }
 
+  // FIXED: Save function with correct family document referencing
   const handleSave = async (section) => {
     try {
       setError('')
@@ -305,10 +331,15 @@ if (!familySnapshot.empty) {
         setSuccess('Profile updated successfully!')
         
       } else if (section === 'family') {
-  const familyRef = doc(db, 'families', familyData.id)  // Use familyData.id instead of user.uid
-  await updateDoc(familyRef, {
-    familyName: editedData.familyName
-  })
+        // FIXED: Use parentData.familyId instead of user.uid
+        if (!parentData.familyId) {
+          throw new Error('No family ID found for this parent')
+        }
+        
+        const familyRef = doc(db, 'families', parentData.familyId)  // ✅ CORRECT - use actual familyId
+        await updateDoc(familyRef, {
+          familyName: editedData.familyName
+        })
         
         setFamilyData(prev => ({
           ...prev,
@@ -414,7 +445,7 @@ if (!familySnapshot.empty) {
     setExpandedStudentCredentials(expandedStudentCredentials === studentId ? null : studentId)
   }
 
-  // Handle adding a new child
+  // FIXED: Handle adding a new child - removed problematic manual family update
   const handleAddChild = async () => {
     if (!addChildForm.inviteCode.trim()) {
       setAddChildForm(prev => ({ ...prev, error: 'Please enter an invite code' }))
@@ -426,26 +457,14 @@ if (!familySnapshot.empty) {
     try {
       console.log('🔗 Linking parent to student with invite code:', addChildForm.inviteCode)
       
-      // Call the linkParentToStudent function
+      // Call the linkParentToStudent function - it handles all family management internally
       const linkResult = await linkParentToStudent(user.uid, addChildForm.inviteCode.trim().toUpperCase())
       
       console.log('✅ Successfully linked to student:', linkResult)
       
-      // Update family document if needed
-      if (familyData && linkResult.studentId) {
-        const familyRef = doc(db, 'families', user.uid)
-        await updateDoc(familyRef, {
-          linkedStudents: arrayUnion({
-            studentId: linkResult.studentId,
-            studentName: linkResult.studentName,
-            schoolName: linkResult.schoolName,
-            entityId: linkResult.entityId,
-            schoolId: linkResult.schoolId,
-            grade: linkResult.grade
-          }),
-          lastUpdated: new Date()
-        })
-      }
+      // REMOVED: The problematic manual family document update section
+      // The linkParentToStudent function now handles all family management internally
+      // No need to manually update the family document here
       
       // Show success message
       setAddChildForm(prev => ({ 
@@ -1469,21 +1488,21 @@ if (!familySnapshot.empty) {
                       First Name
                     </label>
                     <input
-  type="text"
-  value={editedData.firstName || ''}
-  onChange={(e) => setEditedData(prev => ({ ...prev, firstName: e.target.value }))}
-  style={{
-    width: '100%',
-    padding: '8px',
-    border: `1px solid ${luxTheme.primary}40`,
-    borderRadius: '6px',
-    fontSize: 'clamp(12px, 3.5vw, 14px)',
-    boxSizing: 'border-box',
-    minHeight: '40px',
-    color: luxTheme.textPrimary,  // ADD THIS LINE
-    backgroundColor: luxTheme.surface  // OPTIONALLY ADD THIS TOO
-  }}
-/>
+                      type="text"
+                      value={editedData.firstName || ''}
+                      onChange={(e) => setEditedData(prev => ({ ...prev, firstName: e.target.value }))}
+                      style={{
+                        width: '100%',
+                        padding: '8px',
+                        border: `1px solid ${luxTheme.primary}40`,
+                        borderRadius: '6px',
+                        fontSize: 'clamp(12px, 3.5vw, 14px)',
+                        boxSizing: 'border-box',
+                        minHeight: '40px',
+                        color: luxTheme.textPrimary,
+                        backgroundColor: luxTheme.surface
+                      }}
+                    />
                   </div>
                   <div>
                     <label style={{
@@ -1496,21 +1515,21 @@ if (!familySnapshot.empty) {
                       Last Name
                     </label>
                     <input
-  type="text"
-  value={editedData.lastName || ''}
-  onChange={(e) => setEditedData(prev => ({ ...prev, lastName: e.target.value }))}
-  style={{
-    width: '100%',
-    padding: '8px',
-    border: `1px solid ${luxTheme.primary}40`,
-    borderRadius: '6px',
-    fontSize: 'clamp(12px, 3.5vw, 14px)',
-    boxSizing: 'border-box',
-    minHeight: '40px',
-    color: luxTheme.textPrimary,  // ADD THIS LINE
-    backgroundColor: luxTheme.surface  // ADD THIS LINE
-  }}
-/>
+                      type="text"
+                      value={editedData.lastName || ''}
+                      onChange={(e) => setEditedData(prev => ({ ...prev, lastName: e.target.value }))}
+                      style={{
+                        width: '100%',
+                        padding: '8px',
+                        border: `1px solid ${luxTheme.primary}40`,
+                        borderRadius: '6px',
+                        fontSize: 'clamp(12px, 3.5vw, 14px)',
+                        boxSizing: 'border-box',
+                        minHeight: '40px',
+                        color: luxTheme.textPrimary,
+                        backgroundColor: luxTheme.surface
+                      }}
+                    />
                   </div>
                 </div>
                 <div style={{ 
@@ -1689,21 +1708,21 @@ if (!familySnapshot.empty) {
                       Family Name
                     </label>
                     <input
-  type="text"
-  value={editedData.familyName || ''}
-  onChange={(e) => setEditedData(prev => ({ ...prev, familyName: e.target.value }))}
-  style={{
-    width: '100%',
-    padding: '8px',
-    border: `1px solid ${luxTheme.primary}40`,
-    borderRadius: '6px',
-    fontSize: 'clamp(12px, 3.5vw, 14px)',
-    boxSizing: 'border-box',
-    minHeight: '40px',
-    color: luxTheme.textPrimary,  // ADD THIS LINE
-    backgroundColor: luxTheme.surface  // ADD THIS LINE
-  }}
-/>
+                      type="text"
+                      value={editedData.familyName || ''}
+                      onChange={(e) => setEditedData(prev => ({ ...prev, familyName: e.target.value }))}
+                      style={{
+                        width: '100%',
+                        padding: '8px',
+                        border: `1px solid ${luxTheme.primary}40`,
+                        borderRadius: '6px',
+                        fontSize: 'clamp(12px, 3.5vw, 14px)',
+                        boxSizing: 'border-box',
+                        minHeight: '40px',
+                        color: luxTheme.textPrimary,
+                        backgroundColor: luxTheme.surface
+                      }}
+                    />
                   </div>
                   <div style={{ 
                     display: 'flex', 
