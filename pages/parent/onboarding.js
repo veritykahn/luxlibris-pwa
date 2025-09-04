@@ -266,15 +266,20 @@ export default function ParentOnboarding() {
       console.log('💾 Saving parent onboarding data...')
 
       // Update parent profile
-      const parentRef = doc(db, 'parents', onboardingData.parentId)
-      await updateDoc(parentRef, {
-        onboardingCompleted: true,
-        onboardingCompletedAt: new Date(),
-        familyName: familyData.familyName,
-        readingGoals: familyData.readingGoals,
-        preferences: familyData.preferences,
-        parentProfile: familyData.parentProfile
-      })
+const parentRef = doc(db, 'parents', onboardingData.parentId)
+await updateDoc(parentRef, {
+  onboardingCompleted: true,
+  onboardingCompletedAt: new Date(),
+  familyName: familyData.familyName,
+  readingGoals: familyData.readingGoals,
+  preferences: familyData.preferences,
+  parentProfile: familyData.parentProfile,
+  
+  // Legal acceptance tracking
+  legalAccepted: true,
+  legalAcceptedAt: new Date(),
+  termsVersion: '2025.07.18'
+})
 
       // Handle family creation or joining
 let finalFamilyId = null;

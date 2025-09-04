@@ -9,6 +9,16 @@ export default function ParentAccountCreation() {
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // Clear localStorage at flow start to prevent cross-user conflicts
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('hasAcceptedLegal');
+      localStorage.removeItem('acceptedTermsVersion');
+      localStorage.removeItem('parentTermsAccepted');
+      console.log('🧹 Cleared previous legal data at flow start');
+    }
+  }, []);
   const [parentData, setParentData] = useState({
     firstName: '',
     lastName: '',

@@ -1,4 +1,4 @@
-// pages/legal.js - FIXED: Prevents cross-account legal acceptance conflicts
+// pages/legal.js - SIMPLIFIED: Clean localStorage at flow start + Database field
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
@@ -9,61 +9,31 @@ export default function StudentLegal() {
   const { userProfile, hasCompletedOnboarding } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isReturningUser, setIsReturningUser] = useState(false);
-  const [showClearDataOption, setShowClearDataOption] = useState(false);
 
   useEffect(() => {
     checkUserStatus();
   }, [userProfile, hasCompletedOnboarding]);
 
   const checkUserStatus = async () => {
-    // Only show "returning user" if there's an actual authenticated user who has completed onboarding
-    if (userProfile && await hasCompletedOnboarding()) {
+    // Check if this is a returning user (has account with legal accepted in database)
+    if (userProfile && userProfile.legalAccepted === true) {
       setIsReturningUser(true);
-      setShowClearDataOption(false);
-    } else {
-      // Check if there's orphaned legal acceptance data from a previous user
-      if (typeof window !== 'undefined') {
-        const hasOrphanedAcceptance = localStorage.getItem('hasAcceptedLegal') === 'true';
-        const hasCurrentFlow = localStorage.getItem('luxlibris_account_flow') || 
-                              localStorage.getItem('tempTeacherData') || 
-                              localStorage.getItem('tempParentData');
-        
-        // If there's legal acceptance but no current account flow, show clear option
-        if (hasOrphanedAcceptance && !hasCurrentFlow && !userProfile) {
-          setShowClearDataOption(true);
-          console.log('⚠️ Detected orphaned legal acceptance from previous user');
-        }
-      }
+    } 
+    // OR if they have completed onboarding (fallback for existing users)
+    else if (userProfile && await hasCompletedOnboarding()) {
+      setIsReturningUser(true);
+    } 
+    else {
       setIsReturningUser(false);
-    }
-  };
-
-  const clearPreviousData = () => {
-    if (typeof window !== 'undefined') {
-      // Clear only the legal-related data, not all localStorage
-      localStorage.removeItem('hasAcceptedLegal');
-      localStorage.removeItem('acceptedTermsVersion');
-      setShowClearDataOption(false);
-      console.log('🧹 Cleared previous legal acceptance data');
     }
   };
 
   const acceptAndProceed = async () => {
     setIsLoading(true);
     
-    // Create user-specific key if we have account flow data
-    const accountFlow = localStorage.getItem('luxlibris_account_flow');
-    const timestamp = Date.now();
-    
-    // Store acceptance with account flow context
-    if (accountFlow) {
-      localStorage.setItem(`hasAcceptedLegal_${accountFlow}_${timestamp}`, 'true');
-      localStorage.setItem(`acceptedTermsVersion_${accountFlow}_${timestamp}`, '2025.07.18');
-    } else {
-      // Fallback to global if no flow context
-      localStorage.setItem('hasAcceptedLegal', 'true');
-      localStorage.setItem('acceptedTermsVersion', '2025.07.18');
-    }
+    // Simple localStorage storage during account creation flow
+    localStorage.setItem('hasAcceptedLegal', 'true');
+    localStorage.setItem('acceptedTermsVersion', '2025.07.18');
     
     const flow = router.query.flow || 'student-onboarding';
     switch (flow) {
@@ -135,70 +105,6 @@ export default function StudentLegal() {
           maxWidth: '800px',
           margin: '0 auto'
         }}>
-          {/* NEW: Clear Previous Data Option */}
-          {showClearDataOption && (
-            <div style={{
-              backgroundColor: '#fef3cd',
-              border: '2px solid #f59e0b',
-              borderRadius: '12px',
-              padding: '20px',
-              marginBottom: '24px',
-              textAlign: 'center'
-            }}>
-              <h3 style={{
-                fontSize: '18px',
-                fontWeight: 'bold',
-                color: '#92400e',
-                marginBottom: '12px',
-                margin: '0 0 12px 0'
-              }}>
-                ⚠️ Setting up a NEW account?
-              </h3>
-              <p style={{
-                fontSize: '14px',
-                color: '#92400e',
-                marginBottom: '16px',
-                lineHeight: '1.4',
-                margin: '0 0 16px 0'
-              }}>
-                It looks like someone already accepted our terms on this computer. If you&apos;re setting up a <strong>different</strong> account for a <strong>different person</strong>, please clear the previous data first.
-              </p>
-              <button
-                onClick={clearPreviousData}
-                style={{
-                  backgroundColor: '#f59e0b',
-                  color: 'white',
-                  border: 'none',
-                  padding: '12px 24px',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                  marginRight: '12px'
-                }}
-              >
-                🧹 Clear & Start Fresh
-              </button>
-              <button
-                onClick={() => window.location.href = 'https://www.luxlibris.org/sign-in'}
-                style={{
-                  backgroundColor: '#ADD4EA',
-                  color: '#223848',
-                  border: 'none',
-                  padding: '12px 24px',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                }}
-              >
-                🔑 Or Sign Into Existing Account
-              </button>
-            </div>
-          )}
-
           {/* Welcome Section */}
           <div style={{ marginBottom: '24px' }}>
             <h2 style={{
@@ -219,7 +125,7 @@ export default function StudentLegal() {
               {isReturningUser ? (
                 <>You have already accepted our Terms and Privacy Policy. This page is for reference only.</>
               ) : (
-                <>Your teacher or librarian gave your parent a special join code so you can join Lux Libris! As you read amazing books, you&apos;ll unlock beautiful <strong>Luxlings™</strong> saint achievements. Your reading journey starts here!</>
+                <>Your teacher or librarian gave your parent a special join code so you can join Lux Libris! As you read amazing books, you'll unlock beautiful <strong>Luxlings™</strong> saint achievements. Your reading journey starts here!</>
               )}
             </p>
           </div>

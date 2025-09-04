@@ -158,19 +158,24 @@ export default function StudentOnboarding() {
       const studentEmail = `${displayUsername.toLowerCase()}@${formData.teacherJoinCode.toLowerCase().replace(/[^a-z0-9]/g, '-')}.luxlibris.app`;
       
       // Create student database record
-      const studentData = {
-        // Authentication fields for future sign-in
-        authEmail: studentEmail,
-        displayUsername: displayUsername,
-        signInCode: formData.teacherJoinCode,
-        personalPassword: formData.personalPassword.toLowerCase(),
-        
-        // Personal info
-        firstName: formData.firstName,
-        lastInitial: formData.lastInitial,
-        
-        // Academic year info
-        academicYear: getCurrentAcademicYear(),
+const studentData = {
+  // Authentication fields for future sign-in
+  authEmail: studentEmail,
+  displayUsername: displayUsername,
+  signInCode: formData.teacherJoinCode,
+  personalPassword: formData.personalPassword.toLowerCase(),
+  
+  // Personal info
+  firstName: formData.firstName,
+  lastInitial: formData.lastInitial,
+  
+  // Legal acceptance tracking
+  legalAccepted: true,
+  legalAcceptedAt: new Date(),
+  termsVersion: '2025.07.18',
+  
+  // Academic year info
+  academicYear: getCurrentAcademicYear(),
         gradeHistory: [{ academicYear: getCurrentAcademicYear(), grade: parseInt(formData.grade), joinedAt: new Date() }],
         
         // Teacher & School linking
