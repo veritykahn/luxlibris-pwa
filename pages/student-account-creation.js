@@ -1,5 +1,5 @@
 // pages/student-account-creation.js - FIXED: Teacher Code Input Validation + Existing User Warning
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
 import { db } from '../lib/firebase'
