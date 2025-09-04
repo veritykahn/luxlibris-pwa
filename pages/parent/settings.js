@@ -1,4 +1,4 @@
-// pages/parent/settings.js - COMPLETE FIXED VERSION for adding children through settings
+// pages/parent/settings.js - COMPLETE FIXED VERSION with Legal link added
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
@@ -811,7 +811,7 @@ export default function ParentSettings() {
                       opacity: 0.9,
                       lineHeight: '1.4'
                     }}>
-                      You&apos;re part of our pilot program - all premium features are free during the trial period!
+                      You're part of our pilot program - all premium features are free during the trial period!
                     </p>
                   </div>
                   <div style={{
@@ -2200,7 +2200,7 @@ export default function ParentSettings() {
             )}
           </div>
 
-          {/* Account Actions - EXISTING (keeping as-is) */}
+          {/* Account Actions - UPDATED with Legal link */}
           <div style={{
             backgroundColor: luxTheme.surface,
             borderRadius: '16px',
@@ -2222,6 +2222,34 @@ export default function ParentSettings() {
             </h3>
             
             <div style={{ display: 'grid', gap: '12px' }}>
+              <button
+                onClick={() => router.push('/parent/legal')}
+                style={{
+                  backgroundColor: 'transparent',
+                  border: `1px solid ${luxTheme.primary}50`,
+                  color: luxTheme.textPrimary,
+                  padding: '12px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: 'clamp(12px, 3.5vw, 14px)',
+                  textAlign: 'left',
+                  width: '100%',
+                  minHeight: '48px',
+                  touchAction: 'manipulation',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = `${luxTheme.primary}20`
+                  e.target.style.borderColor = luxTheme.primary
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = 'transparent'
+                  e.target.style.borderColor = `${luxTheme.primary}50`
+                }}
+              >
+                📋 Privacy & Terms
+              </button>
+              
               <button
                 onClick={handleSignOut}
                 style={{
