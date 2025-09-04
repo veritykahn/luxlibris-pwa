@@ -174,7 +174,7 @@ export default function ParentLegal() {
                 lineHeight: '1.4',
                 margin: '0 0 16px 0'
               }}>
-                It looks like someone already accepted our terms on this computer. If you're setting up a <strong>different</strong> family account for <strong>different children</strong>, please clear the previous data first.
+                It looks like someone already accepted our terms on this computer. If you&apos;re setting up a <strong>different</strong> family account for <strong>different children</strong>, please clear the previous data first.
               </p>
               <button
                 onClick={clearPreviousData}
@@ -238,7 +238,7 @@ export default function ParentLegal() {
               {isReturningUser ? (
                 <>You have already accepted our Terms of Service and Privacy Policy. This page is for reference only.</>
               ) : (
-                <>Your child's teacher or librarian provided a join code for Lux Libris! Support your child as they discover amazing books and unlock beautiful <strong>Luxlings™</strong> saint achievements as part of their school reading program.</>
+                <>Your child&apos;s teacher or librarian provided a join code for Lux Libris! Support your child as they discover amazing books and unlock beautiful <strong>Luxlings™</strong> saint achievements as part of their school reading program.</>
               )}
             </p>
           </div>
@@ -270,7 +270,7 @@ export default function ParentLegal() {
                 color: luxTheme.textPrimary
               }}>
                 <div style={{ padding: '12px', backgroundColor: '#E8F4FD', borderRadius: '8px' }}>
-                  <strong>📚 Your Child's Teacher/Librarian Sees:</strong><br/>
+                  <strong>📚 Your Child&apos;s Teacher/Librarian Sees:</strong><br/>
                   • Student name and grade<br/>
                   • Books submitted for reading<br/>
                   • Number of books completed
@@ -597,7 +597,7 @@ Our goal is to strengthen the partnership between home and school in supporting 
               color: luxTheme.textPrimary,
               margin: '0 0 8px 0'
             }}>
-              🌟 Supporting your child's reading journey at home and school!
+              🌟 Supporting your child&apos;s reading journey at home and school!
             </p>
             <p style={{
               fontSize: 'clamp(10px, 3vw, 12px)',

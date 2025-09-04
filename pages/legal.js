@@ -161,7 +161,7 @@ export default function StudentLegal() {
                 lineHeight: '1.4',
                 margin: '0 0 16px 0'
               }}>
-                It looks like someone already accepted our terms on this computer. If you're setting up a <strong>different</strong> account for a <strong>different person</strong>, please clear the previous data first.
+                It looks like someone already accepted our terms on this computer. If you&apos;re setting up a <strong>different</strong> account for a <strong>different person</strong>, please clear the previous data first.
               </p>
               <button
                 onClick={clearPreviousData}
@@ -219,7 +219,7 @@ export default function StudentLegal() {
               {isReturningUser ? (
                 <>You have already accepted our Terms and Privacy Policy. This page is for reference only.</>
               ) : (
-                <>Your teacher or librarian gave your parent a special join code so you can join Lux Libris! As you read amazing books, you'll unlock beautiful <strong>Luxlings™</strong> saint achievements. Your reading journey starts here!</>
+                <>Your teacher or librarian gave your parent a special join code so you can join Lux Libris! As you read amazing books, you&apos;ll unlock beautiful <strong>Luxlings™</strong> saint achievements. Your reading journey starts here!</>
               )}
             </p>
           </div>
