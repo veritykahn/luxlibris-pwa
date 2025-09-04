@@ -811,7 +811,7 @@ export default function ParentSettings() {
                       opacity: 0.9,
                       lineHeight: '1.4'
                     }}>
-                      You're part of our pilot program - all premium features are free during the trial period!
+                      You&apos;re part of our pilot program - all premium features are free during the trial period!
                     </p>
                   </div>
                   <div style={{
