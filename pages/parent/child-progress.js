@@ -149,10 +149,11 @@ function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees,
     setTimeout(() => setShowComingSoon(''), 3000)
   }
 
-  // Use lifetimeBooksSubmitted for goal progress
-  const lifetimeBooks = child.lifetimeBooksSubmitted || 0
-  const personalGoal = child.personalGoal || 100
-  const progressPercentage = Math.min(Math.round((lifetimeBooks / personalGoal) * 100), 100)
+  // Use current year books for progress calculation
+  const currentYearBooks = child.booksSubmittedThisYear || 
+    (child.bookshelf?.filter(book => book.completed === true).length || 0)
+  const personalGoal = child.personalGoal || 20
+  const progressPercentage = Math.min(Math.round((currentYearBooks / personalGoal) * 100), 100)
 
   return (
     <div style={{
@@ -171,7 +172,7 @@ function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees,
     onClick={(e) => e.target === e.currentTarget && onClose()}>
       
       <div style={{
-        backgroundColor: theme.surface,
+        backgroundColor: '#FAF9F7', // Solid dim cream
         borderRadius: '20px',
         width: '100%',
         maxWidth: '500px',
@@ -241,7 +242,7 @@ function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees,
           }}>
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: '18px', fontWeight: 'bold' }}>
-                {lifetimeBooks}
+                {child.lifetimeBooksSubmitted || 0}
               </div>
               <div style={{ fontSize: '11px', opacity: 0.9 }}>Lifetime Books</div>
             </div>
@@ -319,7 +320,7 @@ function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees,
                   marginBottom: '8px'
                 }}>
                   <span style={{ fontSize: '14px', fontWeight: '600', color: theme.textPrimary }}>
-                    Lifetime Reading Goal Progress
+                    Annual Reading Goal Progress
                   </span>
                   <span style={{ fontSize: '12px', color: theme.textSecondary }}>
                     {progressPercentage}%
@@ -345,10 +346,10 @@ function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees,
                   fontSize: '12px'
                 }}>
                   <span style={{ color: theme.textSecondary }}>
-                    {lifetimeBooks} books read
+                    {currentYearBooks} books read this year
                   </span>
                   <span style={{ color: theme.textSecondary }}>
-                    {Math.max(0, personalGoal - lifetimeBooks)} to go
+                    {Math.max(0, personalGoal - currentYearBooks)} to go
                   </span>
                 </div>
               </div>
@@ -666,7 +667,7 @@ function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees,
                     fontWeight: 'bold',
                     color: childColor
                   }}>
-                    {child.booksSubmittedThisYear || (child.bookshelf?.filter(b => b.completed === true).length || 0)}
+                    {currentYearBooks}
                   </span>
                   <span style={{
                     fontSize: '14px',
@@ -819,7 +820,8 @@ function ChildDetailModal({ child, isOpen, onClose, theme, childColor, nominees,
 // 🆕 FIXED: Child Progress Card Component - Now uses current year goals
 function ChildProgressCard({ child, theme, childColor, onViewDetails, onApproveUnlock, readingStats, onViewUnlocks, showComingSoon, setShowComingSoon, notifications }) {
   // FIXED: Calculate progress percentage using current year books
-  const currentYearBooks = child.booksSubmittedThisYear || 0
+  const currentYearBooks = child.booksSubmittedThisYear || 
+    (child.bookshelf?.filter(book => book.completed === true).length || 0)
   const personalGoal = child.personalGoal || 20
   const progressPercentage = Math.min(Math.round((currentYearBooks / personalGoal) * 100), 100)
   
@@ -832,7 +834,7 @@ function ChildProgressCard({ child, theme, childColor, onViewDetails, onApproveU
 
   return (
     <div style={{
-      background: `linear-gradient(145deg, ${theme.surface}, ${childColor}10, #FFFFFF)`,
+      background: '#FAF9F7', // Solid dim cream background
       borderRadius: '20px',
       padding: '20px',
       boxShadow: `0 20px 40px rgba(0,0,0,0.15), 0 8px 16px rgba(0,0,0,0.1)`,
@@ -897,7 +899,7 @@ function ChildProgressCard({ child, theme, childColor, onViewDetails, onApproveU
             fontWeight: '600',
             color: theme.textPrimary
           }}>
-            📚 Book Goal for {academicYear}
+            📚 Annual Reading Goal for {academicYear}
           </span>
           <span style={{
             fontSize: 'clamp(11px, 3vw, 12px)',
@@ -938,7 +940,7 @@ function ChildProgressCard({ child, theme, childColor, onViewDetails, onApproveU
         marginBottom: '16px'
       }}>
         <div style={{
-          backgroundColor: theme.surface,
+          backgroundColor: '#FFFFFF', // White background for stats boxes
           borderRadius: '10px',
           padding: '12px',
           textAlign: 'center',
@@ -959,7 +961,7 @@ function ChildProgressCard({ child, theme, childColor, onViewDetails, onApproveU
           </div>
         </div>
         <div style={{
-          backgroundColor: theme.surface,
+          backgroundColor: '#FFFFFF', // White background for stats boxes
           borderRadius: '10px',
           padding: '12px',
           textAlign: 'center',
@@ -1182,24 +1184,24 @@ export default function ChildProgress() {
     { name: 'Settings', path: '/parent/settings', icon: '⚙' }
   ], [totalCount, newCount])
 
-  // Generate consistent color for each child
+  // Generate consistent color for each child - more distinct palette
   const getChildColor = (childName, childId) => {
     const colors = [
-      '#FF9500', // Bright Orange (Jesse's current color)
-      '#1E3A8A', // Navy Blue  
-      '#7C3AED', // Purple
-      '#059669', // Green
-      '#DC2626', // Red
-      '#BE185D', // Dark Pink
-      '#374151', // Dark Grey
-      '#0891B2', // Teal
-      '#7C2D12', // Brown
-      '#581C87', // Deep Purple
-      '#B91C1C', // Dark Red
-      '#064E3B', // Dark Green
-      '#1F2937', // Charcoal
-      '#92400E', // Dark Orange
-      '#6B21A8'  // Dark Purple
+      '#FF6B35', // Bright Orange
+      '#2563EB', // Bright Blue  
+      '#8B5CF6', // Purple
+      '#10B981', // Green
+      '#EF4444', // Red
+      '#EC4899', // Pink
+      '#6B7280', // Grey
+      '#06B6D4', // Cyan
+      '#F59E0B', // Amber
+      '#8B5A3C', // Brown
+      '#6366F1', // Indigo
+      '#84CC16', // Lime
+      '#F97316', // Orange
+      '#14B8A6', // Teal
+      '#A855F7'  // Violet
     ]
     
     const str = (childName + childId).toLowerCase()
