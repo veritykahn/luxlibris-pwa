@@ -1183,24 +1183,17 @@ export default function ChildProgress() {
     { name: 'Settings', path: '/parent/settings', icon: '⚙' }
   ], [totalCount, newCount])
 
-  // Generate consistent color for each child - more distinct palette
+  // Generate consistent color for each child - 8 beautiful distinct colors (matches dashboard)
   const getChildColor = (childName, childId) => {
     const colors = [
-      '#FF6B35', // Bright Orange
-      '#2563EB', // Bright Blue  
-      '#8B5CF6', // Purple
-      '#10B981', // Green
-      '#EF4444', // Red
-      '#EC4899', // Pink
-      '#6B7280', // Grey
-      '#06B6D4', // Cyan
-      '#F59E0B', // Amber
-      '#8B5A3C', // Brown
-      '#6366F1', // Indigo
-      '#84CC16', // Lime
-      '#F97316', // Orange
       '#14B8A6', // Teal
-      '#A855F7'  // Violet
+      '#6366F1', // Indigo  
+      '#A855F7', // Violet
+      '#EC4899', // Pink
+      '#F59E0B', // Yellow
+      '#FF6B35', // Orange
+      '#10B981', // Green
+      '#1E3A8A'  // Navy Blue
     ]
     
     const str = (childName + childId).toLowerCase()
