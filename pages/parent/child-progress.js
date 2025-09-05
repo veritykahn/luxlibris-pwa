@@ -899,13 +899,13 @@ function ChildProgressCard({ child, theme, childColor, onViewDetails, onApproveU
             fontWeight: '600',
             color: theme.textPrimary
           }}>
-            📚 Annual Reading Goal for {academicYear}
+            📚 Reading Goal This Year
           </span>
           <span style={{
             fontSize: 'clamp(11px, 3vw, 12px)',
             color: theme.textSecondary
           }}>
-            {currentYearBooks} / {personalGoal}
+            Goal: {personalGoal}
           </span>
         </div>
         <div style={{
@@ -924,11 +924,10 @@ function ChildProgressCard({ child, theme, childColor, onViewDetails, onApproveU
         <div style={{
           textAlign: 'center',
           marginTop: '8px',
-          fontSize: 'clamp(14px, 4vw, 16px)',
-          fontWeight: 'bold',
-          color: childColor
+          fontSize: 'clamp(11px, 3vw, 12px)',
+          color: theme.textSecondary
         }}>
-          {progressPercentage}% Complete
+          {currentYearBooks} book{currentYearBooks !== 1 ? 's' : ''} completed so far
         </div>
       </div>
 

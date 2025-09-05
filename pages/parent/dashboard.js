@@ -128,25 +128,18 @@ export default function ParentDashboard() {
     }
   }, [timeTheme]);
 
-  // Generate consistent color for each child (same as child-progress page)
-  const getChildColor = (childName, childId) => {
-    const colors = [
-      '#FF9500', // Bright Orange
-      '#1E3A8A', // Navy Blue  
-      '#7C3AED', // Purple
-      '#059669', // Green
-      '#DC2626', // Red
-      '#BE185D', // Dark Pink
-      '#374151', // Dark Grey
-      '#0891B2', // Teal
-      '#7C2D12', // Brown
-      '#581C87', // Deep Purple
-      '#B91C1C', // Dark Red
-      '#064E3B', // Dark Green
-      '#1F2937', // Charcoal
-      '#92400E', // Dark Orange
-      '#6B21A8'  // Dark Purple
-    ]
+  // Generate consistent color for each child - 8 beautiful distinct colors (matches child-progress page)
+const getChildColor = (childName, childId) => {
+  const colors = [
+    '#14B8A6', // Teal
+    '#6366F1', // Indigo  
+    '#A855F7', // Violet
+    '#EC4899', // Pink
+    '#F59E0B', // Yellow
+    '#FF6B35', // Orange
+    '#10B981', // Green
+    '#1E3A8A'  // Navy Blue
+  ]
     
     const str = (childName + childId).toLowerCase()
     let hash = 0
