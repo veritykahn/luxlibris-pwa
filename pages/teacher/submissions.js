@@ -1,11 +1,11 @@
-// pages/teacher/submissions.js - Updated with reverse submission feature
+// pages/teacher/submissions.js - Fixed with transactions and proper error handling
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
 import { usePhaseAccess } from '../../hooks/usePhaseAccess'
 import { db } from '../../lib/firebase'
-import { collection, getDocs, updateDoc, doc, query, where, getDoc } from 'firebase/firestore'
+import { collection, getDocs, doc, query, where, runTransaction } from 'firebase/firestore'
 
 export default function TeacherSubmissions() {
   const router = useRouter()
@@ -41,7 +41,7 @@ export default function TeacherSubmissions() {
   const [actionType, setActionType] = useState('') // 'approve', 'revise', or 'cancel'
   const [teacherNotes, setTeacherNotes] = useState('')
 
-  // NEW: Cancel confirmation modal state
+  // Cancel confirmation modal state
   const [showCancelConfirmation, setShowCancelConfirmation] = useState(false)
 
   // Authentication check
@@ -204,7 +204,7 @@ export default function TeacherSubmissions() {
     setShowNotesModal(true)
   }
 
-  // NEW: Open cancel confirmation modal
+  // Open cancel confirmation modal
   const openCancelConfirmation = (submission) => {
     setSelectedSubmission(submission)
     setShowCancelConfirmation(true)
@@ -218,13 +218,13 @@ export default function TeacherSubmissions() {
     setTeacherNotes('')
   }
 
-  // NEW: Close cancel confirmation modal
+  // Close cancel confirmation modal
   const closeCancelConfirmation = () => {
     setShowCancelConfirmation(false)
     setSelectedSubmission(null)
   }
 
-  // Handle submission approval/revision
+  // FIXED: Handle submission approval/revision with transaction
   const handleSubmissionAction = async () => {
     if (!selectedSubmission) return
 
@@ -232,48 +232,58 @@ export default function TeacherSubmissions() {
     try {
       const studentRef = doc(db, `entities/${selectedSubmission.entityId}/schools/${selectedSubmission.schoolId}/students`, selectedSubmission.studentId)
       
-      const studentDocSnapshot = await getDoc(studentRef)
+      // Use transaction for atomic operation
+      await runTransaction(db, async (transaction) => {
+        const studentDoc = await transaction.get(studentRef)
 
-      if (!studentDocSnapshot.exists()) {
-        throw new Error('Student not found')
-      }
+        if (!studentDoc.exists()) {
+          throw new Error('Student not found')
+        }
 
-      const studentData = studentDocSnapshot.data()
-      const updatedBookshelf = studentData.bookshelf.map(book => {
-        if (book.bookId === selectedSubmission.bookId && book.status === 'pending_approval') {
-          if (actionType === 'approve') {
-            return {
-              ...book,
-              status: 'completed',
-              approvedAt: new Date(),
-              teacherNotes: teacherNotes.trim(),
-              completed: true
-            }
-          } else if (actionType === 'revise') {
-            return {
-              ...book,
-              status: 'revision_requested',
-              revisionRequestedAt: new Date(),
-              teacherNotes: teacherNotes.trim(),
-              completed: false
+        const studentData = studentDoc.data()
+        let bookFound = false
+        
+        const updatedBookshelf = studentData.bookshelf.map(book => {
+          if (book.bookId === selectedSubmission.bookId && book.status === 'pending_approval') {
+            bookFound = true
+            if (actionType === 'approve') {
+              return {
+                ...book,
+                status: 'completed',
+                approvedAt: new Date(),
+                teacherNotes: teacherNotes.trim(),
+                completed: true
+              }
+            } else if (actionType === 'revise') {
+              return {
+                ...book,
+                status: 'revision_requested',
+                revisionRequestedAt: new Date(),
+                teacherNotes: teacherNotes.trim(),
+                completed: false
+              }
             }
           }
+          return book
+        })
+
+        if (!bookFound) {
+          throw new Error('Submission no longer exists or has been modified')
         }
-        return book
+
+        // Update student's bookshelf
+        transaction.update(studentRef, {
+          bookshelf: updatedBookshelf,
+          // If approving, increment books completed count
+          ...(actionType === 'approve' && {
+            booksSubmittedThisYear: (studentData.booksSubmittedThisYear || 0) + 1,
+            lifetimeBooksSubmitted: (studentData.lifetimeBooksSubmitted || 0) + 1
+          }),
+          lastModified: new Date()
+        })
       })
 
-      // Update student's bookshelf
-      await updateDoc(studentRef, {
-        bookshelf: updatedBookshelf,
-        // If approving, increment books completed count
-        ...(actionType === 'approve' && {
-          booksSubmittedThisYear: (studentData.booksSubmittedThisYear || 0) + 1,
-          lifetimeBooksSubmitted: (studentData.lifetimeBooksSubmitted || 0) + 1
-        }),
-        lastModified: new Date()
-      })
-
-      // Remove from local state
+      // FIXED: Only update UI after successful database transaction
       setSubmissions(prev => prev.filter(sub => sub.id !== selectedSubmission.id))
       
       const actionText = actionType === 'approve' ? 'approved' : 'revision requested'
@@ -284,14 +294,24 @@ export default function TeacherSubmissions() {
 
     } catch (error) {
       console.error('❌ Error processing submission:', error)
-      setShowSuccess('❌ Error processing submission. Please try again.')
-      setTimeout(() => setShowSuccess(''), 3000)
+      // Don't update UI on failure - submission stays in queue
+      if (error.message.includes('no longer exists')) {
+        setShowSuccess('❌ This submission was already processed. Refreshing...')
+        // Refresh the submissions list
+        setTimeout(() => {
+          loadSubmissions()
+          setShowSuccess('')
+        }, 2000)
+      } else {
+        setShowSuccess('❌ Error processing submission. Please try again.')
+        setTimeout(() => setShowSuccess(''), 3000)
+      }
     } finally {
       setIsProcessing(false)
     }
   }
 
-  // NEW: Handle submission cancellation/reversal
+  // FIXED: Handle submission cancellation/reversal with transaction
   const handleSubmissionCancellation = async () => {
     if (!selectedSubmission) return
 
@@ -299,52 +319,62 @@ export default function TeacherSubmissions() {
     try {
       const studentRef = doc(db, `entities/${selectedSubmission.entityId}/schools/${selectedSubmission.schoolId}/students`, selectedSubmission.studentId)
       
-      const studentDocSnapshot = await getDoc(studentRef)
+      // Use transaction for atomic operation
+      await runTransaction(db, async (transaction) => {
+        const studentDoc = await transaction.get(studentRef)
 
-      if (!studentDocSnapshot.exists()) {
-        throw new Error('Student not found')
-      }
-
-      const studentData = studentDocSnapshot.data()
-      const updatedBookshelf = studentData.bookshelf.map(book => {
-        if (book.bookId === selectedSubmission.bookId && book.status === 'pending_approval') {
-          // Revert to in-progress state
-          const revertedBook = {
-            ...book,
-            status: 'in_progress',
-            completed: false,
-            // Remove submission-related fields
-            submissionType: undefined,
-            submittedAt: undefined,
-            // Keep progress data
-            currentProgress: book.currentProgress,
-            rating: book.rating,
-            notes: book.notes,
-            // Remove any teacher feedback from previous submissions
-            teacherNotes: undefined,
-            approvedAt: undefined,
-            revisionRequestedAt: undefined
-          }
-          
-          // Clean up undefined fields
-          Object.keys(revertedBook).forEach(key => {
-            if (revertedBook[key] === undefined) {
-              delete revertedBook[key]
-            }
-          })
-          
-          return revertedBook
+        if (!studentDoc.exists()) {
+          throw new Error('Student not found')
         }
-        return book
+
+        const studentData = studentDoc.data()
+        let bookFound = false
+        
+        const updatedBookshelf = studentData.bookshelf.map(book => {
+          if (book.bookId === selectedSubmission.bookId && book.status === 'pending_approval') {
+            bookFound = true
+            // Revert to in-progress state
+            const revertedBook = {
+              ...book,
+              status: 'in_progress',
+              completed: false,
+              // Remove submission-related fields
+              submissionType: undefined,
+              submittedAt: undefined,
+              // Keep progress data
+              currentProgress: book.currentProgress,
+              rating: book.rating,
+              notes: book.notes,
+              // Remove any teacher feedback from previous submissions
+              teacherNotes: undefined,
+              approvedAt: undefined,
+              revisionRequestedAt: undefined
+            }
+            
+            // Clean up undefined fields
+            Object.keys(revertedBook).forEach(key => {
+              if (revertedBook[key] === undefined) {
+                delete revertedBook[key]
+              }
+            })
+            
+            return revertedBook
+          }
+          return book
+        })
+
+        if (!bookFound) {
+          throw new Error('Submission no longer exists or has been modified')
+        }
+
+        // Update student's bookshelf
+        transaction.update(studentRef, {
+          bookshelf: updatedBookshelf,
+          lastModified: new Date()
+        })
       })
 
-      // Update student's bookshelf
-      await updateDoc(studentRef, {
-        bookshelf: updatedBookshelf,
-        lastModified: new Date()
-      })
-
-      // Remove from local state
+      // FIXED: Only update UI after successful database transaction
       setSubmissions(prev => prev.filter(sub => sub.id !== selectedSubmission.id))
       
       setShowSuccess(`🔄 ${selectedSubmission.studentName}'s "${selectedSubmission.bookTitle}" submission cancelled - book returned to in-progress`)
@@ -354,8 +384,17 @@ export default function TeacherSubmissions() {
 
     } catch (error) {
       console.error('❌ Error cancelling submission:', error)
-      setShowSuccess('❌ Error cancelling submission. Please try again.')
-      setTimeout(() => setShowSuccess(''), 3000)
+      // Don't update UI on failure
+      if (error.message.includes('no longer exists')) {
+        setShowSuccess('❌ This submission was already processed. Refreshing...')
+        setTimeout(() => {
+          loadSubmissions()
+          setShowSuccess('')
+        }, 2000)
+      } else {
+        setShowSuccess('❌ Error cancelling submission. Please try again.')
+        setTimeout(() => setShowSuccess(''), 3000)
+      }
     } finally {
       setIsProcessing(false)
     }
@@ -852,7 +891,7 @@ export default function TeacherSubmissions() {
                           margin: '0 0 0.5rem 0',
                           fontWeight: '500'
                         }}>
-                          &quot;{submission.bookTitle}&quot;
+                          "{submission.bookTitle}"
                         </p>
                         
                         <div style={{
@@ -914,7 +953,6 @@ export default function TeacherSubmissions() {
                           📝 Request Revisions
                         </button>
 
-                        {/* NEW: Cancel Submission Button */}
                         <button
                           onClick={() => openCancelConfirmation(submission)}
                           disabled={isProcessing}
@@ -942,7 +980,7 @@ export default function TeacherSubmissions() {
           )}
         </div>
 
-        {/* Notes Modal (Approve/Revise) */}
+        {/* Notes Modal (Approve/Revise) - ENHANCED with feedback guidance */}
         {showNotesModal && selectedSubmission && (
           <div style={{
             position: 'fixed',
@@ -1009,7 +1047,7 @@ export default function TeacherSubmissions() {
                   margin: '0 0 0.5rem 0',
                   fontWeight: '500'
                 }}>
-                  <strong>{selectedSubmission.studentName}</strong> - &quot;{selectedSubmission.bookTitle}&quot;
+                  <strong>{selectedSubmission.studentName}</strong> - "{selectedSubmission.bookTitle}"
                 </p>
                 <p style={{
                   fontSize: '0.75rem',
@@ -1071,7 +1109,7 @@ export default function TeacherSubmissions() {
                   }}>
                     {teacherNotes.trim().length < 10 
                       ? `Need at least ${10 - teacherNotes.trim().length} more characters for meaningful feedback`
-                      : 'Great! Your feedback will help the student.'
+                      : 'Students will see this feedback - keep it encouraging and specific'
                     }
                   </p>
                   <p style={{
@@ -1135,7 +1173,7 @@ export default function TeacherSubmissions() {
           </div>
         )}
 
-        {/* NEW: Cancel Confirmation Modal */}
+        {/* Cancel Confirmation Modal */}
         {showCancelConfirmation && selectedSubmission && (
           <div style={{
             position: 'fixed',
@@ -1201,7 +1239,7 @@ export default function TeacherSubmissions() {
                   margin: '0 0 0.5rem 0',
                   fontWeight: '600'
                 }}>
-                  <strong>{selectedSubmission.studentName}</strong> - &apos;{selectedSubmission.bookTitle}&apos;
+                  <strong>{selectedSubmission.studentName}</strong> - "{selectedSubmission.bookTitle}"
                 </p>
                 <p style={{
                   fontSize: '0.75rem',
@@ -1233,10 +1271,10 @@ export default function TeacherSubmissions() {
                   paddingLeft: '1rem',
                   lineHeight: '1.4'
                 }}>
-                  <li>Return the book to &quot;in progress&quot; status</li>
+                  <li>Return the book to "in progress" status</li>
                   <li>Remove the submission from your review queue</li>
                   <li>Allow the student to choose a different submission type</li>
-                  <li>Preserve the student&apos;s reading progress, rating, and notes</li>
+                  <li>Preserve the student's reading progress, rating, and notes</li>
                 </ul>
               </div>
 
@@ -1253,8 +1291,8 @@ export default function TeacherSubmissions() {
                   margin: 0,
                   fontWeight: '500'
                 }}>
-                  💡 <strong>Use case:</strong> Student accidentally selected &quot;Present to Teacher&quot; 
-                  instead of &quot;Take Quiz&quot; - this lets them resubmit with the correct option.
+                  💡 <strong>Use case:</strong> Student accidentally selected "Present to Teacher" 
+                  instead of "Take Quiz" - this lets them resubmit with the correct option.
                 </p>
               </div>
 
