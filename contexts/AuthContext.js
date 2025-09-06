@@ -495,16 +495,22 @@ export const AuthProvider = ({ children }) => {
     let authTimeout = null;
     
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      // 🔧 NEW: Clear any pending timeout
-      if (authTimeout) {
-        clearTimeout(authTimeout);
-        authTimeout = null;
-      }
-      
-      // 🔧 NEW: Debounce rapid auth state changes
-      authTimeout = setTimeout(async () => {
-        // 🔧 NEW: Check if this is actually a new auth state
-        const currentAuthState = firebaseUser ? firebaseUser.uid : null;
+  // Skip processing if account is being deleted
+  if (typeof window !== 'undefined' && window.luxlibris_deleting_account) {
+    console.log('🗑️ Skipping auth processing during account deletion');
+    return;
+  }
+  
+  // 🔧 NEW: Clear any pending timeout
+  if (authTimeout) {
+    clearTimeout(authTimeout);
+    authTimeout = null;
+  }
+  
+  // 🔧 NEW: Debounce rapid auth state changes
+  authTimeout = setTimeout(async () => {
+    // 🔧 NEW: Check if this is actually a new auth state
+    const currentAuthState = firebaseUser ? firebaseUser.uid : null;
         
         // Only skip if we're signing out AND it's the same state
         if (signingOut && currentAuthState === lastAuthState.current) {
