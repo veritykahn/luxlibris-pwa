@@ -412,7 +412,7 @@ export default function ParentAccountDeletion() {
                 {isOnlyParent ? (
                   <>
                     <li>The entire family settings and preferences</li>
-                    <li>Connection to your children's accounts ({linkedStudents.length} {linkedStudents.length === 1 ? 'child' : 'children'})</li>
+                    <li>Connection to your children&apos;s accounts ({linkedStudents.length} {linkedStudents.length === 1 ? 'child' : 'children'})</li>
                     <li>All saved teacher quiz codes</li>
                     <li>Family name and all family data</li>
                     <li>Family battles: {isOnlyParent ? 'Deactivated permanently' : 'Will remain active for other parent(s)'}</li>
@@ -420,7 +420,7 @@ export default function ParentAccountDeletion() {
                 ) : (
                   <>
                     <li>Your connection to the family</li>
-                    <li>Your access to children's accounts</li>
+                    <li>Your access to children&apos;s accounts</li>
                     <li>Your ability to approve quiz requests</li>
                     <li>Family reading battles will be deactivated</li>
                     <li style={{ color: '#16a34a', fontWeight: '600' }}>
@@ -602,14 +602,14 @@ export default function ParentAccountDeletion() {
                   <>
                     <li><strong>Family settings:</strong> Entire family deleted</li>
                     <li><strong>Quiz codes:</strong> All saved teacher codes deleted</li>
-                    <li><strong>Children's accounts:</strong> Remain active but lose parent dashboard access</li>
+                    <li><strong>Children&apos;s accounts:</strong> Remain active but lose parent dashboard access</li>
                     <li><strong>Family battles:</strong> {isOnlyParent ? 'Deactivated permanently' : 'Will remain active for other parent(s)'}</li>
                   </>
                 ) : (
                   <>
                     <li><strong>Family settings:</strong> Remain active for other parent(s)</li>
                     <li><strong>Quiz codes:</strong> Remain available to other parent(s)</li>
-                    <li><strong>Children's accounts:</strong> Remain connected to other parent(s)</li>
+                    <li><strong>Children&apos;s accounts:</strong> Remain connected to other parent(s)</li>
                     <li><strong>Family battles:</strong> {isOnlyParent ? 'Deactivated permanently' : 'Will remain active for other parent(s)'}</li>
                   </>
                 )}
@@ -634,7 +634,7 @@ export default function ParentAccountDeletion() {
                     color: '#0284c7',
                     margin: 0
                   }}>
-                    Your Children's Accounts Will Be Preserved
+                    Your Children&apos;s Accounts Will Be Preserved
                   </h4>
                 </div>
                 
@@ -831,7 +831,7 @@ export default function ParentAccountDeletion() {
                         margin: 0,
                         fontWeight: '600'
                       }}>
-                        ✅ Your children's accounts and reading progress will remain safe.
+                        ✅ Your children&apos;s accounts and reading progress will remain safe.
                       </p>
                     </div>
                   )}
