@@ -27,7 +27,7 @@ const SuccessModal = ({ isOpen, onClose, inquiryType }) => {
           Message Sent Successfully!
         </h3>
         <p className="text-gray-700 mb-6">
-          Thank you for contacting us! We'll get back to you within {getResponseTime(inquiryType)}.
+          Thank you for contacting us! We&apos;ll get back to you within {getResponseTime(inquiryType)}.
         </p>
         <button
           onClick={onClose}

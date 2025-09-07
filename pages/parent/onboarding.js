@@ -613,7 +613,7 @@ export default function ParentOnboarding() {
                 margin: 0,
                 lineHeight: '1.4'
               }}>
-                <strong>Welcome back!</strong> Let's complete your family setup where you left off.
+                <strong>Welcome back!</strong> Let&apos;s complete your family setup where you left off.
               </p>
             </div>
           )}
@@ -760,7 +760,7 @@ export default function ParentOnboarding() {
                       margin: 0,
                       lineHeight: '1.4'
                     }}>
-                      🎉 <strong>Welcome!</strong> You're joining as the second parent in this family. You'll have full access to view progress and unlock quizzes!
+                      🎉 <strong>Welcome!</strong> You&apos;re joining as the second parent in this family. You&apos;ll have full access to view progress and unlock quizzes!
                     </p>
                   </div>
                 ) : (
@@ -776,7 +776,7 @@ export default function ParentOnboarding() {
                       margin: 0,
                       lineHeight: '1.4'
                     }}>
-                      🏆 <strong>Family Reading Battles:</strong> You'll compete in friendly reading challenges with your children to motivate everyone!
+                      🏆 <strong>Family Reading Battles:</strong> You&apos;ll compete in friendly reading challenges with your children to motivate everyone!
                     </p>
                   </div>
                 )}
@@ -1054,7 +1054,7 @@ export default function ParentOnboarding() {
                       color: luxTheme.textSecondary,
                       marginBottom: '0.5rem'
                     }}>
-                      How do you like to support your child's reading?
+                      How do you like to support your child&apos;s reading?
                     </label>
                     <select
                       value={familyData.parentProfile.supportStyle}
@@ -1399,7 +1399,7 @@ export default function ParentOnboarding() {
                           margin: 0,
                           lineHeight: '1.3'
                         }}>
-                          Deep analytics and insights into your family's reading patterns and growth
+                          Deep analytics and insights into your family&apos;s reading patterns and growth
                         </p>
                       </div>
                     </div>
@@ -1454,7 +1454,7 @@ export default function ParentOnboarding() {
                     margin: 0,
                     lineHeight: '1.4'
                   }}>
-                    🚀 <strong>Ready to start!</strong> Click 'Complete Setup' to access your family dashboard with all premium features unlocked!
+                    🚀 <strong>Ready to start!</strong> Click &apos;Complete Setup&apos; to access your family dashboard with all premium features unlocked!
                   </p>
                 </div>
               </div>

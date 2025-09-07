@@ -630,7 +630,7 @@ Lux Libris Support Team
                                 fontWeight: '600'
                               }}
                             >
-                              📧 Send "Account Ready" Email
+                              📧 Send &quot;Account Ready&quot; Email
                             </button>
                           </div>
                         </div>
@@ -652,7 +652,7 @@ Lux Libris Support Team
                       fontWeight: '600'
                     }}
                   >
-                    📧 Send "Account Ready" Emails to All {recentlyFixedParents.length} Parents
+                    📧 Send &quot;Account Ready&quot; Emails to All {recentlyFixedParents.length} Parents
                   </button>
                 </div>
               )}

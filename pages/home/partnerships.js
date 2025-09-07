@@ -18,7 +18,7 @@ const SuccessModal = ({ isOpen, onClose }) => {
           Partnership Inquiry Sent!
         </h3>
         <p className="text-gray-700 mb-6">
-          Thank you for your partnership inquiry! We'll review your submission and get back to you within 3-5 business days.
+          Thank you for your partnership inquiry! We&apos;ll review your submission and get back to you within 3-5 business days.
         </p>
         <button
           onClick={onClose}
