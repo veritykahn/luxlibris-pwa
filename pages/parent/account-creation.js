@@ -3,12 +3,15 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
 import { validateParentInviteCode, checkStudentParentCapacity } from '../../lib/parentLinking'
+import { auth } from '../../lib/firebase'
+import { fetchSignInMethodsForEmail } from 'firebase/auth'
 
 export default function ParentAccountCreation() {
   const router = useRouter()
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+const [showSignInButton, setShowSignInButton] = useState(false)
 
   // Clear localStorage at flow start to prevent cross-user conflicts
   useEffect(() => {
@@ -104,24 +107,66 @@ export default function ParentAccountCreation() {
   }
 
   const handleNext = async () => {
-    setError('')
-    setCodeValidationErrors({})
-    
-    const validationError = validateStep(step)
-    if (validationError) {
-      setError(validationError)
-      return
-    }
+  setError('')
+  setCodeValidationErrors({})
+  setShowSignInButton(false)
+  
+  const validationError = validateStep(step)
+  if (validationError) {
+    setError(validationError)
+    return
+  }
 
-    if (step < 3) {
-      setStep(step + 1)
-      return
+  // Check for duplicate email when moving from Step 1 to Step 2
+  if (step === 1) {
+    setLoading(true)
+    try {
+      console.log('Checking email in Firestore:', parentData.email.trim())
+      
+      // Check parents collection directly
+      const { collection, getDocs, query, where } = await import('firebase/firestore')
+      const { db } = await import('../../lib/firebase')
+      
+      const parentsRef = collection(db, 'parents')
+      const emailQuery = query(parentsRef, where('email', '==', parentData.email.trim()))
+      const emailSnapshot = await getDocs(emailQuery)
+      
+      if (!emailSnapshot.empty) {
+        console.log('Email already exists in parents collection!')
+        setError('An account with this email already exists. Please sign in to complete your setup.')
+        setShowSignInButton(true)
+        setLoading(false)
+        return
+      } else {
+        console.log('Email is available')
+      }
+    } catch (emailCheckError) {
+      console.error('Error checking email:', emailCheckError)
+      // Continue anyway - we'll catch it later if needed
     }
+    setLoading(false)
+  }
+
+  if (step < 3) {
+    setStep(step + 1)
+    return
+  }
 
     // Step 3: Validate invite codes BEFORE creating account
     setLoading(true)
 
-    try {
+   try {
+      console.log('🔍 Checking for existing email before account creation...')
+      
+      // Check if email already exists
+      const existingMethods = await fetchSignInMethodsForEmail(auth, parentData.email.trim())
+      if (existingMethods.length > 0) {
+        setError('An account with this email already exists. Please sign in to complete your setup.')
+        setShowSignInButton(true)
+        setLoading(false)
+        return
+      }
+      
       console.log('🔍 Validating invite codes before account creation...')
       
       const validCodes = parentData.studentInviteCodes.filter(code => code.trim())
@@ -223,7 +268,14 @@ export default function ParentAccountCreation() {
 
     } catch (error) {
       console.error('❌ Validation error:', error)
-      setError('Failed to validate invite codes. Please try again.')
+      
+      // Check if this is a duplicate email error
+      if (error.code === 'auth/email-already-in-use') {
+        setError('An account with this email already exists. Please sign in to complete your setup.')
+        setShowSignInButton(true)
+      } else {
+        setError('Failed to validate invite codes. Please try again.')
+      }
     }
 
     setLoading(false)
@@ -852,10 +904,31 @@ export default function ParentAccountCreation() {
               <p style={{
                 color: '#dc2626',
                 fontSize: 'clamp(0.75rem, 3vw, 0.875rem)',
-                margin: 0
+                margin: showSignInButton ? '0 0 1rem 0' : 0
               }}>
                 {error}
               </p>
+              
+              {/* Sign In Button for Duplicate Email */}
+              {showSignInButton && (
+                <button
+                  onClick={() => router.push('/sign-in')}
+                  style={{
+                    backgroundColor: '#ADD4EA',
+                    color: '#223848',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    padding: '0.75rem 1.5rem',
+                    fontSize: 'clamp(0.875rem, 3.5vw, 1rem)',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    width: '100%',
+                    touchAction: 'manipulation'
+                  }}
+                >
+                  Sign In to Complete Setup
+                </button>
+              )}
             </div>
           )}
 

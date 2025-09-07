@@ -1,7 +1,36 @@
-// pages/home/partnerships.js
+// pages/home/partnerships.js - Updated with Real Email Integration
 import Layout from '../../components/Layout'
 import Link from 'next/link'
 import { useState } from 'react'
+
+// Success Modal Component
+const SuccessModal = ({ isOpen, onClose }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center">
+        <div className="bg-green-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+          <span className="text-3xl">🤝</span>
+        </div>
+        <h3 className="text-2xl font-bold mb-4 text-gray-800" 
+            style={{fontFamily: 'Didot, Georgia, serif'}}>
+          Partnership Inquiry Sent!
+        </h3>
+        <p className="text-gray-700 mb-6">
+          Thank you for your partnership inquiry! We'll review your submission and get back to you within 3-5 business days.
+        </p>
+        <button
+          onClick={onClose}
+          className="text-white px-6 py-3 rounded-full font-semibold transition-all hover:opacity-90"
+          style={{backgroundColor: '#A1E5DB'}}
+        >
+          Submit Another Inquiry
+        </button>
+      </div>
+    </div>
+  )
+}
 
 export default function Partnerships() {
   const [formData, setFormData] = useState({
@@ -18,34 +47,85 @@ export default function Partnerships() {
     error: null
   })
 
+  const [showModal, setShowModal] = useState(false)
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setFormStatus({ submitted: false, submitting: true, error: null })
     
     try {
-      // Simulate form submission
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      // Format the email content
+      const emailSubject = `New Partnership Inquiry: ${formData.partnershipType} from ${formData.organization}`
       
-      // Show success message
-      setFormStatus({ submitted: true, submitting: false, error: null })
-      
-      // Reset form after 5 seconds
-      setTimeout(() => {
-        setFormData({
-          name: '',
-          organization: '',
-          email: '',
-          partnershipType: '',
-          message: ''
+      const emailText = `
+New Partnership Inquiry
+
+Name: ${formData.name}
+Organization: ${formData.organization}
+Email: ${formData.email}
+Partnership Type: ${formData.partnershipType}
+
+Message:
+${formData.message}
+
+---
+Submitted: ${new Date().toLocaleString()}
+      `.trim()
+
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #223848;">New Partnership Inquiry</h2>
+          
+          <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <p><strong>Name:</strong> ${formData.name}</p>
+            <p><strong>Organization:</strong> ${formData.organization}</p>
+            <p><strong>Email:</strong> ${formData.email}</p>
+            <p><strong>Partnership Type:</strong> ${formData.partnershipType}</p>
+          </div>
+          
+          <div style="margin: 20px 0;">
+            <p><strong>Partnership Ideas:</strong></p>
+            <div style="background-color: #f9f9f9; padding: 15px; border-left: 4px solid #A1E5DB; margin-top: 10px;">
+              ${formData.message.replace(/\n/g, '<br>')}
+            </div>
+          </div>
+          
+          <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+          <p style="color: #666; font-size: 12px;">
+            Submitted: ${new Date().toLocaleString()}
+          </p>
+        </div>
+      `
+
+      // Send the email
+      const response = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          to: 'partnerships@luxlibris.org',
+          subject: emailSubject,
+          text: emailText,
+          html: emailHtml,
+          fromAccount: 'noreply'
         })
-        setFormStatus({ submitted: false, submitting: false, error: null })
-      }, 5000)
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to send email')
+      }
+
+      // Show success modal
+      setFormStatus({ submitted: true, submitting: false, error: null })
+      setShowModal(true)
       
     } catch (error) {
+      console.error('Email sending error:', error)
       setFormStatus({ 
         submitted: false, 
         submitting: false, 
-        error: 'Something went wrong. Please try again or email us directly.' 
+        error: 'Something went wrong. Please try again or email us directly at partnerships@luxlibris.org' 
       })
     }
   }
@@ -57,11 +137,29 @@ export default function Partnerships() {
     })
   }
 
+  const handleModalClose = () => {
+    setShowModal(false)
+    setFormData({
+      name: '',
+      organization: '',
+      email: '',
+      partnershipType: '',
+      message: ''
+    })
+    setFormStatus({ submitted: false, submitting: false, error: null })
+  }
+
   return (
     <Layout 
       title="Partnerships - Lux Libris" 
       description="Partner with Lux Libris to transform Catholic education through reading. Join publishers, organizations, and technology partners in our mission."
     >
+      {/* Success Modal */}
+      <SuccessModal 
+        isOpen={showModal} 
+        onClose={handleModalClose} 
+      />
+
       {/* Hero Section */}
       <section className="px-6 py-12 bg-white">
         <div className="max-w-4xl mx-auto">
@@ -353,15 +451,6 @@ export default function Partnerships() {
               Tell us about your partnership ideas and how we can work together.
             </p>
             
-            {/* Success Message */}
-            {formStatus.submitted && (
-              <div className="mb-8 p-4 rounded-lg bg-green-50 border border-green-200">
-                <p className="text-green-800 text-center font-semibold">
-                  ✓ Thank you for your partnership inquiry! We&apos;ll review your submission and get back to you within 3-5 business days.
-                </p>
-              </div>
-            )}
-            
             {/* Error Message */}
             {formStatus.error && (
               <div className="mb-8 p-4 rounded-lg bg-red-50 border border-red-200">
@@ -416,7 +505,7 @@ export default function Partnerships() {
                   value={formData.email}
                   onChange={handleChange}
                   disabled={formStatus.submitting}
-                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-teal-400 focus:ring-2 focus:ring-teal-200 transition-all text-gray-800"
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-[#A1E5DB] focus:ring-2 focus:ring-[#A1E5DB]/20 transition-all text-gray-800"
                 />
               </div>
               
@@ -431,7 +520,7 @@ export default function Partnerships() {
                   value={formData.partnershipType}
                   onChange={handleChange}
                   disabled={formStatus.submitting}
-                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-teal-400 focus:ring-2 focus:ring-teal-200 transition-all text-gray-800"
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-[#A1E5DB] focus:ring-2 focus:ring-[#A1E5DB]/20 transition-all text-gray-800"
                 >
                   <option value="">Select a partnership type</option>
                   <option value="Publisher">Catholic Publisher</option>
@@ -455,7 +544,7 @@ export default function Partnerships() {
                   value={formData.message}
                   onChange={handleChange}
                   disabled={formStatus.submitting}
-                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-teal-400 focus:ring-2 focus:ring-teal-200 transition-all text-gray-800"
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-[#A1E5DB] focus:ring-2 focus:ring-[#A1E5DB]/20 transition-all text-gray-800"
                   placeholder="Describe your organization and how you'd like to partner with Lux Libris..."
                 />
               </div>

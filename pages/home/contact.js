@@ -1,7 +1,45 @@
-// pages/home/contact.js - CONTACT/SUPPORT PAGE with Lux Libris Mint Color
+// pages/home/contact.js - CONTACT/SUPPORT PAGE with Real Email Integration
 import Layout from '../../components/Layout'
 import Link from 'next/link'
 import { useState } from 'react'
+
+// Success Modal Component
+const SuccessModal = ({ isOpen, onClose, inquiryType }) => {
+  if (!isOpen) return null;
+
+  const getResponseTime = (type) => {
+    switch (type) {
+      case 'support': return '24-48 hours'
+      case 'pricing': 
+      case 'demo': return '24 hours'
+      default: return '3-5 business days'
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center">
+        <div className="bg-green-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+          <span className="text-3xl">✓</span>
+        </div>
+        <h3 className="text-2xl font-bold mb-4 text-gray-800" 
+            style={{fontFamily: 'Didot, Georgia, serif'}}>
+          Message Sent Successfully!
+        </h3>
+        <p className="text-gray-700 mb-6">
+          Thank you for contacting us! We'll get back to you within {getResponseTime(inquiryType)}.
+        </p>
+        <button
+          onClick={onClose}
+          className="text-white px-6 py-3 rounded-full font-semibold transition-all hover:opacity-90"
+          style={{backgroundColor: '#A1E5DB'}}
+        >
+          Send Another Message
+        </button>
+      </div>
+    </div>
+  )
+}
 
 export default function Contact() {
   const [formData, setFormData] = useState({
@@ -19,39 +57,96 @@ export default function Contact() {
     error: null
   })
 
+  const [showModal, setShowModal] = useState(false)
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setFormStatus({ submitted: false, submitting: true, error: null })
     
-    // Simulate form submission with a delay
     try {
-      // In a real implementation, you would send this to your API endpoint
-      // const response = await fetch('/api/contact', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(formData)
-      // })
+      // Determine which email account to use based on inquiry type
+      const getFromAccount = (inquiryType) => {
+        switch (inquiryType) {
+          case 'support': return 'support'
+          case 'demo':
+          case 'pricing': return 'inquiries'
+          case 'partnership': return 'partnerships'
+          default: return 'inquiries'
+        }
+      }
+
+      // Format the email content
+      const emailSubject = `New ${formData.inquiryType || 'General'} Inquiry from ${formData.name}`
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      
-      // Show success message
-      setFormStatus({ submitted: true, submitting: false, error: null })
-      
-      // Reset form after 5 seconds
-      setTimeout(() => {
-        setFormData({
-          name: '',
-          email: '',
-          organization: '',
-          role: '',
-          inquiryType: '',
-          message: ''
+      const emailText = `
+New Contact Form Submission
+
+Name: ${formData.name}
+Email: ${formData.email}
+Organization: ${formData.organization || 'Not provided'}
+Role: ${formData.role || 'Not provided'}
+Inquiry Type: ${formData.inquiryType}
+
+Message:
+${formData.message}
+
+---
+Submitted: ${new Date().toLocaleString()}
+      `.trim()
+
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #223848;">New Contact Form Submission</h2>
+          
+          <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <p><strong>Name:</strong> ${formData.name}</p>
+            <p><strong>Email:</strong> ${formData.email}</p>
+            <p><strong>Organization:</strong> ${formData.organization || 'Not provided'}</p>
+            <p><strong>Role:</strong> ${formData.role || 'Not provided'}</p>
+            <p><strong>Inquiry Type:</strong> ${formData.inquiryType}</p>
+          </div>
+          
+          <div style="margin: 20px 0;">
+            <p><strong>Message:</strong></p>
+            <div style="background-color: #f9f9f9; padding: 15px; border-left: 4px solid #A1E5DB; margin-top: 10px;">
+              ${formData.message.replace(/\n/g, '<br>')}
+            </div>
+          </div>
+          
+          <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+          <p style="color: #666; font-size: 12px;">
+            Submitted: ${new Date().toLocaleString()}
+          </p>
+        </div>
+      `
+
+      // Send the email
+      const response = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          to: getFromAccount(formData.inquiryType) === 'support' ? 'support@luxlibris.org' :
+              getFromAccount(formData.inquiryType) === 'partnerships' ? 'partnerships@luxlibris.org' :
+              'inquiries@luxlibris.org',
+          subject: emailSubject,
+          text: emailText,
+          html: emailHtml,
+          fromAccount: 'noreply'
         })
-        setFormStatus({ submitted: false, submitting: false, error: null })
-      }, 5000)
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to send email')
+      }
+
+      // Show success modal
+      setFormStatus({ submitted: true, submitting: false, error: null })
+      setShowModal(true)
       
     } catch (error) {
+      console.error('Email sending error:', error)
       setFormStatus({ 
         submitted: false, 
         submitting: false, 
@@ -67,11 +162,31 @@ export default function Contact() {
     })
   }
 
+  const handleModalClose = () => {
+    setShowModal(false)
+    setFormData({
+      name: '',
+      email: '',
+      organization: '',
+      role: '',
+      inquiryType: '',
+      message: ''
+    })
+    setFormStatus({ submitted: false, submitting: false, error: null })
+  }
+
   return (
     <Layout 
       title="Contact - Lux Libris Support" 
       description="Get in touch with Lux Libris. Technical support, school inquiries, partnership opportunities, and personalized demos available."
     >
+      {/* Success Modal */}
+      <SuccessModal 
+        isOpen={showModal} 
+        onClose={handleModalClose} 
+        inquiryType={formData.inquiryType}
+      />
+
       {/* Hero Section */}
       <section className="relative overflow-hidden py-20 bg-white">
         <div className="max-w-6xl mx-auto px-6 text-center">
@@ -112,19 +227,6 @@ export default function Contact() {
                 style={{fontFamily: 'Didot, Georgia, serif'}}>
               Send Us a Message
             </h3>
-            
-            {/* Success Message */}
-            {formStatus.submitted && (
-              <div className="mb-8 p-4 rounded-lg bg-green-50 border border-green-200">
-                <p className="text-green-800 text-center font-semibold">
-                  ✓ Thank you for your message! We&apos;ll get back to you within {
-                    formData.inquiryType === 'support' ? '24-48 hours' :
-                    formData.inquiryType === 'pricing' || formData.inquiryType === 'demo' ? '24 hours' :
-                    '3-5 business days'
-                  }.
-                </p>
-              </div>
-            )}
             
             {/* Error Message */}
             {formStatus.error && (
@@ -196,7 +298,7 @@ export default function Contact() {
                     name="role"
                     value={formData.role}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-teal-400 focus:ring-2 focus:ring-teal-200 transition-all text-gray-800"
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-[#A1E5DB] focus:ring-2 focus:ring-[#A1E5DB]/20 transition-all text-gray-800"
                     disabled={formStatus.submitting}
                   >
                     <option value="">Select your role</option>
@@ -220,7 +322,7 @@ export default function Contact() {
                   required
                   value={formData.inquiryType}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-teal-400 focus:ring-2 focus:ring-teal-200 transition-all text-gray-800"
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-[#A1E5DB] focus:ring-2 focus:ring-[#A1E5DB]/20 transition-all text-gray-800"
                   disabled={formStatus.submitting}
                 >
                   <option value="">Select inquiry type</option>
@@ -243,7 +345,7 @@ export default function Contact() {
                   rows={6}
                   value={formData.message}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-teal-400 focus:ring-2 focus:ring-teal-200 transition-all text-gray-800"
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-[#A1E5DB] focus:ring-2 focus:ring-[#A1E5DB]/20 transition-all text-gray-800"
                   placeholder="Tell us how we can help..."
                   disabled={formStatus.submitting}
                 />

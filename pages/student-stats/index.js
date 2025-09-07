@@ -328,12 +328,14 @@ if (sessionDay === 0 || sessionDay === 6) weekendSessions++;
       const hasReadToday = dailySessions[todayStr] || false;
       
       // Check if all days have 20+ or 30+ minutes
-      let daysWithMin20 = 0;
-      let daysWithMin30 = 0;
-      Object.values(dailyMinutes).forEach(minutes => {
-        if (minutes >= 20) daysWithMin20++;
-        if (minutes >= 30) daysWithMin30++;
-      });
+let daysWithMin20 = 0;
+let daysWithMin30 = 0;
+let daysWithMin15 = 0;
+Object.values(dailyMinutes).forEach(minutes => {
+  if (minutes >= 15) daysWithMin15++;
+  if (minutes >= 20) daysWithMin20++;
+  if (minutes >= 30) daysWithMin30++;
+});
       
       // Calculate progress based on badge type and requirements
       let progress = null;
@@ -492,6 +494,7 @@ if (sessionDay === 0 || sessionDay === 6) weekendSessions++;
           break;
         
         case "Heron Habits":
+          case "Bee-eater Brilliance": 
           progress = {
             type: 'consecutive_20min_days',
             current: daysWithMin20,
@@ -527,6 +530,17 @@ if (sessionDay === 0 || sessionDay === 6) weekendSessions++;
             completed: daysWithMin30 >= 7
           };
           break;
+
+          case "Shoebill Strength":
+  progress = {
+    type: 'daily_15min',
+    current: daysWithMin15,
+    target: 7,
+    percentage: Math.min(100, (daysWithMin15 / 7) * 100),
+    description: 'Read 15+ min every day (7 days)',
+    completed: daysWithMin15 >= 7
+  };
+  break;
         
         // TOTAL MINUTES BADGES
         case "Pelican Persistence":

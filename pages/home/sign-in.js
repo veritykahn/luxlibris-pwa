@@ -1,4 +1,4 @@
-// pages/home/sign-in.js - FIXED: No spaces in usernames, capitalized codes
+// pages/home/sign-in.js - FIXED: No spaces in usernames, capitalized codes + Incomplete Account Detection
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
@@ -43,8 +43,26 @@ export default function SignIn() {
   useEffect(() => {
     if (waitingForProfile && userProfile) {
       console.log('✅ User profile loaded, redirecting...');
-      const dashboardUrl = getDashboardUrl();
-      router.push(dashboardUrl);
+      
+      // Check for incomplete account flag
+      const isIncompleteAccount = typeof window !== 'undefined' && 
+        localStorage.getItem('luxlibris_incomplete_account') === 'true';
+      
+      if (isIncompleteAccount) {
+        console.log('🔧 Redirecting incomplete account to onboarding');
+        localStorage.removeItem('luxlibris_incomplete_account');
+        
+        if (userProfile.accountType === 'parent') {
+          router.push('/parent/onboarding');
+        } else {
+          // Fallback to normal dashboard URL for other account types
+          const dashboardUrl = getDashboardUrl();
+          router.push(dashboardUrl);
+        }
+      } else {
+        const dashboardUrl = getDashboardUrl();
+        router.push(dashboardUrl);
+      }
     }
   }, [waitingForProfile, userProfile, getDashboardUrl, router]);
 
@@ -174,7 +192,7 @@ export default function SignIn() {
     }
   };
 
-  // Perform parent sign-in WITHOUT redirect
+  // Perform parent sign-in and check completion status
   const performParentSignIn = async () => {
     try {
       console.log('🔐 Starting parent sign-in process...');
@@ -188,6 +206,31 @@ export default function SignIn() {
       );
       
       console.log('✅ Firebase sign-in successful:', userCredential.user.uid);
+
+      // Check if parent account is incomplete
+      const { doc, getDoc } = await import('firebase/firestore');
+      const { db } = await import('../../lib/firebase');
+      
+      const parentRef = doc(db, 'parents', userCredential.user.uid);
+      const parentDoc = await getDoc(parentRef);
+      
+      if (parentDoc.exists()) {
+        const parentData = parentDoc.data();
+        console.log('👤 Parent account status:', {
+          onboardingCompleted: parentData.onboardingCompleted,
+          hasParentProfile: !!parentData.parentProfile,
+          hasFamilyId: !!parentData.familyId,
+          hasReadingGoals: !!parentData.readingGoals
+        });
+        
+        // If account is incomplete, set flag for immediate redirect
+        if (!parentData.onboardingCompleted || !parentData.parentProfile || !parentData.readingGoals) {
+          console.log('🔧 Detected incomplete parent account - will redirect to onboarding');
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('luxlibris_incomplete_account', 'true');
+          }
+        }
+      }
 
     } catch (error) {
       console.error('❌ Parent sign-in error:', error);

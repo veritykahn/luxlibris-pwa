@@ -1,9 +1,9 @@
-// pages/parent/onboarding.js - Updated to use pre-validated codes
+// pages/parent/onboarding.js - FIXED: Complete onboarding resumption for incomplete accounts
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
-import { doc, updateDoc, setDoc } from 'firebase/firestore'
-import { db } from '../../lib/firebase'
+import { doc, updateDoc, setDoc, getDoc } from 'firebase/firestore'
+import { db, auth } from '../../lib/firebase'
 import { createParentAccount, linkParentToStudent, createFamily, joinExistingFamily, checkExistingFamily } from '../../lib/parentLinking'
 
 export default function ParentOnboarding() {
@@ -13,6 +13,7 @@ export default function ParentOnboarding() {
   const [error, setError] = useState('')
   const [onboardingData, setOnboardingData] = useState(null)
   const [existingFamilyInfo, setExistingFamilyInfo] = useState(null)
+  const [recoveryMode, setRecoveryMode] = useState(false)
   const [familyData, setFamilyData] = useState({
     familyName: '',
     readingGoals: {
@@ -39,7 +40,7 @@ export default function ParentOnboarding() {
     }
   })
 
-  // UPDATED: Lux Libris Classic Theme (same as student dashboard)
+  // Lux Libris Classic Theme
   const luxTheme = {
     primary: '#ADD4EA',
     secondary: '#C3E0DE',
@@ -50,14 +51,159 @@ export default function ParentOnboarding() {
     textSecondary: '#556B7A'
   }
 
-  // Load temp data and create account if needed
+  // NEW: Function to check for incomplete signed-in account
+  const checkForIncompleteSignedInAccount = async () => {
+    try {
+      if (!auth.currentUser) {
+        console.log('❌ No signed-in user found')
+        router.push('/parent/account-creation')
+        return
+      }
+
+      console.log('🔍 Checking incomplete account for UID:', auth.currentUser.uid)
+      
+      // Get parent document
+      const parentRef = doc(db, 'parents', auth.currentUser.uid)
+      const parentDoc = await getDoc(parentRef)
+      
+      if (!parentDoc.exists()) {
+        console.log('❌ No parent document found')
+        router.push('/parent/account-creation')
+        return
+      }
+      
+      const parentData = parentDoc.data()
+      console.log('📊 Parent data:', {
+        onboardingCompleted: parentData.onboardingCompleted,
+        hasLinkedStudents: !!parentData.linkedStudents?.length,
+        hasFamilyId: !!parentData.familyId
+      })
+      
+      // Check if onboarding is incomplete
+      if (parentData.onboardingCompleted === true) {
+        console.log('✅ Onboarding already complete, redirecting to dashboard')
+        router.push('/parent/dashboard')
+        return
+      }
+      
+      // Set up recovery mode with existing data
+      console.log('🔧 Setting up recovery mode for incomplete account')
+      setRecoveryMode(true)
+      
+      // Create recovery onboarding data
+      const recoveryOnboardingData = {
+        parentId: auth.currentUser.uid,
+        parentInfo: {
+          firstName: parentData.firstName,
+          lastName: parentData.lastName,
+          email: parentData.email
+        },
+        linkedStudents: [], // Will be populated from existing data
+        recoveryMode: true,
+        existingParentData: parentData
+      }
+      
+      // If they have linked students, try to reconstruct the links
+      if (parentData.linkedStudents && parentData.linkedStudents.length > 0) {
+        console.log('🔗 Found existing linked students:', parentData.linkedStudents)
+        
+        // Create simplified student links for onboarding display
+        const studentLinks = parentData.linkedStudents.map((studentId, index) => ({
+          inviteCode: `RECOVERED-${index}`, // Placeholder
+          student: {
+            studentId: studentId,
+            studentName: `Student ${index + 1}`, // Placeholder - could be enhanced
+            schoolName: 'Connected School' // Placeholder
+          }
+        }))
+        
+        recoveryOnboardingData.linkedStudents = studentLinks
+      }
+      
+      // Check for existing family
+      if (parentData.familyId) {
+        console.log('👨‍👩‍👧‍👦 Found existing family ID:', parentData.familyId)
+        
+        try {
+          const familyRef = doc(db, 'families', parentData.familyId)
+          const familyDoc = await getDoc(familyRef)
+          
+          if (familyDoc.exists()) {
+            const familyData = familyDoc.data()
+            setExistingFamilyInfo({
+              familyId: parentData.familyId,
+              familyName: familyData.familyName || parentData.familyName,
+              isSecondParent: true
+            })
+            
+            setFamilyData(prev => ({
+              ...prev,
+              familyName: familyData.familyName || parentData.familyName || `The ${parentData.lastName} Family`
+            }))
+          }
+        } catch (familyError) {
+          console.error('Error loading family data:', familyError)
+        }
+      } else {
+        // No family yet - set default family name
+        setFamilyData(prev => ({
+          ...prev,
+          familyName: parentData.familyName || `The ${parentData.lastName} Family`
+        }))
+      }
+      
+      // Pre-populate any existing onboarding data
+      if (parentData.parentProfile) {
+        setFamilyData(prev => ({
+          ...prev,
+          parentProfile: {
+            ...prev.parentProfile,
+            ...parentData.parentProfile
+          }
+        }))
+      }
+      
+      if (parentData.readingGoals) {
+        setFamilyData(prev => ({
+          ...prev,
+          readingGoals: {
+            ...prev.readingGoals,
+            ...parentData.readingGoals
+          }
+        }))
+      }
+      
+      if (parentData.preferences) {
+        setFamilyData(prev => ({
+          ...prev,
+          preferences: {
+            ...prev.preferences,
+            ...parentData.preferences
+          }
+        }))
+      }
+      
+      setOnboardingData(recoveryOnboardingData)
+      setLoading(false)
+      
+      console.log('✅ Recovery mode setup complete')
+      
+    } catch (error) {
+      console.error('❌ Error checking incomplete account:', error)
+      setError('Error loading your account. Please try again.')
+      setLoading(false)
+    }
+  }
+
+  // Main account handling logic
   useEffect(() => {
     const handleAccountCreation = async () => {
       if (typeof window !== 'undefined') {
-        // Check for temp data (new flow)
+        // Check for temp data (new account creation flow)
         const tempData = localStorage.getItem('tempParentData')
         
         if (tempData) {
+          // NEW ACCOUNT FLOW
           const data = JSON.parse(tempData)
           console.log('🔧 Processing pre-validated parent data...')
           
@@ -74,34 +220,31 @@ export default function ParentOnboarding() {
 
             console.log('✅ Parent account created:', parentId)
 
-           // Process validated codes (they're already validated)
+            // Process validated codes (they're already validated)
             const successfulLinks = []
             const failedLinks = []
             let existingFamily = null
-            let familyId = null // Track family ID across all children
+            let familyId = null
             
             if (data.codesPreValidated && data.validatedCodes) {
               // Use pre-validated codes
               for (const validatedCode of data.validatedCodes) {
                 try {
                   console.log('🔗 Linking to pre-validated student:', validatedCode.studentInfo.firstName)
-                  console.log('🔍 Validated code structure:', validatedCode)
                   
-                  // Pass the familyId if we already have one from a previous child
                   const linkResult = await linkParentToStudent(
                     parentId, 
                     validatedCode.code,
-                    validatedCode, // Pass the validated info
-                    familyId // Pass existing family ID if available
+                    validatedCode,
+                    familyId
                   )
                   
                   successfulLinks.push({
                     inviteCode: validatedCode.code,
                     student: linkResult,
-                    familyId: linkResult.familyId // Store family ID with each link
+                    familyId: linkResult.familyId
                   })
                   
-                  // Capture family info from first successful link
                   if (!familyId && linkResult.familyId) {
                     familyId = linkResult.familyId
                     console.log('📋 Family ID captured from first child:', familyId)
@@ -124,10 +267,6 @@ export default function ParentOnboarding() {
                   })
                 }
               }
-            } else {
-              // Legacy flow - should not happen with new validation
-              console.warn('⚠️ Using legacy code validation flow')
-              throw new Error('Invalid pre-validation data')
             }
 
             // Create onboarding data structure
@@ -139,17 +278,6 @@ export default function ParentOnboarding() {
               existingFamily
             }
             
-            console.log('📊 Onboarding data created:', {
-              parentId,
-              linkedStudentsCount: successfulLinks.length,
-              failedLinksCount: failedLinks.length,
-              hasExistingFamily: !!existingFamily,
-              linkedStudents: successfulLinks.map(l => ({
-                name: l.student.studentName,
-                familyId: l.familyId
-              }))
-            })
-            
             setOnboardingData(onboardingData)
             
             // Handle family name based on existing family or new family
@@ -160,7 +288,6 @@ export default function ParentOnboarding() {
                 familyName: existingFamily.familyName
               }))
             } else {
-              // Use parent's LAST name for new family
               setFamilyData(prev => ({
                 ...prev,
                 familyName: `The ${data.parentInfo.lastName} Family`
@@ -169,14 +296,12 @@ export default function ParentOnboarding() {
             
             // Clean up temp data
             localStorage.removeItem('tempParentData')
-            
             setLoading(false)
             
           } catch (error) {
             console.error('❌ Error creating account:', error)
             setError('Failed to create account. Please try again.')
             setLoading(false)
-            // Redirect back to account creation on error
             setTimeout(() => {
               router.push('/parent/account-creation')
             }, 3000)
@@ -186,10 +311,10 @@ export default function ParentOnboarding() {
           // Check for existing onboarding data (returning flow)
           const stored = localStorage.getItem('parentOnboardingData')
           if (stored) {
+            // RETURNING USER WITH STORED DATA
             const data = JSON.parse(stored)
             setOnboardingData(data)
             
-            // Set family name appropriately
             if (data.existingFamily) {
               setExistingFamilyInfo(data.existingFamily)
               setFamilyData(prev => ({
@@ -203,8 +328,14 @@ export default function ParentOnboarding() {
               }))
             }
           } else {
-            // No data at all, redirect back to account creation
-            router.push('/parent/account-creation')
+            // INCOMPLETE ACCOUNT RECOVERY FLOW
+            if (auth.currentUser) {
+              console.log('🔍 Checking for incomplete signed-in account...')
+              checkForIncompleteSignedInAccount()
+            } else {
+              // No data at all, redirect back to account creation
+              router.push('/parent/account-creation')
+            }
           }
         }
       }
@@ -255,7 +386,7 @@ export default function ParentOnboarding() {
       return
     }
 
-    // Final step: Save to Firebase and redirect directly to dashboard
+    // Final step: Save to Firebase and redirect to dashboard
     setLoading(true)
 
     try {
@@ -264,86 +395,102 @@ export default function ParentOnboarding() {
       }
 
       console.log('💾 Saving parent onboarding data...')
+      console.log('🔄 Recovery mode:', recoveryMode)
 
       // Update parent profile
-const parentRef = doc(db, 'parents', onboardingData.parentId)
-await updateDoc(parentRef, {
-  onboardingCompleted: true,
-  onboardingCompletedAt: new Date(),
-  familyName: familyData.familyName,
-  readingGoals: familyData.readingGoals,
-  preferences: familyData.preferences,
-  parentProfile: familyData.parentProfile,
-  
-  // Legal acceptance tracking
-  legalAccepted: true,
-  legalAcceptedAt: new Date(),
-  termsVersion: '2025.07.18'
-})
+      const parentRef = doc(db, 'parents', onboardingData.parentId)
+      await updateDoc(parentRef, {
+        onboardingCompleted: true,
+        onboardingCompletedAt: new Date(),
+        familyName: familyData.familyName,
+        readingGoals: familyData.readingGoals,
+        preferences: familyData.preferences,
+        parentProfile: familyData.parentProfile,
+        
+        // Legal acceptance tracking
+        legalAccepted: true,
+        legalAcceptedAt: new Date(),
+        termsVersion: '2025.07.18',
+        
+        // Recovery tracking
+        ...(recoveryMode && { 
+          recoveryCompleted: true,
+          recoveryCompletedAt: new Date()
+        })
+      })
 
       // Handle family creation or joining
-let finalFamilyId = null;
+      let finalFamilyId = null
 
-// Check if any of the linked students revealed an existing family
-const hasExistingFamily = onboardingData.linkedStudents.some(link => 
-  link.familyId || (link.existingFamily && link.existingFamily.familyId)
-);
+      if (recoveryMode && onboardingData.existingParentData?.familyId) {
+        // Recovery mode with existing family
+        finalFamilyId = onboardingData.existingParentData.familyId
+        console.log('✅ Using existing family ID from recovery:', finalFamilyId)
+        
+        // Update family preferences if needed
+        const familyRef = doc(db, 'families', finalFamilyId)
+        await updateDoc(familyRef, {
+          'readingGoals.familyWeekly': Math.max(
+            familyData.readingGoals.familyWeekly,
+            150
+          ),
+          lastUpdated: new Date()
+        })
+        
+      } else if (onboardingData.linkedStudents?.some(link => link.familyId)) {
+        // New account with existing family from linked students
+        const studentWithFamily = onboardingData.linkedStudents.find(link => link.familyId)
+        finalFamilyId = studentWithFamily.familyId
+        
+        console.log('✅ Parent joined existing family during linking:', finalFamilyId)
+        
+        const familyRef = doc(db, 'families', finalFamilyId)
+        await updateDoc(familyRef, {
+          'readingGoals.familyWeekly': Math.max(
+            familyData.readingGoals.familyWeekly,
+            150
+          ),
+          lastUpdated: new Date()
+        })
+        
+      } else if (!recoveryMode && onboardingData.linkedStudents?.length > 0) {
+        // Create new family for new account
+        const allLinkedStudents = onboardingData.linkedStudents.map(link => ({
+          id: link.student.studentId,
+          firstName: link.student.studentName.split(' ')[0],
+          lastInitial: link.student.studentName.split(' ')[1],
+          schoolName: link.student.schoolName,
+          entityId: link.student.entityId,
+          schoolId: link.student.schoolId,
+          grade: link.student.grade
+        }))
+        
+        finalFamilyId = await createFamily(
+          onboardingData.parentId,
+          onboardingData.parentInfo.lastName,
+          allLinkedStudents
+        )
+        
+        console.log('✅ Created new family:', familyData.familyName, 'with ID:', finalFamilyId)
+      }
 
-if (hasExistingFamily) {
-  // Get the family ID from the first student that has one
-  const studentWithFamily = onboardingData.linkedStudents.find(link => 
-    link.familyId || (link.existingFamily && link.existingFamily.familyId)
-  );
-  finalFamilyId = studentWithFamily.familyId || studentWithFamily.existingFamily.familyId;
-  
-  console.log('✅ Parent already joined existing family during linking:', finalFamilyId);
-  
-  // Update family preferences if needed
-  const familyRef = doc(db, 'families', finalFamilyId);
-  await updateDoc(familyRef, {
-    // Merge reading goals (keep higher values)
-    'readingGoals.familyWeekly': Math.max(
-      familyData.readingGoals.familyWeekly,
-      150 // default if not set
-    ),
-    lastUpdated: new Date()
-  });
-} else {
-  // Create new family only if no existing family was found
-  const allLinkedStudents = onboardingData.linkedStudents.map(link => ({
-    id: link.student.studentId,
-    firstName: link.student.studentName.split(' ')[0],
-    lastInitial: link.student.studentName.split(' ')[1],
-    schoolName: link.student.schoolName,
-    entityId: link.student.entityId,
-    schoolId: link.student.schoolId,
-    grade: link.student.grade
-  }));
-  
-  finalFamilyId = await createFamily(
-    onboardingData.parentId,
-    onboardingData.parentInfo.lastName,
-    allLinkedStudents
-  );
-  
-  console.log('✅ Created new family:', familyData.familyName, 'with ID:', finalFamilyId);
-}
-
-// Ensure parent document has the correct familyId
-await updateDoc(doc(db, 'parents', onboardingData.parentId), {
-  familyId: finalFamilyId,
-  lastUpdated: new Date()
-});
+      // Ensure parent document has the correct familyId
+      if (finalFamilyId) {
+        await updateDoc(doc(db, 'parents', onboardingData.parentId), {
+          familyId: finalFamilyId,
+          lastUpdated: new Date()
+        })
+      }
 
       console.log('✅ Parent onboarding completed successfully')
 
-      // Set marker for AuthContext consistency handling
+      // Clean up localStorage
       if (typeof window !== 'undefined') {
         localStorage.removeItem('parentOnboardingData')
         localStorage.setItem('luxlibris_account_created', 'true')
       }
 
-      console.log('🎯 Redirecting directly to parent dashboard...')
+      console.log('🎯 Redirecting to parent dashboard...')
       router.push('/parent/dashboard')
 
     } catch (error) {
@@ -360,6 +507,7 @@ await updateDoc(doc(db, 'parents', onboardingData.parentId), {
     }
   }
 
+  // Loading state
   if (!onboardingData) {
     return (
       <div style={{
@@ -380,7 +528,7 @@ await updateDoc(doc(db, 'parents', onboardingData.parentId), {
             margin: '0 auto 1rem'
           }}></div>
           <p style={{ color: luxTheme.textPrimary, fontSize: '1.1rem' }}>
-            Setting up your family account...
+            {recoveryMode ? 'Loading your account...' : 'Setting up your family account...'}
           </p>
         </div>
       </div>
@@ -390,7 +538,7 @@ await updateDoc(doc(db, 'parents', onboardingData.parentId), {
   return (
     <>
       <Head>
-        <title>Family Setup - Lux Libris</title>
+        <title>{recoveryMode ? 'Complete Your Setup' : 'Family Setup'} - Lux Libris</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
       </Head>
 
@@ -425,7 +573,7 @@ await updateDoc(doc(db, 'parents', onboardingData.parentId), {
               margin: '0 auto 1rem',
               fontSize: '1.75rem'
             }}>
-              ⌂
+              {recoveryMode ? '🔄' : '⌂'}
             </div>
             <h1 style={{
               fontSize: 'clamp(1.5rem, 5vw, 1.875rem)',
@@ -434,7 +582,8 @@ await updateDoc(doc(db, 'parents', onboardingData.parentId), {
               margin: '0 0 0.5rem 0',
               fontFamily: 'Didot, "Times New Roman", serif'
             }}>
-              {existingFamilyInfo ? 'Join Your Family' : 'Family Setup'}
+              {recoveryMode ? 'Complete Your Setup' : 
+               existingFamilyInfo ? 'Join Your Family' : 'Family Setup'}
             </h1>
             <p style={{
               color: luxTheme.textSecondary,
@@ -442,12 +591,32 @@ await updateDoc(doc(db, 'parents', onboardingData.parentId), {
               margin: 0,
               lineHeight: '1.4'
             }}>
-              {existingFamilyInfo 
-                ? `Welcome to ${existingFamilyInfo.familyName}!`
-                : 'Let\'s personalize your family reading experience'
-              }
+              {recoveryMode ? 'Let\'s finish setting up your family account' :
+               existingFamilyInfo ? `Welcome to ${existingFamilyInfo.familyName}!` :
+               'Let\'s personalize your family reading experience'}
             </p>
           </div>
+
+          {/* Recovery Mode Banner */}
+          {recoveryMode && (
+            <div style={{
+              background: '#f0f9ff',
+              border: '1px solid #0ea5e9',
+              borderRadius: '0.75rem',
+              padding: '1rem',
+              marginBottom: '2rem',
+              textAlign: 'center'
+            }}>
+              <p style={{
+                color: '#0369a1',
+                fontSize: 'clamp(0.75rem, 3vw, 0.875rem)',
+                margin: 0,
+                lineHeight: '1.4'
+              }}>
+                <strong>Welcome back!</strong> Let's complete your family setup where you left off.
+              </p>
+            </div>
+          )}
 
           {/* Progress Steps */}
           <div style={{
@@ -571,7 +740,7 @@ await updateDoc(doc(db, 'parents', onboardingData.parentId), {
                         color: luxTheme.textPrimary
                       }}>
                         <span>📚</span>
-                        <strong>{link.student?.studentName || `${link.student?.firstName} ${link.student?.lastInitial}`}</strong>
+                        <strong>{link.student?.studentName || `${link.student?.firstName} ${link.student?.lastInitial}` || 'Connected Student'}</strong>
                         <span>at {link.student?.schoolName || 'School'}</span>
                       </div>
                     ))}
@@ -591,7 +760,7 @@ await updateDoc(doc(db, 'parents', onboardingData.parentId), {
                       margin: 0,
                       lineHeight: '1.4'
                     }}>
-                      🎉 <strong>Welcome!</strong> You&apos;re joining as the second parent in this family. You&apos;ll have full access to view progress and unlock quizzes!
+                      🎉 <strong>Welcome!</strong> You're joining as the second parent in this family. You'll have full access to view progress and unlock quizzes!
                     </p>
                   </div>
                 ) : (
@@ -607,7 +776,7 @@ await updateDoc(doc(db, 'parents', onboardingData.parentId), {
                       margin: 0,
                       lineHeight: '1.4'
                     }}>
-                      🏆 <strong>Family Reading Battles:</strong> You&apos;ll compete in friendly reading challenges with your children to motivate everyone!
+                      🏆 <strong>Family Reading Battles:</strong> You'll compete in friendly reading challenges with your children to motivate everyone!
                     </p>
                   </div>
                 )}
@@ -885,7 +1054,7 @@ await updateDoc(doc(db, 'parents', onboardingData.parentId), {
                       color: luxTheme.textSecondary,
                       marginBottom: '0.5rem'
                     }}>
-                      How do you like to support your child&apos;s reading?
+                      How do you like to support your child's reading?
                     </label>
                     <select
                       value={familyData.parentProfile.supportStyle}
@@ -1230,7 +1399,7 @@ await updateDoc(doc(db, 'parents', onboardingData.parentId), {
                           margin: 0,
                           lineHeight: '1.3'
                         }}>
-                          Deep analytics and insights into your family&apos;s reading patterns and growth
+                          Deep analytics and insights into your family's reading patterns and growth
                         </p>
                       </div>
                     </div>
@@ -1285,7 +1454,7 @@ await updateDoc(doc(db, 'parents', onboardingData.parentId), {
                     margin: 0,
                     lineHeight: '1.4'
                   }}>
-                    🚀 <strong>Ready to start!</strong> Click &apos;Complete Setup&apos; to access your family dashboard with all premium features unlocked!
+                    🚀 <strong>Ready to start!</strong> Click 'Complete Setup' to access your family dashboard with all premium features unlocked!
                   </p>
                 </div>
               </div>
@@ -1393,6 +1562,8 @@ await updateDoc(doc(db, 'parents', onboardingData.parentId), {
             }}>
               {step === 5 ? 
                 'Premium features can also be managed later in Settings.' :
+                recoveryMode ?
+                  'Completing your family setup from where you left off.' :
                 existingFamilyInfo ? 
                   'Joining an existing family reading journey.' :
                   'Setting up your family for reading success together.'

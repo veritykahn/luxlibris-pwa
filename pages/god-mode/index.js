@@ -1,4 +1,4 @@
-// pages/god-mode/index.js - GOD MODE DASHBOARD
+// pages/god-mode/index.js - GOD MODE DASHBOARD (Updated with Admin Health & Fixes)
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
@@ -15,9 +15,40 @@ export default function GodModeDashboard() {
     currentPhase: 'SETUP',
     academicYear: '2025-26',
     totalVotes: 0,
-    auditLogs: 0
+    auditLogs: 0,
+    incompleteParents: 0,
+    brokenFamilyBattles: 0,
+    systemHealthScore: 0
   })
-  const [loading, setLoading] = useState(true) // Start with loading true
+  const [loading, setLoading] = useState(true)
+
+  // Quick health check for family battles
+  const quickFamilyBattleHealthCheck = async () => {
+    try {
+      const familiesSnapshot = await getDocs(collection(db, 'families'))
+      let brokenCount = 0
+      
+      familiesSnapshot.forEach(doc => {
+        const data = doc.data()
+        const battle = data.familyBattle
+        
+        // Check for common issues
+        const hasOldStructure = data.familyBattleHistory
+        const hasNewStructure = battle?.history
+        const hasInconsistentState = battle && (!battle.enabled && (battle.currentWeek || battle.completedWeek))
+        const hasMissingHistory = battle?.enabled && !battle.history
+        
+        if (hasOldStructure || hasInconsistentState || hasMissingHistory) {
+          brokenCount++
+        }
+      })
+      
+      return brokenCount
+    } catch (error) {
+      console.error('Error checking family battle health:', error)
+      return 0
+    }
+  }
 
   // Load dashboard statistics
   const loadDashboardStats = async () => {
@@ -104,6 +135,31 @@ export default function GodModeDashboard() {
         console.log('Could not load audit logs')
       }
       
+      // Get incomplete parent count
+      let incompleteParentCount = 0
+      try {
+        const parentsSnapshot = await getDocs(collection(db, 'parents'))
+        parentsSnapshot.forEach(doc => {
+          const parentData = doc.data()
+          const isIncomplete = !parentData.onboardingCompleted || 
+                              !parentData.familyId || 
+                              !parentData.parentProfile ||
+                              !parentData.readingGoals
+          if (isIncomplete) {
+            incompleteParentCount++
+          }
+        })
+      } catch (err) {
+        console.log('Could not load parent accounts')
+      }
+      
+      // Get broken family battle count
+      const brokenFamilyBattles = await quickFamilyBattleHealthCheck()
+      
+      // Calculate system health score (0-100)
+      const maxIssues = incompleteParentCount + brokenFamilyBattles
+      const healthScore = maxIssues === 0 ? 100 : Math.max(0, 100 - (maxIssues * 5))
+      
       setStats({
         entities: entitiesSnapshot.size,
         schools: totalSchools,
@@ -111,7 +167,10 @@ export default function GodModeDashboard() {
         currentPhase: config.programPhase || 'SETUP',
         academicYear: config.currentAcademicYear || '2025-26',
         totalVotes,
-        auditLogs: auditLogCount
+        auditLogs: auditLogCount,
+        incompleteParents: incompleteParentCount,
+        brokenFamilyBattles,
+        systemHealthScore: healthScore
       })
       
     } catch (error) {
@@ -124,7 +183,10 @@ export default function GodModeDashboard() {
         currentPhase: 'SETUP',
         academicYear: '2025-26',
         totalVotes: 0,
-        auditLogs: 0
+        auditLogs: 0,
+        incompleteParents: 0,
+        brokenFamilyBattles: 0,
+        systemHealthScore: 0
       })
     }
     setLoading(false)
@@ -170,6 +232,18 @@ export default function GodModeDashboard() {
       color: '#8b5cf6',
       stats: [
         { label: 'Total Votes', value: loading ? null : stats.totalVotes }
+      ]
+    },
+    {
+      id: 'admin-fixes',
+      title: 'Admin Health & Fixes',
+      icon: '🔧',
+      description: 'Database health checks and repair tools',
+      href: '/god-mode/admin-fixes',
+      color: '#ec4899',
+      stats: [
+        { label: 'System Health', value: loading ? null : `${stats.systemHealthScore}%` },
+        { label: 'Issues Found', value: loading ? null : (stats.incompleteParents + stats.brokenFamilyBattles) }
       ]
     },
     {
@@ -236,14 +310,14 @@ export default function GodModeDashboard() {
               padding: '2rem 1.5rem'
             }}>
               
-              {/* Welcome Section */}
+              {/* Welcome Section with System Health */}
               <div style={{
                 background: 'rgba(0, 0, 0, 0.3)',
                 borderRadius: '0.75rem',
                 padding: '2rem',
                 marginBottom: '2rem',
                 backdropFilter: 'blur(8px)',
-                border: '1px solid rgba(168, 85, 247, 0.3)',
+                border: `1px solid rgba(168, 85, 247, 0.3)`,
                 textAlign: 'center'
               }}>
                 <h2 style={{
@@ -258,15 +332,42 @@ export default function GodModeDashboard() {
                 <p style={{
                   color: '#c084fc',
                   fontSize: '1.125rem',
-                  margin: 0
+                  margin: '0 0 1rem 0'
                 }}>
                   Complete administrative control over the Lux Libris platform
                 </p>
+                
+                {/* System Health Indicator */}
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  background: stats.systemHealthScore >= 90 ? 'rgba(16, 185, 129, 0.2)' : 
+                             stats.systemHealthScore >= 70 ? 'rgba(245, 158, 11, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                  border: `2px solid ${stats.systemHealthScore >= 90 ? '#10b981' : 
+                                      stats.systemHealthScore >= 70 ? '#f59e0b' : '#ef4444'}`,
+                  borderRadius: '2rem',
+                  padding: '0.5rem 1rem',
+                  marginBottom: '1rem'
+                }}>
+                  <span style={{ fontSize: '1.25rem' }}>
+                    {stats.systemHealthScore >= 90 ? '💚' : stats.systemHealthScore >= 70 ? '💛' : '❤️'}
+                  </span>
+                  <span style={{
+                    color: stats.systemHealthScore >= 90 ? '#10b981' : 
+                           stats.systemHealthScore >= 70 ? '#f59e0b' : '#ef4444',
+                    fontWeight: 'bold',
+                    fontSize: '1.125rem'
+                  }}>
+                    System Health: {loading ? '...' : `${stats.systemHealthScore}%`}
+                  </span>
+                </div>
+                
                 <button
                   onClick={loadDashboardStats}
                   disabled={loading}
                   style={{
-                    marginTop: '1rem',
+                    marginTop: '0.5rem',
                     padding: '0.5rem 1rem',
                     background: loading ? '#6b7280' : 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
                     color: 'white',
@@ -279,6 +380,32 @@ export default function GodModeDashboard() {
                 >
                   {loading ? '⏳ Loading...' : '🔄 Refresh Stats'}
                 </button>
+                
+                {!loading && (stats.incompleteParents > 0 || stats.brokenFamilyBattles > 0) && (
+                  <div style={{
+                    marginTop: '1rem',
+                    padding: '0.75rem',
+                    background: 'rgba(239, 68, 68, 0.1)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    borderRadius: '0.5rem'
+                  }}>
+                    <p style={{ 
+                      color: '#ef4444', 
+                      fontSize: '0.875rem', 
+                      margin: 0,
+                      fontWeight: '600'
+                    }}>
+                      ⚠️ {stats.incompleteParents + stats.brokenFamilyBattles} system issues detected
+                    </p>
+                    <Link href="/god-mode/admin-fixes" style={{ 
+                      color: '#ef4444', 
+                      textDecoration: 'underline',
+                      fontSize: '0.875rem'
+                    }}>
+                      View Admin Health & Fixes →
+                    </Link>
+                  </div>
+                )}
               </div>
 
               {/* Section Cards Grid */}
@@ -462,10 +589,10 @@ export default function GodModeDashboard() {
                     </button>
                   </Link>
                   
-                  <Link href="/god-mode/voting" style={{ textDecoration: 'none' }}>
+                  <Link href="/god-mode/admin-fixes" style={{ textDecoration: 'none' }}>
                     <button style={{
                       padding: '0.75rem 1.5rem',
-                      background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+                      background: 'linear-gradient(135deg, #ec4899, #be185d)',
                       color: 'white',
                       borderRadius: '0.5rem',
                       border: 'none',
@@ -473,7 +600,22 @@ export default function GodModeDashboard() {
                       fontSize: '0.875rem',
                       fontWeight: '600'
                     }}>
-                      🗳️ View Results
+                      🔧 Health Check
+                    </button>
+                  </Link>
+                  
+                  <Link href="/god-mode/parent-recovery" style={{ textDecoration: 'none' }}>
+                    <button style={{
+                      padding: '0.75rem 1.5rem',
+                      background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                      color: 'white',
+                      borderRadius: '0.5rem',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: '0.875rem',
+                      fontWeight: '600'
+                    }}>
+                      👨‍👩‍👧‍👦 Fix Parent Accounts
                     </button>
                   </Link>
                 </div>
