@@ -50,13 +50,13 @@ function FamilyBattleCard({ linkedStudents, user, luxTheme, router, isPilotPhase
           
           if (currentWeek) {
   setBattleData({
-    parentMinutes: currentWeek.parents || 0,
-    childrenMinutes: currentWeek.children || 0,
+    parentMinutes: currentWeek.parents?.total || 0,
+    childrenMinutes: currentWeek.children?.total || 0,
     winner: currentWeek.winner,
     lead: currentWeek.margin || 0,
-    totalMinutes: (currentWeek.parents || 0) + (currentWeek.children || 0),
-    weekNumber: currentWeek.number,
-    battleStatus: currentWeek.status
+    totalMinutes: (currentWeek.parents?.total || 0) + (currentWeek.children?.total || 0),
+    number: currentWeek.number,
+    status: currentWeek.status
   })
 }
         }
@@ -117,7 +117,7 @@ function FamilyBattleCard({ linkedStudents, user, luxTheme, router, isPilotPhase
           color: luxTheme.textPrimary,
           margin: '0 0 8px 0'
         }}>
-          Family Reading Battle - Week {battleData?.weekNumber || '?'}
+          Family Reading Battle - Week {battleData?.number || '?'}
         </h3>
         <p style={{
           fontSize: '14px',
@@ -125,7 +125,7 @@ function FamilyBattleCard({ linkedStudents, user, luxTheme, router, isPilotPhase
           margin: '0 0 12px 0'
         }}>
           {loading ? 'Loading battle status...' :
-           battleData?.battleStatus || 'Start your family battle!'}
+ battleData?.status || 'Start your family battle!'}
         </p>
         <div style={{
           backgroundColor: `${luxTheme.primary}20`,
