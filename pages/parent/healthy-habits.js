@@ -32,43 +32,46 @@ function FamilyBattleCard({ linkedStudents, user, luxTheme, router, isPilotPhase
   const [loading, setLoading] = useState(true)
 
   // Load family battle data - only on initial load, not after every update
-  useEffect(() => {
-    const loadBattleData = async () => {
-      if (!linkedStudents?.length || !user?.uid || !parentData?.familyId) {
-        setLoading(false)
-        return
-      }
-
-      try {
-        // Get the current battle data from family document (already synced)
-        const familyRef = doc(db, 'families', parentData.familyId)
-        const familyDoc = await getDoc(familyRef)
-        
-        if (familyDoc.exists()) {
-          const familyData = familyDoc.data()
-          const currentWeek = familyData.familyBattle?.currentWeek
-          
-          if (currentWeek) {
-  setBattleData({
-    parentMinutes: currentWeek.parents?.total || 0,
-    childrenMinutes: currentWeek.children?.total || 0,
-    winner: currentWeek.winner,
-    lead: currentWeek.margin || 0,
-    totalMinutes: (currentWeek.parents?.total || 0) + (currentWeek.children?.total || 0),
-    number: currentWeek.number,
-    status: currentWeek.status
-  })
-}
-        }
-      } catch (error) {
-        console.error('Error loading battle data:', error)
-      }
-      
+useEffect(() => {
+  const loadBattleData = async () => {
+    if (!linkedStudents?.length || !user?.uid || !parentData?.familyId) {
       setLoading(false)
+      return
     }
 
-    loadBattleData()
-  }, [linkedStudents, user?.uid, parentData?.familyId])
+    try {
+      // Get the current battle data from family document (already synced)
+      const familyRef = doc(db, 'families', parentData.familyId)
+      const familyDoc = await getDoc(familyRef)
+      
+      if (familyDoc.exists()) {
+        const familyData = familyDoc.data()
+        // FIXED: Check multiple possible locations for battle data
+        const battleWeek = familyData.familyBattle?.currentWeek || 
+                          familyData.familyBattle?.lastCompletedWeek ||
+                          familyData.familyBattle?.completedWeek
+        
+        if (battleWeek) {
+          setBattleData({
+            parentMinutes: battleWeek.parents?.total || battleWeek.parentMinutes || 0,
+            childrenMinutes: battleWeek.children?.total || battleWeek.childrenMinutes || 0,
+            winner: battleWeek.winner,
+            lead: battleWeek.margin || 0,
+            totalMinutes: (battleWeek.parents?.total || battleWeek.parentMinutes || 0) + (battleWeek.children?.total || battleWeek.childrenMinutes || 0),
+            number: battleWeek.number || battleWeek.weekNumber,
+            status: battleWeek.status || battleWeek.finalStatus
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Error loading battle data:', error)
+    }
+    
+    setLoading(false)
+  }
+
+  loadBattleData()
+}, [linkedStudents, user?.uid, parentData?.familyId])
 
   return (
     <div 
