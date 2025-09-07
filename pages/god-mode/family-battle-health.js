@@ -166,32 +166,41 @@ export default function FamilyBattleHealth() {
 
   // Repair inconsistent state
   const repairInconsistentState = async (family) => {
-    const { data } = family;
-    const { battle } = data;
-    
-    // If there's active battle data, enable the feature
-    if (battle.currentWeek || battle.completedWeek) {
-      return {
-        'familyBattle.enabled': true,
-        // Ensure history exists
-        'familyBattle.history': battle.history || {
-          totalBattles: 0,
-          childrenWins: 0,
-          parentWins: 0,
-          ties: 0,
-          currentStreak: { team: null, count: 0 },
-          recentBattles: [],
-          xpAwarded: {}
-        }
-      };
-    } else {
-      // Clear the battle data
-      return {
-        'familyBattle.currentWeek': null,
-        'familyBattle.completedWeek': null
-      };
-    }
-  };
+  const { data } = family;
+  const { battle } = data;
+  
+  // If there's ANY battle data, assume parent intended to enable
+  const hasAnyBattleData = battle.currentWeek || 
+                          battle.completedWeek || 
+                          battle.history?.totalBattles > 0 ||
+                          (battle.children?.total || 0) > 0 ||
+                          (battle.parents?.total || 0) > 0;
+  
+  if (hasAnyBattleData) {
+    return {
+      'familyBattle.enabled': true, // Enable since data exists
+      // Ensure history exists
+      'familyBattle.history': battle.history || {
+        totalBattles: 0,
+        childrenWins: 0,
+        parentWins: 0,
+        ties: 0,
+        currentStreak: { team: null, count: 0 },
+        recentBattles: [],
+        xpAwarded: {}
+      },
+      // Add repair timestamp
+      'familyBattle.repairedAt': new Date(),
+      'familyBattle.repairedReason': 'Auto-enabled due to existing battle data'
+    };
+  } else {
+    // No data, clear everything
+    return {
+      'familyBattle.currentWeek': null,
+      'familyBattle.completedWeek': null
+    };
+  }
+};
 
   // Repair missing history
   const repairMissingHistory = async (family) => {

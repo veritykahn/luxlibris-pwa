@@ -603,7 +603,7 @@ const getChildColor = (childName, childId) => {
               studentId: student.id,
               saintName: timestamps[saintId].name || saintId,
               unlockedAt: unlockTime,
-              icon: '⚔️'
+              icon: '♔'
             })
           }
         })

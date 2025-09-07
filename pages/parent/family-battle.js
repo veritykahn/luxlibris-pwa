@@ -175,26 +175,39 @@ export default function ParentFamilyBattle() {
 
   // Load battle data
   const loadBattleData = useCallback(async () => {
-    if (!parentData?.familyId || !linkedStudents.length) return
+  if (!parentData?.familyId || !linkedStudents.length) return
+  
+  try {
+    // Check actual enabled status first
+    const familyDoc = await getDoc(doc(db, 'families', parentData.familyId))
+    const actualEnabled = familyDoc.data()?.familyBattle?.enabled
     
-    try {
-      // Sync and get battle data
-      await syncFamilyBattle(parentData.familyId, linkedStudents)
-      const data = await getBattleData(parentData.familyId)
-      setBattleData(data)
-      
-      // Load parent victories if they have wins
-      if (data?.history?.parentWins > 0) {
-        const victories = await getParentVictories(parentData.familyId)
-        setParentVictories(victories)
-      }
-    } catch (error) {
-      console.error('Error loading battle data:', error)
-      setError('Failed to load battle data')
+    if (!actualEnabled) {
+      setError('Family Battle appears disabled. Click "Start Family Battle" button to enable it.')
+      setBattleData(null)
+      return
     }
-  }, [parentData?.familyId, linkedStudents])
+    
+    // Clear any previous errors
+    setError('')
+    
+    // Sync and get battle data
+    await syncFamilyBattle(parentData.familyId, linkedStudents)
+    const data = await getBattleData(parentData.familyId)
+    setBattleData(data)
+    
+    // Load parent victories if they have wins
+    if (data?.history?.parentWins > 0) {
+      const victories = await getParentVictories(parentData.familyId)
+      setParentVictories(victories)
+    }
+  } catch (error) {
+    console.error('Error loading battle data:', error)
+    setError('Failed to load battle data')
+  }
+}, [parentData?.familyId, linkedStudents])
 
-  // Initialize family battle
+// Initialize family battle
 const handleInitializeBattle = async () => {
   // NEW: Wait for premium status to load completely
   if (premiumLoading) {
@@ -214,22 +227,29 @@ const handleInitializeBattle = async () => {
   
   try {
     setLoading(true)
+    setError('') // Clear any previous errors
     
     // Initialize battle
     await initializeFamilyBattle(parentData.familyId, user.uid)
+    
+    // VERIFY it actually worked
+    const verifyDoc = await getDoc(doc(db, 'families', parentData.familyId))
+    if (!verifyDoc.data()?.familyBattle?.enabled) {
+      throw new Error('Family battle initialization failed - enabled status not set')
+    }
     
     // Enable for all linked students
     if (linkedStudents.length > 0) {
       await enableFamilyBattleForStudents(parentData.familyId, linkedStudents)
     }
     
-    setShowSuccess('🏆 Family Battle arena opened! Let the games begin! ⚔️')
+    setShowSuccess('🏆 Family Battle arena opened successfully! ⚔️')
     setTimeout(() => setShowSuccess(''), 4000)
     
     await loadBattleData()
   } catch (error) {
     console.error('Error initializing family battle:', error)
-    alert('Error setting up Family Battle. Please try again.')
+    setError(`Failed to enable Family Battle: ${error.message}. Please try again.`)
   } finally {
     setLoading(false)
   }
@@ -585,34 +605,34 @@ const handleInitializeBattle = async () => {
             
             {/* Time-Based Battle Announcement */}
             {!isSunday && battleData?.enabled && (
-              <div style={{
-                background: `linear-gradient(135deg, ${theme.timeGlow}30, ${theme.timeGlow}10)`,
-                borderRadius: '16px',
-                padding: '16px',
-                marginBottom: '20px',
-                border: `2px solid ${theme.timeGlow}60`,
-                textAlign: 'center',
-                boxShadow: `0 4px 16px ${theme.timeGlow}20`
-              }}>
-                <div style={{
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  color: theme.textPrimary,
-                  marginBottom: '4px'
-                }}>
-                  {timeTheme.emoji} {timeTheme.greeting}
-                </div>
-                <div style={{
-                  fontSize: '13px',
-                  color: theme.textSecondary
-                }}>
-                  {timeTheme.name === 'morning' && 'Start the day strong! Every morning minute counts double in spirit!'}
-                  {timeTheme.name === 'afternoon' && 'Peak battle hours! Show your kids the power of consistency!'}
-                  {timeTheme.name === 'evening' && 'Golden hour reading! End the day with victory in sight!'}
-                  {timeTheme.name === 'night' && 'Night owl warriors unite! Silent reading brings loud victories!'}
-                </div>
-              </div>
-            )}
+  <div style={{
+    background: `linear-gradient(135deg, ${theme.timeGlow}30, ${theme.timeGlow}10)`,
+    borderRadius: '16px',
+    padding: '16px',
+    marginBottom: '20px',
+    border: `2px solid ${theme.timeGlow}60`,
+    textAlign: 'center',
+    boxShadow: `0 4px 16px ${theme.timeGlow}20`
+  }}>
+    <div style={{
+      fontSize: '16px',
+      fontWeight: '600',
+      color: timeTheme.name === 'night' ? 'white' : theme.textPrimary,
+      marginBottom: '4px'
+    }}>
+      {timeTheme.emoji} {timeTheme.greeting}
+    </div>
+    <div style={{
+      fontSize: '13px',
+      color: timeTheme.name === 'night' ? 'rgba(255,255,255,0.9)' : theme.textSecondary
+    }}>
+      {timeTheme.name === 'morning' && 'Start the day strong! Every morning minute counts double in spirit!'}
+      {timeTheme.name === 'afternoon' && 'Peak battle hours! Show your kids the power of consistency!'}
+      {timeTheme.name === 'evening' && 'Golden hour reading! End the day with victory in sight!'}
+      {timeTheme.name === 'night' && 'Night owl warriors unite! Silent reading brings loud victories!'}
+    </div>
+  </div>
+)}
             
             {/* Success Message */}
             {showSuccess && (

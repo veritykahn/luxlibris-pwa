@@ -49,16 +49,16 @@ function FamilyBattleCard({ linkedStudents, user, luxTheme, router, isPilotPhase
           const currentWeek = familyData.familyBattle?.currentWeek
           
           if (currentWeek) {
-            setBattleData({
-              parentMinutes: currentWeek.parents || 0,
-              childrenMinutes: currentWeek.children || 0,
-              winner: currentWeek.winner,
-              lead: currentWeek.margin || 0,
-              totalMinutes: (currentWeek.parents || 0) + (currentWeek.children || 0),
-              weekNumber: currentWeek.weekNumber,
-              battleStatus: currentWeek.battleStatus
-            })
-          }
+  setBattleData({
+    parentMinutes: currentWeek.parents || 0,
+    childrenMinutes: currentWeek.children || 0,
+    winner: currentWeek.winner,
+    lead: currentWeek.margin || 0,
+    totalMinutes: (currentWeek.parents || 0) + (currentWeek.children || 0),
+    weekNumber: currentWeek.number,
+    battleStatus: currentWeek.status
+  })
+}
         }
       } catch (error) {
         console.error('Error loading battle data:', error)
