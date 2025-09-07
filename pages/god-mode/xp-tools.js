@@ -1,4 +1,4 @@
-// pages/god-mode/xp-tools.js - XP DIAGNOSTICS & TOOLS (FIXED)
+// pages/god-mode/xp-tools.js - XP DIAGNOSTICS & TOOLS WITH PROPER LEVEL CALCULATION
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import GodModeAuth from '../../components/god-mode/GodModeAuth'
@@ -6,6 +6,70 @@ import GodModeHeader from '../../components/god-mode/GodModeHeader'
 import AdminXPTools from '../../components/AdminXPTools'
 import { db } from '../../lib/firebase'
 import { collection, getDocs, doc, getDoc, query, where, orderBy, limit } from 'firebase/firestore'
+
+// Level calculation - EXACT COPY from badge-system.js
+const LEVEL_THRESHOLDS = [
+  0,    // Level 1: 0 XP
+  20,   // Level 2: 20 XP
+  65,   // Level 3: 65 XP total (40 more)
+  130,  // Level 4: 130 XP total (65 more)  
+  220,  // Level 5: 220 XP total (90 more)
+  335,  // Level 6: 335 XP total (115 more)
+  475,  // Level 7: 475 XP total (140 more)
+  640,  // Level 8: 640 XP total (165 more)
+  830,  // Level 9: 830 XP total (190 more)
+  1045, // Level 10: 1045 XP total (215 more)
+];
+
+const getThresholdForLevel = (level) => {
+  if (level <= LEVEL_THRESHOLDS.length) {
+    return LEVEL_THRESHOLDS[level - 1];
+  }
+  
+  let threshold = LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length - 1];
+  let increment = 240;
+  
+  for (let i = LEVEL_THRESHOLDS.length + 1; i <= level; i++) {
+    threshold += increment;
+    increment += 25;
+    
+    if (i > 50) increment += 25;
+    if (i > 100) increment += 50;
+    if (i > 150) increment += 75;
+    if (i > 200) increment += 100;
+  }
+  
+  return threshold;
+};
+
+const calculateLevel = (totalXP) => {
+  for (let level = 1; level <= 1000; level++) {
+    if (totalXP < getThresholdForLevel(level + 1)) {
+      return level;
+    }
+  }
+  return 1000;
+};
+
+const getLevelProgress = (totalXP) => {
+  const currentLevel = calculateLevel(totalXP);
+  const currentThreshold = getThresholdForLevel(currentLevel);
+  const nextThreshold = getThresholdForLevel(currentLevel + 1);
+  
+  const progressInLevel = totalXP - currentThreshold;
+  const xpNeededForLevel = nextThreshold - currentThreshold;
+  const percentage = Math.round((progressInLevel / xpNeededForLevel) * 100);
+  
+  return {
+    level: currentLevel,
+    progress: progressInLevel,
+    toNext: nextThreshold - totalXP,
+    percentage: Math.max(0, Math.min(100, percentage)),
+    currentThreshold,
+    nextThreshold,
+    xpNeededForLevel
+  };
+};
 
 export default function XPToolsManagement() {
   const [selectedStudent, setSelectedStudent] = useState(null)
@@ -107,13 +171,15 @@ export default function XPToolsManagement() {
       
       studentsSnapshot.forEach(doc => {
         const studentData = doc.data()
+        const levelInfo = getLevelProgress(studentData.totalXP || 0)
+        
         studentsData.push({
           id: doc.id,
           displayName: studentData.displayName || `${studentData.firstName || ''} ${studentData.lastInitial || ''}`.trim() || 'Unknown Student',
           email: studentData.authEmail || studentData.email || 'No email',
           grade: studentData.grade || 'N/A',
-          totalXP: studentData.totalXP || 0,  // FIXED: Changed from lifetimeXP to totalXP
-          level: studentData.level || 1,
+          totalXP: studentData.totalXP || 0,
+          level: levelInfo.level, // Correctly calculated from XP
           academicYear: studentData.academicYear || '2025-26',
           booksSubmittedThisYear: studentData.booksSubmittedThisYear || 0
         })
@@ -151,20 +217,25 @@ export default function XPToolsManagement() {
       
       if (studentDoc.exists()) {
         const data = studentDoc.data()
+        const levelInfo = getLevelProgress(data.totalXP || 0)
+        
         setSelectedStudent({
           id: studentDoc.id,
           path: studentPath,
           ...data,
           // Ensure display name
-          displayName: data.displayName || `${data.firstName || ''} ${data.lastInitial || ''}`.trim() || 'Unknown Student'
+          displayName: data.displayName || `${data.firstName || ''} ${data.lastInitial || ''}`.trim() || 'Unknown Student',
+          // Add calculated level info
+          level: levelInfo.level,
+          levelProgress: levelInfo
         })
         
         // Update XP stats for single student
         setXpStats({
           totalStudents: 1,
-          avgXP: data.totalXP || 0,  // FIXED: Changed from lifetimeXP to totalXP
-          topXP: data.totalXP || 0,  // FIXED: Changed from lifetimeXP to totalXP
-          totalXP: data.totalXP || 0  // FIXED: Changed from lifetimeXP to totalXP
+          avgXP: data.totalXP || 0,
+          topXP: data.totalXP || 0,
+          totalXP: data.totalXP || 0
         })
       } else {
         alert('Student not found')
@@ -209,6 +280,9 @@ export default function XPToolsManagement() {
               if (displayName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                   studentData.authEmail?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                   studentData.email?.toLowerCase().includes(searchTerm.toLowerCase())) {
+                
+                const levelInfo = getLevelProgress(studentData.totalXP || 0)
+                
                 studentsData.push({
                   id: studentDoc.id,
                   path: `entities/${entityDoc.id}/schools/${schoolDoc.id}/students/${studentDoc.id}`,
@@ -216,12 +290,12 @@ export default function XPToolsManagement() {
                   schoolName: schoolDoc.data().name,
                   displayName: displayName,
                   email: studentData.authEmail || studentData.email || 'No email',
-                  totalXP: studentData.totalXP || 0,  // FIXED: Changed from lifetimeXP to totalXP
-                  level: studentData.level || 1,
+                  totalXP: studentData.totalXP || 0,
+                  level: levelInfo.level, // Correctly calculated
                   ...studentData
                 })
-                totalXPSum += studentData.totalXP || 0  // FIXED: Changed from lifetimeXP to totalXP
-                maxXP = Math.max(maxXP, studentData.totalXP || 0)  // FIXED: Changed from lifetimeXP to totalXP
+                totalXPSum += studentData.totalXP || 0
+                maxXP = Math.max(maxXP, studentData.totalXP || 0)
               }
             })
           }
@@ -247,18 +321,21 @@ export default function XPToolsManagement() {
               if (displayName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                   studentData.authEmail?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                   studentData.email?.toLowerCase().includes(searchTerm.toLowerCase())) {
+                
+                const levelInfo = getLevelProgress(studentData.totalXP || 0)
+                
                 studentsData.push({
                   id: studentDoc.id,
                   path: `schools/${schoolDoc.id}/students/${studentDoc.id}`,
                   schoolName: schoolDoc.data().name,
                   displayName: displayName,
                   email: studentData.authEmail || studentData.email || 'No email',
-                  totalXP: studentData.totalXP || 0,  // FIXED: Changed from lifetimeXP to totalXP
-                  level: studentData.level || 1,
+                  totalXP: studentData.totalXP || 0,
+                  level: levelInfo.level, // Correctly calculated
                   ...studentData
                 })
-                totalXPSum += studentData.totalXP || 0  // FIXED: Changed from lifetimeXP to totalXP
-                maxXP = Math.max(maxXP, studentData.totalXP || 0)  // FIXED: Changed from lifetimeXP to totalXP
+                totalXPSum += studentData.totalXP || 0
+                maxXP = Math.max(maxXP, studentData.totalXP || 0)
               }
             })
           } catch (error) {
@@ -268,7 +345,7 @@ export default function XPToolsManagement() {
       }
       
       // Sort by XP
-      studentsData.sort((a, b) => (b.totalXP || 0) - (a.totalXP || 0))  // FIXED: Changed from lifetimeXP to totalXP
+      studentsData.sort((a, b) => (b.totalXP || 0) - (a.totalXP || 0))
       
       setStudents(studentsData)
       setXpStats({
@@ -555,7 +632,7 @@ export default function XPToolsManagement() {
                             <option value="">Select a student...</option>
                             {schoolStudents.map(student => (
                               <option key={student.id} value={student.id}>
-                                {student.displayName} | Grade {student.grade} | {student.totalXP} XP | {student.booksSubmittedThisYear} books
+                                {student.displayName} | Grade {student.grade} | Level {student.level} | {student.totalXP} XP | {student.booksSubmittedThisYear} books
                               </option>
                             ))}
                           </select>
@@ -581,6 +658,7 @@ export default function XPToolsManagement() {
                           <span>📊 Total Students: <strong>{schoolStudents.length}</strong></span>
                           <span>📚 Avg Books: <strong>{Math.round(schoolStudents.reduce((sum, s) => sum + s.booksSubmittedThisYear, 0) / schoolStudents.length)}</strong></span>
                           <span>⭐ Avg XP: <strong>{Math.round(schoolStudents.reduce((sum, s) => sum + s.totalXP, 0) / schoolStudents.length)}</strong></span>
+                          <span>🎯 Avg Level: <strong>{Math.round(schoolStudents.reduce((sum, s) => sum + s.level, 0) / schoolStudents.length)}</strong></span>
                         </div>
                       </div>
                     )}
@@ -770,9 +848,9 @@ export default function XPToolsManagement() {
                           setSelectedStudent(student)
                           setXpStats({
                             totalStudents: 1,
-                            avgXP: student.totalXP || 0,  // FIXED: Changed from lifetimeXP to totalXP
-                            topXP: student.totalXP || 0,  // FIXED: Changed from lifetimeXP to totalXP
-                            totalXP: student.totalXP || 0  // FIXED: Changed from lifetimeXP to totalXP
+                            avgXP: student.totalXP || 0,
+                            topXP: student.totalXP || 0,
+                            totalXP: student.totalXP || 0
                           })
                         }}
                         style={{
@@ -884,6 +962,9 @@ export default function XPToolsManagement() {
                       <div>📚 Books This Year: <span style={{ color: 'white' }}>{selectedStudent.booksSubmittedThisYear || 0}</span></div>
                       <div>⭐ Level: <span style={{ color: 'white' }}>{selectedStudent.level || 1}</span></div>
                       <div>💰 Total XP: <span style={{ color: 'white' }}>{selectedStudent.totalXP || 0}</span></div>
+                      {selectedStudent.levelProgress && (
+                        <div>🎯 Next Level: <span style={{ color: 'white' }}>{selectedStudent.levelProgress.toNext} XP needed</span></div>
+                      )}
                     </div>
                   </div>
                   
