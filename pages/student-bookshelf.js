@@ -4763,7 +4763,7 @@ const handleQuizComplete = async (answers) => {
                   margin: '0 0 8px 0',
                   fontWeight: '600'
                 }}>
-                  "{selectedBook.details.title}"
+                  &quot;{selectedBook.details.title}&quot;
                 </p>
                 <p style={{
                   fontSize: '12px',
@@ -4795,10 +4795,10 @@ const handleQuizComplete = async (answers) => {
                   paddingLeft: '16px',
                   lineHeight: '1.4'
                 }}>
-                  <li>Remove your submission from the teacher's review queue</li>
+                  <li>Remove your submission from the teacher&apos;s review queue</li>
                   <li>Keep all your reading progress, rating, and notes</li>
                   <li>Allow you to choose a different submission type</li>
-                  <li>No penalties - resubmit whenever you're ready</li>
+                  <li>No penalties - resubmit whenever you&apos;re ready</li>
                 </ul>
               </div>
 
