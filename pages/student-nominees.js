@@ -2296,7 +2296,7 @@ function BookCard({ book, theme, onAddBook, isAddingBook, getBookInBookshelf, is
   
   // NEW: Check if book is locked
   const isLocked = existingBookEntry && isBookInLockedState(existingBookEntry);
-  const isCompleted = existingBookEntry && (existingBookEntry.status === 'completed' || existingBookEntry.completed === true);
+  const isCompleted = existingBookEntry && existingBookEntry.status === 'completed';
   const isPending = existingBookEntry && (
     existingBookEntry.status === 'pending_approval' || 
     existingBookEntry.status === 'pending_parent_quiz_unlock'

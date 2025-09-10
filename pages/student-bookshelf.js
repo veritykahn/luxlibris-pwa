@@ -3,11 +3,11 @@ import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
 import { usePhaseAccess } from '../hooks/usePhaseAccess';
 import { getStudentDataEntities, getSchoolNomineesEntities, updateStudentDataEntities, getCurrentAcademicYear, getLinkedParentDetails, getFamilyDetails } from '../lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, runTransaction } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { getQuizByBookId } from '../book-quizzes-manager';
 import { checkSpecificContentBadge } from '../lib/badge-system-content';
-import { getTheme, getSeasonalThemeAnnouncement } from '../lib/themes';  // ADD THIS LINE
+import { getTheme, getSeasonalThemeAnnouncement } from '../lib/themes';  
 import Head from 'next/head';
 
 export default function StudentBookshelf() {
@@ -70,6 +70,15 @@ const fixedTextSecondary = isLavenderSpace ? '#4A3B5C' : currentTheme?.textSecon
   const [timeRemaining, setTimeRemaining] = useState(30 * 60); // 30 minutes in seconds
   const [timerActive, setTimerActive] = useState(false);
 
+  // FEATURE 1: Quick Submission Cancellation states
+  const [cancellationTimeRemaining, setCancellationTimeRemaining] = useState(0);
+  const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
+  const [cancellationTimer, setCancellationTimer] = useState(null);
+
+  // FEATURE 2: Smart Parent Request Logic states
+  const [quizCodeFocused, setQuizCodeFocused] = useState(false);
+  const [showQuizCodeHint, setShowQuizCodeHint] = useState(false);
+
   // 🍔 NAVIGATION MENU ITEMS (Bookshelf page is current) - UPDATED with phase locking
   const navMenuItems = useMemo(() => [
     { name: 'Dashboard', path: '/student-dashboard', icon: '⌂' },
@@ -92,7 +101,74 @@ const fixedTextSecondary = isLavenderSpace ? '#4A3B5C' : currentTheme?.textSecon
     { name: 'Saints', path: '/student-saints', icon: '♔' },
     { name: 'Stats', path: '/student-stats', icon: '△' },
     { name: 'Settings', path: '/student-settings', icon: '⚙' }
-  ], [hasAccess]); // Add hasAccess as dependency
+  ], [hasAccess]);
+
+// FEATURE 1: Helper functions for Quick Submission Cancellation
+const canCancelSubmission = (book) => {
+  if (book.status !== 'pending_approval' || !book.submittedAt) return false;
+  
+  const submittedTime = book.submittedAt?.toDate ? book.submittedAt.toDate() : new Date(book.submittedAt);
+  const now = new Date();
+  const timeSince = now - submittedTime;
+  const fiveMinutes = 5 * 60 * 1000; // 5 minutes in milliseconds
+  
+  return timeSince < fiveMinutes;
+};
+
+const getCancellationTimeRemaining = (book) => {
+  if (!canCancelSubmission(book)) return 0;
+  
+  const submittedTime = book.submittedAt?.toDate ? book.submittedAt.toDate() : new Date(book.submittedAt);
+  const now = new Date();
+  const timeSince = now - submittedTime;
+  const fiveMinutes = 5 * 60 * 1000;
+  
+  return Math.max(0, Math.ceil((fiveMinutes - timeSince) / 1000));
+};
+
+const formatCancellationTime = (seconds) => {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
+// FEATURE 2: Helper function for better parent messaging
+const getQuizPermissionMessage = (hasLinkedParents) => {
+  if (hasLinkedParents) {
+    return {
+      title: "Quiz Permission Required",
+      subtitle: "Choose how to get permission",
+      codeSection: "Start Quiz Now",
+      codeHelp: "If your parent is available",
+      requestSection: "Request Later", 
+      requestHelp: "If your parent is not available now"
+    };
+  } else {
+    return {
+      title: "Ready for Your Quiz?",
+      subtitle: "Get the quiz code from your teacher",
+      codeSection: "Enter Quiz Code",
+      codeHelp: "Your teacher will provide this code",
+      requestSection: null,
+      requestHelp: null
+    };
+  }
+};
+
+// Helper function for formatting submission types
+const formatSubmissionType = (submissionType) => {
+  const types = {
+    'quiz': 'Quiz',
+    'presentToTeacher': 'Present to Teacher',
+    'submitReview': 'Written Review',
+    'createStoryboard': 'Storyboard',
+    'bookReport': 'Book Report',
+    'discussWithLibrarian': 'Discussion with Librarian',
+    'actOutScene': 'Act Out Scene'
+  };
+  return types[submissionType] || submissionType;
+};
+
 // 🍔 NOTIFICATION FUNCTIONS
   const requestNotificationPermission = useCallback(async () => {
     console.log('Starting notification permission request...');
@@ -211,6 +287,35 @@ const fixedTextSecondary = isLavenderSpace ? '#4A3B5C' : currentTheme?.textSecon
       console.log('Revision request notification failed:', error);
     }
   }, [notificationsEnabled]);
+
+  // FEATURE 1: Cancellation countdown timer
+  useEffect(() => {
+    if (selectedBook && canCancelSubmission(selectedBook)) {
+      const updateTimer = () => {
+        const remaining = getCancellationTimeRemaining(selectedBook);
+        setCancellationTimeRemaining(remaining);
+        
+        if (remaining <= 0) {
+          clearInterval(cancellationTimer);
+          setCancellationTimer(null);
+        }
+      };
+      
+      updateTimer(); // Initial update
+      const interval = setInterval(updateTimer, 1000);
+      setCancellationTimer(interval);
+      
+      return () => {
+        if (interval) clearInterval(interval);
+      };
+    } else {
+      setCancellationTimeRemaining(0);
+      if (cancellationTimer) {
+        clearInterval(cancellationTimer);
+        setCancellationTimer(null);
+      }
+    }
+  }, [selectedBook, cancellationTimer]);
 
   // Quiz timer effect
   useEffect(() => {
@@ -782,11 +887,16 @@ const openBookModal = (bookshelfBook) => {
   setTempRating(bookshelfBook.rating || 0);
   setTempNotes(bookshelfBook.notes || '');
   
-  // Set lock state - keep locked at 100% for ALL states (including completed and cooldowns)
-const isAt100Percent = bookshelfBook.currentProgress >= total && total > 0;
-const bookState = getBookState(bookshelfBook);
-// Lock slider if at 100% regardless of state - no unlocking for completed or cooldown books
-setIsSliderLocked(isAt100Percent);
+  // Set lock state - lock for multiple reasons:
+  // 1. At 100% completion
+  // 2. In locked states (pending, completed, cooldowns)
+  const isAt100Percent = bookshelfBook.currentProgress >= total && total > 0;
+  const bookState = getBookState(bookshelfBook);
+  const lockedStates = ['pending_admin_approval', 'pending_parent_quiz_unlock', 'quiz_cooldown', 'admin_cooldown', 'revision_cooldown', 'completed'];
+  const isInLockedState = lockedStates.includes(bookState);
+  
+  // Lock if at 100% OR if in a locked state
+  setIsSliderLocked(isAt100Percent || isInLockedState);
   
   // Calculate initial textarea height for existing content
   const notesContent = bookshelfBook.notes || '';
@@ -802,10 +912,19 @@ setIsSliderLocked(isAt100Percent);
   setShowBookModal(true);
 };
 
+  // UPDATED: closeBookModal with cancellation cleanup
   const closeBookModal = () => {
     setShowBookModal(false);
     setSelectedBook(null);
     setIsSliderLocked(false); // Reset slider lock when closing modal
+    
+    // FEATURE 1: Clear cancellation timer and states
+    if (cancellationTimer) {
+      clearInterval(cancellationTimer);
+      setCancellationTimer(null);
+    }
+    setCancellationTimeRemaining(0);
+    setShowCancelConfirmation(false);
   };
 
   // ENHANCED iPad-Compatible Textarea Function
@@ -1119,6 +1238,7 @@ setTimeout(() => setShowSuccess(''), 3000);
   setShowSubmissionPopup(false);
   closeBookModal();
 };
+
 const deleteBook = async (bookId) => {
     if (!studentData) return;
     
@@ -1145,14 +1265,112 @@ const deleteBook = async (bookId) => {
     setIsSaving(false);
   };
 
-  // FIND this function in paste-2.txt (around line 740-850) and REPLACE it entirely:
+// FEATURE 1: Handle submission cancellation with transaction
+const handleCancelSubmission = async () => {
+  if (!selectedBook || !studentData) return;
+  
+  setIsSaving(true);
+  
+  try {
+    const studentRef = doc(db, `entities/${studentData.entityId}/schools/${studentData.schoolId}/students`, studentData.id);
+    
+    // Use transaction for atomic operation
+    await runTransaction(db, async (transaction) => {
+      const studentDoc = await transaction.get(studentRef);
 
+      if (!studentDoc.exists()) {
+        throw new Error('Student not found');
+      }
+
+      const studentData = studentDoc.data();
+      let bookFound = false;
+      
+      const updatedBookshelf = studentData.bookshelf.map(book => {
+        if (book.bookId === selectedBook.bookId && book.status === 'pending_approval') {
+          bookFound = true;
+          
+          // Revert to in-progress state, keeping reading progress
+          const revertedBook = {
+            ...book,
+            status: 'in_progress',
+            completed: false,
+            // Remove submission-related fields
+            submissionType: undefined,
+            submittedAt: undefined,
+            // Keep progress data
+            currentProgress: book.currentProgress,
+            rating: book.rating,
+            notes: book.notes
+          };
+          
+          // Clean up undefined fields
+          Object.keys(revertedBook).forEach(key => {
+            if (revertedBook[key] === undefined) {
+              delete revertedBook[key];
+            }
+          });
+          
+          return revertedBook;
+        }
+        return book;
+      });
+
+      if (!bookFound) {
+        throw new Error('Submission no longer exists or has been modified');
+      }
+
+      // Update student's bookshelf
+      transaction.update(studentRef, {
+        bookshelf: updatedBookshelf,
+        lastModified: new Date()
+      });
+    });
+
+    // Update local state
+    setStudentData({ 
+      ...studentData, 
+      bookshelf: studentData.bookshelf.map(book => {
+        if (book.bookId === selectedBook.bookId && book.status === 'pending_approval') {
+          const { submissionType, submittedAt, ...cleanBook } = book;
+          return {
+            ...cleanBook,
+            status: 'in_progress',
+            completed: false
+          };
+        }
+        return book;
+      })
+    });
+    
+    setShowSuccess('✅ Submission cancelled - you can resubmit anytime');
+    setShowCancelConfirmation(false);
+    
+    // Update selected book to reflect new state
+    const updatedBook = { ...selectedBook };
+    delete updatedBook.submissionType;
+    delete updatedBook.submittedAt;
+    updatedBook.status = 'in_progress';
+    updatedBook.completed = false;
+    setSelectedBook(updatedBook);
+    
+    setTimeout(() => setShowSuccess(''), 3000);
+
+  } catch (error) {
+    console.error('❌ Error cancelling submission:', error);
+    setShowSuccess('❌ Error cancelling submission. Please try again.');
+    setTimeout(() => setShowSuccess(''), 3000);
+  } finally {
+    setIsSaving(false);
+  }
+};
+
+// ENHANCED: handleQuizSubmission with smart parent logic
 const handleQuizSubmission = async () => {
   if (!selectedBook) return;
   
   const bookState = getBookState(selectedBook);
   
-  // 🔧 NEW: Skip parent permission if already unlocked
+  // Skip parent permission if already unlocked
   if (bookState === 'quiz_unlocked') {
     // Go straight to loading quiz
     setIsSaving(true);
@@ -1245,9 +1463,22 @@ const handleQuizSubmission = async () => {
     return;
   }
   
-  // Original flow for non-unlocked books
+  // FEATURE 2: Enhanced parent logic
+  const hasLinkedParents = linkedParents && linkedParents.length > 0;
+  
+  // Original flow with enhanced parent logic
   setShowSubmissionPopup(false);
   setShowParentPermission(true);
+  
+  // If no parents linked, focus on the code input after modal opens
+  if (!hasLinkedParents) {
+    setTimeout(() => {
+      const codeInput = document.querySelector('input[placeholder*="quiz code"]');
+      if (codeInput) {
+        codeInput.focus();
+      }
+    }, 100);
+  }
 };
 
   const handleParentCodeSubmit = async () => {
@@ -2862,6 +3093,72 @@ const handleQuizComplete = async (answers) => {
                     )}
                   </div>
 
+                  {/* FEATURE 1: Quick Cancel Submission (5-minute window) */}
+                  {canEdit && canCancelSubmission(selectedBook) && cancellationTimeRemaining > 0 && (
+                    <div style={{
+                      backgroundColor: '#FEF3CD',
+                      borderRadius: '12px',
+                      padding: '12px',
+                      marginBottom: '12px',
+                      border: '2px solid #F59E0B'
+                    }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: '8px'
+                      }}>
+                        <div style={{
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          color: '#92400E'
+                        }}>
+                          ⚡ Just submitted? Cancel quickly:
+                        </div>
+                        <div style={{
+                          fontSize: '11px',
+                          fontWeight: '600',
+                          color: '#A16207',
+                          backgroundColor: '#FFFFFF',
+                          padding: '2px 6px',
+                          borderRadius: '6px'
+                        }}>
+                          {formatCancellationTime(cancellationTimeRemaining)} left
+                        </div>
+                      </div>
+                      
+                      <button
+                        onClick={() => setShowCancelConfirmation(true)}
+                        disabled={isSaving}
+                        style={{
+                          width: '100%',
+                          backgroundColor: '#F59E0B',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '8px',
+                          padding: '8px 12px',
+                          fontSize: '11px',
+                          fontWeight: '600',
+                          cursor: isSaving ? 'wait' : 'pointer',
+                          opacity: isSaving ? 0.7 : 1,
+                          minHeight: '36px'
+                        }}
+                      >
+                        {isSaving ? 'Cancelling...' : 'Cancel Submission'}
+                      </button>
+                      
+                      <div style={{
+                        fontSize: '10px',
+                        color: '#A16207',
+                        textAlign: 'center',
+                        marginTop: '4px',
+                        fontStyle: 'italic'
+                      }}>
+                        No penalties - you can resubmit anytime
+                      </div>
+                    </div>
+                  )}
+
                   {/* ENHANCED Progress section with clickable warning */}
                   <div style={{ marginBottom: '15px' }}>
                     <label style={{
@@ -2881,9 +3178,9 @@ const handleQuizComplete = async (answers) => {
                     </label>
                     
                     <div 
-  onClick={isSliderLocked && bookState !== 'completed' && !bookState.includes('cooldown') ? () => setShowUnlockWarning(true) : undefined}
+  onClick={isSliderLocked && bookState !== 'completed' && !bookState.includes('cooldown') && !bookState.includes('pending') ? () => setShowUnlockWarning(true) : undefined}
   style={{ 
-    cursor: isSliderLocked && bookState !== 'completed' && !bookState.includes('cooldown') ? 'pointer' : 'default',
+    cursor: isSliderLocked && bookState !== 'completed' && !bookState.includes('cooldown') && !bookState.includes('pending') ? 'pointer' : 'default',
     position: 'relative'
   }}
 >
@@ -3035,8 +3332,14 @@ const handleQuizComplete = async (answers) => {
                         if (e.target.style.fontSize !== '16px') {
                           e.target.style.fontSize = '16px';
                         }
+                        setQuizCodeFocused(true);
+                        if (linkedParents.length === 0) {
+                          setShowQuizCodeHint(true);
+                          setTimeout(() => setShowQuizCodeHint(false), 3000);
+                        }
                       } : undefined}
                       onBlur={canEdit ? () => {
+                        setQuizCodeFocused(false);
                         // Recalculate height after keyboard closes (iPad specific)
                         setTimeout(() => {
                           if (textareaRef.current) {
@@ -3587,9 +3890,10 @@ const handleQuizComplete = async (answers) => {
           );
         })()}
 
-        {/* PARENT PERMISSION SCREEN */}
+        {/* PARENT PERMISSION SCREEN - ENHANCED with smart parent logic */}
         {showParentPermission && selectedBook && (() => {
           const colorPalette = currentTheme;
+          const hasLinkedParents = linkedParents.length > 0;
           
           return (
             <div style={{
@@ -3630,7 +3934,7 @@ const handleQuizComplete = async (answers) => {
                     margin: '0 0 8px 0',
                     fontFamily: 'Didot, "Times New Roman", serif'
                   }}>
-                    Parent Permission Required
+                    {hasLinkedParents ? "Quiz Permission Required" : "Ready for Your Quiz?"}
                   </h3>
                   <p style={{
                     fontSize: '14px',
@@ -3638,43 +3942,69 @@ const handleQuizComplete = async (answers) => {
                     margin: '0',
                     fontFamily: 'Avenir, system-ui, sans-serif'
                   }}>
-                    To take the quiz for &ldquo;{selectedBook.details.title}&rdquo;
+                    {hasLinkedParents 
+                      ? `To take the quiz for "${selectedBook.details.title}"`
+                      : `Get the quiz code from your teacher for "${selectedBook.details.title}"`
+                    }
                   </p>
                 </div>
 
                 <div style={{ padding: '24px' }}>
                   
+                  {/* ENHANCED: Quiz Code Section - More prominent when no parents */}
                   <div style={{
-                    marginBottom: '20px',
-                    padding: '20px',
-                    backgroundColor: colorPalette.background,
+                    marginBottom: hasLinkedParents ? '20px' : '24px',
+                    padding: hasLinkedParents ? '20px' : '24px',
+                    backgroundColor: hasLinkedParents ? colorPalette.background : '#E8F5E9',
                     borderRadius: '16px',
-                    border: `2px solid ${colorPalette.primary}30`
+                    border: hasLinkedParents ? `2px solid ${colorPalette.primary}30` : '3px solid #4CAF50',
+                    position: 'relative',
+                    // Make more prominent when it's the only option
+                    boxShadow: hasLinkedParents ? 'none' : '0 4px 16px rgba(76, 175, 80, 0.2)'
                   }}>
+                    {!hasLinkedParents && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '-12px',
+                        left: '20px',
+                        backgroundColor: '#4CAF50',
+                        color: 'white',
+                        padding: '4px 12px',
+                        borderRadius: '12px',
+                        fontSize: '11px',
+                        fontWeight: '600'
+                      }}>
+                        ENTER QUIZ CODE
+                      </div>
+                    )}
+                    
                     <div style={{
                       display: 'flex',
                       alignItems: 'center',
                       gap: '12px',
                       marginBottom: '16px'
                     }}>
-                      <span style={{ fontSize: '24px' }}>⚡</span>
+                      <span style={{ fontSize: hasLinkedParents ? '24px' : '28px' }}>⚡</span>
                       <div>
                         <h4 style={{
-                          fontSize: '16px',
+                          fontSize: hasLinkedParents ? '16px' : '18px',
                           fontWeight: '600',
-                          color: colorPalette.textPrimary,
+                          color: hasLinkedParents ? colorPalette.textPrimary : '#2E7D32',
                           margin: '0 0 4px 0',
                           fontFamily: 'Avenir, system-ui, sans-serif'
                         }}>
-                          Start Quiz Now
+                          {hasLinkedParents ? 'Start Quiz Now' : 'Ready to Take Quiz?'}
                         </h4>
                         <p style={{
                           fontSize: '12px',
-                          color: colorPalette.textSecondary,
+                          color: hasLinkedParents ? colorPalette.textSecondary : '#388E3C',
                           margin: '0',
                           fontFamily: 'Avenir, system-ui, sans-serif'
                         }}>
-                          If your parent is available
+                          {hasLinkedParents 
+                            ? 'If your parent is available' 
+                            : 'Get the quiz code from your teacher'
+                          }
                         </p>
                       </div>
                     </div>
@@ -3686,11 +4016,16 @@ const handleQuizComplete = async (answers) => {
                         const newCode = e.target.value.toUpperCase();
                         setParentCode(newCode);
                       }}
-                      placeholder="Ask parent to enter quiz code"
+                      placeholder={hasLinkedParents 
+                        ? "Ask parent to enter quiz code" 
+                        : "Enter the quiz code from your teacher"
+                      }
                       style={{
                         width: '100%',
-                        padding: '14px',
-                        border: `2px solid ${colorPalette.primary}`,
+                        padding: hasLinkedParents ? '14px' : '16px',
+                        border: hasLinkedParents 
+                          ? `2px solid ${colorPalette.primary}` 
+                          : '3px solid #4CAF50',
                         borderRadius: '12px',
                         fontSize: '16px',
                         fontFamily: 'system-ui, -apple-system, sans-serif',
@@ -3700,12 +4035,21 @@ const handleQuizComplete = async (answers) => {
                         letterSpacing: '0.1em',
                         color: '#000000',
                         backgroundColor: '#FFFFFF',
-                        marginBottom: '12px'
+                        marginBottom: '12px',
+                        boxShadow: hasLinkedParents ? 'none' : '0 2px 8px rgba(76, 175, 80, 0.1)'
                       }}
                       maxLength={8}
                       autoComplete="off"
                       autoCorrect="off"
                       autoCapitalize="characters"
+                      onFocus={() => {
+                        setQuizCodeFocused(true);
+                        if (!hasLinkedParents) {
+                          setShowQuizCodeHint(true);
+                          setTimeout(() => setShowQuizCodeHint(false), 3000);
+                        }
+                      }}
+                      onBlur={() => setQuizCodeFocused(false)}
                     />
                     
                     <button
@@ -3713,78 +4057,86 @@ const handleQuizComplete = async (answers) => {
                       disabled={!parentCode.trim() || isSaving}
                       style={{
                         width: '100%',
-                        backgroundColor: (parentCode.trim() && !isSaving) ? colorPalette.primary : '#E0E0E0',
+                        backgroundColor: (parentCode.trim() && !isSaving) 
+                          ? (hasLinkedParents ? colorPalette.primary : '#4CAF50')
+                          : '#E0E0E0',
                         color: (parentCode.trim() && !isSaving) ? 'white' : '#999',
                         border: 'none',
                         borderRadius: '12px',
-                        padding: '14px',
-                        fontSize: '14px',
+                        padding: hasLinkedParents ? '14px' : '16px',
+                        fontSize: hasLinkedParents ? '14px' : '16px',
                         fontWeight: '600',
                         cursor: (parentCode.trim() && !isSaving) ? 'pointer' : 'not-allowed',
                         fontFamily: 'Avenir, system-ui, sans-serif',
                         opacity: isSaving ? 0.7 : 1,
-                        minHeight: '44px'
+                        minHeight: '44px',
+                        boxShadow: (parentCode.trim() && !isSaving && !hasLinkedParents) 
+                          ? '0 4px 12px rgba(76, 175, 80, 0.3)' 
+                          : 'none',
+                        transform: (parentCode.trim() && !isSaving && !hasLinkedParents) 
+                          ? 'translateY(-1px)' 
+                          : 'translateY(0)',
+                        transition: 'all 0.2s ease'
                       }}
                     >
-                      {isSaving ? '🔄 Loading Quiz...' : '🚀 Start Quiz'}
+                      {isSaving ? '🔄 Loading Quiz...' : 
+                       hasLinkedParents ? '🚀 Start Quiz' : '🎯 Start Quiz Now!'}
                     </button>
+                    
+                    {!hasLinkedParents && (
+                      <div style={{
+                        marginTop: '12px',
+                        padding: '8px',
+                        backgroundColor: '#F3E5F5',
+                        borderRadius: '8px',
+                        fontSize: '11px',
+                        color: '#7B1FA2',
+                        textAlign: 'center',
+                        fontStyle: 'italic',
+                        border: '1px solid #CE93D8'
+                      }}>
+                        💡 Tip: Quiz codes are usually 4-8 characters long
+                      </div>
+                    )}
                   </div>
 
-                  <div style={{
-                    marginBottom: '20px',
-                    padding: '20px',
-                    backgroundColor: '#F8F9FA',
-                    borderRadius: '16px',
-                    border: '2px solid #E9ECEF'
-                  }}>
+                  {/* CONDITIONAL: Request Later Section - Only show if parents are linked */}
+                  {hasLinkedParents && (
                     <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      marginBottom: '16px'
+                      marginBottom: '20px',
+                      padding: '20px',
+                      backgroundColor: '#F8F9FA',
+                      borderRadius: '16px',
+                      border: '2px solid #E9ECEF'
                     }}>
-                      <span style={{ fontSize: '24px' }}>📧</span>
-                      <div>
-                        <h4 style={{
-                          fontSize: '16px',
-                          fontWeight: '600',
-                          color: linkedParents.length > 0 ? '#495057' : '#999',
-                          margin: '0 0 4px 0',
-                          fontFamily: 'Avenir, system-ui, sans-serif'
-                        }}>
-                          Request Later
-                        </h4>
-                        <p style={{
-                          fontSize: '12px',
-                          color: linkedParents.length > 0 ? '#6C757D' : '#999',
-                          margin: '0',
-                          fontFamily: 'Avenir, system-ui, sans-serif'
-                        }}>
-                          {linkedParents.length > 0 
-                            ? 'If your parent is not available now' 
-                            : 'Link a parent account first to request access'}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    {linkedParents.length === 0 ? (
                       <div style={{
-                        backgroundColor: '#FFF3CD',
-                        border: '1px solid #FFECB5',
-                        borderRadius: '8px',
-                        padding: '12px',
-                        marginBottom: '12px'
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        marginBottom: '16px'
                       }}>
-                        <p style={{
-                          fontSize: '12px',
-                          color: '#856404',
-                          margin: 0,
-                          lineHeight: '1.5'
-                        }}>
-                          ⚠️ No parent account linked yet. Ask your parent to use the invite code in Settings to create their account first.
-                        </p>
+                        <span style={{ fontSize: '24px' }}>📧</span>
+                        <div>
+                          <h4 style={{
+                            fontSize: '16px',
+                            fontWeight: '600',
+                            color: '#495057',
+                            margin: '0 0 4px 0',
+                            fontFamily: 'Avenir, system-ui, sans-serif'
+                          }}>
+                            Request Later
+                          </h4>
+                          <p style={{
+                            fontSize: '12px',
+                            color: '#6C757D',
+                            margin: '0',
+                            fontFamily: 'Avenir, system-ui, sans-serif'
+                          }}>
+                            If your parent is not available now
+                          </p>
+                        </div>
                       </div>
-                    ) : (
+                      
                       <div style={{
                         backgroundColor: '#D4EDDA',
                         border: '1px solid #C3E6CB',
@@ -3810,50 +4162,107 @@ const handleQuizComplete = async (answers) => {
                           </p>
                         ))}
                       </div>
-                    )}
-                    
-                    <button
-                      onClick={handleRequestParentApproval}
-                      disabled={isSaving || linkedParents.length === 0}
-                      style={{
-                        width: '100%',
-                        backgroundColor: linkedParents.length > 0 ? '#6C757D' : '#E0E0E0',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '12px',
-                        padding: '14px',
-                        fontSize: '14px',
-                        fontWeight: '500',
-                        cursor: linkedParents.length > 0 ? 'pointer' : 'not-allowed',
-                        fontFamily: 'Avenir, system-ui, sans-serif',
-                        opacity: (isSaving || linkedParents.length === 0) ? 0.7 : 1,
-                        minHeight: '44px'
-                      }}
-                    >
-                      {isSaving ? 'Sending...' : 
-                       linkedParents.length === 0 ? '🔗 Link Parent First' :
-                       '📮 Send Request to Parent'}
-                    </button>
-                  </div>
+                      
+                      <button
+                        onClick={handleRequestParentApproval}
+                        disabled={isSaving}
+                        style={{
+                          width: '100%',
+                          backgroundColor: isSaving ? '#E0E0E0' : '#6C757D',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '12px',
+                          padding: '14px',
+                          fontSize: '14px',
+                          fontWeight: '500',
+                          cursor: isSaving ? 'wait' : 'pointer',
+                          fontFamily: 'Avenir, system-ui, sans-serif',
+                          opacity: isSaving ? 0.7 : 1,
+                          minHeight: '44px'
+                        }}
+                      >
+                        {isSaving ? 'Sending...' : '📮 Send Request to Parent'}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Enhanced messaging for no parents linked */}
+                  {!hasLinkedParents && (
+                    <div style={{
+                      backgroundColor: '#FFF3E0',
+                      borderRadius: '12px',
+                      padding: '16px',
+                      marginBottom: '20px',
+                      border: '2px solid #FFB74D'
+                    }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        marginBottom: '12px'
+                      }}>
+                        <span style={{ fontSize: '24px' }}>🔗</span>
+                        <div>
+                          <h4 style={{
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            color: '#E65100',
+                            margin: '0 0 4px 0'
+                          }}>
+                            Want Parent Notifications?
+                          </h4>
+                          <p style={{
+                            fontSize: '11px',
+                            color: '#F57C00',
+                            margin: '0'
+                          }}>
+                            Link a parent account for easier quiz access
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <button
+                        onClick={() => {
+                          setShowParentPermission(false);
+                          setParentCode('');
+                          router.push('/student-settings');
+                        }}
+                        style={{
+                          width: '100%',
+                          backgroundColor: '#FF9800',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '8px',
+                          padding: '10px',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          minHeight: '40px'
+                        }}
+                      >
+                        🔗 Link Parent Account
+                      </button>
+                    </div>
+                  )}
 
                   <button
-  onClick={() => {
-    setShowParentPermission(false);
-    setParentCode('');
-  }}
-  style={{
-    width: '100%',
-    backgroundColor: 'transparent',
-    color: fixedTextSecondary,
-    border: 'none',
-    padding: '16px',
-    fontSize: '14px',
-    cursor: 'pointer',
-    fontFamily: 'Avenir, system-ui, sans-serif'
-  }}
->
-  Cancel
-</button>
+                    onClick={() => {
+                      setShowParentPermission(false);
+                      setParentCode('');
+                    }}
+                    style={{
+                      width: '100%',
+                      backgroundColor: 'transparent',
+                      color: fixedTextSecondary,
+                      border: 'none',
+                      padding: '16px',
+                      fontSize: '14px',
+                      cursor: 'pointer',
+                      fontFamily: 'Avenir, system-ui, sans-serif'
+                    }}
+                  >
+                    Cancel
+                  </button>
                 </div>
               </div>
             </div>
@@ -4289,6 +4698,166 @@ const handleQuizComplete = async (answers) => {
   </div>
 )}
 
+        {/* FEATURE 1: Cancel Submission Confirmation Modal */}
+        {showCancelConfirmation && selectedBook && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            zIndex: 2002,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}>
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '16px',
+              maxWidth: '350px',
+              width: '100%',
+              padding: '24px',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.3)'
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: '16px'
+              }}>
+                <h2 style={{
+                  fontSize: '18px',
+                  fontWeight: 'bold',
+                  color: currentTheme.textPrimary,
+                  margin: 0
+                }}>
+                  ⚡ Cancel Submission?
+                </h2>
+                <button
+                  onClick={() => setShowCancelConfirmation(false)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '20px',
+                    cursor: 'pointer',
+                    color: '#6b7280',
+                    padding: '4px'
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div style={{
+                backgroundColor: '#FEF3CD',
+                borderRadius: '8px',
+                padding: '12px',
+                marginBottom: '16px',
+                border: '1px solid #F59E0B'
+              }}>
+                <p style={{
+                  fontSize: '14px',
+                  color: '#92400E',
+                  margin: '0 0 8px 0',
+                  fontWeight: '600'
+                }}>
+                  "{selectedBook.details.title}"
+                </p>
+                <p style={{
+                  fontSize: '12px',
+                  color: '#A16207',
+                  margin: 0
+                }}>
+                  Submission type: {formatSubmissionType(selectedBook.submissionType)}
+                </p>
+              </div>
+
+              <div style={{
+                backgroundColor: '#F3F4F6',
+                borderRadius: '8px',
+                padding: '12px',
+                marginBottom: '16px'
+              }}>
+                <h3 style={{
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  color: '#374151',
+                  margin: '0 0 8px 0'
+                }}>
+                  This will:
+                </h3>
+                <ul style={{
+                  fontSize: '11px',
+                  color: '#6b7280',
+                  margin: 0,
+                  paddingLeft: '16px',
+                  lineHeight: '1.4'
+                }}>
+                  <li>Remove your submission from the teacher's review queue</li>
+                  <li>Keep all your reading progress, rating, and notes</li>
+                  <li>Allow you to choose a different submission type</li>
+                  <li>No penalties - resubmit whenever you're ready</li>
+                </ul>
+              </div>
+
+              <div style={{
+                display: 'flex',
+                gap: '12px'
+              }}>
+                <button
+                  onClick={() => setShowCancelConfirmation(false)}
+                  style={{
+                    flex: 1,
+                    backgroundColor: '#f3f4f6',
+                    color: '#374151',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '10px',
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Keep Submission
+                </button>
+                
+                <button
+                  onClick={handleCancelSubmission}
+                  disabled={isSaving}
+                  style={{
+                    flex: 1,
+                    backgroundColor: isSaving ? '#D1D5DB' : '#F59E0B',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '10px',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    cursor: isSaving ? 'wait' : 'pointer',
+                    opacity: isSaving ? 0.7 : 1
+                  }}
+                >
+                  {isSaving ? 'Cancelling...' : '⚡ Cancel Submission'}
+                </button>
+              </div>
+              
+              {cancellationTimeRemaining > 0 && (
+                <div style={{
+                  textAlign: 'center',
+                  marginTop: '12px',
+                  fontSize: '10px',
+                  color: '#A16207',
+                  fontWeight: '600'
+                }}>
+                  Quick cancel expires in {formatCancellationTime(cancellationTimeRemaining)}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
 {/* SUCCESS MESSAGE */}
 {showSuccess && (
           <div style={{
@@ -4360,6 +4929,24 @@ const handleQuizComplete = async (answers) => {
     to {
       transform: translateX(-50%) translateY(0);
       opacity: 1;
+    }
+  }
+
+  @keyframes highlightPulse {
+    0%, 100% {
+      box-shadow: 0 4px 16px rgba(76, 175, 80, 0.2);
+    }
+    50% {
+      box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+    }
+  }
+
+  @keyframes gentleBounce {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-2px);
     }
   }
   
