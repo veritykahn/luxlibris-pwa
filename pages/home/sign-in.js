@@ -1,10 +1,11 @@
-// pages/home/sign-in.js - FIXED: No spaces in usernames, capitalized codes + Incomplete Account Detection
+// pages/home/sign-in.js - FIXED: Added failsafe for students who skipped first sign-in
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { authHelpers, dbHelpers, auth } from '../../lib/firebase';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, updateDoc, collection, getDocs, query, where } from 'firebase/firestore';
+import { authHelpers, dbHelpers, auth, db } from '../../lib/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { ForgotPasswordModal } from '../../components/ForgotPasswordModal';
 
@@ -170,21 +171,175 @@ export default function SignIn() {
     return password && password.length >= 5 && /^[a-z]+$/.test(password);
   };
 
-  // Perform student sign-in WITHOUT redirect
+  // Find student record by username and teacher code (copied from student-sign-in.js)
+  const findStudentByUsernameAndTeacherCode = async (username, teacherCode) => {
+    try {
+      console.log('🔍 Searching for student record:', username, teacherCode);
+      
+      // Search all entities for student with matching username and signInCode
+      const entitiesRef = collection(db, 'entities');
+      const entitiesSnapshot = await getDocs(entitiesRef);
+      
+      for (const entityDoc of entitiesSnapshot.docs) {
+        const entityId = entityDoc.id;
+        console.log(`🔍 Searching entity: ${entityId}`);
+        
+        try {
+          const schoolsRef = collection(db, `entities/${entityId}/schools`);
+          const schoolsSnapshot = await getDocs(schoolsRef);
+          
+          for (const schoolDoc of schoolsSnapshot.docs) {
+            const schoolId = schoolDoc.id;
+            console.log(`🔍 Searching school: ${schoolId}`);
+            
+            try {
+              const studentsRef = collection(db, `entities/${entityId}/schools/${schoolId}/students`);
+              const studentQuery = query(
+                studentsRef,
+                where('displayUsername', '==', username),
+                where('signInCode', '==', teacherCode)
+              );
+              const studentSnapshot = await getDocs(studentQuery);
+              
+              if (!studentSnapshot.empty) {
+                const studentDoc = studentSnapshot.docs[0];
+                console.log('✅ Found student record:', studentDoc.id);
+                return {
+                  id: studentDoc.id,
+                  entityId,
+                  schoolId,
+                  ...studentDoc.data()
+                };
+              }
+            } catch (studentError) {
+              console.log(`No students found in school ${schoolId}`);
+            }
+          }
+        } catch (schoolError) {
+          console.log(`No schools found in entity ${entityId}`);
+        }
+      }
+      
+      console.log('❌ Student record not found');
+      return null;
+    } catch (error) {
+      console.error('❌ Error searching for student:', error);
+      return null;
+    }
+  };
+
+  // Validate personal password
+  const validatePersonalPassword = (studentRecord, inputPassword) => {
+    // Check if student has a personal password set
+    if (!studentRecord.personalPassword) {
+      console.log('❌ Student missing personal password');
+      return { valid: false, error: 'Personal password not found. Please contact your teacher.' };
+    }
+    
+    // Validate password
+    const isValid = studentRecord.personalPassword === inputPassword.toLowerCase();
+    console.log(`🔐 Personal password validation: ${isValid ? 'SUCCESS' : 'FAILED'}`);
+    
+    return { valid: isValid, error: isValid ? null : 'Personal password is incorrect' };
+  };
+
+  // Enhanced student sign-in with failsafe for first-time users
   const performStudentSignIn = async () => {
     try {
-      console.log('🔐 Attempting student sign-in with enhanced authentication...');
+      console.log('🔐 Starting enhanced student sign-in process...');
       console.log('👤 Username:', formData.username);
       console.log('🏫 Teacher Code:', formData.teacherCode);
 
-      // Use the updated 3-parameter function
-      await authHelpers.signInStudentWithTeacherCode(
+      // Step 1: Find existing student record in database
+      console.log('📚 Step 1: Finding student record...');
+      const studentRecord = await findStudentByUsernameAndTeacherCode(
         formData.username, 
-        formData.teacherCode.toUpperCase(),
-        formData.personalPassword.toLowerCase()
+        formData.teacherCode.toUpperCase()
       );
       
-      console.log('✅ Student sign-in successful - waiting for profile to load');
+      if (!studentRecord) {
+        throw new Error('Username or teacher code is incorrect. Please check your information and try again.');
+      }
+
+      console.log('✅ Student record found:', studentRecord.firstName);
+      console.log('🔍 Student needs first sign-in:', studentRecord.needsFirstSignIn);
+
+      // Step 2: Validate personal password
+      console.log('🔐 Step 2: Validating personal password...');
+      const passwordCheck = validatePersonalPassword(studentRecord, formData.personalPassword);
+      
+      if (!passwordCheck.valid) {
+        throw new Error(passwordCheck.error);
+      }
+
+      // Step 3: Check if Firebase Auth account exists (failsafe detection)
+      const studentEmail = `${formData.username.toLowerCase()}@${formData.teacherCode.toLowerCase().replace(/[^a-z0-9]/g, '-')}.luxlibris.app`;
+      
+      if (!studentRecord.uid || studentRecord.needsFirstSignIn) {
+        console.log('🆕 FAILSAFE DETECTED: Student needs Firebase Auth account creation');
+        
+        // Create Firebase Auth user (same as in student-sign-in.js)
+        console.log('🔐 Step 3a: Creating Firebase Auth user...');
+        let firebaseUser;
+        try {
+          const userCredential = await createUserWithEmailAndPassword(auth, studentEmail, formData.teacherCode);
+          firebaseUser = userCredential.user;
+          console.log('✅ Firebase Auth user created:', firebaseUser.uid);
+        } catch (authError) {
+          console.error('❌ Firebase Auth error:', authError);
+          if (authError.code === 'auth/email-already-in-use') {
+            // If email exists, try to sign in instead
+            console.log('📧 Email exists, attempting sign-in...');
+            try {
+              const signInCredential = await signInWithEmailAndPassword(auth, studentEmail, formData.teacherCode);
+              firebaseUser = signInCredential.user;
+              console.log('✅ Successfully signed in existing Firebase Auth user:', firebaseUser.uid);
+            } catch (signInError) {
+              throw new Error('Account exists but sign-in failed. Please contact your teacher for help.');
+            }
+          } else if (authError.code === 'auth/weak-password') {
+            throw new Error('Teacher code is too short. Please contact your teacher.');
+          } else {
+            throw new Error('Failed to create your account. Please try again or contact your teacher.');
+          }
+        }
+
+        // Update student record with Firebase UID and first sign-in completion
+        console.log('💾 Step 3b: Updating student record with UID...');
+        try {
+          const studentRef = doc(db, `entities/${studentRecord.entityId}/schools/${studentRecord.schoolId}/students`, studentRecord.id);
+          await updateDoc(studentRef, {
+            uid: firebaseUser.uid,
+            needsFirstSignIn: false,
+            lastSignIn: new Date()
+          });
+          console.log('✅ Student record updated with UID and first sign-in completion');
+        } catch (updateError) {
+          console.error('❌ Database update error:', updateError);
+          throw new Error('Account created but failed to link to your profile. Please contact your teacher.');
+        }
+
+        console.log('🎉 First-time sign-in completed successfully via failsafe!');
+        
+      } else {
+        // Regular sign-in for students who already have Firebase Auth accounts
+        console.log('🔐 Step 3: Regular Firebase Auth sign-in...');
+        try {
+          await signInWithEmailAndPassword(auth, studentEmail, formData.teacherCode);
+          console.log('✅ Regular Firebase Auth sign-in successful');
+          
+          // Update last sign-in timestamp
+          const studentRef = doc(db, `entities/${studentRecord.entityId}/schools/${studentRecord.schoolId}/students`, studentRecord.id);
+          await updateDoc(studentRef, {
+            lastSignIn: new Date()
+          });
+        } catch (signInError) {
+          console.error('❌ Regular sign-in failed:', signInError);
+          throw new Error('Sign-in failed. Please check your teacher code or contact your teacher.');
+        }
+      }
+      
+      console.log('✅ Student sign-in process completed - waiting for profile to load');
       
     } catch (error) {
       console.error('❌ Student sign-in error:', error);
@@ -273,7 +428,7 @@ export default function SignIn() {
           return;
         }
 
-        // Handle student sign-in
+        // Handle student sign-in with failsafe
         await performStudentSignIn();
         
       } else if (formData.accountType === 'educator') {
@@ -776,7 +931,7 @@ export default function SignIn() {
                       margin: 0,
                       lineHeight: '1.4'
                     }}>
-                      🔐 <strong>Secure Sign-In:</strong> Your username and teacher code identify you, and your personal password keeps your account safe!
+                      🔐 <strong>Secure Sign-In:</strong> Your username and teacher code identify you, and your personal password keeps your account safe! <em>(Works even if you skipped signing in after account creation)</em>
                     </p>
                   </div>
                 </div>
