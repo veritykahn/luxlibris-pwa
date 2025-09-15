@@ -1009,15 +1009,23 @@ if (isOnlyRatingNotesUpdate || (isSliderLocked && isNowCompleted)) {
   setShowSuccess('💾 Progress saved!');
   
   // CHECK CONTENT BADGES
-  const updatedStudent = { ...studentData, bookshelf: updatedBookshelf };
-  let badgeEarned = null;
+const updatedStudent = { ...studentData, bookshelf: updatedBookshelf };
 
-  // Check Peacock Pride (first rating)
-  if (tempRating > 0 && !badgeEarned) {
-    badgeEarned = await checkSpecificContentBadge(
-      updatedStudent, studentData.entityId, studentData.schoolId, "Peacock Pride"
-    );
+// Check Woodpecker Wisdom (progress update)
+if (tempProgress > 0 && !badgeEarned) {
+  badgeEarned = await checkSpecificContentBadge(
+    updatedStudent, studentData.entityId, studentData.schoolId, "Woodpecker Wisdom"
+  );
+  
+  // If badge was earned, update local state immediately
+  if (badgeEarned) {
+    setStudentData(prev => ({
+      ...prev,
+      [`badgeEarnedWeek${badgeEarned.week}`]: true,
+      totalXP: (prev.totalXP || 0) + (badgeEarned.xpAwarded || badgeEarned.xp || 85)
+    }));
   }
+}
 
   // Check for notes badges
   if (tempNotes.trim().length > 0 && !badgeEarned) {

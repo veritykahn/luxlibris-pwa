@@ -343,22 +343,23 @@ Object.values(dailyMinutes).forEach(minutes => {
       switch (weekBadge.name) {
         // CONTENT BADGES (shouldn't be in timer progress)
         case "Hummingbird Herald":
-        case "Peacock Pride":
-        case "Woodpecker Wisdom":
-        case "Raven Ratings":
-        case "Spoonbill Scholar":
-        case "Gannet Sprint":
-        case "Cormorant Democracy":
-          // These are content badges, not timer badges
-          progress = {
-            type: 'content_badge',
-            current: 0,
-            target: 1,
-            percentage: 0,
-            description: 'This is a content badge, not a timer badge',
-            completed: false
-          };
-          break;
+case "Peacock Pride":
+case "Woodpecker Wisdom":
+case "Raven Ratings":
+case "Spoonbill Scholar":
+case "Gannet Sprint":
+case "Cormorant Democracy":
+  // Check if content badge has been earned
+  const isContentBadgeEarned = studentData[`badgeEarnedWeek${weekBadge.week}`] || false;
+  progress = {
+    type: 'content_badge',
+    current: isContentBadgeEarned ? 1 : 0,
+    target: 1,
+    percentage: isContentBadgeEarned ? 100 : 0,
+    description: 'Complete the required action to earn this content badge',
+    completed: isContentBadgeEarned
+  };
+  break;
         
         // FIRST SESSION BADGES
         case "Kingfisher Kickoff":
