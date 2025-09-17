@@ -1009,10 +1009,11 @@ if (isOnlyRatingNotesUpdate || (isSliderLocked && isNowCompleted)) {
   setShowSuccess('💾 Progress saved!');
   
   // CHECK CONTENT BADGES
-const updatedStudent = { ...studentData, bookshelf: updatedBookshelf };
+  const updatedStudent = { ...studentData, bookshelf: updatedBookshelf };
+  let badgeEarned = null;  // <-- THIS IS THE NEW LINE TO ADD
 
-// Check Woodpecker Wisdom (progress update)
-if (tempProgress > 0 && !badgeEarned) {
+  // Check Woodpecker Wisdom (progress update)
+  if (tempProgress > 0 && !badgeEarned) {
   badgeEarned = await checkSpecificContentBadge(
     updatedStudent, studentData.entityId, studentData.schoolId, "Woodpecker Wisdom"
   );
