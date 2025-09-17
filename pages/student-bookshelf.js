@@ -1054,10 +1054,10 @@ if (isOnlyRatingNotesUpdate || (isSliderLocked && isNowCompleted)) {
     setShowSuccess(`🎉 Badge earned: ${badgeEarned.name}!`);
   }
   
-  // Don't close modal, just show success
-  setTimeout(() => setShowSuccess(''), 3000);
-  setIsSaving(false);
-  return;
+  closeBookModal();
+setTimeout(() => setShowSuccess(''), 3000);
+setIsSaving(false);
+return;
 }
       
       // Block progress changes that would trigger completion when locked (unless ready for resubmission)
