@@ -1,4 +1,4 @@
-// pages/teacher/submissions.js - Fixed with transactions and proper error handling
+// pages/teacher/submissions.js - Enhanced with student review display
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
@@ -34,6 +34,7 @@ export default function TeacherSubmissions() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [showSuccess, setShowSuccess] = useState('')
   const [showTimeoutWarning, setShowTimeoutWarning] = useState(false)
+  const [expandedReviews, setExpandedReviews] = useState(new Set())
   
   // Notes modal state
   const [showNotesModal, setShowNotesModal] = useState(false)
@@ -196,6 +197,19 @@ export default function TeacherSubmissions() {
     }
   }
 
+  // Toggle review expansion
+  const toggleReviewExpansion = (submissionId) => {
+    setExpandedReviews(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(submissionId)) {
+        newSet.delete(submissionId)
+      } else {
+        newSet.add(submissionId)
+      }
+      return newSet
+    })
+  }
+
   // Open notes modal for approve/revise
   const openNotesModal = (submission, action) => {
     setSelectedSubmission(submission)
@@ -224,7 +238,7 @@ export default function TeacherSubmissions() {
     setSelectedSubmission(null)
   }
 
-  // FIXED: Handle submission approval/revision with transaction
+  // Handle submission approval/revision with transaction
   const handleSubmissionAction = async () => {
     if (!selectedSubmission) return
 
@@ -283,7 +297,7 @@ export default function TeacherSubmissions() {
         })
       })
 
-      // FIXED: Only update UI after successful database transaction
+      // Only update UI after successful database transaction
       setSubmissions(prev => prev.filter(sub => sub.id !== selectedSubmission.id))
       
       const actionText = actionType === 'approve' ? 'approved' : 'revision requested'
@@ -294,10 +308,8 @@ export default function TeacherSubmissions() {
 
     } catch (error) {
       console.error('❌ Error processing submission:', error)
-      // Don't update UI on failure - submission stays in queue
       if (error.message.includes('no longer exists')) {
         setShowSuccess('❌ This submission was already processed. Refreshing...')
-        // Refresh the submissions list
         setTimeout(() => {
           loadSubmissions()
           setShowSuccess('')
@@ -311,7 +323,7 @@ export default function TeacherSubmissions() {
     }
   }
 
-  // FIXED: Handle submission cancellation/reversal with transaction
+  // Handle submission cancellation/reversal with transaction
   const handleSubmissionCancellation = async () => {
     if (!selectedSubmission) return
 
@@ -374,7 +386,7 @@ export default function TeacherSubmissions() {
         })
       })
 
-      // FIXED: Only update UI after successful database transaction
+      // Only update UI after successful database transaction
       setSubmissions(prev => prev.filter(sub => sub.id !== selectedSubmission.id))
       
       setShowSuccess(`🔄 ${selectedSubmission.studentName}'s "${selectedSubmission.bookTitle}" submission cancelled - book returned to in-progress`)
@@ -384,7 +396,6 @@ export default function TeacherSubmissions() {
 
     } catch (error) {
       console.error('❌ Error cancelling submission:', error)
-      // Don't update UI on failure
       if (error.message.includes('no longer exists')) {
         setShowSuccess('❌ This submission was already processed. Refreshing...')
         setTimeout(() => {
@@ -833,30 +844,33 @@ export default function TeacherSubmissions() {
             </div>
           ) : (
             <div style={{
-              background: 'white',
-              borderRadius: '1rem',
-              padding: '1.5rem',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)'
+              display: 'grid',
+              gap: '1rem'
             }}>
-              <div style={{
-                display: 'grid',
-                gap: '1rem'
-              }}>
-                {submissions.map(submission => (
+              {submissions.map(submission => {
+                const isExpanded = expandedReviews.has(submission.id)
+                const hasReview = submission.notes && submission.notes.trim().length > 0
+                const reviewText = submission.notes?.trim() || ''
+                const shouldTruncate = reviewText.length > 200 && !isExpanded
+
+                return (
                   <div
                     key={submission.id}
                     style={{
-                      border: '1px solid #e5e7eb',
+                      background: 'white',
+                      border: '2px solid #e5e7eb',
                       borderRadius: '0.75rem',
-                      padding: '1.25rem',
-                      backgroundColor: '#fafafa'
+                      padding: '1.5rem',
+                      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)'
                     }}
                   >
+                    {/* Header Section */}
                     <div style={{
                       display: 'flex',
                       alignItems: 'flex-start',
                       justifyContent: 'space-between',
-                      gap: '1rem'
+                      gap: '1rem',
+                      marginBottom: hasReview ? '1rem' : '0'
                     }}>
                       <div style={{ flex: 1 }}>
                         <div style={{
@@ -903,7 +917,17 @@ export default function TeacherSubmissions() {
                         }}>
                           <span>Submitted: {formatDate(submission.submittedAt)}</span>
                           {submission.rating > 0 && (
-                            <span>Student rating: {'★'.repeat(submission.rating)}</span>
+                            <span style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.25rem'
+                            }}>
+                              Student rating: 
+                              <span style={{ color: '#F59E0B' }}>
+                                {'★'.repeat(submission.rating)}{'☆'.repeat(5 - submission.rating)}
+                              </span>
+                              ({submission.rating}/5)
+                            </span>
                           )}
                         </div>
                       </div>
@@ -973,14 +997,97 @@ export default function TeacherSubmissions() {
                         </button>
                       </div>
                     </div>
+
+                    {/* Student's Review Section */}
+                    {hasReview && (
+                      <div style={{
+                        marginTop: '1rem',
+                        padding: '1rem',
+                        background: 'linear-gradient(135deg, #F8FAFB, #F3F4F6)',
+                        borderRadius: '0.5rem',
+                        border: '1px solid #E5E7EB'
+                      }}>
+                        <div style={{
+                          fontSize: '0.875rem',
+                          fontWeight: '600',
+                          color: '#374151',
+                          marginBottom: '0.5rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem'
+                        }}>
+                          <span>📝</span>
+                          Student's Review:
+                        </div>
+                        <div style={{
+                          fontSize: '0.95rem',
+                          color: '#1F2937',
+                          lineHeight: '1.6',
+                          whiteSpace: 'pre-wrap',
+                          wordBreak: 'break-word'
+                        }}>
+                          {shouldTruncate 
+                            ? `${reviewText.substring(0, 200)}...` 
+                            : reviewText
+                          }
+                        </div>
+                        {reviewText.length > 200 && (
+                          <button
+                            onClick={() => toggleReviewExpansion(submission.id)}
+                            style={{
+                              marginTop: '0.5rem',
+                              padding: '0.25rem 0.5rem',
+                              background: 'none',
+                              color: '#0EA5E9',
+                              border: 'none',
+                              fontSize: '0.875rem',
+                              fontWeight: '500',
+                              cursor: 'pointer',
+                              textDecoration: 'underline'
+                            }}
+                          >
+                            {isExpanded ? 'Show Less' : 'Read More'}
+                          </button>
+                        )}
+                        <div style={{
+                          marginTop: '0.5rem',
+                          fontSize: '0.75rem',
+                          color: '#9CA3AF'
+                        }}>
+                          Review length: {reviewText.length} characters
+                        </div>
+                      </div>
+                    )}
+
+                    {/* No Review Notice */}
+                    {!hasReview && submission.submissionType === 'submitReview' && (
+                      <div style={{
+                        marginTop: '1rem',
+                        padding: '1rem',
+                        background: '#FEF3C7',
+                        borderRadius: '0.5rem',
+                        border: '1px solid #FBBF24'
+                      }}>
+                        <div style={{
+                          fontSize: '0.875rem',
+                          color: '#92400E',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem'
+                        }}>
+                          <span>⚠️</span>
+                          <span>No written review submitted</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                ))}
-              </div>
+                )
+              })}
             </div>
           )}
         </div>
 
-        {/* Notes Modal (Approve/Revise) - ENHANCED with feedback guidance */}
+        {/* Notes Modal (Approve/Revise) - ENHANCED with review display */}
         {showNotesModal && selectedSubmission && (
           <div style={{
             position: 'fixed',
@@ -999,7 +1106,7 @@ export default function TeacherSubmissions() {
               backgroundColor: 'white',
               borderRadius: '1rem',
               padding: '1.5rem',
-              maxWidth: '500px',
+              maxWidth: '600px',
               width: '100%',
               maxHeight: '90vh',
               overflowY: 'auto',
@@ -1039,7 +1146,7 @@ export default function TeacherSubmissions() {
                 backgroundColor: '#f8fafc',
                 borderRadius: '0.5rem',
                 padding: '1rem',
-                marginBottom: '1.5rem'
+                marginBottom: '1rem'
               }}>
                 <p style={{
                   fontSize: '0.875rem',
@@ -1057,6 +1164,36 @@ export default function TeacherSubmissions() {
                   Submission type: {formatSubmissionType(selectedSubmission.submissionType)}
                 </p>
               </div>
+
+              {/* Display student's review if it exists */}
+              {selectedSubmission.notes && selectedSubmission.notes.trim().length > 0 && (
+                <div style={{
+                  marginBottom: '1rem',
+                  padding: '1rem',
+                  background: 'linear-gradient(135deg, #EFF6FF, #DBEAFE)',
+                  borderRadius: '0.5rem',
+                  border: '1px solid #93C5FD'
+                }}>
+                  <div style={{
+                    fontSize: '0.875rem',
+                    fontWeight: '600',
+                    color: '#1E40AF',
+                    marginBottom: '0.5rem'
+                  }}>
+                    Student's Review:
+                  </div>
+                  <div style={{
+                    fontSize: '0.875rem',
+                    color: '#1F2937',
+                    lineHeight: '1.5',
+                    whiteSpace: 'pre-wrap',
+                    maxHeight: '150px',
+                    overflowY: 'auto'
+                  }}>
+                    {selectedSubmission.notes}
+                  </div>
+                </div>
+              )}
 
               <div style={{ marginBottom: '1.5rem' }}>
                 <label style={{
