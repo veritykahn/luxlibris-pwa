@@ -1017,7 +1017,7 @@ export default function TeacherSubmissions() {
                           gap: '0.5rem'
                         }}>
                           <span>📝</span>
-                          Student's Review:
+                          Student&apos;s Review:
                         </div>
                         <div style={{
                           fontSize: '0.95rem',
@@ -1180,7 +1180,7 @@ export default function TeacherSubmissions() {
                     color: '#1E40AF',
                     marginBottom: '0.5rem'
                   }}>
-                    Student's Review:
+                    Student&apos;s Review:
                   </div>
                   <div style={{
                     fontSize: '0.875rem',
