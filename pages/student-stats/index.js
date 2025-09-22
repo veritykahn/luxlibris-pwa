@@ -626,20 +626,61 @@ case "Cormorant Democracy":
           break;
         
         // IMPROVEMENT BADGES (need special logic)
-        case "Goose Goals":
-        case "Roller Progress":
-        case "Avocet Achievement":
-        case "Turnstone Variety":
-          // These need comparison with previous week or special calculations
-          progress = {
-            type: 'special',
-            current: 0,
-            target: 1,
-            percentage: 0,
-            description: 'Special requirements - check badge description',
-            completed: false
-          };
-          break;
+       case "Goose Goals":
+  // Calculate last week vs this week minutes
+  const lastWeekStart = new Date(weekStart);
+  lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+  const lastWeekEnd = new Date(weekEnd);
+  lastWeekEnd.setDate(lastWeekEnd.getDate() - 7);
+  
+  // Get last week's sessions (both completed AND banked sessions count)
+  let lastWeekMinutes = 0;
+  sessions.forEach(session => {
+    const sessionDate = new Date(session.date + 'T00:00:00');
+    if (sessionDate >= lastWeekStart && sessionDate <= lastWeekEnd) {
+      lastWeekMinutes += session.duration || 0;
+    }
+  });
+  
+  const thisWeekMinutes = totalMinutes;
+  
+  // If last week was 0, any reading this week counts as improvement
+  let targetMinutes, hasImprovement;
+  if (lastWeekMinutes === 0) {
+    targetMinutes = 1; // Just need 1 minute to show improvement from 0
+    hasImprovement = thisWeekMinutes >= 1;
+  } else {
+    targetMinutes = Math.ceil(lastWeekMinutes * 1.2); // 20% more
+    hasImprovement = thisWeekMinutes >= targetMinutes;
+  }
+  
+  progress = {
+    type: 'weekly_improvement',
+    current: thisWeekMinutes,
+    target: targetMinutes,
+    percentage: Math.min(100, Math.round((thisWeekMinutes / targetMinutes) * 100)),
+    description: lastWeekMinutes === 0 ? 
+      'Read 1+ minutes this week (improvement from 0 last week)' :
+      `Read ${targetMinutes} minutes (20% more than last week's ${lastWeekMinutes})`,
+    completed: hasImprovement,
+    lastWeekMinutes: lastWeekMinutes,
+    thisWeekMinutes: thisWeekMinutes
+  };
+  break;
+
+case "Roller Progress":
+case "Avocet Achievement":
+case "Turnstone Variety":
+  // These need comparison with previous week or special calculations
+  progress = {
+    type: 'special',
+    current: 0,
+    target: 1,
+    percentage: 0,
+    description: 'Special requirements - check badge description',
+    completed: false
+  };
+  break;
         
         default:
           console.warn(`Unknown badge in progress calculation: ${weekBadge.name}`);
