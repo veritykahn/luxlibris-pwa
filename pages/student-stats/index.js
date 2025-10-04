@@ -627,58 +627,141 @@ case "Cormorant Democracy":
         
         // IMPROVEMENT BADGES (need special logic)
        case "Goose Goals":
-  // Calculate last week vs this week minutes
-  const lastWeekStart = new Date(weekStart);
-  lastWeekStart.setDate(lastWeekStart.getDate() - 7);
-  const lastWeekEnd = new Date(weekEnd);
-  lastWeekEnd.setDate(lastWeekEnd.getDate() - 7);
+  // Calculate last week vs this week minutes (20% improvement)
+  const gooseLastWeekStart = new Date(weekStart);
+  gooseLastWeekStart.setDate(gooseLastWeekStart.getDate() - 7);
+  const gooseLastWeekEnd = new Date(weekEnd);
+  gooseLastWeekEnd.setDate(gooseLastWeekEnd.getDate() - 7);
   
-  // Get last week's sessions (both completed AND banked sessions count)
-  let lastWeekMinutes = 0;
+  // Get last week's sessions (both completed and banked)
+  let gooseLastWeekMinutes = 0;
   sessions.forEach(session => {
     const sessionDate = new Date(session.date + 'T00:00:00');
-    if (sessionDate >= lastWeekStart && sessionDate <= lastWeekEnd) {
-      lastWeekMinutes += session.duration || 0;
+    if (sessionDate >= gooseLastWeekStart && sessionDate <= gooseLastWeekEnd) {
+      gooseLastWeekMinutes += session.duration || 0;
     }
   });
   
-  const thisWeekMinutes = totalMinutes;
+  const gooseThisWeekMinutes = totalMinutes;
   
   // If last week was 0, any reading this week counts as improvement
-  let targetMinutes, hasImprovement;
-  if (lastWeekMinutes === 0) {
-    targetMinutes = 1; // Just need 1 minute to show improvement from 0
-    hasImprovement = thisWeekMinutes >= 1;
+  let gooseTargetMinutes, gooseHasImprovement;
+  if (gooseLastWeekMinutes === 0) {
+    gooseTargetMinutes = 1;
+    gooseHasImprovement = gooseThisWeekMinutes >= 1;
   } else {
-    targetMinutes = Math.ceil(lastWeekMinutes * 1.2); // 20% more
-    hasImprovement = thisWeekMinutes >= targetMinutes;
+    gooseTargetMinutes = Math.ceil(gooseLastWeekMinutes * 1.2); // 20% more
+    gooseHasImprovement = gooseThisWeekMinutes >= gooseTargetMinutes;
   }
   
   progress = {
-    type: 'weekly_improvement',
-    current: thisWeekMinutes,
-    target: targetMinutes,
-    percentage: Math.min(100, Math.round((thisWeekMinutes / targetMinutes) * 100)),
-    description: lastWeekMinutes === 0 ? 
+    type: 'weekly_improvement_20',
+    current: gooseThisWeekMinutes,
+    target: gooseTargetMinutes,
+    percentage: Math.min(100, Math.round((gooseThisWeekMinutes / gooseTargetMinutes) * 100)),
+    description: gooseLastWeekMinutes === 0 ? 
       'Read 1+ minutes this week (improvement from 0 last week)' :
-      `Read ${targetMinutes} minutes (20% more than last week's ${lastWeekMinutes})`,
-    completed: hasImprovement,
-    lastWeekMinutes: lastWeekMinutes,
-    thisWeekMinutes: thisWeekMinutes
+      `Read ${gooseTargetMinutes} minutes (20% more than last week's ${gooseLastWeekMinutes})`,
+    completed: gooseHasImprovement,
+    lastWeekMinutes: gooseLastWeekMinutes,
+    thisWeekMinutes: gooseThisWeekMinutes
+  };
+  break;
+
+case "Avocet Achievement":
+  // Average 30+ minutes per session this week
+  const avocetAverage = completedSessions > 0 ? totalMinutes / completedSessions : 0;
+  const avocetTarget = 30;
+  const avocetMeetsTarget = avocetAverage >= avocetTarget;
+  
+  progress = {
+    type: 'session_average',
+    current: Math.round(avocetAverage),
+    target: avocetTarget,
+    percentage: Math.min(100, Math.round((avocetAverage / avocetTarget) * 100)),
+    description: completedSessions > 0 ?
+      `Average ${Math.round(avocetAverage)} min/session (need 30+ min average)` :
+      'Complete sessions to track average (need 30+ min average)',
+    completed: avocetMeetsTarget,
+    sessionsCount: completedSessions,
+    totalMinutes: totalMinutes
+  };
+  break;
+
+case "Turnstone Variety":
+  // Read at different times each day (morning, afternoon, evening)
+  const timeCategories = new Set();
+  sessions.forEach(session => {
+    if (session.completed && session.startTime) {
+      const sessionTime = session.startTime.toDate ? session.startTime.toDate() : new Date(session.startTime);
+      const hour = sessionTime.getHours();
+      
+      if (hour >= 5 && hour < 12) {
+        timeCategories.add('morning');
+      } else if (hour >= 12 && hour < 17) {
+        timeCategories.add('afternoon');
+      } else if (hour >= 17 && hour < 22) {
+        timeCategories.add('evening');
+      }
+    }
+  });
+  
+  const varietyCount = timeCategories.size;
+  const varietyTarget = 3; // morning, afternoon, evening
+  const hasVariety = varietyCount >= varietyTarget;
+  
+  const timesReadable = Array.from(timeCategories).join(', ') || 'none yet';
+  
+  progress = {
+    type: 'time_variety',
+    current: varietyCount,
+    target: varietyTarget,
+    percentage: Math.round((varietyCount / varietyTarget) * 100),
+    description: `Read during ${varietyCount}/3 time periods (${timesReadable})`,
+    completed: hasVariety,
+    timeCategories: Array.from(timeCategories)
   };
   break;
 
 case "Roller Progress":
-case "Avocet Achievement":
-case "Turnstone Variety":
-  // These need comparison with previous week or special calculations
+  // Read more minutes than last week (any improvement)
+  const rollerLastWeekStart = new Date(weekStart);
+  rollerLastWeekStart.setDate(rollerLastWeekStart.getDate() - 7);
+  const rollerLastWeekEnd = new Date(weekEnd);
+  rollerLastWeekEnd.setDate(rollerLastWeekEnd.getDate() - 7);
+  
+  // Get last week's sessions (both completed and banked)
+  let rollerLastWeekMinutes = 0;
+  sessions.forEach(session => {
+    const sessionDate = new Date(session.date + 'T00:00:00');
+    if (sessionDate >= rollerLastWeekStart && sessionDate <= rollerLastWeekEnd) {
+      rollerLastWeekMinutes += session.duration || 0;
+    }
+  });
+  
+  const rollerThisWeekMinutes = totalMinutes;
+  
+  // If last week was 0, any reading this week counts as improvement
+  let rollerTargetMinutes, rollerHasImprovement;
+  if (rollerLastWeekMinutes === 0) {
+    rollerTargetMinutes = 1;
+    rollerHasImprovement = rollerThisWeekMinutes >= 1;
+  } else {
+    rollerTargetMinutes = rollerLastWeekMinutes + 1; // Just 1 more minute
+    rollerHasImprovement = rollerThisWeekMinutes > rollerLastWeekMinutes;
+  }
+  
   progress = {
-    type: 'special',
-    current: 0,
-    target: 1,
-    percentage: 0,
-    description: 'Special requirements - check badge description',
-    completed: false
+    type: 'weekly_improvement_any',
+    current: rollerThisWeekMinutes,
+    target: rollerTargetMinutes,
+    percentage: Math.min(100, Math.round((rollerThisWeekMinutes / rollerTargetMinutes) * 100)),
+    description: rollerLastWeekMinutes === 0 ? 
+      'Read 1+ minutes this week (improvement from 0 last week)' :
+      `Read ${rollerTargetMinutes}+ minutes (beat last week's ${rollerLastWeekMinutes})`,
+    completed: rollerHasImprovement,
+    lastWeekMinutes: rollerLastWeekMinutes,
+    thisWeekMinutes: rollerThisWeekMinutes
   };
   break;
         
