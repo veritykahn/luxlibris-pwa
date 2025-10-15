@@ -1,13 +1,12 @@
-// pages/teacher/achievements.js - Updated with real-time phase access and new export functions
+// pages/teacher/achievements.js - Updated with Lux Libris branding and achievement terminology
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
-import { usePhaseAccess } from '../../hooks/usePhaseAccess' // Use the updated hook
+import { usePhaseAccess } from '../../hooks/usePhaseAccess'
 import { db } from '../../lib/firebase'
 import { collection, getDocs, query, where } from 'firebase/firestore'
 import { generateAwardsSpeech } from '../../lib/templates/speechTemplate'
-import { emailTemplates, getCurrentEmailTemplate } from '../../lib/templates/emailTemplates'
 
 export default function TeacherAchievements() {
   const router = useRouter()
@@ -21,7 +20,6 @@ export default function TeacherAchievements() {
     updateLastActivity
   } = useAuth()
 
-  // Use the updated phase access hook
   const { 
     phaseData, 
     permissions, 
@@ -39,9 +37,6 @@ export default function TeacherAchievements() {
   const [showSuccess, setShowSuccess] = useState('')
   const [showTimeoutWarning, setShowTimeoutWarning] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
-  const [showEmailModal, setShowEmailModal] = useState(false)
-  const [selectedEmailTemplate, setSelectedEmailTemplate] = useState(null)
-  const [copiedEmail, setCopiedEmail] = useState(false)
   const [expandedTiers, setExpandedTiers] = useState(new Set())
   const [allExpanded, setAllExpanded] = useState(false)
 
@@ -120,7 +115,6 @@ export default function TeacherAchievements() {
         return
       }
 
-      // Find teacher document by UID
       const teachersRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers`)
       const teacherQuery = query(teachersRef, where('uid', '==', userProfile.uid))
       const teacherSnapshot = await getDocs(teacherQuery)
@@ -135,25 +129,18 @@ export default function TeacherAchievements() {
       const teacherData = teacherDoc.data()
       const teacherId = teacherDoc.id
 
-      // Get achievement tiers from teacher's configuration
       const tiers = teacherData.achievementTiers || []
       console.log('🎯 Achievement tiers:', tiers)
       setAchievementTiers(tiers)
       
-      // Get the actual number of books selected by the teacher
       const selectedBooksCount = teacherData.selectedNominees?.length || 0
       console.log('📚 Teacher has selected', selectedBooksCount, 'books')
       
-      // Store this for use in speech generation
       window.totalBooksInProgram = selectedBooksCount
 
-      // Load all students (app + manual)
       const students = []
-
-      // Find the highest book requirement from achievement tiers
       const maxBookRequirement = Math.max(...tiers.map(tier => tier.books))
 
-      // Load app students
       const appStudentsRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/students`)
       const appStudentsQuery = query(appStudentsRef, where('currentTeacherId', '==', teacherId))
       const appStudentsSnapshot = await getDocs(appStudentsQuery)
@@ -166,12 +153,11 @@ export default function TeacherAchievements() {
             type: 'app',
             booksCompleted: studentData.booksSubmittedThisYear || 0,
             lifetimeBooksCompleted: studentData.lifetimeBooksSubmitted || 0,
-            maxBookRequirement // Pass this through for the calculation
+            maxBookRequirement
           })
         }
       })
 
-      // Load manual students
       const manualStudentsRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers/${teacherId}/manualStudents`)
       let manualStudentsSnapshot = { docs: [] }
       try {
@@ -187,14 +173,13 @@ export default function TeacherAchievements() {
           type: 'manual',
           booksCompleted: studentData.totalBooksThisYear || 0,
           lifetimeBooksCompleted: studentData.lifetimeBooksSubmitted || studentData.totalBooksThisYear || 0,
-          maxBookRequirement // Pass this through for the calculation
+          maxBookRequirement
         })
       })
 
       console.log('📚 All students loaded:', students.length)
       setAllStudents(students)
 
-      // Calculate achievements for each tier
       const achievements = calculateAchievements(tiers, students)
       setStudentAchievements(achievements)
 
@@ -205,20 +190,16 @@ export default function TeacherAchievements() {
     }
   }
 
-  // Calculate which students achieved which tiers (for display)
   const calculateAchievements = (tiers, students) => {
-    // Find the highest book requirement
     const maxBookRequirement = Math.max(...tiers.map(t => t.books))
     
     const achievements = tiers.map(tier => {
       const achievedStudents = students.filter(student => {
-        // Use lifetime books for the highest tier, yearly for all others
         const booksToCheck = tier.books === maxBookRequirement 
           ? student.lifetimeBooksCompleted 
           : student.booksCompleted
         return booksToCheck >= tier.books
       }).sort((a, b) => {
-        // Sort by books completed (highest first), then by name
         if (b.booksCompleted !== a.booksCompleted) {
           return b.booksCompleted - a.booksCompleted
         }
@@ -232,20 +213,16 @@ export default function TeacherAchievements() {
       }
     })
 
-    // Sort tiers by book requirement (lowest first)
     return achievements.sort((a, b) => a.books - b.books)
   }
 
-  // New function to get highest achievement for each student (for export only)
   const getStudentsHighestAchievements = () => {
     const studentsWithHighestTier = new Map()
     
-    // Process tiers from highest to lowest
     const sortedAchievements = [...studentAchievements].sort((a, b) => b.books - a.books)
     
     sortedAchievements.forEach(achievement => {
       achievement.achievedStudents.forEach(student => {
-        // Only add student if not already placed in a higher tier
         if (!studentsWithHighestTier.has(student.id)) {
           studentsWithHighestTier.set(student.id, {
             ...student,
@@ -258,7 +235,6 @@ export default function TeacherAchievements() {
     return studentsWithHighestTier
   }
 
-  // Export achievements as TXT
   const exportAchievements = () => {
     setIsExporting(true)
     
@@ -289,7 +265,6 @@ export default function TeacherAchievements() {
     }
   }
 
-  // Generate TXT content (for achievement report - shows students in ALL tiers they achieved)
   const generateTXT = () => {
     const currentDate = new Date().toLocaleDateString()
     const schoolName = userProfile.schoolName || 'School'
@@ -303,14 +278,13 @@ export default function TeacherAchievements() {
     txt += `Total Students: ${allStudents.length}\n\n`
 
     txt += `${'─'.repeat(60)}\n`
-    txt += `ACHIEVEMENT SUMMARY - CERTIFICATE PRINTING GUIDE\n`
+    txt += `ACHIEVEMENT SUMMARY - ACHIEVEMENT GUIDE\n`
     txt += `${'─'.repeat(60)}\n\n`
     
-    // For the report, show students in ALL tiers they achieved (for certificate printing)
-    txt += `CERTIFICATES NEEDED BY TIER:\n\n`
+    txt += `ACHIEVEMENTS NEEDED BY TIER:\n\n`
     
     studentAchievements.forEach(achievement => {
-      txt += `📚 ${achievement.books} Books - "${achievement.reward}": ${achievement.count} certificates needed\n`
+      txt += `📚 ${achievement.books} Books - "${achievement.reward}": ${achievement.count} achievements earned\n`
     })
 
     txt += `\n${'─'.repeat(60)}\n`
@@ -318,11 +292,10 @@ export default function TeacherAchievements() {
     txt += `(Students appear in ALL tiers they have achieved)\n`
     txt += `${'─'.repeat(60)}\n\n`
 
-    // Show students in ALL achievement tiers they qualify for
     studentAchievements.forEach(achievement => {
       if (achievement.count > 0) {
         txt += `\n🏆 ${achievement.reward.toUpperCase()} (${achievement.books} Books Required)\n`
-        txt += `   ${achievement.count} Student${achievement.count !== 1 ? 's' : ''} Achieved - Print ${achievement.count} certificates\n`
+        txt += `   ${achievement.count} Student${achievement.count !== 1 ? 's' : ''} Achieved\n`
         txt += `   ${'─'.repeat(40)}\n\n`
         
         achievement.achievedStudents.forEach((student, index) => {
@@ -334,7 +307,6 @@ export default function TeacherAchievements() {
       }
     })
 
-    // Students who haven't achieved any awards yet
     const noAchievements = allStudents.filter(student => 
       !studentAchievements.some(achievement => 
         achievement.achievedStudents.some(achieved => achieved.id === student.id)
@@ -361,20 +333,19 @@ export default function TeacherAchievements() {
         })
     }
 
-    // Add a summary section for total certificates needed
     txt += `\n${'='.repeat(60)}\n`
-    txt += `TOTAL CERTIFICATES NEEDED:\n`
+    txt += `TOTAL ACHIEVEMENTS:\n`
     txt += `${'='.repeat(60)}\n\n`
     
-    let totalCertificates = 0
+    let totalAchievements = 0
     studentAchievements.forEach(achievement => {
       if (achievement.count > 0) {
-        txt += `${achievement.reward}: ${achievement.count} certificates\n`
-        totalCertificates += achievement.count
+        txt += `${achievement.reward}: ${achievement.count} achievements\n`
+        totalAchievements += achievement.count
       }
     })
     
-    txt += `\nTOTAL: ${totalCertificates} certificates\n`
+    txt += `\nTOTAL: ${totalAchievements} achievements\n`
 
     txt += `\n${'='.repeat(60)}\n`
     txt += `END OF REPORT\n`
@@ -383,7 +354,6 @@ export default function TeacherAchievements() {
     return txt
   }
 
-  // New function to export speech for mass
   const exportSpeechForMass = () => {
     setIsExporting(true)
     
@@ -414,15 +384,12 @@ export default function TeacherAchievements() {
     }
   }
 
-  // Generate speech content (for mass - shows students ONLY in their highest tier)
   const generateSpeech = () => {
     const currentDate = new Date().toLocaleDateString()
     const schoolName = userProfile.schoolName || 'School'
     
-    // Get students mapped to their highest achievement only
     const studentsHighestAchievements = getStudentsHighestAchievements()
     
-    // Create achievement tiers with students at their highest level only
     const tiersWithHighestOnly = studentAchievements.map(achievement => {
       const studentsInThisTier = []
       studentsHighestAchievements.forEach((studentData) => {
@@ -439,13 +406,9 @@ export default function TeacherAchievements() {
       }
     })
 
-    // Get the actual number of books selected by the teacher
     const totalBooksInProgram = window.totalBooksInProgram || 50
-    
-    // Find the highest tier (for 5-year achievement)
     const maxBookRequirement = Math.max(...achievementTiers.map(t => t.books))
     
-    // Use the imported speech template function
     return generateAwardsSpeech(
       schoolName,
       currentDate,
@@ -455,29 +418,6 @@ export default function TeacherAchievements() {
     )
   }
   
-  // Handle email template selection
-  const handleEmailTemplateSelect = (templateKey) => {
-    setSelectedEmailTemplate(templateKey)
-    setCopiedEmail(false)
-  }
-  
-  // Copy email to clipboard
-  const copyEmailToClipboard = () => {
-    const template = emailTemplates[selectedEmailTemplate]
-    const emailContent = `Subject: ${template.subject}\n\n${template.body}`
-    navigator.clipboard.writeText(emailContent)
-    setCopiedEmail(true)
-    setTimeout(() => setCopiedEmail(false), 3000)
-  }
-  
-  // Open email modal with appropriate template
-  const openEmailModal = () => {
-    const currentTemplate = getCurrentEmailTemplate()
-    setSelectedEmailTemplate(currentTemplate)
-    setShowEmailModal(true)
-  }
-  
-  // Toggle tier expansion
   const toggleTierExpansion = (tierIndex) => {
     const newExpanded = new Set(expandedTiers)
     if (newExpanded.has(tierIndex)) {
@@ -488,7 +428,6 @@ export default function TeacherAchievements() {
     setExpandedTiers(newExpanded)
   }
   
-  // Toggle all tiers expansion
   const toggleAllTiers = () => {
     if (allExpanded) {
       setExpandedTiers(new Set())
@@ -500,7 +439,6 @@ export default function TeacherAchievements() {
     }
   }
 
-  // Session extension
   const extendSession = () => {
     updateLastActivity()
     setShowTimeoutWarning(false)
@@ -510,7 +448,6 @@ export default function TeacherAchievements() {
     await signOut({ redirectTo: '/sign-in?reason=session-expired' })
   }
 
-  // Manual refresh for testing
   const handleManualRefresh = async () => {
     console.log('🔄 Manual refresh triggered')
     await refreshPhase()
@@ -519,7 +456,6 @@ export default function TeacherAchievements() {
     setTimeout(() => setShowSuccess(''), 2000)
   }
 
-  // Show loading
   if (authLoading || loading || phaseLoading || !userProfile) {
     return (
       <div style={{
@@ -539,7 +475,11 @@ export default function TeacherAchievements() {
             animation: 'spin 1s linear infinite',
             margin: '0 auto 1rem'
           }}></div>
-          <p style={{ color: '#223848', fontSize: '1.1rem' }}>
+          <p style={{ 
+            color: '#223848', 
+            fontSize: '1.1rem',
+            fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
+          }}>
             Loading achievements...
           </p>
         </div>
@@ -561,7 +501,7 @@ export default function TeacherAchievements() {
       <div style={{
         minHeight: '100vh',
         background: 'linear-gradient(135deg, #FFFCF5 0%, #C3E0DE 50%, #A1E5DB 100%)',
-        fontFamily: 'system-ui, -apple-system, sans-serif',
+        fontFamily: 'Avenir, system-ui, -apple-system, sans-serif',
         paddingBottom: '80px'
       }}>
 
@@ -594,14 +534,16 @@ export default function TeacherAchievements() {
                 fontSize: '1.25rem',
                 fontWeight: 'bold',
                 color: '#223848',
-                marginBottom: '1rem'
+                marginBottom: '1rem',
+                fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
               }}>
                 Session Expiring Soon
               </h3>
               <p style={{
                 color: '#6b7280',
                 marginBottom: '1.5rem',
-                lineHeight: '1.4'
+                lineHeight: '1.4',
+                fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
               }}>
                 Your session will expire in a few minutes for security. Continue working?
               </p>
@@ -619,7 +561,8 @@ export default function TeacherAchievements() {
                     border: 'none',
                     borderRadius: '0.5rem',
                     cursor: 'pointer',
-                    fontSize: '0.875rem'
+                    fontSize: '0.875rem',
+                    fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                   }}
                 >
                   Sign Out
@@ -634,207 +577,13 @@ export default function TeacherAchievements() {
                     borderRadius: '0.5rem',
                     cursor: 'pointer',
                     fontSize: '0.875rem',
-                    fontWeight: '600'
+                    fontWeight: '600',
+                    fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                   }}
                 >
                   Continue Working
                 </button>
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* Email Templates Modal */}
-        {showEmailModal && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.7)',
-            display: 'flex',
-            alignItems: 'flex-start',
-            justifyContent: 'center',
-            zIndex: 10000,
-            padding: '2rem',
-            overflowY: 'auto'
-          }}>
-            <div style={{
-              backgroundColor: 'white',
-              borderRadius: '1rem',
-              padding: '2rem',
-              maxWidth: '800px',
-              width: '100%',
-              maxHeight: '90vh',
-              overflowY: 'auto',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
-              marginTop: '2rem'
-            }}>
-              {/* Modal Header */}
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '1.5rem',
-                borderBottom: '2px solid #e5e7eb',
-                paddingBottom: '1rem'
-              }}>
-                <h2 style={{
-                  fontSize: '1.5rem',
-                  fontWeight: 'bold',
-                  color: '#223848',
-                  margin: 0
-                }}>
-                  ✉️ Parent Email Templates
-                </h2>
-                <button
-                  onClick={() => setShowEmailModal(false)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    fontSize: '1.5rem',
-                    cursor: 'pointer',
-                    color: '#6b7280'
-                  }}
-                >
-                  ✕
-                </button>
-              </div>
-
-              {/* Email Template Selector */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(2, 1fr)',
-                gap: '0.75rem',
-                marginBottom: '1.5rem'
-              }}>
-                {Object.entries(emailTemplates).map(([key, template]) => (
-                  <button
-                    key={key}
-                    onClick={() => handleEmailTemplateSelect(key)}
-                    style={{
-                      padding: '1rem',
-                      border: selectedEmailTemplate === key ? '2px solid #3B82F6' : '2px solid #e5e7eb',
-                      borderRadius: '0.5rem',
-                      background: selectedEmailTemplate === key ? '#EFF6FF' : 'white',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    <div style={{
-                      fontSize: '0.875rem',
-                      fontWeight: '600',
-                      color: '#223848',
-                      marginBottom: '0.25rem'
-                    }}>
-                      {template.title}
-                    </div>
-                    <div style={{
-                      fontSize: '0.75rem',
-                      color: '#6b7280'
-                    }}>
-                      {template.sendTime}
-                    </div>
-                  </button>
-                ))}
-              </div>
-
-              {/* Selected Email Content */}
-              {selectedEmailTemplate && (
-                <div style={{
-                  border: '2px solid #e5e7eb',
-                  borderRadius: '0.75rem',
-                  padding: '1.5rem',
-                  background: '#f9fafb'
-                }}>
-                  <div style={{
-                    marginBottom: '1rem',
-                    paddingBottom: '1rem',
-                    borderBottom: '1px solid #e5e7eb'
-                  }}>
-                    <div style={{
-                      fontSize: '0.75rem',
-                      color: '#6b7280',
-                      marginBottom: '0.5rem'
-                    }}>
-                      EMAIL SUBJECT:
-                    </div>
-                    <div style={{
-                      fontSize: '1rem',
-                      fontWeight: '600',
-                      color: '#223848'
-                    }}>
-                      {emailTemplates[selectedEmailTemplate].subject}
-                    </div>
-                  </div>
-
-                  <div style={{
-                    fontSize: '0.75rem',
-                    color: '#6b7280',
-                    marginBottom: '0.5rem'
-                  }}>
-                    EMAIL BODY:
-                  </div>
-                  <div style={{
-                    whiteSpace: 'pre-wrap',
-                    fontSize: '0.875rem',
-                    lineHeight: '1.6',
-                    color: '#374151',
-                    maxHeight: '400px',
-                    overflowY: 'auto',
-                    padding: '1rem',
-                    background: 'white',
-                    borderRadius: '0.5rem',
-                    border: '1px solid #e5e7eb'
-                  }}>
-                    {emailTemplates[selectedEmailTemplate].body}
-                  </div>
-
-                  {/* Copy Button */}
-                  <div style={{
-                    marginTop: '1.5rem',
-                    display: 'flex',
-                    gap: '1rem',
-                    justifyContent: 'center'
-                  }}>
-                    <button
-                      onClick={copyEmailToClipboard}
-                      style={{
-                        padding: '0.75rem 2rem',
-                        background: copiedEmail 
-                          ? 'linear-gradient(135deg, #10B981, #059669)'
-                          : 'linear-gradient(135deg, #3B82F6, #2563EB)',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '0.5rem',
-                        fontSize: '0.875rem',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem'
-                      }}
-                    >
-                      {copiedEmail ? '✓ Copied to Clipboard!' : '📋 Copy Email'}
-                    </button>
-                  </div>
-
-                  <div style={{
-                    marginTop: '1rem',
-                    padding: '1rem',
-                    background: '#FEF3C7',
-                    borderRadius: '0.5rem',
-                    fontSize: '0.75rem',
-                    color: '#92400E',
-                    textAlign: 'center'
-                  }}>
-                    💡 Tip: Copy this email and paste it into your school&apos;s email system. 
-                    Remember to customize placeholders like [TEACHER NAME] and [SCHOOL NAME].
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         )}
@@ -886,14 +635,15 @@ export default function TeacherAchievements() {
                   fontWeight: 'bold',
                   color: '#223848',
                   margin: 0,
-                  fontFamily: 'Georgia, serif'
+                  fontFamily: 'Didot, "Times New Roman", serif'
                 }}>
                   Student Achievements
                 </h1>
                 <p style={{
                   color: '#6b7280',
                   fontSize: '0.875rem',
-                  margin: 0
+                  margin: 0,
+                  fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                 }}>
                   Track reading milestones and export for awards
                 </p>
@@ -901,7 +651,6 @@ export default function TeacherAchievements() {
             </div>
             
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-              {/* Phase indicator */}
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -910,13 +659,13 @@ export default function TeacherAchievements() {
                 background: 'rgba(173, 212, 234, 0.1)',
                 borderRadius: '0.5rem',
                 fontSize: '0.75rem',
-                color: '#223848'
+                color: '#223848',
+                fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
               }}>
                 <span>{getPhaseInfo().icon}</span>
                 <span>{phaseData.currentPhase}</span>
               </div>
               
-              {/* Manual refresh button for testing */}
               <button
                 onClick={handleManualRefresh}
                 style={{
@@ -933,27 +682,6 @@ export default function TeacherAchievements() {
                 🔄
               </button>
               
-              {/* Email to Parents button */}
-              <button
-                onClick={openEmailModal}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: 'linear-gradient(135deg, #3B82F6, #2563EB)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '0.5rem',
-                  fontSize: '0.875rem',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem'
-                }}
-              >
-                ✉️ Emails
-              </button>
-              
-              {/* Export Speech button */}
               <button
                 onClick={exportSpeechForMass}
                 disabled={isExporting || studentAchievements.length === 0}
@@ -969,13 +697,13 @@ export default function TeacherAchievements() {
                   opacity: (isExporting || studentAchievements.length === 0) ? 0.7 : 1,
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.5rem'
+                  gap: '0.5rem',
+                  fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                 }}
               >
                 {isExporting ? '⏳' : '🎤'} Speech
               </button>
               
-              {/* Export Report button */}
               <button
                 onClick={exportAchievements}
                 disabled={isExporting || studentAchievements.length === 0}
@@ -991,7 +719,8 @@ export default function TeacherAchievements() {
                   opacity: (isExporting || studentAchievements.length === 0) ? 0.7 : 1,
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.5rem'
+                  gap: '0.5rem',
+                  fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                 }}
               >
                 {isExporting ? '⏳' : '📥'} Report
@@ -1005,7 +734,8 @@ export default function TeacherAchievements() {
                 background: 'rgba(173, 212, 234, 0.1)',
                 borderRadius: '0.5rem',
                 fontSize: '0.75rem',
-                color: '#223848'
+                color: '#223848',
+                fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
               }}>
                 <span>{userProfile.firstName || 'Teacher'}</span>
               </div>
@@ -1019,7 +749,8 @@ export default function TeacherAchievements() {
                   fontSize: '0.75rem',
                   fontWeight: '600',
                   border: 'none',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                 }}
               >
                 🚪 Sign Out
@@ -1053,7 +784,8 @@ export default function TeacherAchievements() {
                 fontSize: '1.25rem',
                 fontWeight: 'bold',
                 color: '#223848',
-                margin: 0
+                margin: 0,
+                fontFamily: 'Didot, "Times New Roman", serif'
               }}>
                 🏆 Achievement Overview
               </h2>
@@ -1071,7 +803,8 @@ export default function TeacherAchievements() {
                     color: '#223848',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '0.5rem'
+                    gap: '0.5rem',
+                    fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                   }}
                 >
                   {allExpanded ? '➖ Collapse All Tiers' : '➕ Expand All Tiers'}
@@ -1119,7 +852,7 @@ export default function TeacherAchievements() {
             </div>
           </div>
 
-          {/* Phase-aware Achievement Display - Using real-time data */}
+          {/* Phase-aware Achievement Display */}
           {phaseData.currentPhase === 'TEACHER_SELECTION' && (
             <div style={{
               background: 'linear-gradient(135deg, #FEF3C7, #FDE68A)',
@@ -1130,10 +863,21 @@ export default function TeacherAchievements() {
               border: '2px solid #F59E0B'
             }}>
               <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🎯</div>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#92400E', marginBottom: '0.5rem' }}>
+              <h3 style={{ 
+                fontSize: '1.25rem', 
+                fontWeight: '600', 
+                color: '#92400E', 
+                marginBottom: '0.5rem',
+                fontFamily: 'Didot, "Times New Roman", serif'
+              }}>
                 New Year Setup in Progress
               </h3>
-              <p style={{ fontSize: '0.875rem', color: '#B45309', marginBottom: '1rem' }}>
+              <p style={{ 
+                fontSize: '0.875rem', 
+                color: '#B45309', 
+                marginBottom: '1rem',
+                fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
+              }}>
                 {getPhaseMessage()}
               </p>
               <button
@@ -1146,7 +890,8 @@ export default function TeacherAchievements() {
                   padding: '0.75rem 1.5rem',
                   fontSize: '0.875rem',
                   fontWeight: '600',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                 }}
               >
                 Configure Achievements
@@ -1164,10 +909,21 @@ export default function TeacherAchievements() {
               border: '2px solid #6366F1'
             }}>
               <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🗳️</div>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#4338CA', marginBottom: '0.5rem' }}>
+              <h3 style={{ 
+                fontSize: '1.25rem', 
+                fontWeight: '600', 
+                color: '#4338CA', 
+                marginBottom: '0.5rem',
+                fontFamily: 'Didot, "Times New Roman", serif'
+              }}>
                 Achievement Year Complete
               </h3>
-              <p style={{ fontSize: '0.875rem', color: '#5B21B6', marginBottom: '1rem' }}>
+              <p style={{ 
+                fontSize: '0.875rem', 
+                color: '#5B21B6', 
+                marginBottom: '1rem',
+                fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
+              }}>
                 {getPhaseMessage()}
               </p>
             </div>
@@ -1183,10 +939,21 @@ export default function TeacherAchievements() {
               border: '2px solid #10B981'
             }}>
               <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🏆</div>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#047857', marginBottom: '0.5rem' }}>
+              <h3 style={{ 
+                fontSize: '1.25rem', 
+                fontWeight: '600', 
+                color: '#047857', 
+                marginBottom: '0.5rem',
+                fontFamily: 'Didot, "Times New Roman", serif'
+              }}>
                 Final Achievement Results
               </h3>
-              <p style={{ fontSize: '0.875rem', color: '#065F46', marginBottom: '1rem' }}>
+              <p style={{ 
+                fontSize: '0.875rem', 
+                color: '#065F46', 
+                marginBottom: '1rem',
+                fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
+              }}>
                 {getPhaseMessage()}
               </p>
             </div>
@@ -1202,10 +969,21 @@ export default function TeacherAchievements() {
               border: '2px solid #F59E0B'
             }}>
               <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📝</div>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#92400E', marginBottom: '0.5rem' }}>
+              <h3 style={{ 
+                fontSize: '1.25rem', 
+                fontWeight: '600', 
+                color: '#92400E', 
+                marginBottom: '0.5rem',
+                fontFamily: 'Didot, "Times New Roman", serif'
+              }}>
                 System Setup Mode
               </h3>
-              <p style={{ fontSize: '0.875rem', color: '#B45309', marginBottom: '1rem' }}>
+              <p style={{ 
+                fontSize: '0.875rem', 
+                color: '#B45309', 
+                marginBottom: '1rem',
+                fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
+              }}>
                 {getPhaseMessage()}
               </p>
             </div>
@@ -1221,10 +999,21 @@ export default function TeacherAchievements() {
               border: '2px solid #6B7280'
             }}>
               <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>❄️</div>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#374151', marginBottom: '0.5rem' }}>
+              <h3 style={{ 
+                fontSize: '1.25rem', 
+                fontWeight: '600', 
+                color: '#374151', 
+                marginBottom: '0.5rem',
+                fontFamily: 'Didot, "Times New Roman", serif'
+              }}>
                 Program Closed
               </h3>
-              <p style={{ fontSize: '0.875rem', color: '#6B7280', marginBottom: '1rem' }}>
+              <p style={{ 
+                fontSize: '0.875rem', 
+                color: '#6B7280', 
+                marginBottom: '1rem',
+                fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
+              }}>
                 {getPhaseMessage()}
               </p>
             </div>
@@ -1244,11 +1033,15 @@ export default function TeacherAchievements() {
                 fontSize: '1.25rem',
                 fontWeight: 'bold',
                 color: '#223848',
-                marginBottom: '0.5rem'
+                marginBottom: '0.5rem',
+                fontFamily: 'Didot, "Times New Roman", serif'
               }}>
                 No Achievement Data
               </h3>
-              <p style={{ color: '#6b7280' }}>
+              <p style={{ 
+                color: '#6b7280',
+                fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
+              }}>
                 Achievement tiers will appear here once configured during teacher onboarding.
               </p>
             </div>
@@ -1313,7 +1106,8 @@ export default function TeacherAchievements() {
                 gap: '2px',
                 color: tab.active ? '#ADD4EA' : '#6b7280',
                 transition: 'all 0.2s ease',
-                position: 'relative'
+                position: 'relative',
+                fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
               }}
             >
               <span style={{ 
@@ -1360,7 +1154,8 @@ export default function TeacherAchievements() {
             fontSize: '14px',
             fontWeight: '500',
             maxWidth: '85vw',
-            textAlign: 'center'
+            textAlign: 'center',
+            fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
           }}>
             {showSuccess}
           </div>
@@ -1415,7 +1210,8 @@ function OverviewCard({ icon, title, value, subtitle, color }) {
         fontSize: '1.5rem',
         fontWeight: 'bold',
         color: '#223848',
-        margin: '0 0 0.25rem 0'
+        margin: '0 0 0.25rem 0',
+        fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
       }}>
         {value}
       </h3>
@@ -1423,14 +1219,16 @@ function OverviewCard({ icon, title, value, subtitle, color }) {
         fontSize: '0.75rem',
         color: '#6b7280',
         margin: 0,
-        fontWeight: '600'
+        fontWeight: '600',
+        fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
       }}>
         {title}
       </p>
       <p style={{
         fontSize: '0.65rem',
         color: '#9ca3af',
-        margin: '0.125rem 0 0 0'
+        margin: '0.125rem 0 0 0',
+        fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
       }}>
         {subtitle}
       </p>
@@ -1452,17 +1250,13 @@ function AchievementLevelCard({ achievement, index, isExpanded, onToggle }) {
       border: `2px solid ${color}30`,
       overflow: 'hidden'
     }}>
-      {/* Header - Always Visible */}
       <div 
         onClick={onToggle}
         style={{
           padding: '1.5rem',
           cursor: 'pointer',
           background: isExpanded ? `${color}08` : 'white',
-          transition: 'background 0.2s',
-          ':hover': {
-            background: `${color}10`
-          }
+          transition: 'background 0.2s'
         }}
       >
         <div style={{
@@ -1475,7 +1269,6 @@ function AchievementLevelCard({ achievement, index, isExpanded, onToggle }) {
             alignItems: 'center',
             gap: '1rem'
           }}>
-            {/* Expand/Collapse Icon */}
             <div style={{
               fontSize: '1.25rem',
               color: '#6b7280',
@@ -1485,7 +1278,6 @@ function AchievementLevelCard({ achievement, index, isExpanded, onToggle }) {
               ▶
             </div>
             
-            {/* Tier Icon */}
             <div style={{
               width: '3rem',
               height: '3rem',
@@ -1499,27 +1291,27 @@ function AchievementLevelCard({ achievement, index, isExpanded, onToggle }) {
               {icon}
             </div>
             
-            {/* Tier Info */}
             <div>
               <h3 style={{
                 fontSize: '1.25rem',
                 fontWeight: 'bold',
                 color: '#223848',
-                margin: 0
+                margin: 0,
+                fontFamily: 'Didot, "Times New Roman", serif'
               }}>
                 {achievement.reward}
               </h3>
               <p style={{
                 fontSize: '0.875rem',
                 color: '#6b7280',
-                margin: 0
+                margin: 0,
+                fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
               }}>
                 {achievement.books} book{achievement.books !== 1 ? 's' : ''} required
               </p>
             </div>
           </div>
           
-          {/* Student Count Badge */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -1536,13 +1328,15 @@ function AchievementLevelCard({ achievement, index, isExpanded, onToggle }) {
               <span style={{
                 fontSize: '1.5rem',
                 fontWeight: 'bold',
-                color: '#223848'
+                color: '#223848',
+                fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
               }}>
                 {achievement.count}
               </span>
               <span style={{
                 fontSize: '0.875rem',
-                color: '#6b7280'
+                color: '#6b7280',
+                fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
               }}>
                 student{achievement.count !== 1 ? 's' : ''}
               </span>
@@ -1550,7 +1344,8 @@ function AchievementLevelCard({ achievement, index, isExpanded, onToggle }) {
             <span style={{
               fontSize: '0.875rem',
               color: '#9ca3af',
-              fontStyle: 'italic'
+              fontStyle: 'italic',
+              fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
             }}>
               Click to {isExpanded ? 'collapse' : 'expand'}
             </span>
@@ -1558,7 +1353,6 @@ function AchievementLevelCard({ achievement, index, isExpanded, onToggle }) {
         </div>
       </div>
 
-      {/* Expanded Student List */}
       {isExpanded && (
         <div style={{
           padding: '0 1.5rem 1.5rem 1.5rem',
@@ -1569,13 +1363,13 @@ function AchievementLevelCard({ achievement, index, isExpanded, onToggle }) {
               textAlign: 'center',
               padding: '2rem',
               color: '#6b7280',
-              fontStyle: 'italic'
+              fontStyle: 'italic',
+              fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
             }}>
               No students have achieved this level yet
             </div>
           ) : (
             <>
-              {/* Student List Header */}
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: '40px 2fr 1fr 1fr 100px',
@@ -1585,7 +1379,8 @@ function AchievementLevelCard({ achievement, index, isExpanded, onToggle }) {
                 fontSize: '0.75rem',
                 fontWeight: '600',
                 color: '#6b7280',
-                textTransform: 'uppercase'
+                textTransform: 'uppercase',
+                fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
               }}>
                 <div>#</div>
                 <div>Student Name</div>
@@ -1594,7 +1389,6 @@ function AchievementLevelCard({ achievement, index, isExpanded, onToggle }) {
                 <div>Type</div>
               </div>
               
-              {/* Student Rows */}
               <div style={{
                 maxHeight: '400px',
                 overflowY: 'auto'
@@ -1609,32 +1403,33 @@ function AchievementLevelCard({ achievement, index, isExpanded, onToggle }) {
                       padding: '0.75rem 0',
                       borderBottom: '1px solid #f3f4f6',
                       alignItems: 'center',
-                      fontSize: '0.875rem',
-                      ':hover': {
-                        background: '#f9fafb'
-                      }
+                      fontSize: '0.875rem'
                     }}
                   >
                     <div style={{
                       color: '#9ca3af',
-                      fontWeight: '500'
+                      fontWeight: '500',
+                      fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                     }}>
                       {idx + 1}
                     </div>
                     <div style={{
                       fontWeight: '600',
-                      color: '#223848'
+                      color: '#223848',
+                      fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                     }}>
                       {student.firstName} {student.lastInitial}.
                     </div>
                     <div style={{
-                      color: '#6b7280'
+                      color: '#6b7280',
+                      fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                     }}>
                       Grade {student.grade}
                     </div>
                     <div style={{
                       color: '#223848',
-                      fontWeight: '600'
+                      fontWeight: '600',
+                      fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                     }}>
                       {student.booksCompleted}
                     </div>
@@ -1646,7 +1441,8 @@ function AchievementLevelCard({ achievement, index, isExpanded, onToggle }) {
                         color: '#223848',
                         borderRadius: '0.25rem',
                         fontWeight: '600',
-                        border: `1px solid ${student.type === 'app' ? '#ADD4EA' : '#C3E0DE'}`
+                        border: `1px solid ${student.type === 'app' ? '#ADD4EA' : '#C3E0DE'}`,
+                        fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                       }}>
                         {student.type === 'app' ? 'APP' : 'MANUAL'}
                       </span>
@@ -1655,7 +1451,6 @@ function AchievementLevelCard({ achievement, index, isExpanded, onToggle }) {
                 ))}
               </div>
               
-              {/* Summary Stats */}
               {achievement.count > 10 && (
                 <div style={{
                   marginTop: '1rem',
@@ -1665,7 +1460,8 @@ function AchievementLevelCard({ achievement, index, isExpanded, onToggle }) {
                   fontSize: '0.75rem',
                   color: '#6b7280',
                   display: 'flex',
-                  justifyContent: 'space-between'
+                  justifyContent: 'space-between',
+                  fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                 }}>
                   <span>Total: {achievement.count} students</span>
                   <span>

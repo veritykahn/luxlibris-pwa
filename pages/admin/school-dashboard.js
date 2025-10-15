@@ -1,12 +1,13 @@
-// pages/admin/school-dashboard.js - Teacher Dashboard with usePhaseAccess Hook
+// pages/admin/school-dashboard.js - Enhanced Teacher Dashboard with Nested Status & Real Email Data
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { useAuth } from '../../contexts/AuthContext'
-import { usePhaseAccess } from '../../hooks/usePhaseAccess'  // Add this import
+import { usePhaseAccess } from '../../hooks/usePhaseAccess'
 import { db, dbHelpers, getCurrentAcademicYear } from '../../lib/firebase'
 import { collection, getDocs, query, where, orderBy, limit, doc, updateDoc, getDoc } from 'firebase/firestore'
 import TeacherResultsInterface from '../../components/TeacherResultsInterface'
+import { emailTemplates, getCurrentEmailTemplate, fillEmailTemplate } from '../../lib/templates/emailTemplates'
 
 // Enhanced Phase Details Section Component
 function PhaseDetailsSection({ currentPhase, router, userProfile, onClearManualStudents }) {
@@ -121,7 +122,8 @@ function PhaseDetailsSection({ currentPhase, router, userProfile, onClearManualS
     <div style={{
       border: `2px solid ${colors.border}30`,
       borderRadius: '0.75rem',
-      overflow: 'hidden'
+      overflow: 'hidden',
+      marginTop: '1rem'
     }}>
       {/* Header */}
       <div style={{
@@ -139,7 +141,8 @@ function PhaseDetailsSection({ currentPhase, router, userProfile, onClearManualS
             fontSize: '1.125rem',
             fontWeight: 'bold',
             color: colors.text,
-            margin: 0
+            margin: 0,
+            fontFamily: 'Didot, "Times New Roman", serif'
           }}>
             {phaseInfo.title}
           </h4>
@@ -158,7 +161,8 @@ function PhaseDetailsSection({ currentPhase, router, userProfile, onClearManualS
           color: colors.text,
           fontSize: '0.875rem',
           margin: '0 0 0.75rem 0',
-          lineHeight: '1.4'
+          lineHeight: '1.4',
+          fontFamily: 'Avenir, system-ui, sans-serif'
         }}>
           {phaseInfo.description}
         </p>
@@ -183,7 +187,8 @@ function PhaseDetailsSection({ currentPhase, router, userProfile, onClearManualS
             color: '#374151',
             margin: '0 0 0.75rem 0',
             textTransform: 'uppercase',
-            letterSpacing: '0.05em'
+            letterSpacing: '0.05em',
+            fontFamily: 'Avenir, system-ui, sans-serif'
           }}>
             Available Actions
           </h5>
@@ -197,13 +202,11 @@ function PhaseDetailsSection({ currentPhase, router, userProfile, onClearManualS
                 key={index}
                 onClick={() => {
                   if (action.route === '#results') {
-                    // Scroll to results section
                     const resultsElement = document.getElementById('results-section')
                     if (resultsElement) {
                       resultsElement.scrollIntoView({ behavior: 'smooth' })
                     }
                   } else if (action.action === 'clearManualStudents') {
-                    // Handle manual student clearing
                     onClearManualStudents()
                   } else {
                     router.push(action.route)
@@ -233,7 +236,8 @@ function PhaseDetailsSection({ currentPhase, router, userProfile, onClearManualS
                   fontWeight: '600',
                   color: action.highlight ? colors.text 
                         : action.style === 'warning' ? '#92400E' 
-                        : '#374151'
+                        : '#374151',
+                  fontFamily: 'Avenir, system-ui, sans-serif'
                 }}
                 onMouseOver={(e) => {
                   e.currentTarget.style.transform = 'translateY(-1px)'
@@ -282,14 +286,16 @@ function PhaseDetailsSection({ currentPhase, router, userProfile, onClearManualS
               color: '#6B7280',
               textTransform: 'uppercase',
               letterSpacing: '0.05em',
-              marginBottom: '0.25rem'
+              marginBottom: '0.25rem',
+              fontFamily: 'Avenir, system-ui, sans-serif'
             }}>
               What&apos;s Next
             </div>
             <div style={{
               fontSize: '0.875rem',
               color: '#374151',
-              lineHeight: '1.4'
+              lineHeight: '1.4',
+              fontFamily: 'Avenir, system-ui, sans-serif'
             }}>
               {phaseInfo.nextPhase}
             </div>
@@ -313,7 +319,6 @@ export default function TeacherDashboard() {
     updateLastActivity
   } = useAuth()
 
-  // ✅ UPDATED: Use the new usePhaseAccess hook instead of local state
   const { 
     phaseData, 
     permissions, 
@@ -346,9 +351,17 @@ export default function TeacherDashboard() {
   const [parentQuizCode, setParentQuizCode] = useState('')
   const [codesLoading, setCodesLoading] = useState(true)
   const [copySuccess, setCopySuccess] = useState('')
+  const [totalBooks, setTotalBooks] = useState(0)
 
-  // ✅ REMOVED: No longer need local phaseStatus state - now handled by usePhaseAccess
-  // const [phaseStatus, setPhaseStatus] = useState({...})
+  // Email templates state
+  const [showEmailModal, setShowEmailModal] = useState(false)
+  const [selectedEmailTemplate, setSelectedEmailTemplate] = useState(null)
+  const [copiedEmail, setCopiedEmail] = useState(false)
+
+  // Collapsible sections state
+  const [showProgramStatus, setShowProgramStatus] = useState(false)
+  const [showAccessCodes, setShowAccessCodes] = useState(false)
+  const [showTopReadersActivity, setShowTopReadersActivity] = useState(false)
 
   // Manual student clearing state
   const [showClearConfirmation, setShowClearConfirmation] = useState(false)
@@ -379,7 +392,6 @@ export default function TeacherDashboard() {
       if (userProfile) {
         loadDashboardData()
         loadJoinCodes()
-        // ✅ REMOVED: loadPhaseStatus() - now handled by usePhaseAccess
       }
     }
 
@@ -432,7 +444,6 @@ export default function TeacherDashboard() {
         throw new Error('Missing teacher profile data')
       }
 
-      // Find teacher document ID
       const teachersRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers`)
       const teacherQuery = query(teachersRef, where('uid', '==', userProfile.uid))
       const teacherSnapshot = await getDocs(teacherQuery)
@@ -444,17 +455,13 @@ export default function TeacherDashboard() {
       const teacherId = teacherSnapshot.docs[0].id
       const currentYear = getCurrentAcademicYear()
 
-      // Get manual students for this teacher
       const manualStudentsRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers/${teacherId}/manualStudents`)
       const manualStudentsSnapshot = await getDocs(manualStudentsRef)
       
       let studentsCleared = 0
 
-      // Clear each manual student's data
       for (const studentDoc of manualStudentsSnapshot.docs) {
         const studentData = studentDoc.data()
-        
-        // Use the existing individual clearing function
         await dbHelpers.clearIndividualManualStudentData(studentDoc.ref, studentData, currentYear)
         studentsCleared++
       }
@@ -466,8 +473,6 @@ export default function TeacherDashboard() {
       })
 
       console.log(`✅ Cleared data for ${studentsCleared} manual students`)
-
-      // Reload dashboard data to reflect changes
       await loadDashboardData()
 
     } catch (error) {
@@ -480,7 +485,6 @@ export default function TeacherDashboard() {
     setClearingInProgress(false)
   }
 
-  // Handle manual student clearing workflow
   const handleClearManualStudents = () => {
     setShowClearConfirmation(true)
   }
@@ -513,30 +517,16 @@ export default function TeacherDashboard() {
   const loadJoinCodes = async () => {
     try {
       console.log('🔑 Loading join codes...')
-      console.log('🔍 UserProfile:', {
-        entityId: userProfile?.entityId,
-        schoolId: userProfile?.schoolId,
-        uid: userProfile?.uid,
-        accountType: userProfile?.accountType
-      })
       
       if (!userProfile?.entityId || !userProfile?.schoolId || !userProfile?.uid) {
-        console.error('❌ Missing entity, school, or teacher ID', {
-          entityId: userProfile?.entityId,
-          schoolId: userProfile?.schoolId,
-          uid: userProfile?.uid
-        })
+        console.error('❌ Missing entity, school, or teacher ID')
         setCodesLoading(false)
         return
       }
 
-      // Query for teacher document by UID (since teachers use auto-generated document IDs)
       const teachersRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers`)
       const teacherQuery = query(teachersRef, where('uid', '==', userProfile.uid))
       const teacherSnapshot = await getDocs(teacherQuery)
-      
-      console.log('📄 Teacher query path:', `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers`)
-      console.log('🔍 Querying for UID:', userProfile.uid)
       
       if (teacherSnapshot.empty) {
         console.error('❌ Teacher document not found for UID:', userProfile.uid)
@@ -546,68 +536,46 @@ export default function TeacherDashboard() {
 
       const teacherDoc = teacherSnapshot.docs[0]
       const teacherData = teacherDoc.data()
-      console.log('📋 Teacher data loaded:', {
-        documentId: teacherDoc.id,
-        studentJoinCode: teacherData.studentJoinCode,
-        parentQuizCode: teacherData.parentQuizCode,
-        parentQuizCodeCreated: teacherData.parentQuizCodeCreated
-      })
       
-      // Get student join code (should already exist)
       const studentCode = teacherData.studentJoinCode || ''
       setStudentJoinCode(studentCode)
       
-      // Get or generate parent quiz code
+      // Get total books count
+      const booksCount = teacherData.selectedNominees?.length || 0
+      setTotalBooks(booksCount)
+      
       let parentCode = teacherData.parentQuizCode || ''
       let needsUpdate = false
       
-      // Check if parent quiz code exists and is still valid (within 1 year)
       if (!parentCode || !teacherData.parentQuizCodeCreated) {
-        // Generate new parent quiz code
         parentCode = generateParentQuizCode()
         needsUpdate = true
-        console.log('✨ Generated new parent quiz code:', parentCode)
       } else {
-        // Check if code is older than 1 year
         const codeAge = Date.now() - teacherData.parentQuizCodeCreated.toDate().getTime()
         const oneYear = 365 * 24 * 60 * 60 * 1000
         
         if (codeAge > oneYear) {
-          // Generate new code as old one expired
           parentCode = generateParentQuizCode()
           needsUpdate = true
-          console.log('🔄 Parent quiz code expired, generated new one:', parentCode)
         }
       }
       
       setParentQuizCode(parentCode)
       
-      // Update teacher document if needed
       if (needsUpdate) {
         await updateDoc(teacherDoc.ref, {
           parentQuizCode: parentCode,
           parentQuizCodeCreated: new Date(),
           lastModified: new Date()
         })
-        console.log('💾 Saved parent quiz code to teacher document:', teacherDoc.id)
       }
-      
-      console.log('✅ Join codes loaded successfully')
       
     } catch (error) {
       console.error('❌ Error loading join codes:', error)
-      console.error('❌ Error details:', {
-        message: error.message,
-        code: error.code,
-        stack: error.stack
-      })
     } finally {
-      console.log('🏁 Setting codesLoading to false')
       setCodesLoading(false)
     }
   }
-
-  // ✅ REMOVED: loadPhaseStatus function - now handled by usePhaseAccess hook
 
   // Copy to clipboard function
   const copyToClipboard = async (text, type) => {
@@ -617,7 +585,6 @@ export default function TeacherDashboard() {
       setTimeout(() => setCopySuccess(''), 2000)
     } catch (err) {
       console.error('Failed to copy:', err)
-      // Fallback for older browsers
       const textArea = document.createElement('textarea')
       textArea.value = text
       document.body.appendChild(textArea)
@@ -627,6 +594,41 @@ export default function TeacherDashboard() {
       setCopySuccess(type)
       setTimeout(() => setCopySuccess(''), 2000)
     }
+  }
+
+  // Email template handlers with real data
+  const handleEmailTemplateSelect = (templateKey) => {
+    setSelectedEmailTemplate(templateKey)
+    setCopiedEmail(false)
+  }
+  
+  const copyEmailToClipboard = () => {
+    const template = emailTemplates[selectedEmailTemplate]
+    
+    // Build userData object with real data
+    const userData = {
+      TEACHER_FIRST_NAME: userProfile.firstName || 'Teacher',
+      TEACHER_LAST_NAME: userProfile.lastName || '',
+      SCHOOL_NAME: userProfile.schoolName || 'Your School',
+      STUDENT_JOIN_CODE: studentJoinCode || 'PENDING',
+      PARENT_QUIZ_CODE: parentQuizCode || 'PENDING',
+      TOTAL_BOOKS: totalBooks.toString() || '50',
+      WEBSITE_URL: 'luxlibris.org/role-selector'
+    }
+    
+    // Fill template with real data
+    const filledEmail = fillEmailTemplate(template, userData)
+    const emailContent = `Subject: ${filledEmail.subject}\n\n${filledEmail.body}`
+    
+    navigator.clipboard.writeText(emailContent)
+    setCopiedEmail(true)
+    setTimeout(() => setCopiedEmail(false), 3000)
+  }
+  
+  const openEmailModal = () => {
+    const currentTemplate = getCurrentEmailTemplate()
+    setSelectedEmailTemplate(currentTemplate)
+    setShowEmailModal(true)
   }
 
   // Load dashboard overview data
@@ -640,11 +642,9 @@ export default function TeacherDashboard() {
         return
       }
 
-      // Load app students
       const appStudentsRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/students`)
       const appStudentsSnapshot = await getDocs(appStudentsRef)
       
-      // Load manual students  
       const manualStudentsRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers/${userProfile.uid}/manualStudents`)
       let manualStudentsSnapshot = { size: 0, docs: [] }
       try {
@@ -660,7 +660,6 @@ export default function TeacherDashboard() {
       const recentActivities = []
       const topReadersList = []
 
-      // Process app students
       for (const studentDoc of appStudentsSnapshot.docs) {
         const studentData = { id: studentDoc.id, ...studentDoc.data() }
         
@@ -672,7 +671,6 @@ export default function TeacherDashboard() {
           activeStreaks++
         }
 
-        // Check for pending submissions in bookshelf
         if (studentData.bookshelf) {
           const pending = studentData.bookshelf.filter(book => 
             book.status === 'pending_approval' || book.status === 'pending_admin_approval'
@@ -680,7 +678,6 @@ export default function TeacherDashboard() {
           pendingSubmissions += pending
         }
 
-        // Add to top readers if they have books
         if (booksThisYear > 0) {
           topReadersList.push({
             id: studentData.id,
@@ -690,10 +687,9 @@ export default function TeacherDashboard() {
           })
         }
 
-        // Add recent activity
         if (studentData.lastModified) {
           const lastActivity = studentData.lastModified.toDate ? studentData.lastModified.toDate() : new Date(studentData.lastModified)
-          if (Date.now() - lastActivity.getTime() < 7 * 24 * 60 * 60 * 1000) { // Last 7 days
+          if (Date.now() - lastActivity.getTime() < 7 * 24 * 60 * 60 * 1000) {
             recentActivities.push({
               id: `${studentData.id}-activity`,
               type: 'student_activity',
@@ -706,7 +702,6 @@ export default function TeacherDashboard() {
         }
       }
 
-      // Process manual students
       for (const studentDoc of manualStudentsSnapshot.docs) {
         const studentData = { id: studentDoc.id, ...studentDoc.data() }
         
@@ -714,7 +709,6 @@ export default function TeacherDashboard() {
         totalBooksRead += booksThisYear
         schoolGoalTotal += (studentData.personalGoal || 10)
 
-        // Add to top readers
         if (booksThisYear > 0) {
           topReadersList.push({
             id: studentData.id,
@@ -725,13 +719,9 @@ export default function TeacherDashboard() {
         }
       }
 
-      // Sort top readers
       topReadersList.sort((a, b) => b.books - a.books)
-
-      // Sort recent activity by timestamp
       recentActivities.sort((a, b) => b.timestamp - a.timestamp)
 
-      // Generate urgent actions
       const urgent = []
       if (pendingSubmissions > 0) {
         urgent.push({
@@ -754,7 +744,6 @@ export default function TeacherDashboard() {
         })
       }
 
-      // Calculate school progress
       const schoolProgress = schoolGoalTotal > 0 ? Math.round((totalBooksRead / schoolGoalTotal) * 100) : 0
 
       setDashboardData({
@@ -780,17 +769,15 @@ export default function TeacherDashboard() {
     }
   }
 
-  // ✅ UPDATED: Fixed navigation function
   const handleNavigation = (page) => {
     switch (page) {
       case 'dashboard':
-        // Already here
         break
       case 'students':
         router.push('/teacher/students')
         break
       case 'submissions':
-        router.push('/teacher/submissions')  // ✅ Fixed route
+        router.push('/teacher/submissions')
         break
       case 'achievements':
         router.push('/teacher/achievements')
@@ -803,7 +790,6 @@ export default function TeacherDashboard() {
     }
   }
 
-  // Session extension
   const extendSession = () => {
     updateLastActivity()
     setShowTimeoutWarning(false)
@@ -813,8 +799,25 @@ export default function TeacherDashboard() {
     await signOut({ redirectTo: '/sign-in?reason=session-expired' })
   }
 
+  // Get filled email template for display
+  const getFilledEmailTemplate = (templateKey) => {
+    const template = emailTemplates[templateKey]
+    
+    const userData = {
+      TEACHER_FIRST_NAME: userProfile.firstName || 'Teacher',
+      TEACHER_LAST_NAME: userProfile.lastName || '',
+      SCHOOL_NAME: userProfile.schoolName || 'Your School',
+      STUDENT_JOIN_CODE: studentJoinCode || 'PENDING',
+      PARENT_QUIZ_CODE: parentQuizCode || 'PENDING',
+      TOTAL_BOOKS: totalBooks.toString() || '50',
+      WEBSITE_URL: 'luxlibris.org/role-selector'
+    }
+    
+    return fillEmailTemplate(template, userData)
+  }
+
   // Show loading
-  if (authLoading || loading || !userProfile || phaseLoading) {  // ✅ UPDATED: Added phaseLoading
+  if (authLoading || loading || !userProfile || phaseLoading) {
     return (
       <div style={{
         minHeight: '100vh',
@@ -833,7 +836,11 @@ export default function TeacherDashboard() {
             animation: 'spin 1s linear infinite',
             margin: '0 auto 1rem'
           }}></div>
-          <p style={{ color: '#223848', fontSize: '1.1rem' }}>
+          <p style={{ 
+            color: '#223848', 
+            fontSize: '1.1rem',
+            fontFamily: 'Avenir, system-ui, sans-serif'
+          }}>
             Loading dashboard...
           </p>
         </div>
@@ -850,12 +857,13 @@ export default function TeacherDashboard() {
       <Head>
         <title>Teacher Dashboard - Lux Libris</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link rel="icon" href="/images/lux_libris_logo.png" />
       </Head>
       
       <div style={{
         minHeight: '100vh',
         background: 'linear-gradient(135deg, #FFFCF5 0%, #C3E0DE 50%, #A1E5DB 100%)',
-        fontFamily: 'system-ui, -apple-system, sans-serif',
+        fontFamily: 'Avenir, system-ui, -apple-system, sans-serif',
         paddingBottom: '80px'
       }}>
         
@@ -888,7 +896,8 @@ export default function TeacherDashboard() {
                 fontSize: '1.25rem',
                 fontWeight: 'bold',
                 color: '#223848',
-                marginBottom: '1rem'
+                marginBottom: '1rem',
+                fontFamily: 'Didot, "Times New Roman", serif'
               }}>
                 Session Expiring Soon
               </h3>
@@ -913,7 +922,8 @@ export default function TeacherDashboard() {
                     border: 'none',
                     borderRadius: '0.5rem',
                     cursor: 'pointer',
-                    fontSize: '0.875rem'
+                    fontSize: '0.875rem',
+                    fontFamily: 'Avenir, system-ui, sans-serif'
                   }}
                 >
                   Sign Out
@@ -928,7 +938,8 @@ export default function TeacherDashboard() {
                     borderRadius: '0.5rem',
                     cursor: 'pointer',
                     fontSize: '0.875rem',
-                    fontWeight: '600'
+                    fontWeight: '600',
+                    fontFamily: 'Avenir, system-ui, sans-serif'
                   }}
                 >
                   Continue Working
@@ -938,7 +949,7 @@ export default function TeacherDashboard() {
           </div>
         )}
 
-        {/* Manual Student Clearing Confirmation - Step 1 */}
+        {/* Manual Student Clearing Modals */}
         {showClearConfirmation && (
           <div style={{
             position: 'fixed',
@@ -967,7 +978,8 @@ export default function TeacherDashboard() {
                   fontSize: '1.5rem',
                   fontWeight: 'bold',
                   color: '#223848',
-                  marginBottom: '0.5rem'
+                  marginBottom: '0.5rem',
+                  fontFamily: 'Didot, "Times New Roman", serif'
                 }}>
                   Clear Manual Students Data?
                 </h3>
@@ -1031,7 +1043,8 @@ export default function TeacherDashboard() {
                     border: 'none',
                     borderRadius: '0.5rem',
                     cursor: 'pointer',
-                    fontSize: '0.875rem'
+                    fontSize: '0.875rem',
+                    fontFamily: 'Avenir, system-ui, sans-serif'
                   }}
                 >
                   Cancel
@@ -1046,7 +1059,8 @@ export default function TeacherDashboard() {
                     borderRadius: '0.5rem',
                     cursor: 'pointer',
                     fontSize: '0.875rem',
-                    fontWeight: '600'
+                    fontWeight: '600',
+                    fontFamily: 'Avenir, system-ui, sans-serif'
                   }}
                 >
                   Continue
@@ -1056,7 +1070,6 @@ export default function TeacherDashboard() {
           </div>
         )}
 
-        {/* Manual Student Clearing Confirmation - Step 2 */}
         {showFinalConfirmation && (
           <div style={{
             position: 'fixed',
@@ -1085,7 +1098,8 @@ export default function TeacherDashboard() {
                 fontSize: '1.25rem',
                 fontWeight: 'bold',
                 color: '#DC2626',
-                marginBottom: '1rem'
+                marginBottom: '1rem',
+                fontFamily: 'Didot, "Times New Roman", serif'
               }}>
                 Final Confirmation
               </h3>
@@ -1110,7 +1124,8 @@ export default function TeacherDashboard() {
                     border: 'none',
                     borderRadius: '0.5rem',
                     cursor: 'pointer',
-                    fontSize: '0.875rem'
+                    fontSize: '0.875rem',
+                    fontFamily: 'Avenir, system-ui, sans-serif'
                   }}
                 >
                   Cancel
@@ -1125,7 +1140,8 @@ export default function TeacherDashboard() {
                     borderRadius: '0.5rem',
                     cursor: 'pointer',
                     fontSize: '0.875rem',
-                    fontWeight: '600'
+                    fontWeight: '600',
+                    fontFamily: 'Avenir, system-ui, sans-serif'
                   }}
                 >
                   Yes, Clear Data
@@ -1135,7 +1151,6 @@ export default function TeacherDashboard() {
           </div>
         )}
 
-        {/* Clearing in Progress Modal */}
         {clearingInProgress && (
           <div style={{
             position: 'fixed',
@@ -1172,7 +1187,8 @@ export default function TeacherDashboard() {
                 fontSize: '1.25rem',
                 fontWeight: 'bold',
                 color: '#223848',
-                marginBottom: '0.5rem'
+                marginBottom: '0.5rem',
+                fontFamily: 'Didot, "Times New Roman", serif'
               }}>
                 Clearing Student Data...
               </h3>
@@ -1186,7 +1202,6 @@ export default function TeacherDashboard() {
           </div>
         )}
 
-        {/* Clearing Result Modal */}
         {clearingResult && (
           <div style={{
             position: 'fixed',
@@ -1221,7 +1236,8 @@ export default function TeacherDashboard() {
                 fontSize: '1.25rem',
                 fontWeight: 'bold',
                 color: '#223848',
-                marginBottom: '1rem'
+                marginBottom: '1rem',
+                fontFamily: 'Didot, "Times New Roman", serif'
               }}>
                 {clearingResult.success ? 'Data Cleared Successfully!' : 'Clearing Failed'}
               </h3>
@@ -1247,11 +1263,207 @@ export default function TeacherDashboard() {
                   borderRadius: '0.5rem',
                   cursor: 'pointer',
                   fontSize: '0.875rem',
-                  fontWeight: '600'
+                  fontWeight: '600',
+                  fontFamily: 'Avenir, system-ui, sans-serif'
                 }}
               >
                 Close
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Email Templates Modal with Real Data */}
+        {showEmailModal && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'center',
+            zIndex: 10000,
+            padding: '2rem',
+            overflowY: 'auto'
+          }}>
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '1rem',
+              padding: '2rem',
+              maxWidth: '800px',
+              width: '100%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+              marginTop: '2rem'
+            }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '1.5rem',
+                borderBottom: '2px solid #e5e7eb',
+                paddingBottom: '1rem'
+              }}>
+                <h2 style={{
+                  fontSize: '1.5rem',
+                  fontWeight: 'bold',
+                  color: '#223848',
+                  margin: 0,
+                  fontFamily: 'Didot, "Times New Roman", serif'
+                }}>
+                  ✉️ Parent Email Templates
+                </h2>
+                <button
+                  onClick={() => setShowEmailModal(false)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '1.5rem',
+                    cursor: 'pointer',
+                    color: '#6b7280'
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, 1fr)',
+                gap: '0.75rem',
+                marginBottom: '1.5rem'
+              }}>
+                {Object.entries(emailTemplates).map(([key, template]) => (
+                  <button
+                    key={key}
+                    onClick={() => handleEmailTemplateSelect(key)}
+                    style={{
+                      padding: '1rem',
+                      border: selectedEmailTemplate === key ? '2px solid #3B82F6' : '2px solid #e5e7eb',
+                      borderRadius: '0.5rem',
+                      background: selectedEmailTemplate === key ? '#EFF6FF' : 'white',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      transition: 'all 0.2s',
+                      fontFamily: 'Avenir, system-ui, sans-serif'
+                    }}
+                  >
+                    <div style={{
+                      fontSize: '0.875rem',
+                      fontWeight: '600',
+                      color: '#223848',
+                      marginBottom: '0.25rem'
+                    }}>
+                      {template.title}
+                    </div>
+                    <div style={{
+                      fontSize: '0.75rem',
+                      color: '#6b7280'
+                    }}>
+                      {template.sendTime}
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {selectedEmailTemplate && (
+                <div style={{
+                  border: '2px solid #e5e7eb',
+                  borderRadius: '0.75rem',
+                  padding: '1.5rem',
+                  background: '#f9fafb'
+                }}>
+                  <div style={{
+                    marginBottom: '1rem',
+                    paddingBottom: '1rem',
+                    borderBottom: '1px solid #e5e7eb'
+                  }}>
+                    <div style={{
+                      fontSize: '0.75rem',
+                      color: '#6b7280',
+                      marginBottom: '0.5rem'
+                    }}>
+                      EMAIL SUBJECT:
+                    </div>
+                    <div style={{
+                      fontSize: '1rem',
+                      fontWeight: '600',
+                      color: '#223848',
+                      fontFamily: 'Avenir, system-ui, sans-serif'
+                    }}>
+                      {getFilledEmailTemplate(selectedEmailTemplate).subject}
+                    </div>
+                  </div>
+
+                  <div style={{
+                    fontSize: '0.75rem',
+                    color: '#6b7280',
+                    marginBottom: '0.5rem'
+                  }}>
+                    EMAIL BODY:
+                  </div>
+                  <div style={{
+                    whiteSpace: 'pre-wrap',
+                    fontSize: '0.875rem',
+                    lineHeight: '1.6',
+                    color: '#374151',
+                    maxHeight: '400px',
+                    overflowY: 'auto',
+                    padding: '1rem',
+                    background: 'white',
+                    borderRadius: '0.5rem',
+                    border: '1px solid #e5e7eb',
+                    fontFamily: 'Avenir, system-ui, sans-serif'
+                  }}>
+                    {getFilledEmailTemplate(selectedEmailTemplate).body}
+                  </div>
+
+                  <div style={{
+                    marginTop: '1.5rem',
+                    display: 'flex',
+                    gap: '1rem',
+                    justifyContent: 'center'
+                  }}>
+                    <button
+                      onClick={copyEmailToClipboard}
+                      style={{
+                        padding: '0.75rem 2rem',
+                        background: copiedEmail 
+                          ? 'linear-gradient(135deg, #10B981, #059669)'
+                          : 'linear-gradient(135deg, #3B82F6, #2563EB)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '0.5rem',
+                        fontSize: '0.875rem',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        fontFamily: 'Avenir, system-ui, sans-serif'
+                      }}
+                    >
+                      {copiedEmail ? '✓ Copied to Clipboard!' : '📋 Copy Email'}
+                    </button>
+                  </div>
+
+                  <div style={{
+                    marginTop: '1rem',
+                    padding: '1rem',
+                    background: '#FEF3C7',
+                    borderRadius: '0.5rem',
+                    fontSize: '0.75rem',
+                    color: '#92400E',
+                    textAlign: 'center'
+                  }}>
+                    💡 Tip: This email has been filled with your actual school data. Just copy and paste into your school&apos;s email system!
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1279,32 +1491,30 @@ export default function TeacherDashboard() {
               alignItems: 'center', 
               gap: '0.75rem'
             }}>
-              <div style={{
-                width: '2.5rem',
-                height: '2.5rem',
-                background: 'linear-gradient(135deg, #C3E0DE, #A1E5DB)',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '1.25rem'
-              }}>
-                👩‍🏫
-              </div>
+              <img 
+                src="/images/lux_libris_logo.png" 
+                alt="Lux Libris"
+                style={{
+                  width: '2.5rem',
+                  height: '2.5rem',
+                  objectFit: 'contain'
+                }}
+              />
               <div>
                 <h1 style={{
                   fontSize: '1.5rem',
                   fontWeight: 'bold',
                   color: '#223848',
                   margin: 0,
-                  fontFamily: 'Georgia, serif'
+                  fontFamily: 'Didot, "Times New Roman", serif'
                 }}>
                   {userProfile?.schoolName || 'Reading Program'}
                 </h1>
                 <p style={{
                   color: '#6b7280',
                   fontSize: '0.875rem',
-                  margin: 0
+                  margin: 0,
+                  fontFamily: 'Avenir, system-ui, sans-serif'
                 }}>
                   Teacher Dashboard
                 </p>
@@ -1334,7 +1544,8 @@ export default function TeacherDashboard() {
                   fontSize: '0.75rem',
                   fontWeight: '600',
                   border: 'none',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  fontFamily: 'Avenir, system-ui, sans-serif'
                 }}
               >
                 🚪 Sign Out
@@ -1350,7 +1561,7 @@ export default function TeacherDashboard() {
           padding: '1rem'
         }}>
           
-          {/* Welcome Section */}
+          {/* Welcome Section with Nested Program Status */}
           <div style={{
             background: 'white',
             borderRadius: '1rem',
@@ -1363,329 +1574,227 @@ export default function TeacherDashboard() {
               fontWeight: 'bold',
               color: '#223848',
               margin: '0 0 0.5rem 0',
-              fontFamily: 'Georgia, serif'
+              fontFamily: 'Didot, "Times New Roman", serif'
             }}>
               Welcome back, {userProfile.firstName}! 👋
             </h2>
             <p style={{
               color: '#6b7280',
               fontSize: '1rem',
-              margin: 0
+              margin: '0 0 1rem 0',
+              fontFamily: 'Avenir, system-ui, sans-serif'
             }}>
               Here&apos;s what&apos;s happening with your reading program today.
             </p>
-          </div>
 
-          {/* Join Codes Section */}
-          <div style={{
-            background: 'white',
-            borderRadius: '1rem',
-            padding: '1.5rem',
-            marginBottom: '1.5rem',
-            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
-            border: '2px solid #C3E0DE'
-          }}>
-            <h3 style={{
-              fontSize: '1.25rem',
-              fontWeight: 'bold',
-              color: '#223848',
-              margin: '0 0 1rem 0',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem'
-            }}>
-              🔑 Access Codes
-            </h3>
-            
-            {codesLoading ? (
-              <div style={{ textAlign: 'center', padding: '2rem' }}>
+            {/* Program Status Collapsible Section */}
+            <button
+              onClick={() => setShowProgramStatus(!showProgramStatus)}
+              style={{
+                width: '100%',
+                padding: '1rem',
+                background: showProgramStatus ? '#F3F4F620' : '#F8FAFC',
+                border: '1px solid #E2E8F0',
+                borderRadius: '0.75rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                transition: 'all 0.2s',
+                fontFamily: 'Avenir, system-ui, sans-serif'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <div style={{
-                  width: '2rem',
-                  height: '2rem',
-                  border: '3px solid #C3E0DE',
-                  borderTop: '3px solid #223848',
-                  borderRadius: '50%',
-                  animation: 'spin 1s linear infinite',
-                  margin: '0 auto 1rem'
-                }}></div>
-                <p style={{ color: '#6b7280' }}>Loading codes...</p>
-              </div>
-            ) : (
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-                gap: '1rem'
-              }}>
-                {/* Student Join Code */}
-                <div style={{
-                  background: 'linear-gradient(135deg, #ADD4EA15, #ADD4EA25)',
-                  borderRadius: '0.75rem',
-                  padding: '1.25rem',
-                  border: '1px solid #ADD4EA'
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
                 }}>
                   <div style={{
+                    width: '2rem',
+                    height: '2rem',
+                    background: 'linear-gradient(135deg, #ADD4EA15, #ADD4EA25)',
+                    borderRadius: '50%',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '0.5rem',
-                    marginBottom: '0.75rem'
+                    justifyContent: 'center',
+                    fontSize: '1rem'
                   }}>
-                    <span style={{ fontSize: '1.25rem' }}>👥</span>
-                    <h4 style={{
-                      fontSize: '1rem',
-                      fontWeight: '600',
-                      color: '#223848',
-                      margin: 0
-                    }}>
-                      Student Join Code
-                    </h4>
-                  </div>
-                  <p style={{
-                    fontSize: '0.75rem',
-                    color: '#6b7280',
-                    margin: '0 0 0.75rem 0',
-                    lineHeight: '1.4'
-                  }}>
-                    Students use this code to join your class in the app
-                  </p>
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem'
-                  }}>
-                    <div style={{
-                      background: 'white',
-                      border: '2px solid #ADD4EA',
-                      borderRadius: '0.5rem',
-                      padding: '0.75rem 1rem',
-                      fontSize: '1.25rem',
-                      fontWeight: 'bold',
-                      color: '#223848',
-                      fontFamily: 'monospace',
-                      letterSpacing: '0.1em',
-                      flex: 1,
-                      textAlign: 'center'
-                    }}>
-                      {studentJoinCode || 'Not Available'}
-                    </div>
-                    <button
-                      onClick={() => copyToClipboard(studentJoinCode, 'student')}
-                      disabled={!studentJoinCode}
-                      style={{
-                        padding: '0.75rem',
-                        background: copySuccess === 'student' 
-                          ? 'linear-gradient(135deg, #10B981, #059669)' 
-                          : 'linear-gradient(135deg, #ADD4EA, #C3E0DE)',
-                        color: copySuccess === 'student' ? 'white' : '#223848',
-                        border: 'none',
-                        borderRadius: '0.5rem',
-                        cursor: studentJoinCode ? 'pointer' : 'not-allowed',
-                        fontSize: '0.875rem',
-                        fontWeight: '600',
-                        opacity: studentJoinCode ? 1 : 0.5,
-                        minWidth: '80px',
-                        transition: 'all 0.2s ease'
-                      }}
-                    >
-                      {copySuccess === 'student' ? '✓ Copied!' : '📋 Copy'}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Parent Quiz Code */}
-                <div style={{
-                  background: 'linear-gradient(135deg, #C3E0DE15, #C3E0DE25)',
-                  borderRadius: '0.75rem',
-                  padding: '1.25rem',
-                  border: '1px solid #C3E0DE'
-                }}>
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    marginBottom: '0.75rem'
-                  }}>
-                    <span style={{ fontSize: '1.25rem' }}>👨‍👩‍👧‍👦</span>
-                    <h4 style={{
-                      fontSize: '1rem',
-                      fontWeight: '600',
-                      color: '#223848',
-                      margin: 0
-                    }}>
-                      Parent Quiz Code
-                    </h4>
-                  </div>
-                  <p style={{
-                    fontSize: '0.75rem',
-                    color: '#6b7280',
-                    margin: '0 0 0.75rem 0',
-                    lineHeight: '1.4'
-                  }}>
-                    Share with parents for book quiz access
-                  </p>
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem'
-                  }}>
-                    <div style={{
-                      background: 'white',
-                      border: '2px solid #C3E0DE',
-                      borderRadius: '0.5rem',
-                      padding: '0.75rem 1rem',
-                      fontSize: '1.25rem',
-                      fontWeight: 'bold',
-                      color: '#223848',
-                      fontFamily: 'monospace',
-                      letterSpacing: '0.1em',
-                      flex: 1,
-                      textAlign: 'center'
-                    }}>
-                      {parentQuizCode || 'Generating...'}
-                    </div>
-                    <button
-                      onClick={() => copyToClipboard(parentQuizCode, 'parent')}
-                      disabled={!parentQuizCode}
-                      style={{
-                        padding: '0.75rem',
-                        background: copySuccess === 'parent' 
-                          ? 'linear-gradient(135deg, #10B981, #059669)' 
-                          : 'linear-gradient(135deg, #C3E0DE, #A1E5DB)',
-                        color: copySuccess === 'parent' ? 'white' : '#223848',
-                        border: 'none',
-                        borderRadius: '0.5rem',
-                        cursor: parentQuizCode ? 'pointer' : 'not-allowed',
-                        fontSize: '0.875rem',
-                        fontWeight: '600',
-                        opacity: parentQuizCode ? 1 : 0.5,
-                        minWidth: '80px',
-                        transition: 'all 0.2s ease'
-                      }}
-                    >
-                      {copySuccess === 'parent' ? '✓ Copied!' : '📋 Copy'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Enhanced Phase Status Display */}
-          <div style={{
-            background: 'white',
-            borderRadius: '1rem',
-            padding: '1.5rem',
-            marginBottom: '1.5rem',
-            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
-            border: '2px solid #E5E7EB'
-          }}>
-            <h3 style={{
-              fontSize: '1.25rem',
-              fontWeight: 'bold',
-              color: '#223848',
-              margin: '0 0 1rem 0',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem'
-            }}>
-              📊 Program Status
-              {/* ✅ NEW: Add refresh button for manual updates */}
-              <button
-                onClick={refreshPhase}
-                style={{
-                  marginLeft: 'auto',
-                  padding: '0.25rem 0.5rem',
-                  background: 'transparent',
-                  border: '1px solid #D1D5DB',
-                  borderRadius: '0.375rem',
-                  cursor: 'pointer',
-                  fontSize: '0.75rem',
-                  color: '#6B7280'
-                }}
-                title="Refresh phase status"
-              >
-                🔄 Refresh
-              </button>
-            </h3>
-            
-            {/* ✅ UPDATED: Use phaseData from hook instead of local state */}
-            <>
-              {/* Current Status Cards */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                gap: '1rem',
-                marginBottom: '1.5rem'
-              }}>
-                {/* Academic Year */}
-                <div style={{
-                  background: 'linear-gradient(135deg, #ADD4EA15, #ADD4EA25)',
-                  borderRadius: '0.75rem',
-                  padding: '1.25rem',
-                  border: '1px solid #ADD4EA',
-                  textAlign: 'center'
-                }}>
-                  <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>📅</div>
-                  <div style={{
-                    fontSize: '1.125rem',
-                    fontWeight: 'bold',
-                    color: '#223848',
-                    marginBottom: '0.25rem'
-                  }}>
-                    {phaseData?.academicYear}
-                  </div>
-                  <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                    Academic Year
-                  </div>
-                </div>
-
-                {/* Current Phase */}
-                <div style={{
-                  background: 'linear-gradient(135deg, #C3E0DE15, #C3E0DE25)',
-                  borderRadius: '0.75rem',
-                  padding: '1.25rem',
-                  border: '1px solid #C3E0DE',
-                  textAlign: 'center'
-                }}>
-                  <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>
                     {getPhaseInfo().icon}
                   </div>
-                  <div style={{
-                    fontSize: '1.125rem',
-                    fontWeight: 'bold',
-                    color: '#223848',
-                    marginBottom: '0.25rem'
-                  }}>
-                    {getPhaseInfo().name}
-                  </div>
-                  <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                    Current Phase
+                  <div style={{ textAlign: 'left' }}>
+                    <div style={{
+                      fontSize: '0.875rem',
+                      fontWeight: '600',
+                      color: '#223848'
+                    }}>
+                      {getPhaseInfo().name} • {phaseData?.academicYear}
+                    </div>
+                    <div style={{
+                      fontSize: '0.75rem',
+                      color: '#6b7280'
+                    }}>
+                      Click to view program details
+                    </div>
                   </div>
                 </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    refreshPhase()
+                  }}
+                  style={{
+                    padding: '0.25rem 0.5rem',
+                    background: 'transparent',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '0.375rem',
+                    cursor: 'pointer',
+                    fontSize: '0.75rem',
+                    color: '#6B7280',
+                    fontFamily: 'Avenir, system-ui, sans-serif'
+                  }}
+                  title="Refresh phase status"
+                >
+                  🔄
+                </button>
               </div>
-
-              {/* Phase Details - Updated to use phaseData */}
+              <span style={{
+                fontSize: '1rem',
+                color: '#223848',
+                transition: 'transform 0.2s',
+                transform: showProgramStatus ? 'rotate(180deg)' : 'rotate(0deg)'
+              }}>
+                ▼
+              </span>
+            </button>
+            
+            {showProgramStatus && (
               <PhaseDetailsSection 
                 currentPhase={phaseData?.currentPhase} 
                 router={router}
                 userProfile={userProfile}
                 onClearManualStudents={handleClearManualStudents}
               />
-            </>
+            )}
           </div>
 
-          {/* Teacher Results Interface - Only During Results Phase */}
-          {phaseData && phaseData.currentPhase === 'RESULTS' && (
-            <div id="results-section">
-              <TeacherResultsInterface 
-                userProfile={userProfile} 
-                currentTheme={{
-                  surface: 'white',
-                  textPrimary: '#223848',
-                  textSecondary: '#6b7280',
-                  primary: '#ADD4EA',
-                  accent: '#A1E5DB'
-                }}
+          {/* Quick Actions */}
+          <div style={{
+            background: 'white',
+            borderRadius: '1rem',
+            padding: '1.5rem',
+            marginBottom: '1.5rem',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)'
+          }}>
+            <h3 style={{
+              fontSize: '1.25rem',
+              fontWeight: 'bold',
+              color: '#223848',
+              margin: '0 0 1rem 0',
+              fontFamily: 'Didot, "Times New Roman", serif'
+            }}>
+              🚀 Quick Actions
+            </h3>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: '1rem'
+            }}>
+              <QuickActionButton
+                icon="👥"
+                title="Add Student"
+                description="Add new app or manual student"
+                onClick={() => handleNavigation('students')}
               />
+              <QuickActionButton
+                icon="📋"
+                title="Review Submissions"
+                description="Approve pending book completions"
+                onClick={() => handleNavigation('submissions')}
+                badge={dashboardData.pendingSubmissions > 0 ? dashboardData.pendingSubmissions : null}
+              />
+              <QuickActionButton
+                icon="🏆"
+                title="View Achievements"
+                description="See who earned rewards"
+                onClick={() => handleNavigation('achievements')}
+              />
+              <QuickActionButton
+                icon="⚙️"
+                title="Settings"
+                description="Manage school configuration"
+                onClick={() => handleNavigation('settings')}
+              />
+            </div>
+          </div>
+
+          {/* Urgent Actions */}
+          {urgentActions.length > 0 && (
+            <div style={{
+              background: 'white',
+              borderRadius: '1rem',
+              padding: '1.5rem',
+              marginBottom: '1.5rem',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+              border: '2px solid #FEF3C7'
+            }}>
+              <h3 style={{
+                fontSize: '1.25rem',
+                fontWeight: 'bold',
+                color: '#92400e',
+                margin: '0 0 1rem 0',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                fontFamily: 'Didot, "Times New Roman", serif'
+              }}>
+                ⚡ Action Required
+              </h3>
+              <div style={{ display: 'grid', gap: '0.75rem' }}>
+                {urgentActions.map(action => (
+                  <div key={action.id} style={{
+                    padding: '1rem',
+                    background: '#FEF3C7',
+                    borderRadius: '0.5rem',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <div>
+                      <div style={{
+                        fontSize: '0.875rem',
+                        fontWeight: '600',
+                        color: '#92400e',
+                        fontFamily: 'Avenir, system-ui, sans-serif'
+                      }}>
+                        {action.title}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (action.type === 'submissions') {
+                          router.push('/teacher/submissions')
+                        } else {
+                          handleNavigation(action.type)
+                        }
+                      }}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        background: '#D97706',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '0.5rem',
+                        fontSize: '0.75rem',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        fontFamily: 'Avenir, system-ui, sans-serif'
+                      }}
+                    >
+                      {action.action}
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
@@ -1734,244 +1843,446 @@ export default function TeacherDashboard() {
             />
           </div>
 
-          {/* Urgent Actions */}
-          {urgentActions.length > 0 && (
-            <div style={{
-              background: 'white',
-              borderRadius: '1rem',
-              padding: '1.5rem',
-              marginBottom: '1.5rem',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
-              border: '2px solid #FEF3C7'
-            }}>
-              <h3 style={{
-                fontSize: '1.25rem',
-                fontWeight: 'bold',
-                color: '#92400e',
-                margin: '0 0 1rem 0',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}>
-                ⚡ Action Required
-              </h3>
-              <div style={{ display: 'grid', gap: '0.75rem' }}>
-                {urgentActions.map(action => (
-                  <div key={action.id} style={{
-                    padding: '1rem',
-                    background: '#FEF3C7',
-                    borderRadius: '0.5rem',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}>
-                    <div>
-                      <div style={{
-                        fontSize: '0.875rem',
-                        fontWeight: '600',
-                        color: '#92400e'
-                      }}>
-                        {action.title}
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => {
-                        // ✅ Fixed navigation for submissions
-                        if (action.type === 'submissions') {
-                          router.push('/teacher/submissions')
-                        } else {
-                          handleNavigation(action.type)
-                        }
-                      }}
-                      style={{
-                        padding: '0.5rem 1rem',
-                        background: '#D97706',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '0.5rem',
-                        fontSize: '0.75rem',
-                        fontWeight: '600',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      {action.action}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Top Readers & Recent Activity */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: window.innerWidth < 768 ? '1fr' : '1fr 1fr',
-            gap: '1.5rem',
-            marginBottom: '1.5rem'
-          }}>
-            {/* Top Readers */}
-            <div style={{
-              background: 'white',
-              borderRadius: '1rem',
-              padding: '1.5rem',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)'
-            }}>
-              <h3 style={{
-                fontSize: '1.25rem',
-                fontWeight: 'bold',
-                color: '#223848',
-                margin: '0 0 1rem 0',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}>
-                🏆 Top Readers
-              </h3>
-              {topReaders.length === 0 ? (
-                <p style={{ color: '#6b7280', fontStyle: 'italic' }}>
-                  No books completed yet this year.
-                </p>
-              ) : (
-                <div style={{ display: 'grid', gap: '0.5rem' }}>
-                  {topReaders.map((reader, index) => (
-                    <div key={reader.id} style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.75rem',
-                      padding: '0.5rem',
-                      borderRadius: '0.5rem',
-                      background: index === 0 ? '#FEF3C7' : '#f8fafc'
-                    }}>
-                      <span style={{
-                        fontSize: '1.25rem'
-                      }}>
-                        {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '📖'}
-                      </span>
-                      <div style={{ flex: 1 }}>
-                        <div style={{
-                          fontSize: '0.875rem',
-                          fontWeight: '600',
-                          color: '#223848'
-                        }}>
-                          {reader.name}
-                        </div>
-                        <div style={{
-                          fontSize: '0.75rem',
-                          color: '#6b7280'
-                        }}>
-                          {reader.books} book{reader.books !== 1 ? 's' : ''} • {reader.type === 'app' ? 'App' : 'Manual'}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Recent Activity */}
-            <div style={{
-              background: 'white',
-              borderRadius: '1rem',
-              padding: '1.5rem',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)'
-            }}>
-              <h3 style={{
-                fontSize: '1.25rem',
-                fontWeight: 'bold',
-                color: '#223848',
-                margin: '0 0 1rem 0',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}>
-                📈 Recent Activity
-              </h3>
-              {recentActivity.length === 0 ? (
-                <p style={{ color: '#6b7280', fontStyle: 'italic' }}>
-                  No recent activity to show.
-                </p>
-              ) : (
-                <div style={{ display: 'grid', gap: '0.5rem' }}>
-                  {recentActivity.map(activity => (
-                    <div key={activity.id} style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.75rem',
-                      padding: '0.5rem',
-                      borderRadius: '0.5rem',
-                      background: '#f8fafc'
-                    }}>
-                      <span style={{ fontSize: '1rem' }}>
-                        {activity.studentType === 'app' ? '📱' : '📝'}
-                      </span>
-                      <div style={{ flex: 1 }}>
-                        <div style={{
-                          fontSize: '0.875rem',
-                          color: '#223848'
-                        }}>
-                          {activity.studentName} {activity.action}
-                        </div>
-                        <div style={{
-                          fontSize: '0.75rem',
-                          color: '#6b7280'
-                        }}>
-                          {activity.timestamp.toLocaleDateString()}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Quick Actions */}
+          {/* Collapsible Access Codes & Email Templates Section */}
           <div style={{
             background: 'white',
             borderRadius: '1rem',
-            padding: '1.5rem',
-            marginBottom: '6rem',
-            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)'
+            marginBottom: '1.5rem',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+            border: '2px solid #C3E0DE',
+            overflow: 'hidden'
           }}>
-            <h3 style={{
-              fontSize: '1.25rem',
-              fontWeight: 'bold',
-              color: '#223848',
-              margin: '0 0 1rem 0'
-            }}>
-              🚀 Quick Actions
-            </h3>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-              gap: '1rem'
-            }}>
-              <QuickActionButton
-                icon="👥"
-                title="Add Student"
-                description="Add new app or manual student"
-                onClick={() => handleNavigation('students')}
-              />
-              <QuickActionButton
-                icon="📋"
-                title="Review Submissions"
-                description="Approve pending book completions"
-                onClick={() => handleNavigation('submissions')}
-                badge={dashboardData.pendingSubmissions > 0 ? dashboardData.pendingSubmissions : null}
-              />
-              <QuickActionButton
-                icon="🏆"
-                title="View Achievements"
-                description="See who earned rewards"
-                onClick={() => handleNavigation('achievements')}
-              />
-              <QuickActionButton
-                icon="⚙️"
-                title="Settings"
-                description="Manage school configuration"
-                onClick={() => handleNavigation('settings')}
+            <button
+              onClick={() => setShowAccessCodes(!showAccessCodes)}
+              style={{
+                width: '100%',
+                padding: '1.5rem',
+                background: showAccessCodes ? '#C3E0DE20' : 'white',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                transition: 'background 0.2s'
+              }}
+            >
+              <h3 style={{
+                fontSize: '1.25rem',
+                fontWeight: 'bold',
+                color: '#223848',
+                margin: 0,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                fontFamily: 'Didot, "Times New Roman", serif'
+              }}>
+                🔑 Access Codes & Parent Emails
+              </h3>
+              <span style={{
+                fontSize: '1.25rem',
+                color: '#223848',
+                transition: 'transform 0.2s',
+                transform: showAccessCodes ? 'rotate(180deg)' : 'rotate(0deg)'
+              }}>
+                ▼
+              </span>
+            </button>
+            
+            {showAccessCodes && (
+              <div style={{ padding: '0 1.5rem 1.5rem 1.5rem' }}>
+                {codesLoading ? (
+                  <div style={{ textAlign: 'center', padding: '2rem' }}>
+                    <div style={{
+                      width: '2rem',
+                      height: '2rem',
+                      border: '3px solid #C3E0DE',
+                      borderTop: '3px solid #223848',
+                      borderRadius: '50%',
+                      animation: 'spin 1s linear infinite',
+                      margin: '0 auto 1rem'
+                    }}></div>
+                    <p style={{ color: '#6b7280', fontFamily: 'Avenir, system-ui, sans-serif' }}>Loading codes...</p>
+                  </div>
+                ) : (
+                  <>
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                      gap: '1rem',
+                      marginBottom: '1.5rem'
+                    }}>
+                      {/* Student Join Code */}
+                      <div style={{
+                        background: 'linear-gradient(135deg, #ADD4EA15, #ADD4EA25)',
+                        borderRadius: '0.75rem',
+                        padding: '1.25rem',
+                        border: '1px solid #ADD4EA'
+                      }}>
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          marginBottom: '0.75rem'
+                        }}>
+                          <span style={{ fontSize: '1.25rem' }}>👥</span>
+                          <h4 style={{
+                            fontSize: '1rem',
+                            fontWeight: '600',
+                            color: '#223848',
+                            margin: 0,
+                            fontFamily: 'Avenir, system-ui, sans-serif'
+                          }}>
+                            Student Join Code
+                          </h4>
+                        </div>
+                        <p style={{
+                          fontSize: '0.75rem',
+                          color: '#6b7280',
+                          margin: '0 0 0.75rem 0',
+                          lineHeight: '1.4'
+                        }}>
+                          Students use this code to join your class in the app
+                        </p>
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem'
+                        }}>
+                          <div style={{
+                            background: 'white',
+                            border: '2px solid #ADD4EA',
+                            borderRadius: '0.5rem',
+                            padding: '0.75rem 1rem',
+                            fontSize: '1.25rem',
+                            fontWeight: 'bold',
+                            color: '#223848',
+                            fontFamily: 'monospace',
+                            letterSpacing: '0.1em',
+                            flex: 1,
+                            textAlign: 'center'
+                          }}>
+                            {studentJoinCode || 'Not Available'}
+                          </div>
+                          <button
+                            onClick={() => copyToClipboard(studentJoinCode, 'student')}
+                            disabled={!studentJoinCode}
+                            style={{
+                              padding: '0.75rem',
+                              background: copySuccess === 'student' 
+                                ? 'linear-gradient(135deg, #10B981, #059669)' 
+                                : 'linear-gradient(135deg, #ADD4EA, #C3E0DE)',
+                              color: copySuccess === 'student' ? 'white' : '#223848',
+                              border: 'none',
+                              borderRadius: '0.5rem',
+                              cursor: studentJoinCode ? 'pointer' : 'not-allowed',
+                              fontSize: '0.875rem',
+                              fontWeight: '600',
+                              opacity: studentJoinCode ? 1 : 0.5,
+                              minWidth: '80px',
+                              transition: 'all 0.2s ease',
+                              fontFamily: 'Avenir, system-ui, sans-serif'
+                            }}
+                          >
+                            {copySuccess === 'student' ? '✓ Copied!' : '📋 Copy'}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Parent Quiz Code */}
+                      <div style={{
+                        background: 'linear-gradient(135deg, #C3E0DE15, #C3E0DE25)',
+                        borderRadius: '0.75rem',
+                        padding: '1.25rem',
+                        border: '1px solid #C3E0DE'
+                      }}>
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          marginBottom: '0.75rem'
+                        }}>
+                          <span style={{ fontSize: '1.25rem' }}>👨‍👩‍👧‍👦</span>
+                          <h4 style={{
+                            fontSize: '1rem',
+                            fontWeight: '600',
+                            color: '#223848',
+                            margin: 0,
+                            fontFamily: 'Avenir, system-ui, sans-serif'
+                          }}>
+                            Parent Quiz Code
+                          </h4>
+                        </div>
+                        <p style={{
+                          fontSize: '0.75rem',
+                          color: '#6b7280',
+                          margin: '0 0 0.75rem 0',
+                          lineHeight: '1.4'
+                        }}>
+                          Share with parents for book quiz access
+                        </p>
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem'
+                        }}>
+                          <div style={{
+                            background: 'white',
+                            border: '2px solid #C3E0DE',
+                            borderRadius: '0.5rem',
+                            padding: '0.75rem 1rem',
+                            fontSize: '1.25rem',
+                            fontWeight: 'bold',
+                            color: '#223848',
+                            fontFamily: 'monospace',
+                            letterSpacing: '0.1em',
+                            flex: 1,
+                            textAlign: 'center'
+                          }}>
+                            {parentQuizCode || 'Generating...'}
+                          </div>
+                          <button
+                            onClick={() => copyToClipboard(parentQuizCode, 'parent')}
+                            disabled={!parentQuizCode}
+                            style={{
+                              padding: '0.75rem',
+                              background: copySuccess === 'parent' 
+                                ? 'linear-gradient(135deg, #10B981, #059669)' 
+                                : 'linear-gradient(135deg, #C3E0DE, #A1E5DB)',
+                              color: copySuccess === 'parent' ? 'white' : '#223848',
+                              border: 'none',
+                              borderRadius: '0.5rem',
+                              cursor: parentQuizCode ? 'pointer' : 'not-allowed',
+                              fontSize: '0.875rem',
+                              fontWeight: '600',
+                              opacity: parentQuizCode ? 1 : 0.5,
+                              minWidth: '80px',
+                              transition: 'all 0.2s ease',
+                              fontFamily: 'Avenir, system-ui, sans-serif'
+                            }}
+                          >
+                            {copySuccess === 'parent' ? '✓ Copied!' : '📋 Copy'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Email Templates Button */}
+                    <button
+                      onClick={openEmailModal}
+                      style={{
+                        width: '100%',
+                        padding: '1rem',
+                        background: 'linear-gradient(135deg, #3B82F6, #2563EB)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '0.75rem',
+                        fontSize: '0.875rem',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.5rem',
+                        transition: 'all 0.2s ease',
+                        fontFamily: 'Avenir, system-ui, sans-serif'
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-1px)'
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)'
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)'
+                        e.currentTarget.style.boxShadow = 'none'
+                      }}
+                    >
+                      ✉️ View Parent Email Templates
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Teacher Results Interface */}
+          {phaseData && phaseData.currentPhase === 'RESULTS' && (
+            <div id="results-section">
+              <TeacherResultsInterface 
+                userProfile={userProfile} 
+                currentTheme={{
+                  surface: 'white',
+                  textPrimary: '#223848',
+                  textSecondary: '#6b7280',
+                  primary: '#ADD4EA',
+                  accent: '#A1E5DB'
+                }}
               />
             </div>
+          )}
+
+          {/* Collapsible Top Readers & Recent Activity */}
+          <div style={{
+            background: 'white',
+            borderRadius: '1rem',
+            marginBottom: '6rem',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+            overflow: 'hidden'
+          }}>
+            <button
+              onClick={() => setShowTopReadersActivity(!showTopReadersActivity)}
+              style={{
+                width: '100%',
+                padding: '1.5rem',
+                background: showTopReadersActivity ? '#F3F4F620' : 'white',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                transition: 'background 0.2s'
+              }}
+            >
+              <h3 style={{
+                fontSize: '1.25rem',
+                fontWeight: 'bold',
+                color: '#223848',
+                margin: 0,
+                fontFamily: 'Didot, "Times New Roman", serif'
+              }}>
+                🏆 Top Readers & Recent Activity
+              </h3>
+              <span style={{
+                fontSize: '1.25rem',
+                color: '#223848',
+                transition: 'transform 0.2s',
+                transform: showTopReadersActivity ? 'rotate(180deg)' : 'rotate(0deg)'
+              }}>
+                ▼
+              </span>
+            </button>
+            
+            {showTopReadersActivity && (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: window.innerWidth < 768 ? '1fr' : '1fr 1fr',
+                gap: '1.5rem',
+                padding: '0 1.5rem 1.5rem 1.5rem'
+              }}>
+                {/* Top Readers */}
+                <div>
+                  <h4 style={{
+                    fontSize: '1.125rem',
+                    fontWeight: 'bold',
+                    color: '#223848',
+                    margin: '0 0 1rem 0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    fontFamily: 'Avenir, system-ui, sans-serif'
+                  }}>
+                    🏆 Top Readers
+                  </h4>
+                  {topReaders.length === 0 ? (
+                    <p style={{ 
+                      color: '#6b7280', 
+                      fontStyle: 'italic',
+                      fontFamily: 'Avenir, system-ui, sans-serif'
+                    }}>
+                      No books completed yet this year.
+                    </p>
+                  ) : (
+                    <div style={{ display: 'grid', gap: '0.5rem' }}>
+                      {topReaders.map((reader, index) => (
+                        <div key={reader.id} style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.75rem',
+                          padding: '0.5rem',
+                          borderRadius: '0.5rem',
+                          background: index === 0 ? '#FEF3C7' : '#f8fafc'
+                        }}>
+                          <span style={{ fontSize: '1.25rem' }}>
+                            {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '📖'}
+                          </span>
+                          <div style={{ flex: 1 }}>
+                            <div style={{
+                              fontSize: '0.875rem',
+                              fontWeight: '600',
+                              color: '#223848',
+                              fontFamily: 'Avenir, system-ui, sans-serif'
+                            }}>
+                              {reader.name}
+                            </div>
+                            <div style={{
+                              fontSize: '0.75rem',
+                              color: '#6b7280'
+                            }}>
+                              {reader.books} book{reader.books !== 1 ? 's' : ''} • {reader.type === 'app' ? 'App' : 'Manual'}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Recent Activity */}
+                <div>
+                  <h4 style={{
+                    fontSize: '1.125rem',
+                    fontWeight: 'bold',
+                    color: '#223848',
+                    margin: '0 0 1rem 0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    fontFamily: 'Avenir, system-ui, sans-serif'
+                  }}>
+                    📈 Recent Activity
+                  </h4>
+                  {recentActivity.length === 0 ? (
+                    <p style={{ 
+                      color: '#6b7280', 
+                      fontStyle: 'italic',
+                      fontFamily: 'Avenir, system-ui, sans-serif'
+                    }}>
+                      No recent activity to show.
+                    </p>
+                  ) : (
+                    <div style={{ display: 'grid', gap: '0.5rem' }}>
+                      {recentActivity.map(activity => (
+                        <div key={activity.id} style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.75rem',
+                          padding: '0.5rem',
+                          borderRadius: '0.5rem',
+                          background: '#f8fafc'
+                        }}>
+                          <span style={{ fontSize: '1rem' }}>
+                            {activity.studentType === 'app' ? '📱' : '📝'}
+                          </span>
+                          <div style={{ flex: 1 }}>
+                            <div style={{
+                              fontSize: '0.875rem',
+                              color: '#223848',
+                              fontFamily: 'Avenir, system-ui, sans-serif'
+                            }}>
+                              {activity.studentName} {activity.action}
+                            </div>
+                            <div style={{
+                              fontSize: '0.75rem',
+                              color: '#6b7280'
+                            }}>
+                              {activity.timestamp.toLocaleDateString()}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -2014,7 +2325,8 @@ export default function TeacherDashboard() {
                 gap: '2px',
                 color: tab.active ? '#ADD4EA' : '#6b7280',
                 transition: 'all 0.2s ease',
-                position: 'relative'
+                position: 'relative',
+                fontFamily: 'Avenir, system-ui, sans-serif'
               }}
             >
               <span style={{ 
@@ -2131,7 +2443,8 @@ function QuickStatCard({ icon, title, value, subtitle, color, alert = false }) {
         fontSize: '1.5rem',
         fontWeight: 'bold',
         color: '#223848',
-        margin: '0 0 0.25rem 0'
+        margin: '0 0 0.25rem 0',
+        fontFamily: 'Avenir, system-ui, sans-serif'
       }}>
         {value}
       </h3>
@@ -2166,7 +2479,8 @@ function QuickActionButton({ icon, title, description, onClick, badge = null }) 
         cursor: 'pointer',
         textAlign: 'left',
         transition: 'all 0.2s ease',
-        position: 'relative'
+        position: 'relative',
+        fontFamily: 'Avenir, system-ui, sans-serif'
       }}
       onMouseOver={(e) => {
         e.currentTarget.style.background = 'linear-gradient(135deg, #ADD4EA20, #C3E0DE20)'
