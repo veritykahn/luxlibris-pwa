@@ -603,27 +603,22 @@ export default function TeacherDashboard() {
   }
   
   const copyEmailToClipboard = () => {
-    const template = emailTemplates[selectedEmailTemplate]
-    
-    // Build userData object with real data
-    const userData = {
-      TEACHER_FIRST_NAME: userProfile.firstName || 'Teacher',
-      TEACHER_LAST_NAME: userProfile.lastName || '',
-      SCHOOL_NAME: userProfile.schoolName || 'Your School',
-      STUDENT_JOIN_CODE: studentJoinCode || 'PENDING',
-      PARENT_QUIZ_CODE: parentQuizCode || 'PENDING',
-      TOTAL_BOOKS: totalBooks.toString() || '50',
-      WEBSITE_URL: 'luxlibris.org/role-selector'
-    }
-    
-    // Fill template with real data
-    const filledEmail = fillEmailTemplate(template, userData)
-    const emailContent = `Subject: ${filledEmail.subject}\n\n${filledEmail.body}`
-    
-    navigator.clipboard.writeText(emailContent)
-    setCopiedEmail(true)
-    setTimeout(() => setCopiedEmail(false), 3000)
-  }
+  const template = emailTemplates[selectedEmailTemplate]
+  
+  // Pass the complete teacher data object (userProfile has everything from Firebase)
+  const filledEmail = fillEmailTemplate(template, {
+    ...userProfile,
+    studentJoinCode,
+    parentQuizCode,
+    selectedNominees: userProfile.selectedNominees || []
+  })
+  
+  const emailContent = `Subject: ${filledEmail.subject}\n\n${filledEmail.body}`
+  
+  navigator.clipboard.writeText(emailContent)
+  setCopiedEmail(true)
+  setTimeout(() => setCopiedEmail(false), 3000)
+}
   
   const openEmailModal = () => {
     const currentTemplate = getCurrentEmailTemplate()
@@ -801,20 +796,16 @@ export default function TeacherDashboard() {
 
   // Get filled email template for display
   const getFilledEmailTemplate = (templateKey) => {
-    const template = emailTemplates[templateKey]
-    
-    const userData = {
-      TEACHER_FIRST_NAME: userProfile.firstName || 'Teacher',
-      TEACHER_LAST_NAME: userProfile.lastName || '',
-      SCHOOL_NAME: userProfile.schoolName || 'Your School',
-      STUDENT_JOIN_CODE: studentJoinCode || 'PENDING',
-      PARENT_QUIZ_CODE: parentQuizCode || 'PENDING',
-      TOTAL_BOOKS: totalBooks.toString() || '50',
-      WEBSITE_URL: 'luxlibris.org/role-selector'
-    }
-    
-    return fillEmailTemplate(template, userData)
-  }
+  const template = emailTemplates[templateKey]
+  
+  // Pass complete teacher data including achievement tiers and submission options
+  return fillEmailTemplate(template, {
+    ...userProfile,
+    studentJoinCode,
+    parentQuizCode,
+    selectedNominees: userProfile.selectedNominees || []
+  })
+}
 
   // Show loading
   if (authLoading || loading || !userProfile || phaseLoading) {

@@ -1,4 +1,4 @@
-// pages/teacher/achievements.js - Updated with Lux Libris branding and achievement terminology
+// pages/teacher/achievements.js - Updated with submissions badge
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
@@ -39,6 +39,7 @@ export default function TeacherAchievements() {
   const [isExporting, setIsExporting] = useState(false)
   const [expandedTiers, setExpandedTiers] = useState(new Set())
   const [allExpanded, setAllExpanded] = useState(false)
+  const [pendingSubmissions, setPendingSubmissions] = useState(0) // NEW: Track pending submissions
 
   // Authentication check
   useEffect(() => {
@@ -140,6 +141,7 @@ export default function TeacherAchievements() {
 
       const students = []
       const maxBookRequirement = Math.max(...tiers.map(tier => tier.books))
+      let totalPendingSubmissions = 0 // NEW: Track pending submissions
 
       const appStudentsRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/students`)
       const appStudentsQuery = query(appStudentsRef, where('currentTeacherId', '==', teacherId))
@@ -155,6 +157,14 @@ export default function TeacherAchievements() {
             lifetimeBooksCompleted: studentData.lifetimeBooksSubmitted || 0,
             maxBookRequirement
           })
+          
+          // NEW: Count pending submissions from bookshelf
+          if (studentData.bookshelf) {
+            const pending = studentData.bookshelf.filter(book => 
+              book.status === 'pending_approval' || book.status === 'pending_admin_approval'
+            ).length
+            totalPendingSubmissions += pending
+          }
         }
       })
 
@@ -178,7 +188,9 @@ export default function TeacherAchievements() {
       })
 
       console.log('📚 All students loaded:', students.length)
+      console.log('📋 Pending submissions:', totalPendingSubmissions) // NEW
       setAllStudents(students)
+      setPendingSubmissions(totalPendingSubmissions) // NEW: Set pending count
 
       const achievements = calculateAchievements(tiers, students)
       setStudentAchievements(achievements)
@@ -1064,7 +1076,7 @@ export default function TeacherAchievements() {
 
         </div>
 
-        {/* Bottom Navigation */}
+        {/* Bottom Navigation - UPDATED WITH BADGE */}
         <div style={{
           position: 'fixed',
           bottom: 0,
@@ -1082,7 +1094,7 @@ export default function TeacherAchievements() {
           {[
             { id: 'dashboard', icon: '📊', label: 'Dashboard', active: false },
             { id: 'students', icon: '👥', label: 'Students', active: false },
-            { id: 'submissions', icon: '📋', label: 'Submissions', active: false },
+            { id: 'submissions', icon: '📋', label: 'Submissions', active: false, badge: pendingSubmissions },
             { id: 'achievements', icon: '🏆', label: 'Achievements', active: true },
             { id: 'settings', icon: '⚙️', label: 'Settings', active: false }
           ].map((tab) => (
@@ -1122,6 +1134,25 @@ export default function TeacherAchievements() {
               }}>
                 {tab.label}
               </span>
+              {tab.badge && tab.badge > 0 && (
+                <div style={{
+                  position: 'absolute',
+                  top: '2px',
+                  right: '8px',
+                  backgroundColor: '#EF4444',
+                  color: 'white',
+                  borderRadius: '50%',
+                  width: '16px',
+                  height: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '8px',
+                  fontWeight: 'bold'
+                }}>
+                  {tab.badge > 9 ? '9+' : tab.badge}
+                </div>
+              )}
               {tab.active && (
                 <div style={{
                   position: 'absolute',
