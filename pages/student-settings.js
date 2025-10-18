@@ -1822,18 +1822,6 @@ export default function StudentSettings() {
                             ✓
                           </div>
                         )}
-
-                        {/* Shimmer effect for special themes */}
-                        <div style={{
-                          position: 'absolute',
-                          top: 0,
-                          left: '-100%',
-                          width: '100%',
-                          height: '100%',
-                          background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
-                          animation: isSelected ? 'shimmer 3s infinite' : 'none',
-                          pointerEvents: 'none'
-                        }} />
                       </button>
                     );
                   })}
@@ -2036,15 +2024,6 @@ export default function StudentSettings() {
             50% {
               transform: scale(1.3) rotate(180deg);
               opacity: 0.7;
-            }
-          }
-          
-          @keyframes shimmer {
-            0% {
-              left: -100%;
-            }
-            100% {
-              left: 200%;
             }
           }
           
