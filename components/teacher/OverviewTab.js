@@ -54,6 +54,15 @@ export default function OverviewTab({
 
   const recentActivity = getRecentActivity()
 
+  // FIXED: Calculate students at goal correctly
+  const studentsAtGoal = [
+    ...appStudents.map(s => ({ ...s, type: 'app' })),
+    ...manualStudents.map(s => ({ ...s, type: 'manual' }))
+  ].filter(s => {
+    const books = s.type === 'app' ? (s.booksSubmittedThisYear || 0) : (s.totalBooksThisYear || 0)
+    return books >= (s.personalGoal || 0)
+  }).length
+
   return (
     <div style={{ display: 'grid', gap: '1.5rem' }}>
       
@@ -115,7 +124,6 @@ export default function OverviewTab({
         }}>
           {[4, 5, 6, 7, 8].map(grade => {
             const gradeData = statsData.byGrade[grade] || { total: 0, app: 0, manual: 0, books: 0 }
-            if (gradeData.total === 0) return null
             
             return (
               <button
@@ -292,7 +300,7 @@ export default function OverviewTab({
               </span>
             </div>
 
-            {/* Students at goal */}
+            {/* Students at goal - FIXED */}
             <div style={{
               display: 'flex',
               justifyContent: 'space-between',
@@ -304,10 +312,7 @@ export default function OverviewTab({
                 Students at Goal
               </span>
               <span style={{ fontSize: '0.875rem', fontWeight: '600', color: '#223848' }}>
-                {[...appStudents, ...manualStudents].filter(s => {
-                  const books = s.type === 'app' ? s.booksSubmittedThisYear : s.totalBooksThisYear
-                  return books >= s.personalGoal
-                }).length} / {statsData.totalAppStudents + statsData.totalManualStudents}
+                {studentsAtGoal} / {statsData.totalAppStudents + statsData.totalManualStudents}
               </span>
             </div>
 

@@ -56,6 +56,9 @@ export default function TeacherStudents() {
     byGrade: {}
   })
 
+  // Submission count for badge
+  const [pendingSubmissionsCount, setPendingSubmissionsCount] = useState(0)
+
   // Session timeout
   const [showTimeoutWarning, setShowTimeoutWarning] = useState(false)
   const [showSuccess, setShowSuccess] = useState('')
@@ -83,11 +86,50 @@ export default function TeacherStudents() {
       if (userProfile) {
         loadTeacherConfiguration()
         loadStudentsData()
+        loadPendingSubmissions()
       }
     }
 
     checkAuth()
   }, [authLoading, phaseLoading, isAuthenticated, userProfile, router, isSessionExpired, signOut])
+
+  // Load pending submissions count
+  const loadPendingSubmissions = async () => {
+    try {
+      if (!userProfile?.entityId || !userProfile?.schoolId || !userProfile?.uid) {
+        return
+      }
+
+      const teachersRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers`)
+      const teacherQuery = query(teachersRef, where('uid', '==', userProfile.uid))
+      const teacherSnapshot = await getDocs(teacherQuery)
+      
+      if (teacherSnapshot.empty) return
+
+      const teacherDoc = teacherSnapshot.docs[0]
+      const teacherId = teacherDoc.id
+
+      const appStudentsRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/students`)
+      const appStudentsQuery = query(appStudentsRef, where('currentTeacherId', '==', teacherId))
+      const appStudentsSnapshot = await getDocs(appStudentsQuery)
+      
+      let count = 0
+      appStudentsSnapshot.forEach(studentDoc => {
+        const studentData = studentDoc.data()
+        if (studentData.bookshelf && Array.isArray(studentData.bookshelf)) {
+          studentData.bookshelf.forEach(book => {
+            if (book.status === 'pending_approval') {
+              count++
+            }
+          })
+        }
+      })
+
+      setPendingSubmissionsCount(count)
+    } catch (error) {
+      console.error('Error loading pending submissions:', error)
+    }
+  }
 
   // Load teacher configuration
   const loadTeacherConfiguration = async () => {
@@ -303,14 +345,14 @@ export default function TeacherStudents() {
     return null
   }
 
-  // Tab configuration
+  // Tab configuration - ALL GRADES ALWAYS VISIBLE
   const tabs = [
     { id: 'overview', label: '📊 Overview', show: true },
-    { id: 'grade4', label: '4️⃣ Grade 4', show: statsData.byGrade[4]?.total > 0 },
-    { id: 'grade5', label: '5️⃣ Grade 5', show: statsData.byGrade[5]?.total > 0 },
-    { id: 'grade6', label: '6️⃣ Grade 6', show: statsData.byGrade[6]?.total > 0 },
-    { id: 'grade7', label: '7️⃣ Grade 7', show: statsData.byGrade[7]?.total > 0 },
-    { id: 'grade8', label: '8️⃣ Grade 8', show: statsData.byGrade[8]?.total > 0 },
+    { id: 'grade4', label: '4️⃣ Grade 4', show: true },
+    { id: 'grade5', label: '5️⃣ Grade 5', show: true },
+    { id: 'grade6', label: '6️⃣ Grade 6', show: true },
+    { id: 'grade7', label: '7️⃣ Grade 7', show: true },
+    { id: 'grade8', label: '8️⃣ Grade 8', show: true },
     { id: 'historical', label: '🏆 Historical', show: true },
     { id: 'voting', label: '🗳️ Voting', show: permissions.currentPhase === 'VOTING' }
   ].filter(tab => tab.show)
@@ -708,7 +750,10 @@ export default function TeacherStudents() {
               userProfile={userProfile}
               teacherNominees={teacherNominees}
               teacherSubmissionOptions={teacherSubmissionOptions}
-              onStudentUpdate={() => loadStudentsData()}
+              onStudentUpdate={() => {
+                loadStudentsData()
+                loadPendingSubmissions()
+              }}
             />
           )}
           
@@ -749,7 +794,7 @@ export default function TeacherStudents() {
           {[
             { id: 'dashboard', icon: '📊', label: 'Dashboard', active: false },
             { id: 'students', icon: '👥', label: 'Students', active: true },
-            { id: 'submissions', icon: '📋', label: 'Submissions', active: false },
+            { id: 'submissions', icon: '📋', label: 'Submissions', active: false, badge: pendingSubmissionsCount },
             { id: 'achievements', icon: '🏆', label: 'Achievements', active: false },
             { id: 'settings', icon: '⚙️', label: 'Settings', active: false }
           ].map((tab) => (
@@ -788,6 +833,25 @@ export default function TeacherStudents() {
               }}>
                 {tab.label}
               </span>
+              {tab.badge > 0 && (
+                <div style={{
+                  position: 'absolute',
+                  top: '2px',
+                  right: '8px',
+                  backgroundColor: '#EF4444',
+                  color: 'white',
+                  borderRadius: '50%',
+                  width: '16px',
+                  height: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '8px',
+                  fontWeight: 'bold'
+                }}>
+                  {tab.badge > 9 ? '9+' : tab.badge}
+                </div>
+              )}
               {tab.active && (
                 <div style={{
                   position: 'absolute',
