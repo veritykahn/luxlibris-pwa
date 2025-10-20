@@ -504,7 +504,7 @@ Continue?`);
               <li>Maximum 20 books per grade year</li>
               <li>Only grades BELOW student&apos;s current grade are available</li>
               <li>Saints will sparkle for 24 hours in student&apos;s collection</li>
-              <li>Mark students as "complete" if they have gaps but shouldn&apos;t add more</li>
+              <li>Mark students as &quot;complete&quot; if they have gaps but shouldn&apos;t add more</li>
             </ul>
           </div>
         )}
