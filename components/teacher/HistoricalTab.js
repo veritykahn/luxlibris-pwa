@@ -57,6 +57,12 @@ export default function HistoricalTab({
   const [showSuccess, setShowSuccess] = useState('')
   const [expandedStudents, setExpandedStudents] = useState(new Set())
   
+  // Modal states
+  const [showAddConfirmModal, setShowAddConfirmModal] = useState(false)
+  const [showMarkCompleteModal, setShowMarkCompleteModal] = useState(false)
+  const [showUnmarkCompleteModal, setShowUnmarkCompleteModal] = useState(false)
+  const [modalStudent, setModalStudent] = useState(null)
+  
   // Collapsible sections - COLLAPSED BY DEFAULT
   const [showInstructions, setShowInstructions] = useState(false)
   const [showStudentsWithHistory, setShowStudentsWithHistory] = useState(false)
@@ -159,8 +165,8 @@ export default function HistoricalTab({
     }
   }, []);
 
-  // Add historical grade completion
-  const addHistoricalGradeCompletion = async () => {
+  // Open add confirmation modal
+  const openAddConfirmation = () => {
     if (!selectedStudent || !selectedGrade || !bookCount) {
       setShowSuccess('❌ Please fill in all fields');
       setTimeout(() => setShowSuccess(''), 3000);
@@ -191,23 +197,11 @@ export default function HistoricalTab({
       return;
     }
 
-    const saintMapping = GRADE_SAINT_MAPPINGS[parseInt(selectedGrade)];
-    const saintNames = [
-      SAINT_NAMES[saintMapping.seasonal],
-      SAINT_NAMES[saintMapping.grade],
-      SAINT_NAMES[saintMapping.marian]
-    ];
+    setShowAddConfirmModal(true);
+  };
 
-    const confirmed = window.confirm(`Add Grade ${selectedGrade} completion for ${selectedStudent.firstName}?
-
-📚 Books: ${books}
-🎯 Saints to unlock: ${saintNames.join(', ')}
-🏆 New lifetime total: ${(selectedStudent.lifetimeBooksSubmitted || 0) + books}
-
-This action cannot be undone.`);
-
-    if (!confirmed) return;
-
+  // Add historical grade completion
+  const addHistoricalGradeCompletion = async () => {
     setIsProcessing(true);
     
     try {
@@ -217,7 +211,9 @@ This action cannot be undone.`);
       const teacherSnapshot = await getDocs(teacherQuery);
       const teacherId = teacherSnapshot.docs[0].id;
 
+      const saintMapping = GRADE_SAINT_MAPPINGS[parseInt(selectedGrade)];
       const saintsToUnlock = Object.values(saintMapping);
+      const books = parseInt(bookCount);
       
       if (selectedStudent.type === 'manual') {
         // Manual student update
@@ -292,6 +288,7 @@ This action cannot be undone.`);
       onStudentUpdate();
       
       // Reset form
+      setShowAddConfirmModal(false);
       setSelectedStudent(null);
       setSelectedGrade('');
       setBookCount('');
@@ -309,33 +306,24 @@ This action cannot be undone.`);
   };
 
   // Mark student historical data as complete
-  const markHistoricalDataComplete = async (student) => {
-    const confirmed = window.confirm(`Mark historical data as complete for ${student.firstName} ${student.lastInitial}?
-
-This will:
-- Remove them from the "eligible to add" list
-- Indicate no more historical grades need to be added
-- Can be reversed if needed
-
-Continue?`);
-
-    if (!confirmed) return;
-
+  const markHistoricalDataComplete = async () => {
+    if (!modalStudent) return;
+    
     setIsProcessing(true);
     try {
-      if (student.type === 'manual') {
+      if (modalStudent.type === 'manual') {
         const teachersRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers`);
         const teacherQuery = query(teachersRef, where('uid', '==', userProfile.uid));
         const teacherSnapshot = await getDocs(teacherQuery);
         const teacherId = teacherSnapshot.docs[0].id;
 
-        const studentRef = doc(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers/${teacherId}/manualStudents`, student.id);
+        const studentRef = doc(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers/${teacherId}/manualStudents`, modalStudent.id);
         await updateDoc(studentRef, {
           historicalDataMarkedComplete: true,
           lastModified: new Date()
         });
       } else {
-        const studentRef = doc(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/students`, student.id);
+        const studentRef = doc(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/students`, modalStudent.id);
         await updateDoc(studentRef, {
           historicalDataMarkedComplete: true,
           lastModified: new Date()
@@ -343,7 +331,9 @@ Continue?`);
       }
 
       onStudentUpdate();
-      setShowSuccess(`✅ ${student.firstName} marked as complete!`);
+      setShowMarkCompleteModal(false);
+      setModalStudent(null);
+      setShowSuccess(`✅ ${modalStudent.firstName} marked as complete!`);
       setTimeout(() => setShowSuccess(''), 3000);
 
     } catch (error) {
@@ -356,33 +346,24 @@ Continue?`);
   };
 
   // Unmark student historical data as complete
-  const unmarkHistoricalDataComplete = async (student) => {
-    const confirmed = window.confirm(`Remove "complete" status for ${student.firstName} ${student.lastInitial}?
-
-This will:
-- Return them to the "eligible to add" list
-- Allow adding more historical grades
-- Not remove any existing data
-
-Continue?`);
-
-    if (!confirmed) return;
-
+  const unmarkHistoricalDataComplete = async () => {
+    if (!modalStudent) return;
+    
     setIsProcessing(true);
     try {
-      if (student.type === 'manual') {
+      if (modalStudent.type === 'manual') {
         const teachersRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers`);
         const teacherQuery = query(teachersRef, where('uid', '==', userProfile.uid));
         const teacherSnapshot = await getDocs(teacherQuery);
         const teacherId = teacherSnapshot.docs[0].id;
 
-        const studentRef = doc(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers/${teacherId}/manualStudents`, student.id);
+        const studentRef = doc(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers/${teacherId}/manualStudents`, modalStudent.id);
         await updateDoc(studentRef, {
           historicalDataMarkedComplete: false,
           lastModified: new Date()
         });
       } else {
-        const studentRef = doc(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/students`, student.id);
+        const studentRef = doc(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/students`, modalStudent.id);
         await updateDoc(studentRef, {
           historicalDataMarkedComplete: false,
           lastModified: new Date()
@@ -390,7 +371,9 @@ Continue?`);
       }
 
       onStudentUpdate();
-      setShowSuccess(`🔄 ${student.firstName} returned to eligible list!`);
+      setShowUnmarkCompleteModal(false);
+      setModalStudent(null);
+      setShowSuccess(`🔄 ${modalStudent.firstName} returned to eligible list!`);
       setTimeout(() => setShowSuccess(''), 3000);
 
     } catch (error) {
@@ -644,7 +627,7 @@ Continue?`);
           </div>
 
           <button
-            onClick={addHistoricalGradeCompletion}
+            onClick={openAddConfirmation}
             disabled={!selectedStudent || !selectedGrade || !bookCount || isProcessing}
             style={{
               padding: '0.75rem 1.5rem',
@@ -922,7 +905,8 @@ Continue?`);
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
-                              markHistoricalDataComplete(student)
+                              setModalStudent(student)
+                              setShowMarkCompleteModal(true)
                             }}
                             disabled={isProcessing}
                             style={{
@@ -1048,7 +1032,10 @@ Continue?`);
                         Can add: Grades {remainingGrades.join(', ')}
                       </div>
                       <button
-                        onClick={() => markHistoricalDataComplete(student)}
+                        onClick={() => {
+                          setModalStudent(student)
+                          setShowMarkCompleteModal(true)
+                        }}
                         disabled={isProcessing}
                         style={{
                           width: '100%',
@@ -1178,7 +1165,10 @@ Continue?`);
                         {isManuallyMarked ? '✓ Manually marked complete' : '✓ All grades completed'}
                       </div>
                       <button
-                        onClick={() => unmarkHistoricalDataComplete(student)}
+                        onClick={() => {
+                          setModalStudent(student)
+                          setShowUnmarkCompleteModal(true)
+                        }}
                         disabled={isProcessing}
                         style={{
                           width: '100%',
@@ -1255,6 +1245,230 @@ Continue?`);
         </div>
       )}
 
+      {/* Modals */}
+      {/* Add Confirmation Modal */}
+      {showAddConfirmModal && selectedStudent && (
+        <Modal
+          title={`Add Grade ${selectedGrade} completion for ${selectedStudent?.firstName}?`}
+          onClose={() => setShowAddConfirmModal(false)}
+        >
+          <div style={{ display: 'grid', gap: '1rem' }}>
+            <div>
+              📚 Books: {bookCount}
+            </div>
+            <div>
+              🎯 Saints to unlock: {Object.values(GRADE_SAINT_MAPPINGS[parseInt(selectedGrade)] || {}).map(id => SAINT_NAMES[id]).join(', ')}
+            </div>
+            <div>
+              🏆 New lifetime total: {(selectedStudent.lifetimeBooksSubmitted || 0) + parseInt(bookCount)}
+            </div>
+            <div style={{
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              color: '#6B7280',
+              marginTop: '0.5rem'
+            }}>
+              This action cannot be undone.
+            </div>
+            <div style={{
+              display: 'flex',
+              gap: '0.75rem',
+              justifyContent: 'flex-end',
+              marginTop: '1rem'
+            }}>
+              <button
+                onClick={() => setShowAddConfirmModal(false)}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  backgroundColor: '#F3F4F6',
+                  color: '#374151',
+                  border: 'none',
+                  borderRadius: '0.5rem',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: '600'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={addHistoricalGradeCompletion}
+                disabled={isProcessing}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  background: 'linear-gradient(135deg, #9370DB, #8A2BE2)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '0.5rem',
+                  cursor: isProcessing ? 'not-allowed' : 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  opacity: isProcessing ? 0.7 : 1
+                }}
+              >
+                {isProcessing ? 'Adding...' : 'OK'}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Mark Complete Modal */}
+      {showMarkCompleteModal && modalStudent && (
+        <Modal
+          title={`Mark historical data as complete for ${modalStudent?.firstName} ${modalStudent?.lastInitial}.?`}
+          onClose={() => {
+            setShowMarkCompleteModal(false)
+            setModalStudent(null)
+          }}
+        >
+          <div style={{ display: 'grid', gap: '1rem' }}>
+            <div style={{
+              fontSize: '0.875rem',
+              color: '#374151'
+            }}>
+              This will:
+            </div>
+            <ul style={{
+              margin: 0,
+              paddingLeft: '1.5rem',
+              fontSize: '0.875rem',
+              color: '#6B7280'
+            }}>
+              <li>Remove them from the &quot;eligible to add&quot; list</li>
+              <li>Indicate no more historical grades need to be added</li>
+              <li>Can be reversed if needed</li>
+            </ul>
+            <div style={{
+              fontSize: '0.875rem',
+              color: '#374151'
+            }}>
+              Continue?
+            </div>
+            <div style={{
+              display: 'flex',
+              gap: '0.75rem',
+              justifyContent: 'flex-end',
+              marginTop: '1rem'
+            }}>
+              <button
+                onClick={() => {
+                  setShowMarkCompleteModal(false)
+                  setModalStudent(null)
+                }}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  backgroundColor: '#F3F4F6',
+                  color: '#374151',
+                  border: 'none',
+                  borderRadius: '0.5rem',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: '600'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={markHistoricalDataComplete}
+                disabled={isProcessing}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  background: 'linear-gradient(135deg, #10B981, #059669)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '0.5rem',
+                  cursor: isProcessing ? 'not-allowed' : 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  opacity: isProcessing ? 0.7 : 1
+                }}
+              >
+                {isProcessing ? 'Processing...' : 'OK'}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Unmark Complete Modal */}
+      {showUnmarkCompleteModal && modalStudent && (
+        <Modal
+          title={`Remove &quot;complete&quot; status for ${modalStudent?.firstName} ${modalStudent?.lastInitial}.?`}
+          onClose={() => {
+            setShowUnmarkCompleteModal(false)
+            setModalStudent(null)
+          }}
+        >
+          <div style={{ display: 'grid', gap: '1rem' }}>
+            <div style={{
+              fontSize: '0.875rem',
+              color: '#374151'
+            }}>
+              This will:
+            </div>
+            <ul style={{
+              margin: 0,
+              paddingLeft: '1.5rem',
+              fontSize: '0.875rem',
+              color: '#6B7280'
+            }}>
+              <li>Return them to the &quot;eligible to add&quot; list</li>
+              <li>Allow adding more historical grades</li>
+              <li>Not remove any existing data</li>
+            </ul>
+            <div style={{
+              fontSize: '0.875rem',
+              color: '#374151'
+            }}>
+              Continue?
+            </div>
+            <div style={{
+              display: 'flex',
+              gap: '0.75rem',
+              justifyContent: 'flex-end',
+              marginTop: '1rem'
+            }}>
+              <button
+                onClick={() => {
+                  setShowUnmarkCompleteModal(false)
+                  setModalStudent(null)
+                }}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  backgroundColor: '#F3F4F6',
+                  color: '#374151',
+                  border: 'none',
+                  borderRadius: '0.5rem',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: '600'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={unmarkHistoricalDataComplete}
+                disabled={isProcessing}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  background: 'linear-gradient(135deg, #0EA5E9, #0284C7)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '0.5rem',
+                  cursor: isProcessing ? 'not-allowed' : 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  opacity: isProcessing ? 0.7 : 1
+                }}
+              >
+                {isProcessing ? 'Processing...' : 'OK'}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       {/* Success Message */}
       {showSuccess && (
         <div style={{
@@ -1275,6 +1489,45 @@ Continue?`);
           {showSuccess}
         </div>
       )}
+    </div>
+  )
+}
+
+// Modal Component
+function Modal({ title, children, onClose }) {
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 10000,
+      padding: '1rem'
+    }}>
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '1rem',
+        padding: '1.5rem',
+        maxWidth: '500px',
+        width: '100%',
+        maxHeight: '90vh',
+        overflowY: 'auto'
+      }}>
+        <h2 style={{
+          fontSize: '1.25rem',
+          fontWeight: 'normal',
+          color: '#223848',
+          marginBottom: '1.5rem'
+        }}>
+          {title}
+        </h2>
+        {children}
+      </div>
     </div>
   )
 }

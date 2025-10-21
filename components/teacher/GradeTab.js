@@ -21,6 +21,8 @@ export default function GradeTab({
   const [showBooksListModal, setShowBooksListModal] = useState(false)
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false)
+  const [showDeactivateConfirmModal, setShowDeactivateConfirmModal] = useState(false)
+  const [showManualDeleteConfirmModal, setShowManualDeleteConfirmModal] = useState(false)
   const [selectedStudent, setSelectedStudent] = useState(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [showSuccess, setShowSuccess] = useState('')
@@ -78,36 +80,29 @@ export default function GradeTab({
       ) / allStudents.length).toFixed(1) : 0
   }
 
-  // Toggle app student status
-  const toggleAppStudentStatus = async (student) => {
-    // Add confirmation for deactivation
-    if (student.status === 'active' || !student.status) {
-      const confirmed = confirm(`Are you sure you want to deactivate ${student.firstName} ${student.lastInitial}.?
+  // Toggle app student status (now uses modal)
+  const openDeactivateConfirmation = (student) => {
+    setSelectedStudent(student)
+    setShowDeactivateConfirmModal(true)
+  }
 
-This will:
-- Prevent them from logging into the app
-- Hide them from active student lists
-- Keep all their data and progress
-
-You can reactivate them at any time.
-
-Continue?`)
-      
-      if (!confirmed) return
-    }
+  const toggleAppStudentStatus = async () => {
+    if (!selectedStudent) return
     
     setIsProcessing(true)
     try {
-      const newStatus = (student.status === 'inactive') ? 'active' : 'inactive'
+      const newStatus = (selectedStudent.status === 'inactive') ? 'active' : 'inactive'
       
-      const studentRef = doc(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/students`, student.id)
+      const studentRef = doc(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/students`, selectedStudent.id)
       await updateDoc(studentRef, {
         status: newStatus,
         lastModified: new Date()
       })
 
       onStudentUpdate()
-      setShowSuccess(`📱 ${student.firstName} ${newStatus === 'active' ? 'activated' : 'deactivated'}`)
+      setShowDeactivateConfirmModal(false)
+      setSelectedStudent(null)
+      setShowSuccess(`📱 ${selectedStudent.firstName} ${newStatus === 'active' ? 'activated' : 'deactivated'}`)
       setTimeout(() => setShowSuccess(''), 3000)
 
     } catch (error) {
@@ -200,24 +195,16 @@ Continue?`)
     }
   }
 
-  // Delete manual student
-  const deleteManualStudent = async (student) => {
-    if (!student || student.type !== 'manual') {
+  // Delete manual student (now uses modal)
+  const openManualDeleteConfirmation = (student) => {
+    setSelectedStudent(student)
+    setShowManualDeleteConfirmModal(true)
+  }
+
+  const deleteManualStudent = async () => {
+    if (!selectedStudent || selectedStudent.type !== 'manual') {
       setShowSuccess('❌ Can only delete manual students')
       setTimeout(() => setShowSuccess(''), 3000)
-      return
-    }
-    
-    if (!confirm(`Are you sure you want to delete ${student.firstName} ${student.lastInitial}.?
-
-This will permanently delete:
-- All student data
-- All book records
-- All progress
-
-This action cannot be undone.
-
-Continue?`)) {
       return
     }
 
@@ -228,11 +215,13 @@ Continue?`)) {
       const teacherSnapshot = await getDocs(teacherQuery)
       const teacherId = teacherSnapshot.docs[0].id
 
-      const studentRef = doc(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers/${teacherId}/manualStudents`, student.id)
+      const studentRef = doc(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers/${teacherId}/manualStudents`, selectedStudent.id)
       await deleteDoc(studentRef)
 
       onStudentUpdate()
-      setShowSuccess(`🗑️ ${student.firstName} deleted`)
+      setShowManualDeleteConfirmModal(false)
+      setSelectedStudent(null)
+      setShowSuccess(`🗑️ ${selectedStudent.firstName} deleted`)
       setTimeout(() => setShowSuccess(''), 3000)
 
     } catch (error) {
@@ -533,12 +522,12 @@ Continue?`)) {
       ) : viewMode === 'table' ? (
         <StudentTable
           students={allStudents}
-          onToggleStatus={toggleAppStudentStatus}
+          onToggleStatus={openDeactivateConfirmation}
           onEdit={(student) => {
             setSelectedStudent({...student})
             setShowEditModal(true)
           }}
-          onDelete={deleteManualStudent}
+          onDelete={openManualDeleteConfirmation}
           onDeleteApp={openDeleteConfirmation}
           onAddBook={(student) => {
             setSelectedStudent(student)
@@ -570,12 +559,18 @@ Continue?`)) {
             <StudentCard
               key={`${student.type}-${student.id}`}
               student={student}
-              onToggleStatus={() => toggleAppStudentStatus(student)}
+              onToggleStatus={() => {
+                if (student.status === 'inactive') {
+                  toggleAppStudentStatus(student)
+                } else {
+                  openDeactivateConfirmation(student)
+                }
+              }}
               onEdit={() => {
                 setSelectedStudent({...student})
                 setShowEditModal(true)
               }}
-              onDelete={() => deleteManualStudent(student)}
+              onDelete={() => openManualDeleteConfirmation(student)}
               onDeleteApp={() => openDeleteConfirmation(student)}
               onAddBook={() => {
                 setSelectedStudent(student)
@@ -825,6 +820,178 @@ Continue?`)) {
         </Modal>
       )}
 
+      {/* Deactivate Confirmation Modal */}
+      {showDeactivateConfirmModal && selectedStudent && (
+        <Modal
+          title="Are you sure you want to deactivate Daniel F.?"
+          onClose={() => {
+            setShowDeactivateConfirmModal(false)
+            setSelectedStudent(null)
+          }}
+        >
+          <div style={{ display: 'grid', gap: '1rem' }}>
+            <div style={{
+              fontSize: '0.875rem',
+              color: '#374151',
+              lineHeight: '1.5'
+            }}>
+              This will:
+            </div>
+            <ul style={{
+              margin: 0,
+              paddingLeft: '1.5rem',
+              fontSize: '0.875rem',
+              color: '#6B7280'
+            }}>
+              <li>Prevent them from logging into the app</li>
+              <li>Hide them from active student lists</li>
+              <li>Keep all their data and progress</li>
+            </ul>
+            <div style={{
+              fontSize: '0.875rem',
+              color: '#374151'
+            }}>
+              You can reactivate them at any time.
+            </div>
+            <div style={{
+              fontSize: '0.875rem',
+              color: '#374151',
+              marginTop: '0.5rem'
+            }}>
+              Continue?
+            </div>
+            <div style={{
+              display: 'flex',
+              gap: '0.75rem',
+              justifyContent: 'flex-end',
+              marginTop: '1rem'
+            }}>
+              <button
+                onClick={() => {
+                  setShowDeactivateConfirmModal(false)
+                  setSelectedStudent(null)
+                }}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  backgroundColor: '#F3F4F6',
+                  color: '#374151',
+                  border: 'none',
+                  borderRadius: '0.5rem',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: '600'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={toggleAppStudentStatus}
+                disabled={isProcessing}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  background: 'linear-gradient(135deg, #0EA5E9, #0284C7)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '0.5rem',
+                  cursor: isProcessing ? 'not-allowed' : 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  opacity: isProcessing ? 0.7 : 1
+                }}
+              >
+                {isProcessing ? 'Processing...' : 'OK'}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Manual Student Delete Confirmation Modal */}
+      {showManualDeleteConfirmModal && selectedStudent && (
+        <Modal
+          title={`Are you sure you want to delete ${selectedStudent?.firstName} ${selectedStudent?.lastInitial}.?`}
+          onClose={() => {
+            setShowManualDeleteConfirmModal(false)
+            setSelectedStudent(null)
+          }}
+        >
+          <div style={{ display: 'grid', gap: '1rem' }}>
+            <div style={{
+              fontSize: '0.875rem',
+              color: '#374151'
+            }}>
+              This will permanently delete:
+            </div>
+            <ul style={{
+              margin: 0,
+              paddingLeft: '1.5rem',
+              fontSize: '0.875rem',
+              color: '#6B7280'
+            }}>
+              <li>All student data</li>
+              <li>All book records</li>
+              <li>All progress</li>
+            </ul>
+            <div style={{
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              color: '#EF4444',
+              marginTop: '0.5rem'
+            }}>
+              This action cannot be undone.
+            </div>
+            <div style={{
+              fontSize: '0.875rem',
+              color: '#374151'
+            }}>
+              Continue?
+            </div>
+            <div style={{
+              display: 'flex',
+              gap: '0.75rem',
+              justifyContent: 'flex-end',
+              marginTop: '1rem'
+            }}>
+              <button
+                onClick={() => {
+                  setShowManualDeleteConfirmModal(false)
+                  setSelectedStudent(null)
+                }}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  backgroundColor: '#F3F4F6',
+                  color: '#374151',
+                  border: 'none',
+                  borderRadius: '0.5rem',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: '600'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={deleteManualStudent}
+                disabled={isProcessing}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  background: 'linear-gradient(135deg, #EF4444, #DC2626)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '0.5rem',
+                  cursor: isProcessing ? 'not-allowed' : 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  opacity: isProcessing ? 0.7 : 1
+                }}
+              >
+                {isProcessing ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       {/* Delete Confirmation Modal */}
       {showDeleteConfirmModal && selectedStudent && (
         <Modal
@@ -973,7 +1140,7 @@ Continue?`)) {
                   opacity: isProcessing ? 0.7 : 1
                 }}
               >
-                {isProcessing ? 'Deleting...' : '🗑️ Delete Permanently'}
+                {isProcessing ? 'Deleting...' : 'Delete Permanently'}
               </button>
             </div>
           </div>
