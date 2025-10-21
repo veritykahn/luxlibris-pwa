@@ -651,95 +651,97 @@ export default function TeacherStudents() {
           </div>
         </div>
 
-        {/* Filter Bar */}
-        <div style={{
-          background: 'white',
-          borderBottom: '1px solid #e5e7eb',
-          padding: '1rem 0',
-          position: 'sticky',
-          top: '171px',
-          zIndex: 97
-        }}>
+        {/* Filter Bar - Hidden when on Overview tab */}
+        {activeTab !== 'overview' && (
           <div style={{
-            maxWidth: '80rem',
-            margin: '0 auto',
-            padding: '0 1rem',
-            display: 'flex',
-            gap: '1rem',
-            alignItems: 'center'
+            background: 'white',
+            borderBottom: '1px solid #e5e7eb',
+            padding: '1rem 0',
+            position: 'sticky',
+            top: '171px',
+            zIndex: 97
           }}>
-            <input
-              type="text"
-              placeholder="Search students..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{
-                flex: 1,
-                padding: '0.5rem 1rem',
-                border: '2px solid #d1d5db',
-                borderRadius: '0.5rem',
-                fontSize: '0.875rem',
-                fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
-              }}
-            />
             <div style={{
+              maxWidth: '80rem',
+              margin: '0 auto',
+              padding: '0 1rem',
               display: 'flex',
-              gap: '0.25rem',
-              backgroundColor: '#F3F4F6',
-              borderRadius: '0.5rem',
-              padding: '0.25rem'
+              gap: '1rem',
+              alignItems: 'center'
             }}>
-              <button
-                onClick={() => setFilterType('all')}
+              <input
+                type="text"
+                placeholder="Search students..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 style={{
-                  padding: '0.5rem 0.75rem',
-                  background: filterType === 'all' ? 'white' : 'transparent',
-                  border: 'none',
-                  borderRadius: '0.375rem',
-                  cursor: 'pointer',
-                  fontSize: '0.75rem',
-                  fontWeight: filterType === 'all' ? '600' : '400',
-                  color: filterType === 'all' ? '#223848' : '#6B7280',
+                  flex: 1,
+                  padding: '0.5rem 1rem',
+                  border: '2px solid #d1d5db',
+                  borderRadius: '0.5rem',
+                  fontSize: '0.875rem',
                   fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                 }}
-              >
-                All
-              </button>
-              <button
-                onClick={() => setFilterType('app')}
-                style={{
-                  padding: '0.5rem 0.75rem',
-                  background: filterType === 'app' ? 'white' : 'transparent',
-                  border: 'none',
-                  borderRadius: '0.375rem',
-                  cursor: 'pointer',
-                  fontSize: '0.75rem',
-                  fontWeight: filterType === 'app' ? '600' : '400',
-                  color: filterType === 'app' ? '#223848' : '#6B7280',
-                  fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
-                }}
-              >
-                📱 App
-              </button>
-              <button
-                onClick={() => setFilterType('manual')}
-                style={{
-                  padding: '0.5rem 0.75rem',
-                  background: filterType === 'manual' ? 'white' : 'transparent',
-                  border: 'none',
-                  borderRadius: '0.375rem',
-                  cursor: 'pointer',
-                  fontSize: '0.75rem',
-                  fontWeight: filterType === 'manual' ? '600' : '400',
-                  color: filterType === 'manual' ? '#223848' : '#6B7280',
-                  fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
-                }}
-              >
-                📝 Manual
-              </button>
+              />
+              <div style={{
+                display: 'flex',
+                gap: '0.25rem',
+                backgroundColor: '#F3F4F6',
+                borderRadius: '0.5rem',
+                padding: '0.25rem'
+              }}>
+                <button
+                  onClick={() => setFilterType('all')}
+                  style={{
+                    padding: '0.5rem 0.75rem',
+                    background: filterType === 'all' ? 'white' : 'transparent',
+                    border: 'none',
+                    borderRadius: '0.375rem',
+                    cursor: 'pointer',
+                    fontSize: '0.75rem',
+                    fontWeight: filterType === 'all' ? '600' : '400',
+                    color: filterType === 'all' ? '#223848' : '#6B7280',
+                    fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
+                  }}
+                >
+                  All
+                </button>
+                <button
+                  onClick={() => setFilterType('app')}
+                  style={{
+                    padding: '0.5rem 0.75rem',
+                    background: filterType === 'app' ? 'white' : 'transparent',
+                    border: 'none',
+                    borderRadius: '0.375rem',
+                    cursor: 'pointer',
+                    fontSize: '0.75rem',
+                    fontWeight: filterType === 'app' ? '600' : '400',
+                    color: filterType === 'app' ? '#223848' : '#6B7280',
+                    fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
+                  }}
+                >
+                  📱 App
+                </button>
+                <button
+                  onClick={() => setFilterType('manual')}
+                  style={{
+                    padding: '0.5rem 0.75rem',
+                    background: filterType === 'manual' ? 'white' : 'transparent',
+                    border: 'none',
+                    borderRadius: '0.375rem',
+                    cursor: 'pointer',
+                    fontSize: '0.75rem',
+                    fontWeight: filterType === 'manual' ? '600' : '400',
+                    color: filterType === 'manual' ? '#223848' : '#6B7280',
+                    fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
+                  }}
+                >
+                  📝 Manual
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Main Content Area */}
         <div style={{
@@ -752,8 +754,6 @@ export default function TeacherStudents() {
               statsData={statsData}
               appStudents={appStudents}
               manualStudents={manualStudents}
-              searchTerm={searchTerm}
-              filterType={filterType}
               userProfile={userProfile}
               onGradeClick={(grade) => setActiveTab(`grade${grade}`)}
             />

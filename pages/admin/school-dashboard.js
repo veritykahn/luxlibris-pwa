@@ -335,14 +335,13 @@ export default function TeacherDashboard() {
     totalAppStudents: 0,
     totalManualStudents: 0,
     totalBooksRead: 0,
-    pendingSubmissions: 0,
+    studentsAtGoal: 0,
+    mostActiveGrade: 4,
     schoolProgress: 0
   })
   
   const [recentActivity, setRecentActivity] = useState([])
   const [topReaders, setTopReaders] = useState([])
-  const [urgentActions, setUrgentActions] = useState([])
-  const [quickStats, setQuickStats] = useState({})
   const [showTimeoutWarning, setShowTimeoutWarning] = useState(false)
   
   // Join codes state
@@ -604,7 +603,6 @@ export default function TeacherDashboard() {
   const copyEmailToClipboard = () => {
     const template = emailTemplates[selectedEmailTemplate]
     
-    // Pass the complete teacher data object (userProfile has everything from Firebase)
     const filledEmail = fillEmailTemplate(template, {
       ...userProfile,
       studentJoinCode,
@@ -625,21 +623,37 @@ export default function TeacherDashboard() {
     setShowEmailModal(true)
   }
 
-  // Load dashboard overview data
+  // Load dashboard overview data - FIXED to include manual students
   const loadDashboardData = async () => {
     try {
       console.log('📊 Loading teacher dashboard overview...')
       
-      if (!userProfile?.entityId || !userProfile?.schoolId) {
+      if (!userProfile?.entityId || !userProfile?.schoolId || !userProfile?.uid) {
         console.error('❌ Missing entity or school ID')
         setLoading(false)
         return
       }
 
-      const appStudentsRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/students`)
-      const appStudentsSnapshot = await getDocs(appStudentsRef)
+      // First get the teacher document ID
+      const teachersRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers`)
+      const teacherQuery = query(teachersRef, where('uid', '==', userProfile.uid))
+      const teacherSnapshot = await getDocs(teacherQuery)
       
-      const manualStudentsRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers/${userProfile.uid}/manualStudents`)
+      if (teacherSnapshot.empty) {
+        console.error('❌ Teacher document not found')
+        setLoading(false)
+        return
+      }
+
+      const teacherId = teacherSnapshot.docs[0].id
+
+      // Load app students
+      const appStudentsRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/students`)
+      const appStudentsQuery = query(appStudentsRef, where('currentTeacherId', '==', teacherId))
+      const appStudentsSnapshot = await getDocs(appStudentsQuery)
+      
+      // Load manual students
+      const manualStudentsRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers/${teacherId}/manualStudents`)
       let manualStudentsSnapshot = { size: 0, docs: [] }
       try {
         manualStudentsSnapshot = await getDocs(manualStudentsRef)
@@ -648,11 +662,12 @@ export default function TeacherDashboard() {
       }
 
       let totalBooksRead = 0
-      let pendingSubmissions = 0
       let schoolGoalTotal = 0
       const recentActivities = []
       const topReadersList = []
+      const gradeBookCounts = {}
 
+      // Process app students
       for (const studentDoc of appStudentsSnapshot.docs) {
         const studentData = { id: studentDoc.id, ...studentDoc.data() }
         
@@ -660,19 +675,35 @@ export default function TeacherDashboard() {
         totalBooksRead += booksThisYear
         schoolGoalTotal += (studentData.personalGoal || 10)
 
-        if (studentData.bookshelf) {
-          const pending = studentData.bookshelf.filter(book => 
-            book.status === 'pending_approval' || book.status === 'pending_admin_approval'
-          ).length
-          pendingSubmissions += pending
-        }
+        // Track books by grade
+        const grade = parseInt(studentData.grade) || 0
+        gradeBookCounts[grade] = (gradeBookCounts[grade] || 0) + booksThisYear
 
         if (booksThisYear > 0) {
+          // Get most recent submission date
+          let lastSubmissionDate = null
+          if (studentData.bookshelf && Array.isArray(studentData.bookshelf)) {
+            const completedBooks = studentData.bookshelf.filter(book => book.status === 'completed')
+            if (completedBooks.length > 0) {
+              const dates = completedBooks.map(book => {
+                if (book.submittedAt) {
+                  return book.submittedAt.seconds ? book.submittedAt.seconds * 1000 : new Date(book.submittedAt).getTime()
+                }
+                return 0
+              }).filter(d => d > 0)
+              
+              if (dates.length > 0) {
+                lastSubmissionDate = Math.max(...dates)
+              }
+            }
+          }
+
           topReadersList.push({
             id: studentData.id,
             name: `${studentData.firstName} ${studentData.lastInitial}.`,
             books: booksThisYear,
-            type: 'app'
+            type: 'app',
+            lastSubmissionDate: lastSubmissionDate || 0
           })
         }
 
@@ -691,46 +722,78 @@ export default function TeacherDashboard() {
         }
       }
 
+      // Process manual students
       for (const studentDoc of manualStudentsSnapshot.docs) {
         const studentData = { id: studentDoc.id, ...studentDoc.data() }
         
-        const booksThisYear = studentData.booksCompleted || 0
+        const booksThisYear = studentData.totalBooksThisYear || 0
         totalBooksRead += booksThisYear
         schoolGoalTotal += (studentData.personalGoal || 10)
 
+        // Track books by grade
+        const grade = parseInt(studentData.grade) || 0
+        gradeBookCounts[grade] = (gradeBookCounts[grade] || 0) + booksThisYear
+
         if (booksThisYear > 0) {
+          // Get most recent submission date for manual students
+          let lastSubmissionDate = null
+          if (studentData.booksSubmitted && Array.isArray(studentData.booksSubmitted)) {
+            const dates = studentData.booksSubmitted.map(book => {
+              if (book.submittedDate) {
+                return book.submittedDate.seconds ? book.submittedDate.seconds * 1000 : new Date(book.submittedDate).getTime()
+              }
+              return 0
+            }).filter(d => d > 0)
+            
+            if (dates.length > 0) {
+              lastSubmissionDate = Math.max(...dates)
+            }
+          }
+
           topReadersList.push({
             id: studentData.id,
             name: `${studentData.firstName} ${studentData.lastInitial}.`,
             books: booksThisYear,
-            type: 'manual'
+            type: 'manual',
+            lastSubmissionDate: lastSubmissionDate || 0
           })
         }
       }
 
-      topReadersList.sort((a, b) => b.books - a.books)
+      // Sort top readers: first by books (descending), then by most recent submission (descending)
+      topReadersList.sort((a, b) => {
+        if (b.books !== a.books) {
+          return b.books - a.books
+        }
+        return b.lastSubmissionDate - a.lastSubmissionDate
+      })
+
       recentActivities.sort((a, b) => b.timestamp - a.timestamp)
 
-      const urgent = []
-      if (pendingSubmissions > 0) {
-        urgent.push({
-          id: 'pending-submissions',
-          type: 'submissions',
-          title: `${pendingSubmissions} book${pendingSubmissions !== 1 ? 's' : ''} awaiting approval`,
-          action: 'Review submissions',
-          priority: 'high'
-        })
+      // Find most active grade
+      let mostActiveGrade = 4
+      let maxBooks = 0
+      for (const [grade, bookCount] of Object.entries(gradeBookCounts)) {
+        if (bookCount > maxBooks) {
+          maxBooks = bookCount
+          mostActiveGrade = parseInt(grade)
+        }
       }
 
-      const studentsWithoutGoals = (appStudentsSnapshot.size + manualStudentsSnapshot.size) - Math.floor(schoolGoalTotal / 10)
-      if (studentsWithoutGoals > 0) {
-        urgent.push({
-          id: 'missing-goals',
-          type: 'students',
-          title: `${studentsWithoutGoals} student${studentsWithoutGoals !== 1 ? 's' : ''} need reading goals`,
-          action: 'Set goals',
-          priority: 'medium'
-        })
+      // Calculate students at goal
+      const allStudents = [...appStudentsSnapshot.docs, ...manualStudentsSnapshot.docs]
+      let studentsAtGoal = 0
+      for (const studentDoc of appStudentsSnapshot.docs) {
+        const studentData = studentDoc.data()
+        const books = studentData.booksSubmittedThisYear || 0
+        const goal = studentData.personalGoal || 0
+        if (books >= goal) studentsAtGoal++
+      }
+      for (const studentDoc of manualStudentsSnapshot.docs) {
+        const studentData = studentDoc.data()
+        const books = studentData.totalBooksThisYear || 0
+        const goal = studentData.personalGoal || 0
+        if (books >= goal) studentsAtGoal++
       }
 
       const schoolProgress = schoolGoalTotal > 0 ? Math.round((totalBooksRead / schoolGoalTotal) * 100) : 0
@@ -740,15 +803,15 @@ export default function TeacherDashboard() {
         totalAppStudents: appStudentsSnapshot.size,
         totalManualStudents: manualStudentsSnapshot.size,
         totalBooksRead,
-        pendingSubmissions,
+        studentsAtGoal,
+        mostActiveGrade,
         schoolProgress
       })
 
       setRecentActivity(recentActivities.slice(0, 5))
       setTopReaders(topReadersList.slice(0, 5))
-      setUrgentActions(urgent)
 
-      console.log(`✅ Dashboard loaded: ${appStudentsSnapshot.size + manualStudentsSnapshot.size} students, ${totalBooksRead} books`)
+      console.log(`✅ Dashboard loaded: ${appStudentsSnapshot.size + manualStudentsSnapshot.size} students (${appStudentsSnapshot.size} app + ${manualStudentsSnapshot.size} manual), ${totalBooksRead} books`)
 
     } catch (error) {
       console.error('❌ Error loading dashboard:', error)
@@ -791,7 +854,6 @@ export default function TeacherDashboard() {
   const getFilledEmailTemplate = (templateKey) => {
     const template = emailTemplates[templateKey]
     
-    // Pass complete teacher data including achievement tiers and submission options
     return fillEmailTemplate(template, {
       ...userProfile,
       studentJoinCode,
@@ -1695,7 +1757,6 @@ export default function TeacherDashboard() {
                 title="Review Submissions"
                 description="Approve pending book completions"
                 onClick={() => handleNavigation('submissions')}
-                badge={dashboardData.pendingSubmissions > 0 ? dashboardData.pendingSubmissions : null}
               />
               <QuickActionButton
                 icon="🏆"
@@ -1712,77 +1773,7 @@ export default function TeacherDashboard() {
             </div>
           </div>
 
-          {/* Urgent Actions */}
-          {urgentActions.length > 0 && (
-            <div style={{
-              background: 'white',
-              borderRadius: '1rem',
-              padding: '1.5rem',
-              marginBottom: '1.5rem',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
-              border: '2px solid #FEF3C7'
-            }}>
-              <h3 style={{
-                fontSize: '1.25rem',
-                fontWeight: 'bold',
-                color: '#92400e',
-                margin: '0 0 1rem 0',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                fontFamily: 'Didot, "Times New Roman", serif'
-              }}>
-                ⚡ Action Required
-              </h3>
-              <div style={{ display: 'grid', gap: '0.75rem' }}>
-                {urgentActions.map(action => (
-                  <div key={action.id} style={{
-                    padding: '1rem',
-                    background: '#FEF3C7',
-                    borderRadius: '0.5rem',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}>
-                    <div>
-                      <div style={{
-                        fontSize: '0.875rem',
-                        fontWeight: '600',
-                        color: '#92400e',
-                        fontFamily: 'Avenir, system-ui, sans-serif'
-                      }}>
-                        {action.title}
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => {
-                        if (action.type === 'submissions') {
-                          router.push('/teacher/submissions')
-                        } else {
-                          handleNavigation(action.type)
-                        }
-                      }}
-                      style={{
-                        padding: '0.5rem 1rem',
-                        background: '#D97706',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '0.5rem',
-                        fontSize: '0.75rem',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        fontFamily: 'Avenir, system-ui, sans-serif'
-                      }}
-                    >
-                      {action.action}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Quick Stats Grid - Now with 4 cards */}
+          {/* Quick Stats Grid - 5 cards */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
@@ -1800,24 +1791,196 @@ export default function TeacherDashboard() {
               icon="📚"
               title="Books Read"
               value={dashboardData.totalBooksRead}
-              subtitle="This school year"
+              subtitle="Completed this year"
               color="#C3E0DE"
             />
             <QuickStatCard
-              icon="📋"
-              title="Pending"
-              value={dashboardData.pendingSubmissions}
-              subtitle="Need your review"
+              icon="🏫"
+              title="Most Active"
+              value={`Grade ${dashboardData.mostActiveGrade}`}
+              subtitle="Leading the way"
               color="#A1E5DB"
-              alert={dashboardData.pendingSubmissions > 0}
+            />
+            <QuickStatCard
+              icon="✅"
+              title="At Goal"
+              value={dashboardData.studentsAtGoal}
+              subtitle={`${dashboardData.studentsAtGoal} / ${dashboardData.totalStudents} students`}
+              color="#B6DFEB"
             />
             <QuickStatCard
               icon="🎯"
               title="Progress"
               value={`${dashboardData.schoolProgress}%`}
               subtitle="Toward goals"
-              color="#B6DFEB"
+              color="#ADD4EA"
             />
+          </div>
+
+          {/* Top Readers & Recent Activity */}
+          <div style={{
+            background: 'white',
+            borderRadius: '1rem',
+            marginBottom: '1.5rem',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+            overflow: 'hidden'
+          }}>
+            <button
+              onClick={() => setShowTopReadersActivity(!showTopReadersActivity)}
+              style={{
+                width: '100%',
+                padding: '1.5rem',
+                background: showTopReadersActivity ? '#F3F4F620' : 'white',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                transition: 'background 0.2s'
+              }}
+            >
+              <h3 style={{
+                fontSize: '1.25rem',
+                fontWeight: 'bold',
+                color: '#223848',
+                margin: 0,
+                fontFamily: 'Didot, "Times New Roman", serif'
+              }}>
+                🏆 Top Readers & Recent Activity
+              </h3>
+              <span style={{
+                fontSize: '1.25rem',
+                color: '#223848',
+                transition: 'transform 0.2s',
+                transform: showTopReadersActivity ? 'rotate(180deg)' : 'rotate(0deg)'
+              }}>
+                ▼
+              </span>
+            </button>
+            
+            {showTopReadersActivity && (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: window.innerWidth < 768 ? '1fr' : '1fr 1fr',
+                gap: '1.5rem',
+                padding: '0 1.5rem 1.5rem 1.5rem'
+              }}>
+                {/* Top Readers */}
+                <div>
+                  <h4 style={{
+                    fontSize: '1.125rem',
+                    fontWeight: 'bold',
+                    color: '#223848',
+                    margin: '0 0 1rem 0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    fontFamily: 'Avenir, system-ui, sans-serif'
+                  }}>
+                    🏆 Top Readers
+                  </h4>
+                  {topReaders.length === 0 ? (
+                    <p style={{ 
+                      color: '#6b7280', 
+                      fontStyle: 'italic',
+                      fontFamily: 'Avenir, system-ui, sans-serif'
+                    }}>
+                      No books completed yet this year.
+                    </p>
+                  ) : (
+                    <div style={{ display: 'grid', gap: '0.5rem' }}>
+                      {topReaders.map((reader, index) => (
+                        <div key={reader.id} style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.75rem',
+                          padding: '0.5rem',
+                          borderRadius: '0.5rem',
+                          background: index === 0 ? '#FEF3C7' : '#f8fafc'
+                        }}>
+                          <span style={{ fontSize: '1.25rem' }}>
+                            {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '📖'}
+                          </span>
+                          <div style={{ flex: 1 }}>
+                            <div style={{
+                              fontSize: '0.875rem',
+                              fontWeight: '600',
+                              color: '#223848',
+                              fontFamily: 'Avenir, system-ui, sans-serif'
+                            }}>
+                              {reader.name}
+                            </div>
+                            <div style={{
+                              fontSize: '0.75rem',
+                              color: '#6b7280'
+                            }}>
+                              {reader.books} book{reader.books !== 1 ? 's' : ''} • {reader.type === 'app' ? 'App' : 'Manual'}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Recent Activity */}
+                <div>
+                  <h4 style={{
+                    fontSize: '1.125rem',
+                    fontWeight: 'bold',
+                    color: '#223848',
+                    margin: '0 0 1rem 0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    fontFamily: 'Avenir, system-ui, sans-serif'
+                  }}>
+                    📈 Recent Activity
+                  </h4>
+                  {recentActivity.length === 0 ? (
+                    <p style={{ 
+                      color: '#6b7280', 
+                      fontStyle: 'italic',
+                      fontFamily: 'Avenir, system-ui, sans-serif'
+                    }}>
+                      No recent activity to show.
+                    </p>
+                  ) : (
+                    <div style={{ display: 'grid', gap: '0.5rem' }}>
+                      {recentActivity.map(activity => (
+                        <div key={activity.id} style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.75rem',
+                          padding: '0.5rem',
+                          borderRadius: '0.5rem',
+                          background: '#f8fafc'
+                        }}>
+                          <span style={{ fontSize: '1rem' }}>
+                            {activity.studentType === 'app' ? '📱' : '📝'}
+                          </span>
+                          <div style={{ flex: 1 }}>
+                            <div style={{
+                              fontSize: '0.875rem',
+                              color: '#223848',
+                              fontFamily: 'Avenir, system-ui, sans-serif'
+                            }}>
+                              {activity.studentName} {activity.action}
+                            </div>
+                            <div style={{
+                              fontSize: '0.75rem',
+                              color: '#6b7280'
+                            }}>
+                              {activity.timestamp.toLocaleDateString()}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Collapsible Access Codes & Email Templates Section */}
@@ -2095,172 +2258,6 @@ export default function TeacherDashboard() {
               />
             </div>
           )}
-
-          {/* Collapsible Top Readers & Recent Activity */}
-          <div style={{
-            background: 'white',
-            borderRadius: '1rem',
-            marginBottom: '6rem',
-            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
-            overflow: 'hidden'
-          }}>
-            <button
-              onClick={() => setShowTopReadersActivity(!showTopReadersActivity)}
-              style={{
-                width: '100%',
-                padding: '1.5rem',
-                background: showTopReadersActivity ? '#F3F4F620' : 'white',
-                border: 'none',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                transition: 'background 0.2s'
-              }}
-            >
-              <h3 style={{
-                fontSize: '1.25rem',
-                fontWeight: 'bold',
-                color: '#223848',
-                margin: 0,
-                fontFamily: 'Didot, "Times New Roman", serif'
-              }}>
-                🏆 Top Readers & Recent Activity
-              </h3>
-              <span style={{
-                fontSize: '1.25rem',
-                color: '#223848',
-                transition: 'transform 0.2s',
-                transform: showTopReadersActivity ? 'rotate(180deg)' : 'rotate(0deg)'
-              }}>
-                ▼
-              </span>
-            </button>
-            
-            {showTopReadersActivity && (
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: window.innerWidth < 768 ? '1fr' : '1fr 1fr',
-                gap: '1.5rem',
-                padding: '0 1.5rem 1.5rem 1.5rem'
-              }}>
-                {/* Top Readers */}
-                <div>
-                  <h4 style={{
-                    fontSize: '1.125rem',
-                    fontWeight: 'bold',
-                    color: '#223848',
-                    margin: '0 0 1rem 0',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    fontFamily: 'Avenir, system-ui, sans-serif'
-                  }}>
-                    🏆 Top Readers
-                  </h4>
-                  {topReaders.length === 0 ? (
-                    <p style={{ 
-                      color: '#6b7280', 
-                      fontStyle: 'italic',
-                      fontFamily: 'Avenir, system-ui, sans-serif'
-                    }}>
-                      No books completed yet this year.
-                    </p>
-                  ) : (
-                    <div style={{ display: 'grid', gap: '0.5rem' }}>
-                      {topReaders.map((reader, index) => (
-                        <div key={reader.id} style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.75rem',
-                          padding: '0.5rem',
-                          borderRadius: '0.5rem',
-                          background: index === 0 ? '#FEF3C7' : '#f8fafc'
-                        }}>
-                          <span style={{ fontSize: '1.25rem' }}>
-                            {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '📖'}
-                          </span>
-                          <div style={{ flex: 1 }}>
-                            <div style={{
-                              fontSize: '0.875rem',
-                              fontWeight: '600',
-                              color: '#223848',
-                              fontFamily: 'Avenir, system-ui, sans-serif'
-                            }}>
-                              {reader.name}
-                            </div>
-                            <div style={{
-                              fontSize: '0.75rem',
-                              color: '#6b7280'
-                            }}>
-                              {reader.books} book{reader.books !== 1 ? 's' : ''} • {reader.type === 'app' ? 'App' : 'Manual'}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Recent Activity */}
-                <div>
-                  <h4 style={{
-                    fontSize: '1.125rem',
-                    fontWeight: 'bold',
-                    color: '#223848',
-                    margin: '0 0 1rem 0',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    fontFamily: 'Avenir, system-ui, sans-serif'
-                  }}>
-                    📈 Recent Activity
-                  </h4>
-                  {recentActivity.length === 0 ? (
-                    <p style={{ 
-                      color: '#6b7280', 
-                      fontStyle: 'italic',
-                      fontFamily: 'Avenir, system-ui, sans-serif'
-                    }}>
-                      No recent activity to show.
-                    </p>
-                  ) : (
-                    <div style={{ display: 'grid', gap: '0.5rem' }}>
-                      {recentActivity.map(activity => (
-                        <div key={activity.id} style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.75rem',
-                          padding: '0.5rem',
-                          borderRadius: '0.5rem',
-                          background: '#f8fafc'
-                        }}>
-                          <span style={{ fontSize: '1rem' }}>
-                            {activity.studentType === 'app' ? '📱' : '📝'}
-                          </span>
-                          <div style={{ flex: 1 }}>
-                            <div style={{
-                              fontSize: '0.875rem',
-                              color: '#223848',
-                              fontFamily: 'Avenir, system-ui, sans-serif'
-                            }}>
-                              {activity.studentName} {activity.action}
-                            </div>
-                            <div style={{
-                              fontSize: '0.75rem',
-                              color: '#6b7280'
-                            }}>
-                              {activity.timestamp.toLocaleDateString()}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
         </div>
 
         {/* Bottom Navigation */}
@@ -2281,7 +2278,7 @@ export default function TeacherDashboard() {
           {[
             { id: 'dashboard', icon: '📊', label: 'Dashboard', active: true },
             { id: 'students', icon: '👥', label: 'Students', active: false },
-            { id: 'submissions', icon: '📋', label: 'Submissions', active: false, badge: dashboardData.pendingSubmissions },
+            { id: 'submissions', icon: '📋', label: 'Submissions', active: false },
             { id: 'achievements', icon: '🏆', label: 'Achievements', active: false },
             { id: 'settings', icon: '⚙️', label: 'Settings', active: false }
           ].map((tab) => (
@@ -2318,25 +2315,6 @@ export default function TeacherDashboard() {
               }}>
                 {tab.label}
               </span>
-              {tab.badge && tab.badge > 0 && (
-                <div style={{
-                  position: 'absolute',
-                  top: '2px',
-                  right: '8px',
-                  backgroundColor: '#EF4444',
-                  color: 'white',
-                  borderRadius: '50%',
-                  width: '16px',
-                  height: '16px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '8px',
-                  fontWeight: 'bold'
-                }}>
-                  {tab.badge > 9 ? '9+' : tab.badge}
-                </div>
-              )}
               {tab.active && (
                 <div style={{
                   position: 'absolute',
