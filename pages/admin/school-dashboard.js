@@ -1,4 +1,4 @@
-// pages/admin/school-dashboard.js - Enhanced Teacher Dashboard with Total Minutes Read This Week
+// pages/admin/school-dashboard.js - Enhanced Teacher Dashboard
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
@@ -306,32 +306,6 @@ function PhaseDetailsSection({ currentPhase, router, userProfile, onClearManualS
   )
 }
 
-// Helper function to get current week boundaries (Sunday to Saturday)
-function getCurrentWeekBoundaries() {
-  const now = new Date()
-  const dayOfWeek = now.getDay() // 0 = Sunday, 6 = Saturday
-  
-  // Get Sunday of current week
-  const sunday = new Date(now)
-  sunday.setDate(now.getDate() - dayOfWeek)
-  sunday.setHours(0, 0, 0, 0)
-  
-  // Get Saturday of current week
-  const saturday = new Date(sunday)
-  saturday.setDate(sunday.getDate() + 6)
-  saturday.setHours(23, 59, 59, 999)
-  
-  return { sunday, saturday }
-}
-
-// Helper function to format date as YYYY-MM-DD
-function formatDate(date) {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
 export default function TeacherDashboard() {
   const router = useRouter()
   
@@ -362,8 +336,7 @@ export default function TeacherDashboard() {
     totalManualStudents: 0,
     totalBooksRead: 0,
     pendingSubmissions: 0,
-    schoolProgress: 0,
-    totalMinutesThisWeek: 0
+    schoolProgress: 0
   })
   
   const [recentActivity, setRecentActivity] = useState([])
@@ -676,19 +649,10 @@ export default function TeacherDashboard() {
 
       let totalBooksRead = 0
       let pendingSubmissions = 0
-      let totalMinutesThisWeek = 0
       let schoolGoalTotal = 0
       const recentActivities = []
       const topReadersList = []
 
-      // Get current week boundaries
-      const { sunday, saturday } = getCurrentWeekBoundaries()
-      const sundayStr = formatDate(sunday)
-      const saturdayStr = formatDate(saturday)
-      
-      console.log(`📅 Calculating reading minutes for week: ${sundayStr} to ${saturdayStr}`)
-
-      // Process app students
       for (const studentDoc of appStudentsSnapshot.docs) {
         const studentData = { id: studentDoc.id, ...studentDoc.data() }
         
@@ -725,30 +689,8 @@ export default function TeacherDashboard() {
             })
           }
         }
-
-        // Calculate minutes read this week for this student
-        try {
-          const readingSessionsRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/students/${studentDoc.id}/readingSessions`)
-          const sessionsSnapshot = await getDocs(readingSessionsRef)
-          
-          let studentMinutes = 0
-          sessionsSnapshot.forEach(sessionDoc => {
-            const session = sessionDoc.data()
-            const sessionDate = session.date // String format "YYYY-MM-DD"
-            
-            // Check if session date is within current week
-            if (sessionDate >= sundayStr && sessionDate <= saturdayStr) {
-              studentMinutes += session.duration || 0
-            }
-          })
-          
-          totalMinutesThisWeek += studentMinutes
-        } catch (error) {
-          console.log(`No reading sessions for student ${studentDoc.id}`)
-        }
       }
 
-      // Process manual students
       for (const studentDoc of manualStudentsSnapshot.docs) {
         const studentData = { id: studentDoc.id, ...studentDoc.data() }
         
@@ -799,15 +741,14 @@ export default function TeacherDashboard() {
         totalManualStudents: manualStudentsSnapshot.size,
         totalBooksRead,
         pendingSubmissions,
-        schoolProgress,
-        totalMinutesThisWeek
+        schoolProgress
       })
 
       setRecentActivity(recentActivities.slice(0, 5))
       setTopReaders(topReadersList.slice(0, 5))
       setUrgentActions(urgent)
 
-      console.log(`✅ Dashboard loaded: ${appStudentsSnapshot.size + manualStudentsSnapshot.size} students, ${totalBooksRead} books, ${totalMinutesThisWeek} minutes this week`)
+      console.log(`✅ Dashboard loaded: ${appStudentsSnapshot.size + manualStudentsSnapshot.size} students, ${totalBooksRead} books`)
 
     } catch (error) {
       console.error('❌ Error loading dashboard:', error)
@@ -1841,7 +1782,7 @@ export default function TeacherDashboard() {
             </div>
           )}
 
-          {/* Quick Stats Grid */}
+          {/* Quick Stats Grid - Now with 4 cards */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
@@ -1876,13 +1817,6 @@ export default function TeacherDashboard() {
               value={`${dashboardData.schoolProgress}%`}
               subtitle="Toward goals"
               color="#B6DFEB"
-            />
-            <QuickStatCard
-              icon="⏱️"
-              title="Minutes This Week"
-              value={dashboardData.totalMinutesThisWeek}
-              subtitle="Sunday - Saturday"
-              color="#FFB366"
             />
           </div>
 
