@@ -336,8 +336,8 @@ export default function TeacherDashboard() {
     totalManualStudents: 0,
     totalBooksRead: 0,
     studentsAtGoal: 0,
-    mostActiveGrade: 4,
-    schoolProgress: 0
+    studentsAtMaximum: 0,
+    mostActiveGrade: 4
   })
   
   const [recentActivity, setRecentActivity] = useState([])
@@ -366,6 +366,9 @@ export default function TeacherDashboard() {
   const [showFinalConfirmation, setShowFinalConfirmation] = useState(false)
   const [clearingInProgress, setClearingInProgress] = useState(false)
   const [clearingResult, setClearingResult] = useState(null)
+
+  // Submission count for badge
+  const [pendingSubmissionsCount, setPendingSubmissionsCount] = useState(0)
 
   // Authentication check
   useEffect(() => {
@@ -603,6 +606,7 @@ export default function TeacherDashboard() {
   const copyEmailToClipboard = () => {
     const template = emailTemplates[selectedEmailTemplate]
     
+    // Pass the complete teacher data object (userProfile has everything from Firebase)
     const filledEmail = fillEmailTemplate(template, {
       ...userProfile,
       studentJoinCode,
@@ -623,7 +627,7 @@ export default function TeacherDashboard() {
     setShowEmailModal(true)
   }
 
-  // Load dashboard overview data - FIXED to include manual students
+  // Load dashboard overview data
   const loadDashboardData = async () => {
     try {
       console.log('📊 Loading teacher dashboard overview...')
@@ -634,7 +638,7 @@ export default function TeacherDashboard() {
         return
       }
 
-      // First get the teacher document ID
+      // Get teacher ID first
       const teachersRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers`)
       const teacherQuery = query(teachersRef, where('uid', '==', userProfile.uid))
       const teacherSnapshot = await getDocs(teacherQuery)
@@ -646,11 +650,12 @@ export default function TeacherDashboard() {
       }
 
       const teacherId = teacherSnapshot.docs[0].id
+      const teacherData = teacherSnapshot.docs[0].data()
+      const totalAvailableBooks = teacherData.selectedNominees?.length || 0
 
       // Load app students
       const appStudentsRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/students`)
-      const appStudentsQuery = query(appStudentsRef, where('currentTeacherId', '==', teacherId))
-      const appStudentsSnapshot = await getDocs(appStudentsQuery)
+      const appStudentsSnapshot = await getDocs(appStudentsRef)
       
       // Load manual students
       const manualStudentsRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers/${teacherId}/manualStudents`)
@@ -662,10 +667,12 @@ export default function TeacherDashboard() {
       }
 
       let totalBooksRead = 0
-      let schoolGoalTotal = 0
+      let pendingSubmissions = 0
       const recentActivities = []
       const topReadersList = []
-      const gradeBookCounts = {}
+      const gradeBookCounts = { 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 }
+      let studentsAtGoalCount = 0
+      let studentsAtMaximumCount = 0
 
       // Process app students
       for (const studentDoc of appStudentsSnapshot.docs) {
@@ -673,28 +680,44 @@ export default function TeacherDashboard() {
         
         const booksThisYear = studentData.booksSubmittedThisYear || 0
         totalBooksRead += booksThisYear
-        schoolGoalTotal += (studentData.personalGoal || 10)
+        
+        // Count towards grade totals
+        const studentGrade = parseInt(studentData.grade)
+        if (studentGrade >= 4 && studentGrade <= 8) {
+          gradeBookCounts[studentGrade] += booksThisYear
+        }
 
-        // Track books by grade
-        const grade = parseInt(studentData.grade) || 0
-        gradeBookCounts[grade] = (gradeBookCounts[grade] || 0) + booksThisYear
+        // Check if at goal
+        if (booksThisYear >= (studentData.personalGoal || 0)) {
+          studentsAtGoalCount++
+        }
+
+        // Check if at maximum (completed all available books)
+        if (booksThisYear >= totalAvailableBooks && totalAvailableBooks > 0) {
+          studentsAtMaximumCount++
+        }
+
+        if (studentData.bookshelf) {
+          const pending = studentData.bookshelf.filter(book => 
+            book.status === 'pending_approval' || book.status === 'pending_admin_approval'
+          ).length
+          pendingSubmissions += pending
+        }
 
         if (booksThisYear > 0) {
           // Get most recent submission date
-          let lastSubmissionDate = null
-          if (studentData.bookshelf && Array.isArray(studentData.bookshelf)) {
+          let mostRecentDate = null
+          if (studentData.bookshelf && studentData.bookshelf.length > 0) {
             const completedBooks = studentData.bookshelf.filter(book => book.status === 'completed')
             if (completedBooks.length > 0) {
-              const dates = completedBooks.map(book => {
-                if (book.submittedAt) {
-                  return book.submittedAt.seconds ? book.submittedAt.seconds * 1000 : new Date(book.submittedAt).getTime()
-                }
-                return 0
-              }).filter(d => d > 0)
-              
-              if (dates.length > 0) {
-                lastSubmissionDate = Math.max(...dates)
-              }
+              mostRecentDate = completedBooks.reduce((latest, book) => {
+                const bookDate = book.submittedAt?.seconds 
+                  ? new Date(book.submittedAt.seconds * 1000)
+                  : book.submittedAt 
+                  ? new Date(book.submittedAt)
+                  : new Date(0)
+                return bookDate > latest ? bookDate : latest
+              }, new Date(0))
             }
           }
 
@@ -703,7 +726,7 @@ export default function TeacherDashboard() {
             name: `${studentData.firstName} ${studentData.lastInitial}.`,
             books: booksThisYear,
             type: 'app',
-            lastSubmissionDate: lastSubmissionDate || 0
+            mostRecentSubmission: mostRecentDate
           })
         }
 
@@ -728,26 +751,35 @@ export default function TeacherDashboard() {
         
         const booksThisYear = studentData.totalBooksThisYear || 0
         totalBooksRead += booksThisYear
-        schoolGoalTotal += (studentData.personalGoal || 10)
+        
+        // Count towards grade totals
+        const studentGrade = parseInt(studentData.grade)
+        if (studentGrade >= 4 && studentGrade <= 8) {
+          gradeBookCounts[studentGrade] += booksThisYear
+        }
 
-        // Track books by grade
-        const grade = parseInt(studentData.grade) || 0
-        gradeBookCounts[grade] = (gradeBookCounts[grade] || 0) + booksThisYear
+        // Check if at goal
+        if (booksThisYear >= (studentData.personalGoal || 0)) {
+          studentsAtGoalCount++
+        }
+
+        // Check if at maximum (completed all available books)
+        if (booksThisYear >= totalAvailableBooks && totalAvailableBooks > 0) {
+          studentsAtMaximumCount++
+        }
 
         if (booksThisYear > 0) {
-          // Get most recent submission date for manual students
-          let lastSubmissionDate = null
-          if (studentData.booksSubmitted && Array.isArray(studentData.booksSubmitted)) {
-            const dates = studentData.booksSubmitted.map(book => {
-              if (book.submittedDate) {
-                return book.submittedDate.seconds ? book.submittedDate.seconds * 1000 : new Date(book.submittedDate).getTime()
-              }
-              return 0
-            }).filter(d => d > 0)
-            
-            if (dates.length > 0) {
-              lastSubmissionDate = Math.max(...dates)
-            }
+          // Get most recent submission date
+          let mostRecentDate = null
+          if (studentData.booksSubmitted && studentData.booksSubmitted.length > 0) {
+            mostRecentDate = studentData.booksSubmitted.reduce((latest, book) => {
+              const bookDate = book.submittedDate?.seconds 
+                ? new Date(book.submittedDate.seconds * 1000)
+                : book.submittedDate 
+                ? new Date(book.submittedDate)
+                : new Date(0)
+              return bookDate > latest ? bookDate : latest
+            }, new Date(0))
           }
 
           topReadersList.push({
@@ -755,7 +787,7 @@ export default function TeacherDashboard() {
             name: `${studentData.firstName} ${studentData.lastInitial}.`,
             books: booksThisYear,
             type: 'manual',
-            lastSubmissionDate: lastSubmissionDate || 0
+            mostRecentSubmission: mostRecentDate
           })
         }
       }
@@ -765,53 +797,39 @@ export default function TeacherDashboard() {
         if (b.books !== a.books) {
           return b.books - a.books
         }
-        return b.lastSubmissionDate - a.lastSubmissionDate
+        // If books are equal, sort by most recent submission
+        const aDate = a.mostRecentSubmission || new Date(0)
+        const bDate = b.mostRecentSubmission || new Date(0)
+        return bDate - aDate
       })
 
       recentActivities.sort((a, b) => b.timestamp - a.timestamp)
 
       // Find most active grade
       let mostActiveGrade = 4
-      let maxBooks = 0
-      for (const [grade, bookCount] of Object.entries(gradeBookCounts)) {
-        if (bookCount > maxBooks) {
-          maxBooks = bookCount
-          mostActiveGrade = parseInt(grade)
+      let maxBooks = gradeBookCounts[4]
+      for (let grade = 5; grade <= 8; grade++) {
+        if (gradeBookCounts[grade] > maxBooks) {
+          maxBooks = gradeBookCounts[grade]
+          mostActiveGrade = grade
         }
       }
-
-      // Calculate students at goal
-      const allStudents = [...appStudentsSnapshot.docs, ...manualStudentsSnapshot.docs]
-      let studentsAtGoal = 0
-      for (const studentDoc of appStudentsSnapshot.docs) {
-        const studentData = studentDoc.data()
-        const books = studentData.booksSubmittedThisYear || 0
-        const goal = studentData.personalGoal || 0
-        if (books >= goal) studentsAtGoal++
-      }
-      for (const studentDoc of manualStudentsSnapshot.docs) {
-        const studentData = studentDoc.data()
-        const books = studentData.totalBooksThisYear || 0
-        const goal = studentData.personalGoal || 0
-        if (books >= goal) studentsAtGoal++
-      }
-
-      const schoolProgress = schoolGoalTotal > 0 ? Math.round((totalBooksRead / schoolGoalTotal) * 100) : 0
 
       setDashboardData({
         totalStudents: appStudentsSnapshot.size + manualStudentsSnapshot.size,
         totalAppStudents: appStudentsSnapshot.size,
         totalManualStudents: manualStudentsSnapshot.size,
         totalBooksRead,
-        studentsAtGoal,
-        mostActiveGrade,
-        schoolProgress
+        studentsAtGoal: studentsAtGoalCount,
+        studentsAtMaximum: studentsAtMaximumCount,
+        mostActiveGrade
       })
 
+      setPendingSubmissionsCount(pendingSubmissions)
       setRecentActivity(recentActivities.slice(0, 5))
       setTopReaders(topReadersList.slice(0, 5))
 
-      console.log(`✅ Dashboard loaded: ${appStudentsSnapshot.size + manualStudentsSnapshot.size} students (${appStudentsSnapshot.size} app + ${manualStudentsSnapshot.size} manual), ${totalBooksRead} books`)
+      console.log(`✅ Dashboard loaded: ${appStudentsSnapshot.size + manualStudentsSnapshot.size} students, ${totalBooksRead} books`)
 
     } catch (error) {
       console.error('❌ Error loading dashboard:', error)
@@ -854,6 +872,7 @@ export default function TeacherDashboard() {
   const getFilledEmailTemplate = (templateKey) => {
     const template = emailTemplates[templateKey]
     
+    // Pass complete teacher data including achievement tiers and submission options
     return fillEmailTemplate(template, {
       ...userProfile,
       studentJoinCode,
@@ -1757,6 +1776,7 @@ export default function TeacherDashboard() {
                 title="Review Submissions"
                 description="Approve pending book completions"
                 onClick={() => handleNavigation('submissions')}
+                badge={pendingSubmissionsCount > 0 ? pendingSubmissionsCount : null}
               />
               <QuickActionButton
                 icon="🏆"
@@ -1776,7 +1796,7 @@ export default function TeacherDashboard() {
           {/* Quick Stats Grid - 5 cards */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
             gap: '1rem',
             marginBottom: '1.5rem'
           }}>
@@ -1798,26 +1818,26 @@ export default function TeacherDashboard() {
               icon="🏫"
               title="Most Active"
               value={`Grade ${dashboardData.mostActiveGrade}`}
-              subtitle="Leading the way"
+              subtitle="Highest book count"
               color="#A1E5DB"
             />
             <QuickStatCard
-              icon="✅"
+              icon="🎯"
               title="At Goal"
               value={dashboardData.studentsAtGoal}
-              subtitle={`${dashboardData.studentsAtGoal} / ${dashboardData.totalStudents} students`}
+              subtitle="Reached reading goal"
               color="#B6DFEB"
             />
             <QuickStatCard
-              icon="🎯"
-              title="Progress"
-              value={`${dashboardData.schoolProgress}%`}
-              subtitle="Toward goals"
-              color="#ADD4EA"
+              icon="⭐"
+              title="At Maximum"
+              value={dashboardData.studentsAtMaximum}
+              subtitle="Read all books"
+              color="#C9E4E7"
             />
           </div>
 
-          {/* Top Readers & Recent Activity */}
+          {/* Top Readers & Recent Activity Collapsible Section */}
           <div style={{
             background: 'white',
             borderRadius: '1rem',
@@ -2278,7 +2298,7 @@ export default function TeacherDashboard() {
           {[
             { id: 'dashboard', icon: '📊', label: 'Dashboard', active: true },
             { id: 'students', icon: '👥', label: 'Students', active: false },
-            { id: 'submissions', icon: '📋', label: 'Submissions', active: false },
+            { id: 'submissions', icon: '📋', label: 'Submissions', active: false, badge: pendingSubmissionsCount },
             { id: 'achievements', icon: '🏆', label: 'Achievements', active: false },
             { id: 'settings', icon: '⚙️', label: 'Settings', active: false }
           ].map((tab) => (
@@ -2315,6 +2335,25 @@ export default function TeacherDashboard() {
               }}>
                 {tab.label}
               </span>
+              {tab.badge && tab.badge > 0 && (
+                <div style={{
+                  position: 'absolute',
+                  top: '2px',
+                  right: '8px',
+                  backgroundColor: '#EF4444',
+                  color: 'white',
+                  borderRadius: '50%',
+                  width: '16px',
+                  height: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '8px',
+                  fontWeight: 'bold'
+                }}>
+                  {tab.badge > 9 ? '9+' : tab.badge}
+                </div>
+              )}
               {tab.active && (
                 <div style={{
                   position: 'absolute',

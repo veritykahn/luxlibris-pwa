@@ -651,7 +651,7 @@ export default function TeacherStudents() {
           </div>
         </div>
 
-        {/* Filter Bar - Hidden when on Overview tab */}
+        {/* Filter Bar - only show for non-overview tabs */}
         {activeTab !== 'overview' && (
           <div style={{
             background: 'white',
@@ -754,6 +754,8 @@ export default function TeacherStudents() {
               statsData={statsData}
               appStudents={appStudents}
               manualStudents={manualStudents}
+              searchTerm=""
+              filterType="all"
               userProfile={userProfile}
               onGradeClick={(grade) => setActiveTab(`grade${grade}`)}
             />
