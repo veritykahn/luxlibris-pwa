@@ -476,7 +476,11 @@ export default function TeacherSubmissions() {
             animation: 'spin 1s linear infinite',
             margin: '0 auto 1rem'
           }}></div>
-          <p style={{ color: '#223848', fontSize: '1.1rem' }}>
+          <p style={{ 
+            color: '#223848', 
+            fontSize: '1.1rem',
+            fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
+          }}>
             Loading submissions...
           </p>
         </div>
@@ -498,7 +502,7 @@ export default function TeacherSubmissions() {
       <div style={{
         minHeight: '100vh',
         background: 'linear-gradient(135deg, #FFFCF5 0%, #C3E0DE 50%, #A1E5DB 100%)',
-        fontFamily: 'system-ui, -apple-system, sans-serif',
+        fontFamily: 'Avenir, system-ui, -apple-system, sans-serif',
         paddingBottom: '80px'
       }}>
 
@@ -531,14 +535,16 @@ export default function TeacherSubmissions() {
                 fontSize: '1.25rem',
                 fontWeight: 'bold',
                 color: '#223848',
-                marginBottom: '1rem'
+                marginBottom: '1rem',
+                fontFamily: 'Didot, "Times New Roman", serif'
               }}>
                 Session Expiring Soon
               </h3>
               <p style={{
                 color: '#6b7280',
                 marginBottom: '1.5rem',
-                lineHeight: '1.4'
+                lineHeight: '1.4',
+                fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
               }}>
                 Your session will expire in a few minutes for security. Continue working?
               </p>
@@ -556,7 +562,8 @@ export default function TeacherSubmissions() {
                     border: 'none',
                     borderRadius: '0.5rem',
                     cursor: 'pointer',
-                    fontSize: '0.875rem'
+                    fontSize: '0.875rem',
+                    fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                   }}
                 >
                   Sign Out
@@ -571,7 +578,8 @@ export default function TeacherSubmissions() {
                     borderRadius: '0.5rem',
                     cursor: 'pointer',
                     fontSize: '0.875rem',
-                    fontWeight: '600'
+                    fontWeight: '600',
+                    fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                   }}
                 >
                   Continue Working
@@ -628,14 +636,15 @@ export default function TeacherSubmissions() {
                   fontWeight: 'bold',
                   color: '#223848',
                   margin: 0,
-                  fontFamily: 'Georgia, serif'
+                  fontFamily: 'Didot, "Times New Roman", serif'
                 }}>
                   Submissions
                 </h1>
                 <p style={{
                   color: '#6b7280',
                   fontSize: '0.875rem',
-                  margin: 0
+                  margin: 0,
+                  fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                 }}>
                   Review and approve student work
                 </p>
@@ -652,7 +661,8 @@ export default function TeacherSubmissions() {
                 background: 'rgba(173, 212, 234, 0.1)',
                 borderRadius: '0.5rem',
                 fontSize: '0.75rem',
-                color: '#223848'
+                color: '#223848',
+                fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
               }}>
                 <span>{getPhaseInfo().icon}</span>
                 <span>{phaseData.currentPhase}</span>
@@ -683,7 +693,8 @@ export default function TeacherSubmissions() {
                 background: 'rgba(173, 212, 234, 0.1)',
                 borderRadius: '0.5rem',
                 fontSize: '0.75rem',
-                color: '#223848'
+                color: '#223848',
+                fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
               }}>
                 <span>{userProfile.firstName || 'Teacher'}</span>
               </div>
@@ -697,7 +708,8 @@ export default function TeacherSubmissions() {
                   fontSize: '0.75rem',
                   fontWeight: '600',
                   border: 'none',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                 }}
               >
                 🚪 Sign Out
@@ -724,10 +736,21 @@ export default function TeacherSubmissions() {
               border: '2px solid #3B82F6'
             }}>
               <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>👩‍🏫</div>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#1E40AF', marginBottom: '0.5rem' }}>
+              <h3 style={{ 
+                fontSize: '1.25rem', 
+                fontWeight: '600', 
+                color: '#1E40AF', 
+                marginBottom: '0.5rem',
+                fontFamily: 'Didot, "Times New Roman", serif'
+              }}>
                 Teacher Book Selection Period
               </h3>
-              <p style={{ fontSize: '0.875rem', color: '#1D4ED8', margin: 0 }}>
+              <p style={{ 
+                fontSize: '0.875rem', 
+                color: '#1D4ED8', 
+                margin: 0,
+                fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
+              }}>
                 {getPhaseMessage()}
               </p>
             </div>
@@ -743,7 +766,12 @@ export default function TeacherSubmissions() {
               border: '2px solid #8B5CF6'
             }}>
               <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🗳️</div>
-              <p style={{ fontSize: '0.875rem', color: '#6B21A8', margin: 0 }}>
+              <p style={{ 
+                fontSize: '0.875rem', 
+                color: '#6B21A8', 
+                margin: 0,
+                fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
+              }}>
                 <strong>Voting Period:</strong> {getPhaseMessage()}
               </p>
             </div>
@@ -759,10 +787,21 @@ export default function TeacherSubmissions() {
               border: '2px solid #F59E0B'
             }}>
               <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🏆</div>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#92400E', marginBottom: '0.5rem' }}>
+              <h3 style={{ 
+                fontSize: '1.25rem', 
+                fontWeight: '600', 
+                color: '#92400E', 
+                marginBottom: '0.5rem',
+                fontFamily: 'Didot, "Times New Roman", serif'
+              }}>
                 Results Phase Active
               </h3>
-              <p style={{ fontSize: '0.875rem', color: '#B45309', margin: 0 }}>
+              <p style={{ 
+                fontSize: '0.875rem', 
+                color: '#B45309', 
+                margin: 0,
+                fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
+              }}>
                 {getPhaseMessage()}
               </p>
             </div>
@@ -799,14 +838,16 @@ export default function TeacherSubmissions() {
                   fontSize: '1.25rem',
                   fontWeight: 'bold',
                   color: '#223848',
-                  margin: '0 0 0.25rem 0'
+                  margin: '0 0 0.25rem 0',
+                  fontFamily: 'Didot, "Times New Roman", serif'
                 }}>
                   {submissions.length} Pending Submission{submissions.length !== 1 ? 's' : ''}
                 </h2>
                 <p style={{
                   color: '#6b7280',
                   fontSize: '0.875rem',
-                  margin: 0
+                  margin: 0,
+                  fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                 }}>
                   {submissions.length === 0 
                     ? 'All caught up! No submissions waiting for review.'
@@ -831,13 +872,15 @@ export default function TeacherSubmissions() {
                 fontSize: '1.25rem',
                 fontWeight: 'bold',
                 color: '#223848',
-                marginBottom: '0.5rem'
+                marginBottom: '0.5rem',
+                fontFamily: 'Didot, "Times New Roman", serif'
               }}>
                 All submissions reviewed!
               </h3>
               <p style={{
                 color: '#6b7280',
-                marginBottom: '1.5rem'
+                marginBottom: '1.5rem',
+                fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
               }}>
                 No pending submissions at this time. Great work staying on top of things!
               </p>
@@ -883,7 +926,8 @@ export default function TeacherSubmissions() {
                             fontSize: '1.125rem',
                             fontWeight: 'bold',
                             color: '#223848',
-                            margin: 0
+                            margin: 0,
+                            fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                           }}>
                             {submission.studentName}
                           </h4>
@@ -893,7 +937,8 @@ export default function TeacherSubmissions() {
                             backgroundColor: '#ADD4EA',
                             color: '#223848',
                             borderRadius: '0.25rem',
-                            fontWeight: '600'
+                            fontWeight: '600',
+                            fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                           }}>
                             {formatSubmissionType(submission.submissionType)}
                           </span>
@@ -903,7 +948,8 @@ export default function TeacherSubmissions() {
                           fontSize: '1rem',
                           color: '#374151',
                           margin: '0 0 0.5rem 0',
-                          fontWeight: '500'
+                          fontWeight: '500',
+                          fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                         }}>
                           &quot;{submission.bookTitle}&quot;
                         </p>
@@ -913,7 +959,8 @@ export default function TeacherSubmissions() {
                           color: '#6b7280',
                           display: 'flex',
                           gap: '1rem',
-                          flexWrap: 'wrap'
+                          flexWrap: 'wrap',
+                          fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                         }}>
                           <span>Submitted: {formatDate(submission.submittedAt)}</span>
                           {submission.rating > 0 && (
@@ -952,7 +999,8 @@ export default function TeacherSubmissions() {
                             fontWeight: '600',
                             cursor: 'pointer',
                             minWidth: '120px',
-                            opacity: isProcessing ? 0.7 : 1
+                            opacity: isProcessing ? 0.7 : 1,
+                            fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                           }}
                         >
                           ✅ Approve
@@ -971,7 +1019,8 @@ export default function TeacherSubmissions() {
                             fontWeight: '600',
                             cursor: 'pointer',
                             minWidth: '120px',
-                            opacity: isProcessing ? 0.7 : 1
+                            opacity: isProcessing ? 0.7 : 1,
+                            fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                           }}
                         >
                           📝 Request Revisions
@@ -990,7 +1039,8 @@ export default function TeacherSubmissions() {
                             fontWeight: '600',
                             cursor: 'pointer',
                             minWidth: '120px',
-                            opacity: isProcessing ? 0.7 : 1
+                            opacity: isProcessing ? 0.7 : 1,
+                            fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                           }}
                         >
                           🔄 Cancel Submission
@@ -1014,7 +1064,8 @@ export default function TeacherSubmissions() {
                           marginBottom: '0.5rem',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '0.5rem'
+                          gap: '0.5rem',
+                          fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                         }}>
                           <span>📝</span>
                           Student&apos;s Review:
@@ -1024,7 +1075,8 @@ export default function TeacherSubmissions() {
                           color: '#1F2937',
                           lineHeight: '1.6',
                           whiteSpace: 'pre-wrap',
-                          wordBreak: 'break-word'
+                          wordBreak: 'break-word',
+                          fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                         }}>
                           {shouldTruncate 
                             ? `${reviewText.substring(0, 200)}...` 
@@ -1043,7 +1095,8 @@ export default function TeacherSubmissions() {
                               fontSize: '0.875rem',
                               fontWeight: '500',
                               cursor: 'pointer',
-                              textDecoration: 'underline'
+                              textDecoration: 'underline',
+                              fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                             }}
                           >
                             {isExpanded ? 'Show Less' : 'Read More'}
@@ -1052,7 +1105,8 @@ export default function TeacherSubmissions() {
                         <div style={{
                           marginTop: '0.5rem',
                           fontSize: '0.75rem',
-                          color: '#9CA3AF'
+                          color: '#9CA3AF',
+                          fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                         }}>
                           Review length: {reviewText.length} characters
                         </div>
@@ -1073,7 +1127,8 @@ export default function TeacherSubmissions() {
                           color: '#92400E',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '0.5rem'
+                          gap: '0.5rem',
+                          fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                         }}>
                           <span>⚠️</span>
                           <span>No written review submitted</span>
@@ -1122,7 +1177,8 @@ export default function TeacherSubmissions() {
                   fontSize: '1.25rem',
                   fontWeight: 'bold',
                   color: '#223848',
-                  margin: 0
+                  margin: 0,
+                  fontFamily: 'Didot, "Times New Roman", serif'
                 }}>
                   {actionType === 'approve' ? '✅ Approve Submission' : '📝 Request Revisions'}
                 </h2>
@@ -1152,14 +1208,16 @@ export default function TeacherSubmissions() {
                   fontSize: '0.875rem',
                   color: '#374151',
                   margin: '0 0 0.5rem 0',
-                  fontWeight: '500'
+                  fontWeight: '500',
+                  fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                 }}>
                   <strong>{selectedSubmission.studentName}</strong> - &quot;{selectedSubmission.bookTitle}&quot;
                 </p>
                 <p style={{
                   fontSize: '0.75rem',
                   color: '#6b7280',
-                  margin: 0
+                  margin: 0,
+                  fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                 }}>
                   Submission type: {formatSubmissionType(selectedSubmission.submissionType)}
                 </p>
@@ -1178,7 +1236,8 @@ export default function TeacherSubmissions() {
                     fontSize: '0.875rem',
                     fontWeight: '600',
                     color: '#1E40AF',
-                    marginBottom: '0.5rem'
+                    marginBottom: '0.5rem',
+                    fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                   }}>
                     Student&apos;s Review:
                   </div>
@@ -1188,7 +1247,8 @@ export default function TeacherSubmissions() {
                     lineHeight: '1.5',
                     whiteSpace: 'pre-wrap',
                     maxHeight: '150px',
-                    overflowY: 'auto'
+                    overflowY: 'auto',
+                    fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                   }}>
                     {selectedSubmission.notes}
                   </div>
@@ -1201,7 +1261,8 @@ export default function TeacherSubmissions() {
                   fontSize: '0.875rem',
                   fontWeight: '600',
                   color: '#374151',
-                  marginBottom: '0.5rem'
+                  marginBottom: '0.5rem',
+                  fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                 }}>
                   {actionType === 'approve' 
                     ? 'Feedback for student (required)' 
@@ -1223,7 +1284,7 @@ export default function TeacherSubmissions() {
                     border: teacherNotes.trim().length < 10 ? '2px solid #FCA5A5' : '1px solid #e5e7eb',
                     borderRadius: '0.5rem',
                     fontSize: '0.875rem',
-                    fontFamily: 'inherit',
+                    fontFamily: 'Avenir, system-ui, -apple-system, sans-serif',
                     boxSizing: 'border-box',
                     outline: 'none',
                     resize: 'vertical',
@@ -1242,7 +1303,8 @@ export default function TeacherSubmissions() {
                   <p style={{
                     fontSize: '0.75rem',
                     color: teacherNotes.trim().length < 10 ? '#EF4444' : '#6b7280',
-                    margin: 0
+                    margin: 0,
+                    fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                   }}>
                     {teacherNotes.trim().length < 10 
                       ? `Need at least ${10 - teacherNotes.trim().length} more characters for meaningful feedback`
@@ -1252,7 +1314,8 @@ export default function TeacherSubmissions() {
                   <p style={{
                     fontSize: '0.75rem',
                     color: '#6b7280',
-                    margin: 0
+                    margin: 0,
+                    fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                   }}>
                     {teacherNotes.length}/500
                   </p>
@@ -1273,7 +1336,8 @@ export default function TeacherSubmissions() {
                     border: 'none',
                     borderRadius: '0.5rem',
                     cursor: 'pointer',
-                    fontSize: '0.875rem'
+                    fontSize: '0.875rem',
+                    fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                   }}
                 >
                   Cancel
@@ -1293,7 +1357,8 @@ export default function TeacherSubmissions() {
                     fontSize: '0.875rem',
                     fontWeight: '600',
                     opacity: isProcessing ? 0.7 : 1,
-                    transition: 'all 0.2s ease'
+                    transition: 'all 0.2s ease',
+                    fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                   }}
                 >
                   {isProcessing 
@@ -1343,7 +1408,8 @@ export default function TeacherSubmissions() {
                   fontSize: '1.25rem',
                   fontWeight: 'bold',
                   color: '#223848',
-                  margin: 0
+                  margin: 0,
+                  fontFamily: 'Didot, "Times New Roman", serif'
                 }}>
                   🔄 Cancel Submission
                 </h2>
@@ -1374,14 +1440,16 @@ export default function TeacherSubmissions() {
                   fontSize: '0.875rem',
                   color: '#92400E',
                   margin: '0 0 0.5rem 0',
-                  fontWeight: '600'
+                  fontWeight: '600',
+                  fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                 }}>
                   <strong>{selectedSubmission.studentName}</strong> - &quot;{selectedSubmission.bookTitle}&quot;
                 </p>
                 <p style={{
                   fontSize: '0.75rem',
                   color: '#92400E',
-                  margin: 0
+                  margin: 0,
+                  fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                 }}>
                   Submission type: {formatSubmissionType(selectedSubmission.submissionType)}
                 </p>
@@ -1397,7 +1465,8 @@ export default function TeacherSubmissions() {
                   fontSize: '0.875rem',
                   fontWeight: '600',
                   color: '#374151',
-                  margin: '0 0 0.5rem 0'
+                  margin: '0 0 0.5rem 0',
+                  fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                 }}>
                   This will:
                 </h3>
@@ -1406,7 +1475,8 @@ export default function TeacherSubmissions() {
                   color: '#6b7280',
                   margin: 0,
                   paddingLeft: '1rem',
-                  lineHeight: '1.4'
+                  lineHeight: '1.4',
+                  fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                 }}>
                   <li>Return the book to &quot;in progress&quot; status</li>
                   <li>Remove the submission from your review queue</li>
@@ -1426,7 +1496,8 @@ export default function TeacherSubmissions() {
                   fontSize: '0.75rem',
                   color: '#006064',
                   margin: 0,
-                  fontWeight: '500'
+                  fontWeight: '500',
+                  fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                 }}>
                   💡 <strong>Use case:</strong> Student accidentally selected &quot;Present to Teacher&quot; 
                   instead of &quot;Take Quiz&quot; - this lets them resubmit with the correct option.
@@ -1447,7 +1518,8 @@ export default function TeacherSubmissions() {
                     border: 'none',
                     borderRadius: '0.5rem',
                     cursor: 'pointer',
-                    fontSize: '0.875rem'
+                    fontSize: '0.875rem',
+                    fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                   }}
                 >
                   Keep Submission
@@ -1464,7 +1536,8 @@ export default function TeacherSubmissions() {
                     cursor: isProcessing ? 'wait' : 'pointer',
                     fontSize: '0.875rem',
                     fontWeight: '600',
-                    opacity: isProcessing ? 0.7 : 1
+                    opacity: isProcessing ? 0.7 : 1,
+                    fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                   }}
                 >
                   {isProcessing ? 'Processing...' : '🔄 Cancel & Return to Student'}
@@ -1516,7 +1589,8 @@ export default function TeacherSubmissions() {
                 gap: '2px',
                 color: tab.active ? '#ADD4EA' : '#6b7280',
                 transition: 'all 0.2s ease',
-                position: 'relative'
+                position: 'relative',
+                fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
               }}
             >
               <span style={{ 
@@ -1582,7 +1656,8 @@ export default function TeacherSubmissions() {
             fontSize: '14px',
             fontWeight: '500',
             maxWidth: '85vw',
-            textAlign: 'center'
+            textAlign: 'center',
+            fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
           }}>
             {showSuccess}
           </div>

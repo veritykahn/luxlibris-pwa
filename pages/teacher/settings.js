@@ -47,19 +47,19 @@ export default function TeacherSettings() {
       if (authLoading) return
 
       if (!isAuthenticated && !signingOut) {
-  router.push('/sign-in')
-  return
-}
+        router.push('/sign-in')
+        return
+      }
 
-if (userProfile && !['teacher', 'admin'].includes(userProfile.accountType) && !signingOut) {
-  router.push('/role-selector')
-  return
-}
+      if (userProfile && !['teacher', 'admin'].includes(userProfile.accountType) && !signingOut) {
+        router.push('/role-selector')
+        return
+      }
 
       if (userProfile?.accountType && ['teacher', 'admin'].includes(userProfile.accountType) && isSessionExpired()) {
-  await signOut({ redirectTo: '/' })  // ✅ FIXED: redirect to homepage like other pages
-  return
-}
+        await signOut({ redirectTo: '/' })
+        return
+      }
 
       if (userProfile) {
         loadSettingsData()
@@ -79,11 +79,9 @@ if (userProfile && !['teacher', 'admin'].includes(userProfile.accountType) && !s
     try {
       console.log('📚 Loading details for selected books:', selectedNominees)
       
-      // Use the existing dbHelpers pattern to get all available nominees
       const allNominees = await dbHelpers.getAvailableNomineesForYear()
       console.log('📖 Found', allNominees.length, 'total books from dbHelpers')
       
-      // Get details for selected books
       const selectedBooksDetails = selectedNominees.map(nomineeId => {
         const book = allNominees.find(b => b.id === nomineeId)
         if (book) {
@@ -119,7 +117,6 @@ if (userProfile && !['teacher', 'admin'].includes(userProfile.accountType) && !s
         return
       }
 
-      // Check year-over-year status
       const yoyStatus = await dbHelpers.checkTeacherYearOverYearStatus(
         userProfile.entityId, 
         userProfile.schoolId, 
@@ -127,7 +124,6 @@ if (userProfile && !['teacher', 'admin'].includes(userProfile.accountType) && !s
       )
       setYearOverYearStatus(yoyStatus)
 
-      // Check release status
       const releaseInfo = await dbHelpers.checkTeacherReleaseStatus(
         userProfile.entityId,
         userProfile.schoolId,
@@ -135,17 +131,14 @@ if (userProfile && !['teacher', 'admin'].includes(userProfile.accountType) && !s
       )
       setReleaseStatus(releaseInfo)
 
-      // Load current teacher configuration
       setCurrentConfig({
         selectedNominees: yoyStatus.teacherData.selectedNominees || [],
         achievementTiers: yoyStatus.teacherData.achievementTiers || [],
         submissionOptions: yoyStatus.teacherData.submissionOptions || {}
       })
 
-      // Load selected books details
       await loadSelectedBooksDetails(yoyStatus.teacherData.selectedNominees || [])
 
-      // If in TEACHER_SELECTION phase, load available nominees
       if (yoyStatus.needsYearOverYearSetup) {
         const nominees = await dbHelpers.getAvailableNomineesForYear()
         setAvailableNominees(nominees)
@@ -232,7 +225,6 @@ if (userProfile && !['teacher', 'admin'].includes(userProfile.accountType) && !s
       setShowSuccess('✅ Configuration saved for new academic year!')
       setTimeout(() => setShowSuccess(''), 3000)
 
-      // Reload data to reflect changes
       await loadSettingsData()
 
     } catch (error) {
@@ -256,7 +248,6 @@ if (userProfile && !['teacher', 'admin'].includes(userProfile.accountType) && !s
       setShowSuccess(`🚀 Books released to students! ${result.booksReleased} books now available.`)
       setTimeout(() => setShowSuccess(''), 5000)
 
-      // Reload data to reflect changes
       await loadSettingsData()
 
     } catch (error) {
@@ -287,7 +278,11 @@ if (userProfile && !['teacher', 'admin'].includes(userProfile.accountType) && !s
             animation: 'spin 1s linear infinite',
             margin: '0 auto 1rem'
           }}></div>
-          <p style={{ color: '#223848', fontSize: '1.1rem' }}>
+          <p style={{ 
+            color: '#223848', 
+            fontSize: '1.1rem',
+            fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
+          }}>
             Loading settings...
           </p>
         </div>
@@ -309,7 +304,7 @@ if (userProfile && !['teacher', 'admin'].includes(userProfile.accountType) && !s
       <div style={{
         minHeight: '100vh',
         background: 'linear-gradient(135deg, #FFFCF5 0%, #C3E0DE 50%, #A1E5DB 100%)',
-        fontFamily: 'system-ui, -apple-system, sans-serif',
+        fontFamily: 'Avenir, system-ui, -apple-system, sans-serif',
         paddingBottom: '80px'
       }}>
 
@@ -360,14 +355,15 @@ if (userProfile && !['teacher', 'admin'].includes(userProfile.accountType) && !s
                   fontWeight: 'bold',
                   color: '#223848',
                   margin: 0,
-                  fontFamily: 'Georgia, serif'
+                  fontFamily: 'Didot, "Times New Roman", serif'
                 }}>
                   Settings
                 </h1>
                 <p style={{
                   color: '#6b7280',
                   fontSize: '0.875rem',
-                  margin: 0
+                  margin: 0,
+                  fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                 }}>
                   Manage your reading program
                 </p>
@@ -383,25 +379,27 @@ if (userProfile && !['teacher', 'admin'].includes(userProfile.accountType) && !s
                 background: 'rgba(173, 212, 234, 0.1)',
                 borderRadius: '0.5rem',
                 fontSize: '0.75rem',
-                color: '#223848'
+                color: '#223848',
+                fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
               }}>
                 <span>{userProfile.firstName || 'Teacher'}</span>
               </div>
               <button 
-  onClick={() => signOut({ redirectTo: '/' })}  // ✅ FIXED: Explicit homepage redirect
-  style={{
-    padding: '0.5rem 0.75rem',
-    background: 'linear-gradient(135deg, #f87171, #ef4444)',
-    color: 'white',
-    borderRadius: '0.5rem',
-    fontSize: '0.75rem',
-    fontWeight: '600',
-    border: 'none',
-    cursor: 'pointer'
-  }}
->
-  🚪 Sign Out
-</button>
+                onClick={() => signOut({ redirectTo: '/' })}
+                style={{
+                  padding: '0.5rem 0.75rem',
+                  background: 'linear-gradient(135deg, #f87171, #ef4444)',
+                  color: 'white',
+                  borderRadius: '0.5rem',
+                  fontSize: '0.75rem',
+                  fontWeight: '600',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
+                }}
+              >
+                🚪 Sign Out
+              </button>
             </div>
           </div>
         </header>
@@ -429,10 +427,10 @@ if (userProfile && !['teacher', 'admin'].includes(userProfile.accountType) && !s
               margin: '0 0 1rem 0',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.5rem'
+              gap: '0.5rem',
+              fontFamily: 'Didot, "Times New Roman", serif'
             }}>
               📊 Program Status
-              {/* ADD: Refresh button */}
               <button
                 onClick={refreshPhase}
                 style={{
@@ -443,7 +441,8 @@ if (userProfile && !['teacher', 'admin'].includes(userProfile.accountType) && !s
                   borderRadius: '0.375rem',
                   cursor: 'pointer',
                   fontSize: '0.75rem',
-                  color: '#6B7280'
+                  color: '#6B7280',
+                  fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                 }}
                 title="Refresh phase status"
               >
@@ -470,11 +469,16 @@ if (userProfile && !['teacher', 'admin'].includes(userProfile.accountType) && !s
                   fontSize: '1.125rem',
                   fontWeight: 'bold',
                   color: '#223848',
-                  marginBottom: '0.25rem'
+                  marginBottom: '0.25rem',
+                  fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                 }}>
                   {phaseData.academicYear}
                 </div>
-                <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                <div style={{ 
+                  fontSize: '0.875rem', 
+                  color: '#6b7280',
+                  fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
+                }}>
                   Academic Year
                 </div>
               </div>
@@ -494,11 +498,16 @@ if (userProfile && !['teacher', 'admin'].includes(userProfile.accountType) && !s
                   fontSize: '1.125rem',
                   fontWeight: 'bold',
                   color: '#223848',
-                  marginBottom: '0.25rem'
+                  marginBottom: '0.25rem',
+                  fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                 }}>
                   {getPhaseInfo().name}
                 </div>
-                <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                <div style={{ 
+                  fontSize: '0.875rem', 
+                  color: '#6b7280',
+                  fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
+                }}>
                   Current Phase
                 </div>
               </div>
@@ -518,7 +527,8 @@ if (userProfile && !['teacher', 'admin'].includes(userProfile.accountType) && !s
                 margin: '0 0 0.75rem 0',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.5rem'
+                gap: '0.5rem',
+                fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
               }}>
                 📊 Configuration Summary
               </h4>
@@ -527,7 +537,8 @@ if (userProfile && !['teacher', 'admin'].includes(userProfile.accountType) && !s
                 gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
                 gap: '1rem',
                 fontSize: '0.875rem',
-                color: '#4A5568'
+                color: '#4A5568',
+                fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
               }}>
                 <div>
                   <strong>Books Available:</strong> {selectedBooksWithDetails.length}
@@ -556,7 +567,8 @@ if (userProfile && !['teacher', 'admin'].includes(userProfile.accountType) && !s
                   borderRadius: '0.5rem',
                   fontSize: '0.75rem',
                   color: '#718096',
-                  fontStyle: 'italic'
+                  fontStyle: 'italic',
+                  fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                 }}>
                   💡 This configuration will remain active until the Teacher Selection phase begins on May 24th. 
                   Students can read and submit books using the options below.
@@ -637,7 +649,8 @@ if (userProfile && !['teacher', 'admin'].includes(userProfile.accountType) && !s
                 gap: '2px',
                 color: tab.active ? '#ADD4EA' : '#6b7280',
                 transition: 'all 0.2s ease',
-                position: 'relative'
+                position: 'relative',
+                fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
               }}
             >
               <span style={{ 
@@ -684,7 +697,8 @@ if (userProfile && !['teacher', 'admin'].includes(userProfile.accountType) && !s
             fontSize: '14px',
             fontWeight: '500',
             maxWidth: '85vw',
-            textAlign: 'center'
+            textAlign: 'center',
+            fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
           }}>
             {showSuccess}
           </div>
@@ -726,7 +740,7 @@ function YearOverYearBookSelection({
         fontWeight: 'bold',
         color: '#223848',
         margin: '0 0 1rem 0',
-        fontFamily: 'Georgia, serif'
+        fontFamily: 'Didot, "Times New Roman", serif'
       }}>
         📚 Select Books for {yearOverYearStatus.currentYear}
       </h2>
@@ -738,10 +752,20 @@ function YearOverYearBookSelection({
         padding: '1rem',
         marginBottom: '1.5rem'
       }}>
-        <p style={{ color: '#065f46', margin: 0, fontWeight: '600' }}>
+        <p style={{ 
+          color: '#065f46', 
+          margin: 0, 
+          fontWeight: '600',
+          fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
+        }}>
           🎯 Your program limit: {yearOverYearStatus.teacherData.selectedNominees?.length || 0} books maximum
         </p>
-        <p style={{ color: '#047857', margin: '0.5rem 0 0 0', fontSize: '0.875rem' }}>
+        <p style={{ 
+          color: '#047857', 
+          margin: '0.5rem 0 0 0', 
+          fontSize: '0.875rem',
+          fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
+        }}>
           You can select up to this many books from the {availableNominees.length} books available for {yearOverYearStatus.currentYear}.
         </p>
       </div>
@@ -752,7 +776,8 @@ function YearOverYearBookSelection({
           fontSize: '1.25rem',
           fontWeight: 'bold',
           color: '#223848',
-          margin: '0 0 1rem 0'
+          margin: '0 0 1rem 0',
+          fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
         }}>
           📚 Select Books ({currentConfig.selectedNominees.length}/{yearOverYearStatus.teacherData.selectedNominees?.length || 0} selected)
         </h3>
@@ -788,7 +813,8 @@ function YearOverYearBookSelection({
           fontSize: '1.25rem',
           fontWeight: 'bold',
           color: '#223848',
-          margin: '0 0 1rem 0'
+          margin: '0 0 1rem 0',
+          fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
         }}>
           📝 Book Completion Options
         </h3>
@@ -836,14 +862,16 @@ function YearOverYearBookSelection({
                     fontSize: '0.875rem',
                     fontWeight: '600',
                     color: '#223848',
-                    marginBottom: '0.25rem'
+                    marginBottom: '0.25rem',
+                    fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                   }}>
                     {option.label} {option.disabled && '(Always Available)'}
                   </div>
                   <div style={{
                     fontSize: '0.75rem',
                     color: '#6b7280',
-                    lineHeight: '1.3'
+                    lineHeight: '1.3',
+                    fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                   }}>
                     {option.description}
                   </div>
@@ -860,7 +888,8 @@ function YearOverYearBookSelection({
           fontSize: '1.25rem',
           fontWeight: 'bold',
           color: '#223848',
-          margin: '0 0 1rem 0'
+          margin: '0 0 1rem 0',
+          fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
         }}>
           🏆 Achievement Rewards
         </h3>
@@ -896,11 +925,21 @@ function YearOverYearBookSelection({
                   {tier.books}
                 </span>
                 <div>
-                  <div style={{ fontWeight: '600', color: '#1f2937', fontSize: '0.875rem' }}>
+                  <div style={{ 
+                    fontWeight: '600', 
+                    color: '#1f2937', 
+                    fontSize: '0.875rem',
+                    fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
+                  }}>
                     {tier.books} book{tier.books > 1 ? 's' : ''}
                   </div>
                   {tier.type === 'lifetime' && (
-                    <div style={{ fontSize: '0.75rem', color: '#6b7280', fontStyle: 'italic' }}>
+                    <div style={{ 
+                      fontSize: '0.75rem', 
+                      color: '#6b7280', 
+                      fontStyle: 'italic',
+                      fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
+                    }}>
                       Multi-year goal
                     </div>
                   )}
@@ -916,7 +955,8 @@ function YearOverYearBookSelection({
                   borderRadius: '0.5rem',
                   fontSize: '1rem',
                   width: '100%',
-                  background: 'white'
+                  background: 'white',
+                  fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                 }}
                 placeholder="Enter reward description"
               />
@@ -940,7 +980,8 @@ function YearOverYearBookSelection({
             fontWeight: '600',
             cursor: 'pointer',
             opacity: (isProcessing || currentConfig.selectedNominees.length === 0) ? 0.7 : 1,
-            marginRight: '1rem'
+            marginRight: '1rem',
+            fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
           }}
         >
           {isProcessing ? '💾 Saving...' : '💾 Save Configuration'}
@@ -960,14 +1001,16 @@ function YearOverYearBookSelection({
             fontSize: '1.125rem',
             fontWeight: '600',
             color: '#065f46',
-            margin: '0 0 0.5rem 0'
+            margin: '0 0 0.5rem 0',
+            fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
           }}>
             🎉 Configuration Complete!
           </h4>
           <p style={{
             color: '#047857',
             margin: '0 0 1rem 0',
-            fontSize: '0.875rem'
+            fontSize: '0.875rem',
+            fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
           }}>
             Your book selection and settings are saved. Go to the main Settings page to release to students.
           </p>
@@ -980,7 +1023,6 @@ function YearOverYearBookSelection({
 // Enhanced Current Configuration Display Component
 function CurrentConfigurationDisplay({ config, yearOverYearStatus, releaseStatus, onReleaseToStudents, isProcessing, selectedBooksWithDetails, teacherSubmissionOptions, phaseStatus }) {
   
-  // Get enabled submission options with descriptions
   const getSubmissionOptionsDisplay = () => {
     const options = [
       { key: 'quiz', label: '📝 Take Quiz', description: 'Parent code required, auto-graded', enabled: true, note: 'Always Available' },
@@ -998,8 +1040,6 @@ function CurrentConfigurationDisplay({ config, yearOverYearStatus, releaseStatus
   };
 
   const enabledSubmissionOptions = getSubmissionOptionsDisplay();
-
-  // Check if we're in a "locked" phase (not TEACHER_SELECTION)
   const isConfigurationLocked = phaseStatus?.currentPhase !== 'TEACHER_SELECTION';
 
   return (
@@ -1020,7 +1060,7 @@ function CurrentConfigurationDisplay({ config, yearOverYearStatus, releaseStatus
           fontWeight: 'bold',
           color: '#223848',
           margin: 0,
-          fontFamily: 'Georgia, serif'
+          fontFamily: 'Didot, "Times New Roman", serif'
         }}>
           {isConfigurationLocked ? '📋 Current Year Configuration' : '⚙️ Current Configuration'}
         </h2>
@@ -1035,7 +1075,8 @@ function CurrentConfigurationDisplay({ config, yearOverYearStatus, releaseStatus
             fontWeight: '600',
             display: 'flex',
             alignItems: 'center',
-            gap: '0.25rem'
+            gap: '0.25rem',
+            fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
           }}>
             🔒 Read Only
           </div>
@@ -1043,7 +1084,6 @@ function CurrentConfigurationDisplay({ config, yearOverYearStatus, releaseStatus
       </div>
 
       {isConfigurationLocked ? (
-        // ENHANCED READ-ONLY DISPLAY for ACTIVE/VOTING/RESULTS phases
         <div style={{ display: 'grid', gap: '2rem' }}>
           
           {/* Phase Status Banner */}
@@ -1058,14 +1098,16 @@ function CurrentConfigurationDisplay({ config, yearOverYearStatus, releaseStatus
               fontSize: '1.125rem',
               fontWeight: '600',
               color: '#223848',
-              margin: '0 0 0.5rem 0'
+              margin: '0 0 0.5rem 0',
+              fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
             }}>
               📅 Academic Year {yearOverYearStatus?.currentYear || '2025-26'}
             </h3>
             <p style={{
               color: '#6B7280',
               fontSize: '0.875rem',
-              margin: 0
+              margin: 0,
+              fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
             }}>
               Configuration is active and cannot be changed until Teacher Selection phase (May 24th)
             </p>
@@ -1080,7 +1122,8 @@ function CurrentConfigurationDisplay({ config, yearOverYearStatus, releaseStatus
               margin: '0 0 1rem 0',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.5rem'
+              gap: '0.5rem',
+              fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
             }}>
               📚 Selected Books ({selectedBooksWithDetails.length})
             </h3>
@@ -1093,7 +1136,11 @@ function CurrentConfigurationDisplay({ config, yearOverYearStatus, releaseStatus
                 padding: '1rem',
                 textAlign: 'center'
               }}>
-                <p style={{ color: '#DC2626', margin: 0 }}>
+                <p style={{ 
+                  color: '#DC2626', 
+                  margin: 0,
+                  fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
+                }}>
                   No books configured for this year
                 </p>
               </div>
@@ -1164,7 +1211,8 @@ function CurrentConfigurationDisplay({ config, yearOverYearStatus, releaseStatus
                           margin: '0 0 0.25rem 0',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap'
+                          whiteSpace: 'nowrap',
+                          fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                         }}>
                           {book.title}
                         </h4>
@@ -1174,7 +1222,8 @@ function CurrentConfigurationDisplay({ config, yearOverYearStatus, releaseStatus
                           margin: '0 0 0.25rem 0',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap'
+                          whiteSpace: 'nowrap',
+                          fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                         }}>
                           by {book.authors}
                         </p>
@@ -1186,7 +1235,8 @@ function CurrentConfigurationDisplay({ config, yearOverYearStatus, releaseStatus
                             fontStyle: 'italic',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap'
+                            whiteSpace: 'nowrap',
+                            fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                           }}>
                             {book.genres}
                           </p>
@@ -1208,7 +1258,8 @@ function CurrentConfigurationDisplay({ config, yearOverYearStatus, releaseStatus
               margin: '0 0 1rem 0',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.5rem'
+              gap: '0.5rem',
+              fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
             }}>
               📝 Book Completion Options ({enabledSubmissionOptions.length})
             </h3>
@@ -1254,7 +1305,8 @@ function CurrentConfigurationDisplay({ config, yearOverYearStatus, releaseStatus
                         marginBottom: '0.25rem',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '0.5rem'
+                        gap: '0.5rem',
+                        fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                       }}>
                         {option.label} 
                         {option.note && (
@@ -1263,7 +1315,8 @@ function CurrentConfigurationDisplay({ config, yearOverYearStatus, releaseStatus
                             background: '#E5E7EB',
                             color: '#374151',
                             padding: '0.125rem 0.375rem',
-                            borderRadius: '0.25rem'
+                            borderRadius: '0.25rem',
+                            fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                           }}>
                             {option.note}
                           </span>
@@ -1272,7 +1325,8 @@ function CurrentConfigurationDisplay({ config, yearOverYearStatus, releaseStatus
                       <div style={{
                         fontSize: '0.75rem',
                         color: '#6B7280',
-                        lineHeight: '1.3'
+                        lineHeight: '1.3',
+                        fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                       }}>
                         {option.description}
                       </div>
@@ -1293,7 +1347,8 @@ function CurrentConfigurationDisplay({ config, yearOverYearStatus, releaseStatus
                 margin: '0 0 1rem 0',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.5rem'
+                gap: '0.5rem',
+                fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
               }}>
                 🏆 Achievement Rewards ({config.achievementTiers.length})
               </h3>
@@ -1331,11 +1386,21 @@ function CurrentConfigurationDisplay({ config, yearOverYearStatus, releaseStatus
                           {tier.books}
                         </span>
                         <div>
-                          <div style={{ fontWeight: '600', color: '#1F2937', fontSize: '0.875rem' }}>
+                          <div style={{ 
+                            fontWeight: '600', 
+                            color: '#1F2937', 
+                            fontSize: '0.875rem',
+                            fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
+                          }}>
                             {tier.books} book{tier.books > 1 ? 's' : ''}
                           </div>
                           {tier.type === 'lifetime' && (
-                            <div style={{ fontSize: '0.75rem', color: '#6B7280', fontStyle: 'italic' }}>
+                            <div style={{ 
+                              fontSize: '0.75rem', 
+                              color: '#6B7280', 
+                              fontStyle: 'italic',
+                              fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
+                            }}>
                               Multi-year goal
                             </div>
                           )}
@@ -1350,7 +1415,8 @@ function CurrentConfigurationDisplay({ config, yearOverYearStatus, releaseStatus
                         <div style={{
                           fontSize: '0.875rem',
                           fontWeight: '600',
-                          color: '#374151'
+                          color: '#374151',
+                          fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                         }}>
                           {tier.reward}
                         </div>
@@ -1363,7 +1429,6 @@ function CurrentConfigurationDisplay({ config, yearOverYearStatus, releaseStatus
           )}
         </div>
       ) : (
-        // EXISTING INTERACTIVE DISPLAY for TEACHER_SELECTION phase
         <div style={{ display: 'grid', gap: '1.5rem' }}>
           {/* Configuration Status */}
           <div style={{
@@ -1375,7 +1440,8 @@ function CurrentConfigurationDisplay({ config, yearOverYearStatus, releaseStatus
             <p style={{ 
               color: yearOverYearStatus?.hasCompletedThisYear ? '#065f46' : '#92400e', 
               margin: 0, 
-              fontWeight: '600' 
+              fontWeight: '600',
+              fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
             }}>
               {yearOverYearStatus?.hasCompletedThisYear ? 
                 `✅ Configuration complete for ${yearOverYearStatus.currentYear}` :
@@ -1393,20 +1459,21 @@ function CurrentConfigurationDisplay({ config, yearOverYearStatus, releaseStatus
               padding: '1.5rem'
             }}>
               {releaseStatus.hasReleased ? (
-                // Already Released
                 <div style={{ textAlign: 'center' }}>
                   <h4 style={{
                     fontSize: '1.125rem',
                     fontWeight: '600',
                     color: '#065f46',
-                    margin: '0 0 0.5rem 0'
+                    margin: '0 0 0.5rem 0',
+                    fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                   }}>
                     🎉 Books Released to Students!
                   </h4>
                   <p style={{
                     color: '#047857',
                     margin: '0 0 0.5rem 0',
-                    fontSize: '0.875rem'
+                    fontSize: '0.875rem',
+                    fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                   }}>
                     {releaseStatus.booksCount} books are now available to your students for {releaseStatus.academicYear}.
                   </p>
@@ -1415,27 +1482,29 @@ function CurrentConfigurationDisplay({ config, yearOverYearStatus, releaseStatus
                       color: '#065f46',
                       margin: 0,
                       fontSize: '0.75rem',
-                      fontStyle: 'italic'
+                      fontStyle: 'italic',
+                      fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                     }}>
                       Released on: {new Date(releaseStatus.releaseDate.seconds * 1000).toLocaleDateString()}
                     </p>
                   )}
                 </div>
               ) : releaseStatus.canRelease ? (
-                // Can Release
                 <div style={{ textAlign: 'center' }}>
                   <h4 style={{
                     fontSize: '1.125rem',
                     fontWeight: '600',
                     color: '#92400e',
-                    margin: '0 0 0.5rem 0'
+                    margin: '0 0 0.5rem 0',
+                    fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                   }}>
                     📚 Ready to Release Books?
                   </h4>
                   <p style={{
                     color: '#b45309',
                     margin: '0 0 1rem 0',
-                    fontSize: '0.875rem'
+                    fontSize: '0.875rem',
+                    fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                   }}>
                     Your {releaseStatus.booksCount} selected books are ready. Release them to make them available to your students.
                   </p>
@@ -1451,27 +1520,29 @@ function CurrentConfigurationDisplay({ config, yearOverYearStatus, releaseStatus
                       fontSize: '1rem',
                       fontWeight: '600',
                       cursor: 'pointer',
-                      opacity: isProcessing ? 0.7 : 1
+                      opacity: isProcessing ? 0.7 : 1,
+                      fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                     }}
                   >
                     {isProcessing ? '🚀 Releasing...' : '🚀 Release to Students'}
                   </button>
                 </div>
               ) : (
-                // Cannot Release
                 <div style={{ textAlign: 'center' }}>
                   <h4 style={{
                     fontSize: '1.125rem',
                     fontWeight: '600',
                     color: '#92400e',
-                    margin: '0 0 0.5rem 0'
+                    margin: '0 0 0.5rem 0',
+                    fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                   }}>
                     ⏳ Configuration Needed
                   </h4>
                   <p style={{
                     color: '#b45309',
                     margin: 0,
-                    fontSize: '0.875rem'
+                    fontSize: '0.875rem',
+                    fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                   }}>
                     Complete your book selection and configuration before releasing to students.
                   </p>
@@ -1539,7 +1610,8 @@ function BookSelectionCard({ book, isSelected, onToggle, disabled }) {
             margin: '0 0 0.25rem 0',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap'
+            whiteSpace: 'nowrap',
+            fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
           }}>
             {book.title}
           </h4>
@@ -1549,7 +1621,8 @@ function BookSelectionCard({ book, isSelected, onToggle, disabled }) {
             margin: '0 0 0.25rem 0',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap'
+            whiteSpace: 'nowrap',
+            fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
           }}>
             by {book.authors}
           </p>
@@ -1561,7 +1634,8 @@ function BookSelectionCard({ book, isSelected, onToggle, disabled }) {
               fontStyle: 'italic',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap'
+              whiteSpace: 'nowrap',
+              fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
             }}>
               {book.genres}
             </p>
