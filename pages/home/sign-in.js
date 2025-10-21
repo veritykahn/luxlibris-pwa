@@ -1058,7 +1058,7 @@ export default function SignIn() {
                       type="text"
                       value={formData.teacherJoinCode}
                       onChange={handleEducatorJoinCodeChange}
-                      placeholder="TXTEST-DEMO-TEACHER-2025"
+                      placeholder="TXTEST-TEST-TEACHER-2025"
                       style={{
                         width: '100%',
                         padding: '0.875rem',
