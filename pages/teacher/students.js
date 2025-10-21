@@ -333,7 +333,11 @@ export default function TeacherStudents() {
             animation: 'spin 1s linear infinite',
             margin: '0 auto 1rem'
           }}></div>
-          <p style={{ color: '#223848', fontSize: '1.1rem' }}>
+          <p style={{ 
+            color: '#223848', 
+            fontSize: '1.1rem',
+            fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
+          }}>
             Loading students...
           </p>
         </div>
@@ -367,7 +371,7 @@ export default function TeacherStudents() {
       <div style={{
         minHeight: '100vh',
         background: 'linear-gradient(135deg, #FFFCF5 0%, #C3E0DE 50%, #A1E5DB 100%)',
-        fontFamily: 'system-ui, -apple-system, sans-serif',
+        fontFamily: 'Avenir, system-ui, -apple-system, sans-serif',
         paddingBottom: '80px'
       }}>
 
@@ -400,14 +404,16 @@ export default function TeacherStudents() {
                 fontSize: '1.25rem',
                 fontWeight: 'bold',
                 color: '#223848',
-                marginBottom: '1rem'
+                marginBottom: '1rem',
+                fontFamily: 'Didot, "Times New Roman", serif'
               }}>
                 Session Expiring Soon
               </h3>
               <p style={{
                 color: '#6b7280',
                 marginBottom: '1.5rem',
-                lineHeight: '1.4'
+                lineHeight: '1.4',
+                fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
               }}>
                 Your session will expire in a few minutes for security. Continue working?
               </p>
@@ -425,7 +431,8 @@ export default function TeacherStudents() {
                     border: 'none',
                     borderRadius: '0.5rem',
                     cursor: 'pointer',
-                    fontSize: '0.875rem'
+                    fontSize: '0.875rem',
+                    fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                   }}
                 >
                   Sign Out
@@ -440,7 +447,8 @@ export default function TeacherStudents() {
                     borderRadius: '0.5rem',
                     cursor: 'pointer',
                     fontSize: '0.875rem',
-                    fontWeight: '600'
+                    fontWeight: '600',
+                    fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                   }}
                 >
                   Continue Working
@@ -497,14 +505,15 @@ export default function TeacherStudents() {
                   fontWeight: 'bold',
                   color: '#223848',
                   margin: 0,
-                  fontFamily: 'Georgia, serif'
+                  fontFamily: 'Didot, "Times New Roman", serif'
                 }}>
                   My Students
                 </h1>
                 <p style={{
                   color: '#6b7280',
                   fontSize: '0.875rem',
-                  margin: 0
+                  margin: 0,
+                  fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                 }}>
                   {statsData.totalAppStudents + statsData.totalManualStudents} students • {statsData.totalBooks} books
                 </p>
@@ -520,7 +529,8 @@ export default function TeacherStudents() {
                 background: 'rgba(173, 212, 234, 0.1)',
                 borderRadius: '0.5rem',
                 fontSize: '0.75rem',
-                color: '#223848'
+                color: '#223848',
+                fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
               }}>
                 <span>{userProfile.firstName || 'Teacher'}</span>
               </div>
@@ -534,7 +544,8 @@ export default function TeacherStudents() {
                   fontSize: '0.75rem',
                   fontWeight: '600',
                   border: 'none',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                 }}
               >
                 🚪 Sign Out
@@ -569,13 +580,15 @@ export default function TeacherStudents() {
               <span style={{
                 fontSize: '0.875rem',
                 fontWeight: '600',
-                color: '#223848'
+                color: '#223848',
+                fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
               }}>
                 {getPhaseInfo().name} Mode
               </span>
               <span style={{
                 fontSize: '0.75rem',
-                color: '#6b7280'
+                color: '#6b7280',
+                fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
               }}>
                 • {getPhaseMessage()}
               </span>
@@ -588,7 +601,8 @@ export default function TeacherStudents() {
                 border: '1px solid #d1d5db',
                 borderRadius: '0.25rem',
                 fontSize: '0.75rem',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
               }}
             >
               🔄 Refresh
@@ -627,7 +641,8 @@ export default function TeacherStudents() {
                   fontWeight: activeTab === tab.id ? '600' : '500',
                   cursor: 'pointer',
                   whiteSpace: 'nowrap',
-                  borderRadius: '0.5rem 0.5rem 0 0'
+                  borderRadius: '0.5rem 0.5rem 0 0',
+                  fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                 }}
               >
                 {tab.label}
@@ -663,7 +678,8 @@ export default function TeacherStudents() {
                 padding: '0.5rem 1rem',
                 border: '2px solid #d1d5db',
                 borderRadius: '0.5rem',
-                fontSize: '0.875rem'
+                fontSize: '0.875rem',
+                fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
               }}
             />
             <div style={{
@@ -683,7 +699,8 @@ export default function TeacherStudents() {
                   cursor: 'pointer',
                   fontSize: '0.75rem',
                   fontWeight: filterType === 'all' ? '600' : '400',
-                  color: filterType === 'all' ? '#223848' : '#6B7280'
+                  color: filterType === 'all' ? '#223848' : '#6B7280',
+                  fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                 }}
               >
                 All
@@ -698,7 +715,8 @@ export default function TeacherStudents() {
                   cursor: 'pointer',
                   fontSize: '0.75rem',
                   fontWeight: filterType === 'app' ? '600' : '400',
-                  color: filterType === 'app' ? '#223848' : '#6B7280'
+                  color: filterType === 'app' ? '#223848' : '#6B7280',
+                  fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                 }}
               >
                 📱 App
@@ -713,7 +731,8 @@ export default function TeacherStudents() {
                   cursor: 'pointer',
                   fontSize: '0.75rem',
                   fontWeight: filterType === 'manual' ? '600' : '400',
-                  color: filterType === 'manual' ? '#223848' : '#6B7280'
+                  color: filterType === 'manual' ? '#223848' : '#6B7280',
+                  fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
                 }}
               >
                 📝 Manual
@@ -818,7 +837,8 @@ export default function TeacherStudents() {
                 gap: '2px',
                 color: tab.active ? '#ADD4EA' : '#6b7280',
                 transition: 'all 0.2s ease',
-                position: 'relative'
+                position: 'relative',
+                fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
               }}
             >
               <span style={{ 
@@ -885,7 +905,8 @@ export default function TeacherStudents() {
             fontWeight: '500',
             maxWidth: '85vw',
             textAlign: 'center',
-            animation: 'slideUp 0.3s ease-out'
+            animation: 'slideUp 0.3s ease-out',
+            fontFamily: 'Avenir, system-ui, -apple-system, sans-serif'
           }}>
             {showSuccess}
           </div>
