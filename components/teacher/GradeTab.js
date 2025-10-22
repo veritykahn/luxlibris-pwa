@@ -21,11 +21,15 @@ export default function GradeTab({
   const [showBooksListModal, setShowBooksListModal] = useState(false)
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false)
-  const [showDeactivateConfirmModal, setShowDeactivateConfirmModal] = useState(false)
-  const [showManualDeleteConfirmModal, setShowManualDeleteConfirmModal] = useState(false)
   const [selectedStudent, setSelectedStudent] = useState(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [showSuccess, setShowSuccess] = useState('')
+  
+  // NEW: Custom modal states to replace confirm() popups
+  const [showDeactivateModal, setShowDeactivateModal] = useState(false)
+  const [showDeleteManualModal, setShowDeleteManualModal] = useState(false)
+  const [pendingDeactivateStudent, setPendingDeactivateStudent] = useState(null)
+  const [pendingDeleteManualStudent, setPendingDeleteManualStudent] = useState(null)
   
   // Form states
   const [newManualStudent, setNewManualStudent] = useState({
@@ -80,29 +84,29 @@ export default function GradeTab({
       ) / allStudents.length).toFixed(1) : 0
   }
 
-  // Toggle app student status (now uses modal)
-  const openDeactivateConfirmation = (student) => {
-    setSelectedStudent(student)
-    setShowDeactivateConfirmModal(true)
-  }
-
-  const toggleAppStudentStatus = async () => {
-    if (!selectedStudent) return
+  // Toggle app student status - UPDATED
+  const toggleAppStudentStatus = async (student) => {
+    // Add confirmation for deactivation
+    if (student.status === 'active' || !student.status) {
+      // Open custom modal instead of confirm()
+      setPendingDeactivateStudent(student)
+      setShowDeactivateModal(true)
+      return
+    }
     
+    // For reactivation, proceed directly
     setIsProcessing(true)
     try {
-      const newStatus = (selectedStudent.status === 'inactive') ? 'active' : 'inactive'
+      const newStatus = 'active'
       
-      const studentRef = doc(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/students`, selectedStudent.id)
+      const studentRef = doc(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/students`, student.id)
       await updateDoc(studentRef, {
         status: newStatus,
         lastModified: new Date()
       })
 
       onStudentUpdate()
-      setShowDeactivateConfirmModal(false)
-      setSelectedStudent(null)
-      setShowSuccess(`📱 ${selectedStudent.firstName} ${newStatus === 'active' ? 'activated' : 'deactivated'}`)
+      setShowSuccess(`📱 ${student.firstName} activated`)
       setTimeout(() => setShowSuccess(''), 3000)
 
     } catch (error) {
@@ -111,6 +115,36 @@ export default function GradeTab({
       setTimeout(() => setShowSuccess(''), 3000)
     } finally {
       setIsProcessing(false)
+    }
+  }
+
+  // NEW: Execute deactivation after modal confirmation
+  const executeDeactivation = async () => {
+    if (!pendingDeactivateStudent) return
+
+    setIsProcessing(true)
+    setShowDeactivateModal(false)
+    
+    try {
+      const newStatus = 'inactive'
+      
+      const studentRef = doc(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/students`, pendingDeactivateStudent.id)
+      await updateDoc(studentRef, {
+        status: newStatus,
+        lastModified: new Date()
+      })
+
+      onStudentUpdate()
+      setShowSuccess(`📱 ${pendingDeactivateStudent.firstName} deactivated`)
+      setTimeout(() => setShowSuccess(''), 3000)
+
+    } catch (error) {
+      console.error('Error updating student status:', error)
+      setShowSuccess('❌ Error updating status')
+      setTimeout(() => setShowSuccess(''), 3000)
+    } finally {
+      setIsProcessing(false)
+      setPendingDeactivateStudent(null)
     }
   }
 
@@ -195,33 +229,37 @@ export default function GradeTab({
     }
   }
 
-  // Delete manual student (now uses modal)
-  const openManualDeleteConfirmation = (student) => {
-    setSelectedStudent(student)
-    setShowManualDeleteConfirmModal(true)
-  }
-
-  const deleteManualStudent = async () => {
-    if (!selectedStudent || selectedStudent.type !== 'manual') {
+  // Delete manual student - UPDATED
+  const deleteManualStudent = async (student) => {
+    if (!student || student.type !== 'manual') {
       setShowSuccess('❌ Can only delete manual students')
       setTimeout(() => setShowSuccess(''), 3000)
       return
     }
+    
+    // Open custom modal instead of confirm()
+    setPendingDeleteManualStudent(student)
+    setShowDeleteManualModal(true)
+  }
+
+  // NEW: Execute manual student deletion after modal confirmation
+  const executeDeleteManualStudent = async () => {
+    if (!pendingDeleteManualStudent) return
 
     setIsProcessing(true)
+    setShowDeleteManualModal(false)
+    
     try {
       const teachersRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers`)
       const teacherQuery = query(teachersRef, where('uid', '==', userProfile.uid))
       const teacherSnapshot = await getDocs(teacherQuery)
       const teacherId = teacherSnapshot.docs[0].id
 
-      const studentRef = doc(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers/${teacherId}/manualStudents`, selectedStudent.id)
+      const studentRef = doc(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers/${teacherId}/manualStudents`, pendingDeleteManualStudent.id)
       await deleteDoc(studentRef)
 
       onStudentUpdate()
-      setShowManualDeleteConfirmModal(false)
-      setSelectedStudent(null)
-      setShowSuccess(`🗑️ ${selectedStudent.firstName} deleted`)
+      setShowSuccess(`🗑️ ${pendingDeleteManualStudent.firstName} deleted`)
       setTimeout(() => setShowSuccess(''), 3000)
 
     } catch (error) {
@@ -230,6 +268,7 @@ export default function GradeTab({
       setTimeout(() => setShowSuccess(''), 3000)
     } finally {
       setIsProcessing(false)
+      setPendingDeleteManualStudent(null)
     }
   }
 
@@ -522,12 +561,12 @@ export default function GradeTab({
       ) : viewMode === 'table' ? (
         <StudentTable
           students={allStudents}
-          onToggleStatus={openDeactivateConfirmation}
+          onToggleStatus={toggleAppStudentStatus}
           onEdit={(student) => {
             setSelectedStudent({...student})
             setShowEditModal(true)
           }}
-          onDelete={openManualDeleteConfirmation}
+          onDelete={deleteManualStudent}
           onDeleteApp={openDeleteConfirmation}
           onAddBook={(student) => {
             setSelectedStudent(student)
@@ -559,18 +598,12 @@ export default function GradeTab({
             <StudentCard
               key={`${student.type}-${student.id}`}
               student={student}
-              onToggleStatus={() => {
-                if (student.status === 'inactive') {
-                  toggleAppStudentStatus(student)
-                } else {
-                  openDeactivateConfirmation(student)
-                }
-              }}
+              onToggleStatus={() => toggleAppStudentStatus(student)}
               onEdit={() => {
                 setSelectedStudent({...student})
                 setShowEditModal(true)
               }}
-              onDelete={() => openManualDeleteConfirmation(student)}
+              onDelete={() => deleteManualStudent(student)}
               onDeleteApp={() => openDeleteConfirmation(student)}
               onAddBook={() => {
                 setSelectedStudent(student)
@@ -820,178 +853,6 @@ export default function GradeTab({
         </Modal>
       )}
 
-      {/* Deactivate Confirmation Modal */}
-      {showDeactivateConfirmModal && selectedStudent && (
-        <Modal
-          title="Are you sure you want to deactivate Daniel F.?"
-          onClose={() => {
-            setShowDeactivateConfirmModal(false)
-            setSelectedStudent(null)
-          }}
-        >
-          <div style={{ display: 'grid', gap: '1rem' }}>
-            <div style={{
-              fontSize: '0.875rem',
-              color: '#374151',
-              lineHeight: '1.5'
-            }}>
-              This will:
-            </div>
-            <ul style={{
-              margin: 0,
-              paddingLeft: '1.5rem',
-              fontSize: '0.875rem',
-              color: '#6B7280'
-            }}>
-              <li>Prevent them from logging into the app</li>
-              <li>Hide them from active student lists</li>
-              <li>Keep all their data and progress</li>
-            </ul>
-            <div style={{
-              fontSize: '0.875rem',
-              color: '#374151'
-            }}>
-              You can reactivate them at any time.
-            </div>
-            <div style={{
-              fontSize: '0.875rem',
-              color: '#374151',
-              marginTop: '0.5rem'
-            }}>
-              Continue?
-            </div>
-            <div style={{
-              display: 'flex',
-              gap: '0.75rem',
-              justifyContent: 'flex-end',
-              marginTop: '1rem'
-            }}>
-              <button
-                onClick={() => {
-                  setShowDeactivateConfirmModal(false)
-                  setSelectedStudent(null)
-                }}
-                style={{
-                  padding: '0.75rem 1.5rem',
-                  backgroundColor: '#F3F4F6',
-                  color: '#374151',
-                  border: 'none',
-                  borderRadius: '0.5rem',
-                  cursor: 'pointer',
-                  fontSize: '0.875rem',
-                  fontWeight: '600'
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={toggleAppStudentStatus}
-                disabled={isProcessing}
-                style={{
-                  padding: '0.75rem 1.5rem',
-                  background: 'linear-gradient(135deg, #0EA5E9, #0284C7)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '0.5rem',
-                  cursor: isProcessing ? 'not-allowed' : 'pointer',
-                  fontSize: '0.875rem',
-                  fontWeight: '600',
-                  opacity: isProcessing ? 0.7 : 1
-                }}
-              >
-                {isProcessing ? 'Processing...' : 'OK'}
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* Manual Student Delete Confirmation Modal */}
-      {showManualDeleteConfirmModal && selectedStudent && (
-        <Modal
-          title={`Are you sure you want to delete ${selectedStudent?.firstName} ${selectedStudent?.lastInitial}.?`}
-          onClose={() => {
-            setShowManualDeleteConfirmModal(false)
-            setSelectedStudent(null)
-          }}
-        >
-          <div style={{ display: 'grid', gap: '1rem' }}>
-            <div style={{
-              fontSize: '0.875rem',
-              color: '#374151'
-            }}>
-              This will permanently delete:
-            </div>
-            <ul style={{
-              margin: 0,
-              paddingLeft: '1.5rem',
-              fontSize: '0.875rem',
-              color: '#6B7280'
-            }}>
-              <li>All student data</li>
-              <li>All book records</li>
-              <li>All progress</li>
-            </ul>
-            <div style={{
-              fontSize: '0.875rem',
-              fontWeight: '600',
-              color: '#EF4444',
-              marginTop: '0.5rem'
-            }}>
-              This action cannot be undone.
-            </div>
-            <div style={{
-              fontSize: '0.875rem',
-              color: '#374151'
-            }}>
-              Continue?
-            </div>
-            <div style={{
-              display: 'flex',
-              gap: '0.75rem',
-              justifyContent: 'flex-end',
-              marginTop: '1rem'
-            }}>
-              <button
-                onClick={() => {
-                  setShowManualDeleteConfirmModal(false)
-                  setSelectedStudent(null)
-                }}
-                style={{
-                  padding: '0.75rem 1.5rem',
-                  backgroundColor: '#F3F4F6',
-                  color: '#374151',
-                  border: 'none',
-                  borderRadius: '0.5rem',
-                  cursor: 'pointer',
-                  fontSize: '0.875rem',
-                  fontWeight: '600'
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={deleteManualStudent}
-                disabled={isProcessing}
-                style={{
-                  padding: '0.75rem 1.5rem',
-                  background: 'linear-gradient(135deg, #EF4444, #DC2626)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '0.5rem',
-                  cursor: isProcessing ? 'not-allowed' : 'pointer',
-                  fontSize: '0.875rem',
-                  fontWeight: '600',
-                  opacity: isProcessing ? 0.7 : 1
-                }}
-              >
-                {isProcessing ? 'Deleting...' : 'Delete'}
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
       {/* Delete Confirmation Modal */}
       {showDeleteConfirmModal && selectedStudent && (
         <Modal
@@ -1140,11 +1001,307 @@ export default function GradeTab({
                   opacity: isProcessing ? 0.7 : 1
                 }}
               >
-                {isProcessing ? 'Deleting...' : 'Delete Permanently'}
+                {isProcessing ? 'Deleting...' : '🗑️ Delete Permanently'}
               </button>
             </div>
           </div>
         </Modal>
+      )}
+
+      {/* NEW: Custom Modal - Deactivate App Student */}
+      {showDeactivateModal && pendingDeactivateStudent && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          padding: '1rem'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '1rem',
+            maxWidth: '450px',
+            width: '100%',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: '1.5rem',
+              borderBottom: '1px solid #E5E7EB',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}>
+                <span style={{ fontSize: '1.5rem' }}>⏸️</span>
+                <h3 style={{
+                  fontSize: '1.125rem',
+                  fontWeight: '700',
+                  color: '#223848',
+                  margin: 0
+                }}>
+                  Deactivate Student
+                </h3>
+              </div>
+              <button
+                onClick={() => {
+                  setShowDeactivateModal(false);
+                  setPendingDeactivateStudent(null);
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '1.5rem',
+                  cursor: 'pointer',
+                  color: '#6B7280',
+                  padding: '0',
+                  lineHeight: 1
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Content */}
+            <div style={{ padding: '1.5rem' }}>
+              <p style={{
+                fontSize: '0.875rem',
+                color: '#374151',
+                marginBottom: '1rem',
+                lineHeight: '1.6'
+              }}>
+                Are you sure you want to deactivate <strong>{pendingDeactivateStudent.firstName} {pendingDeactivateStudent.lastInitial}.</strong>?
+              </p>
+
+              <div style={{
+                background: '#FEF3C7',
+                border: '1px solid #F59E0B',
+                borderRadius: '0.5rem',
+                padding: '0.75rem',
+                marginBottom: '1.5rem'
+              }}>
+                <div style={{
+                  fontSize: '0.75rem',
+                  color: '#92400E',
+                  lineHeight: '1.5'
+                }}>
+                  This will:<br />
+                  • Prevent them from logging into the app<br />
+                  • Hide them from active student lists<br />
+                  • Keep all their data and progress<br />
+                  <br />
+                  You can reactivate them at any time.
+                </div>
+              </div>
+
+              {/* Buttons */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '0.75rem'
+              }}>
+                <button
+                  onClick={() => {
+                    setShowDeactivateModal(false);
+                    setPendingDeactivateStudent(null);
+                  }}
+                  disabled={isProcessing}
+                  style={{
+                    padding: '0.75rem',
+                    backgroundColor: '#F3F4F6',
+                    color: '#374151',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '0.5rem',
+                    fontWeight: '600',
+                    fontSize: '0.875rem',
+                    cursor: isProcessing ? 'not-allowed' : 'pointer',
+                    opacity: isProcessing ? 0.5 : 1,
+                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={executeDeactivation}
+                  disabled={isProcessing}
+                  style={{
+                    padding: '0.75rem',
+                    background: 'linear-gradient(135deg, #F59E0B, #D97706)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    fontWeight: '600',
+                    fontSize: '0.875rem',
+                    cursor: isProcessing ? 'not-allowed' : 'pointer',
+                    opacity: isProcessing ? 0.7 : 1,
+                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+                  }}
+                >
+                  {isProcessing ? '⏳ Deactivating...' : '⏸️ Deactivate'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* NEW: Custom Modal - Delete Manual Student */}
+      {showDeleteManualModal && pendingDeleteManualStudent && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          padding: '1rem'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '1rem',
+            maxWidth: '450px',
+            width: '100%',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: '1.5rem',
+              borderBottom: '1px solid #E5E7EB',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}>
+                <span style={{ fontSize: '1.5rem' }}>🗑️</span>
+                <h3 style={{
+                  fontSize: '1.125rem',
+                  fontWeight: '700',
+                  color: '#223848',
+                  margin: 0
+                }}>
+                  Delete Manual Student
+                </h3>
+              </div>
+              <button
+                onClick={() => {
+                  setShowDeleteManualModal(false);
+                  setPendingDeleteManualStudent(null);
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '1.5rem',
+                  cursor: 'pointer',
+                  color: '#6B7280',
+                  padding: '0',
+                  lineHeight: 1
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Content */}
+            <div style={{ padding: '1.5rem' }}>
+              <p style={{
+                fontSize: '0.875rem',
+                color: '#374151',
+                marginBottom: '1rem',
+                lineHeight: '1.6'
+              }}>
+                Are you sure you want to delete <strong>{pendingDeleteManualStudent.firstName} {pendingDeleteManualStudent.lastInitial}.</strong>?
+              </p>
+
+              <div style={{
+                background: '#FEE2E2',
+                border: '1px solid #EF4444',
+                borderRadius: '0.5rem',
+                padding: '0.75rem',
+                marginBottom: '1.5rem'
+              }}>
+                <div style={{
+                  fontSize: '0.75rem',
+                  color: '#991B1B',
+                  lineHeight: '1.5'
+                }}>
+                  ⚠️ This will permanently delete:<br />
+                  • All student data<br />
+                  • All book records<br />
+                  • All progress<br />
+                  <br />
+                  <strong>This action cannot be undone.</strong>
+                </div>
+              </div>
+
+              {/* Buttons */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '0.75rem'
+              }}>
+                <button
+                  onClick={() => {
+                    setShowDeleteManualModal(false);
+                    setPendingDeleteManualStudent(null);
+                  }}
+                  disabled={isProcessing}
+                  style={{
+                    padding: '0.75rem',
+                    backgroundColor: '#F3F4F6',
+                    color: '#374151',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '0.5rem',
+                    fontWeight: '600',
+                    fontSize: '0.875rem',
+                    cursor: isProcessing ? 'not-allowed' : 'pointer',
+                    opacity: isProcessing ? 0.5 : 1,
+                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={executeDeleteManualStudent}
+                  disabled={isProcessing}
+                  style={{
+                    padding: '0.75rem',
+                    background: 'linear-gradient(135deg, #EF4444, #DC2626)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    fontWeight: '600',
+                    fontSize: '0.875rem',
+                    cursor: isProcessing ? 'not-allowed' : 'pointer',
+                    opacity: isProcessing ? 0.7 : 1,
+                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+                  }}
+                >
+                  {isProcessing ? '⏳ Deleting...' : '🗑️ Delete Permanently'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Success Message */}
