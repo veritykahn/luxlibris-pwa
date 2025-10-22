@@ -63,14 +63,6 @@ export default function HistoricalTab({
   const [showEligibleStudents, setShowEligibleStudents] = useState(false)
   const [showCompletedStudents, setShowCompletedStudents] = useState(false)
 
-  // Modal states for custom popups
-  const [showAddConfirmModal, setShowAddConfirmModal] = useState(false)
-  const [showMarkCompleteModal, setShowMarkCompleteModal] = useState(false)
-  const [showReopenModal, setShowReopenModal] = useState(false)
-  const [pendingAddData, setPendingAddData] = useState(null)
-  const [pendingMarkCompleteStudent, setPendingMarkCompleteStudent] = useState(null)
-  const [pendingReopenStudent, setPendingReopenStudent] = useState(null)
-
   // Combine all students
   const allStudents = [
     ...appStudents.map(s => ({ ...s, type: 'app' })),
@@ -206,25 +198,17 @@ export default function HistoricalTab({
       SAINT_NAMES[saintMapping.marian]
     ];
 
-    // Store data and show custom modal instead of window.confirm
-    setPendingAddData({
-      student: selectedStudent,
-      grade: selectedGrade,
-      books: books,
-      saintNames: saintNames,
-      saintMapping: saintMapping
-    });
-    setShowAddConfirmModal(true);
-  }
+    const confirmed = window.confirm(`Add Grade ${selectedGrade} completion for ${selectedStudent.firstName}?
 
-  // Execute the add after confirmation
-  const executeAddHistoricalGrade = async () => {
-    if (!pendingAddData) return;
+📚 Books: ${books}
+🎯 Saints to unlock: ${saintNames.join(', ')}
+🏆 New lifetime total: ${(selectedStudent.lifetimeBooksSubmitted || 0) + books}
 
-    const { student, grade, books, saintMapping } = pendingAddData;
+This action cannot be undone.`);
+
+    if (!confirmed) return;
 
     setIsProcessing(true);
-    setShowAddConfirmModal(false);
     
     try {
       // Find teacher document ID
@@ -235,53 +219,71 @@ export default function HistoricalTab({
 
       const saintsToUnlock = Object.values(saintMapping);
       
-      if (student.type === 'manual') {
+      if (selectedStudent.type === 'manual') {
         // Manual student update
-        const studentRef = doc(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers/${teacherId}/manualStudents`, student.id);
+        const studentRef = doc(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers/${teacherId}/manualStudents`, selectedStudent.id);
         
-        const currentLifetime = student.lifetimeBooksSubmitted || 0;
+        const currentLifetime = selectedStudent.lifetimeBooksSubmitted || 0;
         const newLifetime = currentLifetime + books;
 
         const historicalEntry = {
-          grade: parseInt(grade),
+          grade: parseInt(selectedGrade),
           books: books,
-          completedAt: new Date()
+          saintsUnlocked: saintsToUnlock,
+          addedAt: new Date(),
+          addedBy: 'teacher'
         };
 
-        const newCompletions = [...(student.historicalCompletions || []), historicalEntry];
-
-        const currentUnlockedSaints = student.unlockedSaints || [];
-        const newUnlockedSaints = [...new Set([...currentUnlockedSaints, ...saintsToUnlock])];
+        const existingHistory = selectedStudent.historicalCompletions || [];
+        const updatedHistory = [...existingHistory, historicalEntry];
 
         await updateDoc(studentRef, {
-          historicalCompletions: newCompletions,
           lifetimeBooksSubmitted: newLifetime,
-          unlockedSaints: newUnlockedSaints,
+          historicalCompletions: updatedHistory,
           lastModified: new Date()
         });
 
       } else {
         // App student update
-        const studentRef = doc(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/students`, student.id);
+        const studentRef = doc(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/students`, selectedStudent.id);
         
-        const currentLifetime = student.lifetimeBooksSubmitted || 0;
+        const currentLifetime = selectedStudent.lifetimeBooksSubmitted || 0;
         const newLifetime = currentLifetime + books;
 
+        const currentUnlocked = selectedStudent.unlockedSaints || [];
+        const currentTimestamps = selectedStudent.newlyUnlockedSaintsWithTimestamp || {};
+
+        const updatedUnlocked = [...new Set([...currentUnlocked, ...saintsToUnlock])];
+        
+        const now = new Date().toISOString();
+        const newTimestamps = { ...currentTimestamps };
+        
+        saintsToUnlock.forEach(saintId => {
+          if (!currentUnlocked.includes(saintId)) {
+            newTimestamps[saintId] = {
+              timestamp: now,
+              name: SAINT_NAMES[saintId],
+              source: 'historical_completion'
+            };
+          }
+        });
+
         const historicalEntry = {
-          grade: parseInt(grade),
+          grade: parseInt(selectedGrade),
           books: books,
-          completedAt: new Date()
+          saintsUnlocked: saintsToUnlock,
+          addedAt: new Date(),
+          addedBy: 'teacher'
         };
 
-        const newCompletions = [...(student.historicalCompletions || []), historicalEntry];
-
-        const currentUnlockedSaints = student.unlockedSaints || [];
-        const newUnlockedSaints = [...new Set([...currentUnlockedSaints, ...saintsToUnlock])];
+        const existingHistory = selectedStudent.historicalCompletions || [];
+        const updatedHistory = [...existingHistory, historicalEntry];
 
         await updateDoc(studentRef, {
-          historicalCompletions: newCompletions,
           lifetimeBooksSubmitted: newLifetime,
-          unlockedSaints: newUnlockedSaints,
+          unlockedSaints: updatedUnlocked,
+          newlyUnlockedSaintsWithTimestamp: newTimestamps,
+          historicalCompletions: updatedHistory,
           lastModified: new Date()
         });
       }
@@ -289,45 +291,44 @@ export default function HistoricalTab({
       playHistoricalUnlockSound();
       onStudentUpdate();
       
+      // Reset form
       setSelectedStudent(null);
       setSelectedGrade('');
       setBookCount('');
-      setPendingAddData(null);
       
-      setShowSuccess(`🎯 Grade ${grade} added for ${student.firstName}! ${books} books & ${saintsToUnlock.length} saints unlocked!`);
-      setTimeout(() => setShowSuccess(''), 5000);
+      setShowSuccess(`🎉 Added Grade ${selectedGrade} completion! +${books} books for ${selectedStudent.firstName}!`);
+      setTimeout(() => setShowSuccess(''), 4000);
 
     } catch (error) {
       console.error('Error adding historical completion:', error);
-      setShowSuccess('❌ Error adding historical data');
+      setShowSuccess('❌ Error adding completion. Please try again.');
       setTimeout(() => setShowSuccess(''), 3000);
     } finally {
       setIsProcessing(false);
     }
-  }
+  };
 
-  // Mark historical data as complete
+  // Mark student historical data as complete
   const markHistoricalDataComplete = async (student) => {
-    // Show custom modal instead of window.confirm
-    setPendingMarkCompleteStudent(student);
-    setShowMarkCompleteModal(true);
-  }
+    const confirmed = window.confirm(`Mark historical data as complete for ${student.firstName} ${student.lastInitial}?
 
-  // Execute mark complete after confirmation
-  const executeMarkComplete = async () => {
-    if (!pendingMarkCompleteStudent) return;
+This will:
+- Remove them from the "eligible to add" list
+- Indicate no more historical grades need to be added
+- Can be reversed if needed
 
-    const student = pendingMarkCompleteStudent;
+Continue?`);
+
+    if (!confirmed) return;
+
     setIsProcessing(true);
-    setShowMarkCompleteModal(false);
-
     try {
-      const teachersRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers`);
-      const teacherQuery = query(teachersRef, where('uid', '==', userProfile.uid));
-      const teacherSnapshot = await getDocs(teacherQuery);
-      const teacherId = teacherSnapshot.docs[0].id;
-
       if (student.type === 'manual') {
+        const teachersRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers`);
+        const teacherQuery = query(teachersRef, where('uid', '==', userProfile.uid));
+        const teacherSnapshot = await getDocs(teacherQuery);
+        const teacherId = teacherSnapshot.docs[0].id;
+
         const studentRef = doc(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers/${teacherId}/manualStudents`, student.id);
         await updateDoc(studentRef, {
           historicalDataMarkedComplete: true,
@@ -342,8 +343,7 @@ export default function HistoricalTab({
       }
 
       onStudentUpdate();
-      setPendingMarkCompleteStudent(null);
-      setShowSuccess(`✅ ${student.firstName}'s historical data marked complete`);
+      setShowSuccess(`✅ ${student.firstName} marked as complete!`);
       setTimeout(() => setShowSuccess(''), 3000);
 
     } catch (error) {
@@ -353,30 +353,29 @@ export default function HistoricalTab({
     } finally {
       setIsProcessing(false);
     }
-  }
+  };
 
-  // Unmark historical data as complete (reopen)
+  // Unmark student historical data as complete
   const unmarkHistoricalDataComplete = async (student) => {
-    // Show custom modal instead of window.confirm
-    setPendingReopenStudent(student);
-    setShowReopenModal(true);
-  }
+    const confirmed = window.confirm(`Remove "complete" status for ${student.firstName} ${student.lastInitial}?
 
-  // Execute reopen after confirmation
-  const executeReopen = async () => {
-    if (!pendingReopenStudent) return;
+This will:
+- Return them to the "eligible to add" list
+- Allow adding more historical grades
+- Not remove any existing data
 
-    const student = pendingReopenStudent;
+Continue?`);
+
+    if (!confirmed) return;
+
     setIsProcessing(true);
-    setShowReopenModal(false);
-
     try {
-      const teachersRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers`);
-      const teacherQuery = query(teachersRef, where('uid', '==', userProfile.uid));
-      const teacherSnapshot = await getDocs(teacherQuery);
-      const teacherId = teacherSnapshot.docs[0].id;
-
       if (student.type === 'manual') {
+        const teachersRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers`);
+        const teacherQuery = query(teachersRef, where('uid', '==', userProfile.uid));
+        const teacherSnapshot = await getDocs(teacherQuery);
+        const teacherId = teacherSnapshot.docs[0].id;
+
         const studentRef = doc(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers/${teacherId}/manualStudents`, student.id);
         await updateDoc(studentRef, {
           historicalDataMarkedComplete: false,
@@ -391,194 +390,66 @@ export default function HistoricalTab({
       }
 
       onStudentUpdate();
-      setPendingReopenStudent(null);
-      setShowSuccess(`🔄 ${student.firstName} returned to eligible list`);
+      setShowSuccess(`🔄 ${student.firstName} returned to eligible list!`);
       setTimeout(() => setShowSuccess(''), 3000);
 
     } catch (error) {
-      console.error('Error reopening:', error);
+      console.error('Error unmarking complete:', error);
       setShowSuccess('❌ Error updating student');
       setTimeout(() => setShowSuccess(''), 3000);
     } finally {
       setIsProcessing(false);
     }
-  }
+  };
 
-  // Remove specific historical completion
-  const removeHistoricalCompletion = async (student, gradeToRemove) => {
-    if (!window.confirm(`Remove Grade ${gradeToRemove} completion for ${student.firstName}?\n\nThis will remove the books and saints unlocked for this grade.`)) {
-      return;
-    }
-
-    setIsProcessing(true);
-
-    try {
-      const teachersRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers`);
-      const teacherQuery = query(teachersRef, where('uid', '==', userProfile.uid));
-      const teacherSnapshot = await getDocs(teacherQuery);
-      const teacherId = teacherSnapshot.docs[0].id;
-
-      const completionToRemove = student.historicalCompletions.find(c => c.grade === gradeToRemove);
-      const booksToRemove = completionToRemove.books;
-
-      const updatedCompletions = student.historicalCompletions.filter(c => c.grade !== gradeToRemove);
-      
-      const saintMapping = GRADE_SAINT_MAPPINGS[gradeToRemove];
-      const saintsToRemove = Object.values(saintMapping);
-      
-      const updatedUnlockedSaints = (student.unlockedSaints || []).filter(
-        saint => !saintsToRemove.includes(saint)
-      );
-
-      const newLifetime = Math.max(0, (student.lifetimeBooksSubmitted || 0) - booksToRemove);
-
-      if (student.type === 'manual') {
-        const studentRef = doc(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers/${teacherId}/manualStudents`, student.id);
-        await updateDoc(studentRef, {
-          historicalCompletions: updatedCompletions,
-          lifetimeBooksSubmitted: newLifetime,
-          unlockedSaints: updatedUnlockedSaints,
-          lastModified: new Date()
-        });
+  // Toggle student expansion
+  const toggleStudentExpansion = (studentId) => {
+    setExpandedStudents(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(studentId)) {
+        newSet.delete(studentId)
       } else {
-        const studentRef = doc(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/students`, student.id);
-        await updateDoc(studentRef, {
-          historicalCompletions: updatedCompletions,
-          lifetimeBooksSubmitted: newLifetime,
-          unlockedSaints: updatedUnlockedSaints,
-          lastModified: new Date()
-        });
+        newSet.add(studentId)
       }
-
-      onStudentUpdate();
-      setShowSuccess(`🗑️ Grade ${gradeToRemove} removed for ${student.firstName}`);
-      setTimeout(() => setShowSuccess(''), 3000);
-
-    } catch (error) {
-      console.error('Error removing completion:', error);
-      setShowSuccess('❌ Error removing completion');
-      setTimeout(() => setShowSuccess(''), 3000);
-    } finally {
-      setIsProcessing(false);
-    }
-  }
-
-  const toggleStudentExpanded = (studentId) => {
-    const newExpanded = new Set(expandedStudents);
-    if (newExpanded.has(studentId)) {
-      newExpanded.delete(studentId);
-    } else {
-      newExpanded.add(studentId);
-    }
-    setExpandedStudents(newExpanded);
+      return newSet
+    })
   }
 
   return (
-    <div style={{
-      padding: '1.5rem',
-      display: 'grid',
-      gap: '1.5rem',
-      position: 'relative'
-    }}>
-      <style>
-        {`
-          @keyframes slideUp {
-            from {
-              opacity: 0;
-              transform: translate(-50%, 20px);
-            }
-            to {
-              opacity: 1;
-              transform: translate(-50%, 0);
-            }
-          }
-        `}
-      </style>
-
+    <div style={{ display: 'grid', gap: '1.5rem' }}>
+      
       {/* Header */}
-      <div>
+      <div style={{
+        background: 'linear-gradient(135deg, #F3E8FF, #E9D5FF)',
+        borderRadius: '1rem',
+        padding: '1.5rem',
+        border: '2px solid #9370DB'
+      }}>
         <h2 style={{
           fontSize: '1.5rem',
           fontWeight: 'bold',
-          color: '#223848',
-          marginBottom: '0.5rem'
+          color: '#6B46C1',
+          margin: '0 0 0.5rem 0',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem'
         }}>
-          📚 Historical Grade Completions
+          🏆 Historical Grade Completions
         </h2>
         <p style={{
+          color: '#7C3AED',
           fontSize: '0.875rem',
-          color: '#6b7280'
+          margin: 0
         }}>
-          Add previous grade completions for students who completed grades before joining Lux Libris
+          Add books from previous grades to unlock saints and increase lifetime totals
         </p>
       </div>
 
-      {/* Search and Filter */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr auto',
-        gap: '0.75rem',
-        alignItems: 'end'
-      }}>
-        <div>
-          <label style={{
-            display: 'block',
-            fontSize: '0.75rem',
-            fontWeight: '600',
-            color: '#374151',
-            marginBottom: '0.25rem'
-          }}>
-            Search Students
-          </label>
-          <input
-            type="text"
-            placeholder="Search by name or username..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '0.5rem 0.75rem',
-              border: '1px solid #d1d5db',
-              borderRadius: '0.5rem',
-              fontSize: '0.875rem'
-            }}
-          />
-        </div>
-        <div>
-          <label style={{
-            display: 'block',
-            fontSize: '0.75rem',
-            fontWeight: '600',
-            color: '#374151',
-            marginBottom: '0.25rem'
-          }}>
-            Filter by Grade
-          </label>
-          <select
-            value={filterGrade}
-            onChange={(e) => setFilterGrade(e.target.value)}
-            style={{
-              padding: '0.5rem 0.75rem',
-              border: '1px solid #d1d5db',
-              borderRadius: '0.5rem',
-              fontSize: '0.875rem',
-              backgroundColor: 'white'
-            }}
-          >
-            <option value="all">All Grades</option>
-            <option value="4">Grade 4</option>
-            <option value="5">Grade 5</option>
-            <option value="6">Grade 6</option>
-            <option value="7">Grade 7</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Collapsible: Instructions */}
+      {/* Collapsible Instructions */}
       <div style={{
         background: 'white',
-        borderRadius: '1rem',
-        border: '1px solid #93C5FD',
+        borderRadius: '0.75rem',
+        border: '1px solid #E5E7EB',
         overflow: 'hidden'
       }}>
         <button
@@ -591,7 +462,8 @@ export default function HistoricalTab({
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between'
+            justifyContent: 'space-between',
+            textAlign: 'left'
           }}
         >
           <div style={{
@@ -601,16 +473,17 @@ export default function HistoricalTab({
           }}>
             <span style={{
               transform: showInstructions ? 'rotate(90deg)' : 'rotate(0deg)',
-              transition: 'transform 0.2s'
+              transition: 'transform 0.2s',
+              fontSize: '0.875rem'
             }}>
               ▶
             </span>
             <span style={{
-              fontSize: '1.125rem',
-              fontWeight: 'bold',
-              color: '#223848'
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              color: '#6B46C1'
             }}>
-              ℹ️ How It Works
+              📋 Instructions & Guidelines
             </span>
           </div>
         </button>
@@ -618,44 +491,258 @@ export default function HistoricalTab({
         {showInstructions && (
           <div style={{
             padding: '0 1rem 1rem 1rem',
-            fontSize: '0.875rem',
-            color: '#374151',
-            lineHeight: '1.6'
+            borderTop: '1px solid #E5E7EB'
           }}>
-            <div style={{
-              background: '#EFF6FF',
-              padding: '1rem',
-              borderRadius: '0.5rem',
-              border: '1px solid #BFDBFE'
+            <ul style={{ 
+              color: '#7C3AED', 
+              margin: '0.5rem 0 0 0',
+              paddingLeft: '1.5rem',
+              fontSize: '0.875rem'
             }}>
-              <p style={{ margin: '0 0 0.75rem 0' }}>
-                <strong>Purpose:</strong> Track books students read in previous grades before using Lux Libris.
-              </p>
-              <p style={{ margin: '0 0 0.75rem 0' }}>
-                <strong>What happens:</strong> Adding a historical grade completion will:
-              </p>
-              <ul style={{ margin: '0 0 0.75rem 0', paddingLeft: '1.5rem' }}>
-                <li>Add books to their lifetime total</li>
-                <li>Unlock the 3 saints for that grade (Seasonal, Grade, and Marian)</li>
-                <li>Create a permanent record of that grade&apos;s completion</li>
-              </ul>
-              <p style={{ margin: '0 0 0.75rem 0' }}>
-                <strong>Eligibility:</strong> You can only add grades that are BEFORE their current grade.
-              </p>
-              <p style={{ margin: '0' }}>
-                <strong>Completion:</strong> When all possible historical grades are added (or you manually mark it complete), the student moves to the &quot;Completed&quot; section.
-              </p>
+              <li>Add books from grades completed before the current school year</li>
+              <li>Each grade unlocks 3 saints (Grade + Seasonal + Marian)</li>
+              <li>Maximum 20 books per grade year</li>
+              <li>Only grades BELOW student&apos;s current grade are available</li>
+              <li>Saints will sparkle for 24 hours in student&apos;s collection</li>
+              <li>Mark students as &quot;complete&quot; if they have gaps but shouldn&apos;t add more</li>
+            </ul>
+          </div>
+        )}
+      </div>
+
+      {/* Quick Add Form */}
+      <div style={{
+        background: 'white',
+        borderRadius: '1rem',
+        padding: '1.5rem',
+        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)'
+      }}>
+        <h3 style={{
+          fontSize: '1.25rem',
+          fontWeight: 'bold',
+          color: '#223848',
+          margin: '0 0 1rem 0'
+        }}>
+          ➕ Quick Add Historical Completion
+        </h3>
+        
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: window.innerWidth < 768 ? '1fr' : '2fr 1fr 1fr auto',
+          gap: '1rem',
+          alignItems: 'end'
+        }}>
+          <div>
+            <label style={{
+              display: 'block',
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              color: '#374151',
+              marginBottom: '0.5rem'
+            }}>
+              Student *
+            </label>
+            <select
+              value={selectedStudent ? `${selectedStudent.type}-${selectedStudent.id}` : ''}
+              onChange={(e) => {
+                const student = filteredStudents.find(s => `${s.type}-${s.id}` === e.target.value);
+                setSelectedStudent(student || null);
+                setSelectedGrade('');
+                setBookCount('');
+              }}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                border: '2px solid #9370DB',
+                borderRadius: '0.5rem',
+                fontSize: '1rem',
+                boxSizing: 'border-box',
+                backgroundColor: 'white',
+                color: '#223848'
+              }}
+            >
+              <option value="">Select student...</option>
+              {studentsCanAddHistory.map(student => (
+                <option 
+                  key={`${student.type}-${student.id}`} 
+                  value={`${student.type}-${student.id}`}
+                >
+                  {student.firstName} {student.lastInitial}. - Grade {student.grade} ({student.type.toUpperCase()})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label style={{
+              display: 'block',
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              color: '#374151',
+              marginBottom: '0.5rem'
+            }}>
+              Grade *
+            </label>
+            <select
+              value={selectedGrade}
+              onChange={(e) => setSelectedGrade(e.target.value)}
+              disabled={!selectedStudent}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                border: '2px solid #9370DB',
+                borderRadius: '0.5rem',
+                fontSize: '1rem',
+                boxSizing: 'border-box',
+                backgroundColor: selectedStudent ? 'white' : '#F3F4F6',
+                color: '#223848',
+                cursor: selectedStudent ? 'pointer' : 'not-allowed'
+              }}
+            >
+              <option value="">Select...</option>
+              {selectedStudent && getAvailableGradesForStudent(selectedStudent).map(grade => {
+                const alreadyAdded = selectedStudent?.historicalCompletions?.some(comp => comp.grade === grade);
+                return (
+                  <option key={grade} value={grade} disabled={alreadyAdded}>
+                    Grade {grade} {alreadyAdded ? '✓' : ''}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+
+          <div>
+            <label style={{
+              display: 'block',
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              color: '#374151',
+              marginBottom: '0.5rem'
+            }}>
+              Books *
+            </label>
+            <input
+              type="number"
+              min="1"
+              max="20"
+              value={bookCount}
+              onChange={(e) => setBookCount(e.target.value)}
+              placeholder="1-20"
+              disabled={!selectedStudent || !selectedGrade}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                border: '2px solid #9370DB',
+                borderRadius: '0.5rem',
+                fontSize: '1rem',
+                boxSizing: 'border-box',
+                backgroundColor: (selectedStudent && selectedGrade) ? 'white' : '#F3F4F6',
+                color: '#223848',
+                cursor: (selectedStudent && selectedGrade) ? 'text' : 'not-allowed'
+              }}
+            />
+          </div>
+
+          <button
+            onClick={addHistoricalGradeCompletion}
+            disabled={!selectedStudent || !selectedGrade || !bookCount || isProcessing}
+            style={{
+              padding: '0.75rem 1.5rem',
+              background: (selectedStudent && selectedGrade && bookCount) ? 
+                'linear-gradient(135deg, #9370DB, #8A2BE2)' : '#E5E7EB',
+              color: (selectedStudent && selectedGrade && bookCount) ? 'white' : '#9CA3AF',
+              border: 'none',
+              borderRadius: '0.5rem',
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              cursor: (selectedStudent && selectedGrade && bookCount) ? 'pointer' : 'not-allowed',
+              minWidth: '120px'
+            }}
+          >
+            {isProcessing ? '⏳ Adding...' : '🏆 Add'}
+          </button>
+        </div>
+
+        {/* Preview */}
+        {selectedStudent && selectedGrade && bookCount && (
+          <div style={{
+            marginTop: '1rem',
+            background: '#F3E8FF',
+            borderRadius: '0.5rem',
+            padding: '1rem',
+            border: '1px solid #9370DB'
+          }}>
+            <h4 style={{
+              fontSize: '1rem',
+              fontWeight: '600',
+              color: '#6B46C1',
+              margin: '0 0 0.5rem 0'
+            }}>
+              📋 Preview:
+            </h4>
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: '0.5rem',
+              fontSize: '0.875rem', 
+              color: '#7C3AED' 
+            }}>
+              <div>📚 Books to add: {bookCount}</div>
+              <div>🏆 New lifetime: {(selectedStudent.lifetimeBooksSubmitted || 0) + parseInt(bookCount)}</div>
+              <div>🎯 Saints: {Object.values(GRADE_SAINT_MAPPINGS[parseInt(selectedGrade)] || {}).map(id => SAINT_NAMES[id]).join(', ')}</div>
             </div>
           </div>
         )}
       </div>
 
-      {/* Collapsible: Students with Some Historical Data */}
+      {/* Search and Filter */}
+      <div style={{
+        background: 'white',
+        borderRadius: '0.75rem',
+        padding: '1rem',
+        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
+        display: 'flex',
+        gap: '1rem',
+        alignItems: 'center'
+      }}>
+        <input
+          type="text"
+          placeholder="Search students..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          style={{
+            flex: 1,
+            padding: '0.5rem 1rem',
+            border: '2px solid #d1d5db',
+            borderRadius: '0.5rem',
+            fontSize: '0.875rem'
+          }}
+        />
+        <select
+          value={filterGrade}
+          onChange={(e) => setFilterGrade(e.target.value)}
+          style={{
+            padding: '0.5rem 1rem',
+            border: '2px solid #d1d5db',
+            borderRadius: '0.5rem',
+            fontSize: '0.875rem'
+          }}
+        >
+          <option value="all">All Grades</option>
+          <option value="4">Grade 4</option>
+          <option value="5">Grade 5</option>
+          <option value="6">Grade 6</option>
+          <option value="7">Grade 7</option>
+          <option value="8">Grade 8</option>
+        </select>
+      </div>
+
+      {/* Collapsible: Students with Historical Data */}
       {studentsWithHistory.length > 0 && (
         <div style={{
           background: 'white',
           borderRadius: '1rem',
-          border: '1px solid #FDB943',
+          border: '1px solid #E5E7EB',
           overflow: 'hidden'
         }}>
           <button
@@ -687,131 +774,172 @@ export default function HistoricalTab({
                 fontWeight: 'bold',
                 color: '#223848'
               }}>
-                📝 In Progress ({studentsWithHistory.length})
+                ✅ Students with Historical Completions ({studentsWithHistory.length})
               </span>
             </div>
             <span style={{
               padding: '0.25rem 0.75rem',
-              background: '#FEF3C7',
-              color: '#92400E',
+              background: '#9370DB',
+              color: 'white',
               borderRadius: '0.25rem',
               fontSize: '0.75rem',
               fontWeight: '600'
             }}>
-              Add More
+              In Progress
             </span>
           </button>
           
           {showStudentsWithHistory && (
             <div style={{ padding: '0 1rem 1rem 1rem' }}>
-              <div style={{
-                display: 'grid',
-                gap: '0.75rem'
-              }}>
+              <div style={{ display: 'grid', gap: '0.5rem' }}>
                 {studentsWithHistory.map(student => {
-                  const isExpanded = expandedStudents.has(`history-${student.type}-${student.id}`)
+                  const isExpanded = expandedStudents.has(`${student.type}-${student.id}`)
                   const totalHistoricalBooks = (student.historicalCompletions || [])
                     .reduce((sum, comp) => sum + comp.books, 0)
                   
                   return (
                     <div
-                      key={`history-${student.type}-${student.id}`}
+                      key={`${student.type}-${student.id}`}
                       style={{
-                        padding: '1rem',
-                        border: '1px solid #FDB943',
+                        border: '1px solid #E5E7EB',
                         borderRadius: '0.5rem',
-                        background: '#FFFBEB'
+                        overflow: 'hidden'
                       }}
                     >
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        marginBottom: isExpanded ? '0.75rem' : '0'
-                      }}>
-                        <div>
-                          <div style={{
-                            fontSize: '0.875rem',
-                            fontWeight: '600',
-                            color: '#223848'
+                      <button
+                        onClick={() => toggleStudentExpansion(`${student.type}-${student.id}`)}
+                        style={{
+                          width: '100%',
+                          padding: '1rem',
+                          background: isExpanded ? '#F3E8FF' : '#F9FAFB',
+                          border: 'none',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          textAlign: 'left'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                          <span style={{
+                            transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                            transition: 'transform 0.2s'
                           }}>
-                            {student.firstName} {student.lastInitial}.
-                          </div>
-                          <div style={{
-                            fontSize: '0.75rem',
-                            color: '#6B7280'
-                          }}>
-                            Grade {student.grade} • {student.type === 'app' ? '📱' : '📝'} • {(student.historicalCompletions || []).length} grades • {totalHistoricalBooks} books
+                            ▶
+                          </span>
+                          <div>
+                            <div style={{
+                              fontSize: '1rem',
+                              fontWeight: '600',
+                              color: '#223848'
+                            }}>
+                              {student.firstName} {student.lastInitial}.
+                            </div>
+                            <div style={{
+                              fontSize: '0.75rem',
+                              color: '#6B7280'
+                            }}>
+                              Grade {student.grade} • {student.type === 'app' ? '📱 App' : '📝 Manual'}
+                            </div>
                           </div>
                         </div>
-                        <button
-                          onClick={() => toggleStudentExpanded(`history-${student.type}-${student.id}`)}
-                          style={{
-                            padding: '0.5rem',
-                            background: 'transparent',
-                            border: 'none',
-                            cursor: 'pointer',
-                            fontSize: '1.25rem'
-                          }}
-                        >
-                          {isExpanded ? '▼' : '▶'}
-                        </button>
-                      </div>
-
+                        <div style={{
+                          display: 'flex',
+                          gap: '0.5rem',
+                          alignItems: 'center'
+                        }}>
+                          <span style={{
+                            padding: '0.25rem 0.5rem',
+                            background: '#9370DB',
+                            color: 'white',
+                            borderRadius: '0.25rem',
+                            fontSize: '0.75rem',
+                            fontWeight: '600'
+                          }}>
+                            {student.historicalCompletions.length} grades
+                          </span>
+                          <span style={{
+                            padding: '0.25rem 0.5rem',
+                            background: '#ECFDF5',
+                            color: '#065F46',
+                            borderRadius: '0.25rem',
+                            fontSize: '0.75rem',
+                            fontWeight: '600'
+                          }}>
+                            {totalHistoricalBooks} books
+                          </span>
+                        </div>
+                      </button>
+                      
                       {isExpanded && (
                         <div style={{
-                          borderTop: '1px solid #FDB943',
-                          paddingTop: '0.75rem',
-                          display: 'grid',
-                          gap: '0.5rem'
+                          padding: '1rem',
+                          borderTop: '1px solid #E5E7EB',
+                          background: 'white'
                         }}>
-                          {(student.historicalCompletions || []).map((completion, idx) => {
-                            const saintMapping = GRADE_SAINT_MAPPINGS[completion.grade]
-                            const saintNames = saintMapping ? [
-                              SAINT_NAMES[saintMapping.seasonal],
-                              SAINT_NAMES[saintMapping.grade],
-                              SAINT_NAMES[saintMapping.marian]
-                            ] : []
-
-                            return (
-                              <div
-                                key={idx}
-                                style={{
-                                  padding: '0.5rem',
-                                  background: 'white',
-                                  borderRadius: '0.375rem',
-                                  fontSize: '0.75rem',
-                                  display: 'flex',
-                                  justifyContent: 'space-between',
-                                  alignItems: 'center'
-                                }}
-                              >
+                          {student.historicalCompletions
+                            .sort((a, b) => a.grade - b.grade)
+                            .map((completion, index) => (
+                            <div 
+                              key={index}
+                              style={{
+                                padding: '0.5rem',
+                                background: '#F9FAFB',
+                                borderRadius: '0.375rem',
+                                marginBottom: index < student.historicalCompletions.length - 1 ? '0.5rem' : 0
+                              }}
+                            >
+                              <div style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'flex-start'
+                              }}>
                                 <div>
-                                  <div style={{ fontWeight: '600', color: '#223848' }}>
-                                    Grade {completion.grade} • {completion.books} books
+                                  <div style={{
+                                    fontSize: '0.875rem',
+                                    fontWeight: '600',
+                                    color: '#374151',
+                                    marginBottom: '0.25rem'
+                                  }}>
+                                    Grade {completion.grade}
                                   </div>
-                                  <div style={{ color: '#6B7280', fontSize: '0.625rem' }}>
-                                    {saintNames.join(', ')}
+                                  <div style={{
+                                    fontSize: '0.75rem',
+                                    color: '#6B7280'
+                                  }}>
+                                    📚 {completion.books} books • 🎯 {completion.saintsUnlocked?.length || 0} saints
                                   </div>
                                 </div>
-                                <button
-                                  onClick={() => removeHistoricalCompletion(student, completion.grade)}
-                                  disabled={isProcessing}
-                                  style={{
-                                    padding: '0.25rem 0.5rem',
-                                    background: '#FEE2E2',
-                                    color: '#991B1B',
-                                    border: 'none',
-                                    borderRadius: '0.25rem',
-                                    fontSize: '0.625rem',
-                                    cursor: 'pointer'
-                                  }}
-                                >
-                                  🗑️ Remove
-                                </button>
+                                <div style={{
+                                  fontSize: '0.625rem',
+                                  color: '#9CA3AF'
+                                }}>
+                                  {completion.addedAt && new Date(completion.addedAt.seconds ? completion.addedAt.seconds * 1000 : completion.addedAt).toLocaleDateString()}
+                                </div>
                               </div>
-                            )
-                          })}
+                            </div>
+                          ))}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              markHistoricalDataComplete(student)
+                            }}
+                            disabled={isProcessing}
+                            style={{
+                              width: '100%',
+                              marginTop: '0.5rem',
+                              padding: '0.5rem',
+                              background: 'linear-gradient(135deg, #10B981, #059669)',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '0.375rem',
+                              fontSize: '0.75rem',
+                              fontWeight: '600',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            ✅ Mark as Complete
+                          </button>
                         </div>
                       )}
                     </div>
@@ -823,12 +951,12 @@ export default function HistoricalTab({
         </div>
       )}
 
-      {/* Collapsible: Eligible Students (Can Add) */}
+      {/* Collapsible: Students Who Can Add History */}
       {studentsCanAddHistory.length > 0 && (
         <div style={{
           background: 'white',
           borderRadius: '1rem',
-          border: '1px solid #60A5FA',
+          border: '1px solid #E5E7EB',
           overflow: 'hidden'
         }}>
           <button
@@ -860,175 +988,23 @@ export default function HistoricalTab({
                 fontWeight: 'bold',
                 color: '#223848'
               }}>
-                ➕ Eligible to Add ({studentsCanAddHistory.length})
+                ⏳ Students Eligible for Historical Data ({studentsCanAddHistory.length})
               </span>
             </div>
             <span style={{
               padding: '0.25rem 0.75rem',
-              background: '#DBEAFE',
-              color: '#1E40AF',
+              background: '#FEF3C7',
+              color: '#92400E',
               borderRadius: '0.25rem',
               fontSize: '0.75rem',
               fontWeight: '600'
             }}>
-              Add Data
+              Can Add
             </span>
           </button>
           
           {showEligibleStudents && (
             <div style={{ padding: '0 1rem 1rem 1rem' }}>
-              {/* Add Form */}
-              <div style={{
-                background: '#EFF6FF',
-                padding: '1rem',
-                borderRadius: '0.5rem',
-                border: '1px solid #93C5FD',
-                marginBottom: '1rem'
-              }}>
-                <h4 style={{
-                  fontSize: '0.875rem',
-                  fontWeight: '600',
-                  color: '#223848',
-                  marginBottom: '0.75rem'
-                }}>
-                  Add Historical Grade Completion
-                </h4>
-                
-                <div style={{ display: 'grid', gap: '0.75rem' }}>
-                  {/* Student Select */}
-                  <div>
-                    <label style={{
-                      display: 'block',
-                      fontSize: '0.75rem',
-                      fontWeight: '600',
-                      color: '#374151',
-                      marginBottom: '0.25rem'
-                    }}>
-                      Student
-                    </label>
-                    <select
-                      value={selectedStudent ? `${selectedStudent.type}-${selectedStudent.id}` : ''}
-                      onChange={(e) => {
-                        const [type, id] = e.target.value.split('-')
-                        const student = studentsCanAddHistory.find(s => s.type === type && s.id === id)
-                        setSelectedStudent(student || null)
-                        setSelectedGrade('')
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '0.5rem',
-                        border: '1px solid #D1D5DB',
-                        borderRadius: '0.375rem',
-                        fontSize: '0.875rem',
-                        backgroundColor: 'white'
-                      }}
-                    >
-                      <option value="">Select a student...</option>
-                      {studentsCanAddHistory.map(s => (
-                        <option key={`${s.type}-${s.id}`} value={`${s.type}-${s.id}`}>
-                          {s.firstName} {s.lastInitial}. (Grade {s.grade}) - {s.type === 'app' ? '📱' : '📝'}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Grade Select */}
-                  {selectedStudent && (
-                    <div>
-                      <label style={{
-                        display: 'block',
-                        fontSize: '0.75rem',
-                        fontWeight: '600',
-                        color: '#374151',
-                        marginBottom: '0.25rem'
-                      }}>
-                        Historical Grade
-                      </label>
-                      <select
-                        value={selectedGrade}
-                        onChange={(e) => setSelectedGrade(e.target.value)}
-                        style={{
-                          width: '100%',
-                          padding: '0.5rem',
-                          border: '1px solid #D1D5DB',
-                          borderRadius: '0.375rem',
-                          fontSize: '0.875rem',
-                          backgroundColor: 'white'
-                        }}
-                      >
-                        <option value="">Select a grade...</option>
-                        {getAvailableGradesForStudent(selectedStudent)
-                          .filter(grade => {
-                            const existingCompletions = selectedStudent.historicalCompletions || []
-                            return !existingCompletions.some(comp => comp.grade === grade)
-                          })
-                          .map(grade => (
-                            <option key={grade} value={grade}>
-                              Grade {grade}
-                            </option>
-                          ))}
-                      </select>
-                    </div>
-                  )}
-
-                  {/* Book Count */}
-                  {selectedGrade && (
-                    <div>
-                      <label style={{
-                        display: 'block',
-                        fontSize: '0.75rem',
-                        fontWeight: '600',
-                        color: '#374151',
-                        marginBottom: '0.25rem'
-                      }}>
-                        Number of Books (1-20)
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="20"
-                        value={bookCount}
-                        onChange={(e) => setBookCount(e.target.value)}
-                        placeholder="10"
-                        style={{
-                          width: '100%',
-                          padding: '0.5rem',
-                          border: '1px solid #D1D5DB',
-                          borderRadius: '0.375rem',
-                          fontSize: '0.875rem'
-                        }}
-                      />
-                    </div>
-                  )}
-
-                  {/* Add Button */}
-                  <button
-                    onClick={addHistoricalGradeCompletion}
-                    disabled={!selectedStudent || !selectedGrade || !bookCount || isProcessing}
-                    style={{
-                      width: '100%',
-                      padding: '0.75rem',
-                      background: (!selectedStudent || !selectedGrade || !bookCount || isProcessing) 
-                        ? '#E5E7EB' 
-                        : 'linear-gradient(135deg, #60A5FA, #3B82F6)',
-                      color: (!selectedStudent || !selectedGrade || !bookCount || isProcessing) 
-                        ? '#9CA3AF' 
-                        : 'white',
-                      border: 'none',
-                      borderRadius: '0.5rem',
-                      fontWeight: '600',
-                      fontSize: '0.875rem',
-                      cursor: (!selectedStudent || !selectedGrade || !bookCount || isProcessing) 
-                        ? 'not-allowed' 
-                        : 'pointer'
-                    }}
-                  >
-                    {isProcessing ? '⏳ Adding...' : '➕ Add Historical Grade'}
-                  </button>
-                </div>
-              </div>
-
-              {/* Student List */}
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
@@ -1036,21 +1012,17 @@ export default function HistoricalTab({
               }}>
                 {studentsCanAddHistory.map(student => {
                   const availableGrades = getAvailableGradesForStudent(student)
-                  const existingCompletions = student.historicalCompletions || []
-                  const remainingGrades = availableGrades.filter(grade =>
-                    !existingCompletions.some(comp => comp.grade === grade)
-                  )
-                  const completedCount = existingCompletions.length
-                  const totalPossible = availableGrades.length
+                  const completedGrades = (student.historicalCompletions || []).map(c => c.grade)
+                  const remainingGrades = availableGrades.filter(g => !completedGrades.includes(g))
                   
                   return (
                     <div
-                      key={`eligible-${student.type}-${student.id}`}
+                      key={`${student.type}-${student.id}`}
                       style={{
                         padding: '1rem',
-                        border: '1px solid #93C5FD',
+                        border: '1px solid #E5E7EB',
                         borderRadius: '0.5rem',
-                        background: 'white'
+                        background: '#F9FAFB'
                       }}
                     >
                       <div style={{
@@ -1070,38 +1042,28 @@ export default function HistoricalTab({
                       </div>
                       <div style={{
                         fontSize: '0.75rem',
-                        color: '#3B82F6',
-                        marginBottom: '0.25rem'
-                      }}>
-                        {completedCount} of {totalPossible} grades added
-                      </div>
-                      <div style={{
-                        fontSize: '0.625rem',
-                        color: '#6B7280',
-                        fontStyle: 'italic',
+                        color: '#7C3AED',
                         marginBottom: '0.5rem'
                       }}>
-                        Can add: {remainingGrades.length > 0 ? `Grade ${remainingGrades.join(', ')}` : 'All grades added'}
+                        Can add: Grades {remainingGrades.join(', ')}
                       </div>
-                      {remainingGrades.length === 0 && (
-                        <button
-                          onClick={() => markHistoricalDataComplete(student)}
-                          disabled={isProcessing}
-                          style={{
-                            width: '100%',
-                            padding: '0.5rem',
-                            background: 'linear-gradient(135deg, #10B981, #059669)',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '0.375rem',
-                            fontSize: '0.75rem',
-                            fontWeight: '600',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          ✅ Mark Complete
-                        </button>
-                      )}
+                      <button
+                        onClick={() => markHistoricalDataComplete(student)}
+                        disabled={isProcessing}
+                        style={{
+                          width: '100%',
+                          padding: '0.5rem',
+                          background: 'linear-gradient(135deg, #10B981, #059669)',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '0.375rem',
+                          fontSize: '0.75rem',
+                          fontWeight: '600',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        ✅ Mark Complete
+                      </button>
                     </div>
                   )
                 })}
@@ -1311,551 +1273,6 @@ export default function HistoricalTab({
           animation: 'slideUp 0.3s ease-out'
         }}>
           {showSuccess}
-        </div>
-      )}
-
-      {/* Custom Modal: Add Historical Grade Confirmation */}
-      {showAddConfirmModal && pendingAddData && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 10000,
-          padding: '1rem'
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '1rem',
-            maxWidth: '500px',
-            width: '100%',
-            maxHeight: '90vh',
-            overflow: 'auto',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
-          }}>
-            {/* Header */}
-            <div style={{
-              padding: '1.5rem',
-              borderBottom: '1px solid #E5E7EB',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between'
-            }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}>
-                <span style={{ fontSize: '1.5rem' }}>📚</span>
-                <h3 style={{
-                  fontSize: '1.125rem',
-                  fontWeight: '700',
-                  color: '#223848',
-                  margin: 0
-                }}>
-                  Add Historical Grade Completion
-                </h3>
-              </div>
-              <button
-                onClick={() => {
-                  setShowAddConfirmModal(false);
-                  setPendingAddData(null);
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  fontSize: '1.5rem',
-                  cursor: 'pointer',
-                  color: '#6B7280',
-                  padding: '0',
-                  lineHeight: 1
-                }}
-              >
-                ×
-              </button>
-            </div>
-
-            {/* Content */}
-            <div style={{ padding: '1.5rem' }}>
-              {/* Student Info */}
-              <div style={{
-                background: '#EFF6FF',
-                border: '1px solid #BFDBFE',
-                borderRadius: '0.5rem',
-                padding: '1rem',
-                marginBottom: '1rem'
-              }}>
-                <div style={{
-                  fontSize: '0.875rem',
-                  fontWeight: '600',
-                  color: '#223848',
-                  marginBottom: '0.5rem'
-                }}>
-                  Student Information
-                </div>
-                <div style={{
-                  fontSize: '0.875rem',
-                  color: '#374151'
-                }}>
-                  {pendingAddData.student.firstName} {pendingAddData.student.lastInitial}. • Grade {pendingAddData.student.grade}
-                </div>
-              </div>
-
-              {/* Details */}
-              <div style={{
-                background: '#F9FAFB',
-                borderRadius: '0.5rem',
-                padding: '1rem',
-                marginBottom: '1rem',
-                display: 'grid',
-                gap: '0.75rem'
-              }}>
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
-                }}>
-                  <span style={{
-                    fontSize: '0.875rem',
-                    color: '#6B7280'
-                  }}>
-                    Historical Grade:
-                  </span>
-                  <span style={{
-                    fontSize: '0.875rem',
-                    fontWeight: '600',
-                    color: '#223848'
-                  }}>
-                    Grade {pendingAddData.grade}
-                  </span>
-                </div>
-                
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
-                }}>
-                  <span style={{
-                    fontSize: '0.875rem',
-                    color: '#6B7280'
-                  }}>
-                    Books:
-                  </span>
-                  <span style={{
-                    fontSize: '0.875rem',
-                    fontWeight: '600',
-                    color: '#223848'
-                  }}>
-                    {pendingAddData.books}
-                  </span>
-                </div>
-
-                <div style={{
-                  paddingTop: '0.75rem',
-                  borderTop: '1px solid #E5E7EB'
-                }}>
-                  <div style={{
-                    fontSize: '0.875rem',
-                    color: '#6B7280',
-                    marginBottom: '0.5rem'
-                  }}>
-                    Saints to Unlock:
-                  </div>
-                  <div style={{
-                    fontSize: '0.875rem',
-                    fontWeight: '500',
-                    color: '#223848',
-                    lineHeight: '1.5'
-                  }}>
-                    {pendingAddData.saintNames.join(', ')}
-                  </div>
-                </div>
-
-                <div style={{
-                  paddingTop: '0.75rem',
-                  borderTop: '1px solid #E5E7EB'
-                }}>
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}>
-                    <span style={{
-                      fontSize: '0.875rem',
-                      color: '#6B7280'
-                    }}>
-                      New Lifetime Total:
-                    </span>
-                    <span style={{
-                      fontSize: '0.875rem',
-                      fontWeight: '600',
-                      color: '#10B981'
-                    }}>
-                      {(pendingAddData.student.lifetimeBooksSubmitted || 0) + pendingAddData.books} books
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Warning */}
-              <div style={{
-                background: '#FEF3C7',
-                border: '1px solid #FDB943',
-                borderRadius: '0.5rem',
-                padding: '0.75rem',
-                marginBottom: '1.5rem'
-              }}>
-                <div style={{
-                  display: 'flex',
-                  gap: '0.5rem',
-                  alignItems: 'flex-start'
-                }}>
-                  <span style={{ fontSize: '1rem' }}>⚠️</span>
-                  <div style={{
-                    fontSize: '0.75rem',
-                    color: '#92400E',
-                    lineHeight: '1.5'
-                  }}>
-                    <strong>This action cannot be undone.</strong><br />
-                    The historical completion will be permanently added to the student&apos;s record.
-                  </div>
-                </div>
-              </div>
-
-              {/* Buttons */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '0.75rem'
-              }}>
-                <button
-                  onClick={() => {
-                    setShowAddConfirmModal(false);
-                    setPendingAddData(null);
-                  }}
-                  disabled={isProcessing}
-                  style={{
-                    padding: '0.75rem',
-                    backgroundColor: '#F3F4F6',
-                    color: '#374151',
-                    border: '1px solid #D1D5DB',
-                    borderRadius: '0.5rem',
-                    fontWeight: '600',
-                    fontSize: '0.875rem',
-                    cursor: isProcessing ? 'not-allowed' : 'pointer',
-                    opacity: isProcessing ? 0.5 : 1
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={executeAddHistoricalGrade}
-                  disabled={isProcessing}
-                  style={{
-                    padding: '0.75rem',
-                    background: 'linear-gradient(135deg, #60A5FA, #3B82F6)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '0.5rem',
-                    fontWeight: '600',
-                    fontSize: '0.875rem',
-                    cursor: isProcessing ? 'not-allowed' : 'pointer',
-                    opacity: isProcessing ? 0.7 : 1
-                  }}
-                >
-                  {isProcessing ? '⏳ Adding...' : '✅ Add Completion'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Custom Modal: Mark Complete Confirmation */}
-      {showMarkCompleteModal && pendingMarkCompleteStudent && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 10000,
-          padding: '1rem'
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '1rem',
-            maxWidth: '450px',
-            width: '100%',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
-          }}>
-            {/* Header */}
-            <div style={{
-              padding: '1.5rem',
-              borderBottom: '1px solid #E5E7EB',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between'
-            }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}>
-                <span style={{ fontSize: '1.5rem' }}>✅</span>
-                <h3 style={{
-                  fontSize: '1.125rem',
-                  fontWeight: '700',
-                  color: '#223848',
-                  margin: 0
-                }}>
-                  Mark Historical Data Complete
-                </h3>
-              </div>
-              <button
-                onClick={() => {
-                  setShowMarkCompleteModal(false);
-                  setPendingMarkCompleteStudent(null);
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  fontSize: '1.5rem',
-                  cursor: 'pointer',
-                  color: '#6B7280',
-                  padding: '0',
-                  lineHeight: 1
-                }}
-              >
-                ×
-              </button>
-            </div>
-
-            {/* Content */}
-            <div style={{ padding: '1.5rem' }}>
-              <p style={{
-                fontSize: '0.875rem',
-                color: '#374151',
-                marginBottom: '1rem',
-                lineHeight: '1.6'
-              }}>
-                Mark historical data as complete for <strong>{pendingMarkCompleteStudent.firstName} {pendingMarkCompleteStudent.lastInitial}.</strong>?
-              </p>
-
-              <div style={{
-                background: '#ECFDF5',
-                border: '1px solid #10B981',
-                borderRadius: '0.5rem',
-                padding: '0.75rem',
-                marginBottom: '1.5rem'
-              }}>
-                <div style={{
-                  fontSize: '0.75rem',
-                  color: '#065F46',
-                  lineHeight: '1.5'
-                }}>
-                  This will move them to the &quot;Completed&quot; section. You can reopen them later if needed.
-                </div>
-              </div>
-
-              {/* Buttons */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '0.75rem'
-              }}>
-                <button
-                  onClick={() => {
-                    setShowMarkCompleteModal(false);
-                    setPendingMarkCompleteStudent(null);
-                  }}
-                  disabled={isProcessing}
-                  style={{
-                    padding: '0.75rem',
-                    backgroundColor: '#F3F4F6',
-                    color: '#374151',
-                    border: '1px solid #D1D5DB',
-                    borderRadius: '0.5rem',
-                    fontWeight: '600',
-                    fontSize: '0.875rem',
-                    cursor: isProcessing ? 'not-allowed' : 'pointer',
-                    opacity: isProcessing ? 0.5 : 1
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={executeMarkComplete}
-                  disabled={isProcessing}
-                  style={{
-                    padding: '0.75rem',
-                    background: 'linear-gradient(135deg, #10B981, #059669)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '0.5rem',
-                    fontWeight: '600',
-                    fontSize: '0.875rem',
-                    cursor: isProcessing ? 'not-allowed' : 'pointer',
-                    opacity: isProcessing ? 0.7 : 1
-                  }}
-                >
-                  {isProcessing ? '⏳ Marking...' : '✅ Mark Complete'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Custom Modal: Reopen Confirmation */}
-      {showReopenModal && pendingReopenStudent && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 10000,
-          padding: '1rem'
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '1rem',
-            maxWidth: '450px',
-            width: '100%',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
-          }}>
-            {/* Header */}
-            <div style={{
-              padding: '1.5rem',
-              borderBottom: '1px solid #E5E7EB',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between'
-            }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}>
-                <span style={{ fontSize: '1.5rem' }}>🔄</span>
-                <h3 style={{
-                  fontSize: '1.125rem',
-                  fontWeight: '700',
-                  color: '#223848',
-                  margin: 0
-                }}>
-                  Remove &quot;Complete&quot; Status
-                </h3>
-              </div>
-              <button
-                onClick={() => {
-                  setShowReopenModal(false);
-                  setPendingReopenStudent(null);
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  fontSize: '1.5rem',
-                  cursor: 'pointer',
-                  color: '#6B7280',
-                  padding: '0',
-                  lineHeight: 1
-                }}
-              >
-                ×
-              </button>
-            </div>
-
-            {/* Content */}
-            <div style={{ padding: '1.5rem' }}>
-              <p style={{
-                fontSize: '0.875rem',
-                color: '#374151',
-                marginBottom: '1rem',
-                lineHeight: '1.6'
-              }}>
-                Remove &quot;complete&quot; status for <strong>{pendingReopenStudent.firstName} {pendingReopenStudent.lastInitial}.</strong>?
-              </p>
-
-              <div style={{
-                background: '#EFF6FF',
-                border: '1px solid #93C5FD',
-                borderRadius: '0.5rem',
-                padding: '0.75rem',
-                marginBottom: '1.5rem'
-              }}>
-                <div style={{
-                  fontSize: '0.75rem',
-                  color: '#1E40AF',
-                  lineHeight: '1.5'
-                }}>
-                  This will:<br />
-                  • Return them to the &quot;eligible to add&quot; list<br />
-                  • Allow adding more historical grades<br />
-                  • Not remove any existing data
-                </div>
-              </div>
-
-              {/* Buttons */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '0.75rem'
-              }}>
-                <button
-                  onClick={() => {
-                    setShowReopenModal(false);
-                    setPendingReopenStudent(null);
-                  }}
-                  disabled={isProcessing}
-                  style={{
-                    padding: '0.75rem',
-                    backgroundColor: '#F3F4F6',
-                    color: '#374151',
-                    border: '1px solid #D1D5DB',
-                    borderRadius: '0.5rem',
-                    fontWeight: '600',
-                    fontSize: '0.875rem',
-                    cursor: isProcessing ? 'not-allowed' : 'pointer',
-                    opacity: isProcessing ? 0.5 : 1
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={executeReopen}
-                  disabled={isProcessing}
-                  style={{
-                    padding: '0.75rem',
-                    background: 'linear-gradient(135deg, #ADD4EA, #C3E0DE)',
-                    color: '#223848',
-                    border: 'none',
-                    borderRadius: '0.5rem',
-                    fontWeight: '600',
-                    fontSize: '0.875rem',
-                    cursor: isProcessing ? 'not-allowed' : 'pointer',
-                    opacity: isProcessing ? 0.7 : 1
-                  }}
-                >
-                  {isProcessing ? '⏳ Reopening...' : '🔄 Reopen'}
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
       )}
     </div>
