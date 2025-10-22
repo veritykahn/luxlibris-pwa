@@ -46,6 +46,7 @@ export default function HistoricalTab({
   appStudents, 
   manualStudents, 
   userProfile,
+  teacherNominees,
   onStudentUpdate 
 }) {
   const [searchTerm, setSearchTerm] = useState('')
@@ -62,6 +63,17 @@ export default function HistoricalTab({
   const [showStudentsWithHistory, setShowStudentsWithHistory] = useState(false)
   const [showEligibleStudents, setShowEligibleStudents] = useState(false)
   const [showCompletedStudents, setShowCompletedStudents] = useState(false)
+
+  // NEW: Custom modal states
+  const [showAddHistoricalModal, setShowAddHistoricalModal] = useState(false)
+  const [showMarkCompleteModal, setShowMarkCompleteModal] = useState(false)
+  const [showUnmarkCompleteModal, setShowUnmarkCompleteModal] = useState(false)
+  const [pendingHistoricalAdd, setPendingHistoricalAdd] = useState(null)
+  const [pendingMarkComplete, setPendingMarkComplete] = useState(null)
+  const [pendingUnmarkComplete, setPendingUnmarkComplete] = useState(null)
+
+  // Calculate maximum books based on teacher's selected nominees
+  const maxBooksPerGrade = teacherNominees?.length || 20;
 
   // Combine all students
   const allStudents = [
@@ -159,7 +171,7 @@ export default function HistoricalTab({
     }
   }, []);
 
-  // Add historical grade completion
+  // UPDATED: Add historical grade completion - now opens modal
   const addHistoricalGradeCompletion = async () => {
     if (!selectedStudent || !selectedGrade || !bookCount) {
       setShowSuccess('❌ Please fill in all fields');
@@ -168,8 +180,8 @@ export default function HistoricalTab({
     }
 
     const books = parseInt(bookCount);
-    if (books < 1 || books > 20) {
-      setShowSuccess('❌ Book count must be between 1 and 20');
+    if (books < 1 || books > maxBooksPerGrade) {
+      setShowSuccess(`❌ Book count must be between 1 and ${maxBooksPerGrade}`);
       setTimeout(() => setShowSuccess(''), 3000);
       return;
     }
@@ -191,24 +203,23 @@ export default function HistoricalTab({
       return;
     }
 
-    const saintMapping = GRADE_SAINT_MAPPINGS[parseInt(selectedGrade)];
-    const saintNames = [
-      SAINT_NAMES[saintMapping.seasonal],
-      SAINT_NAMES[saintMapping.grade],
-      SAINT_NAMES[saintMapping.marian]
-    ];
+    // Open modal instead of confirm()
+    setPendingHistoricalAdd({
+      student: selectedStudent,
+      grade: selectedGrade,
+      books: books
+    });
+    setShowAddHistoricalModal(true);
+  };
 
-    const confirmed = window.confirm(`Add Grade ${selectedGrade} completion for ${selectedStudent.firstName}?
+  // NEW: Execute historical addition after modal confirmation
+  const executeHistoricalAddition = async () => {
+    if (!pendingHistoricalAdd) return;
 
-📚 Books: ${books}
-🎯 Saints to unlock: ${saintNames.join(', ')}
-🏆 New lifetime total: ${(selectedStudent.lifetimeBooksSubmitted || 0) + books}
-
-This action cannot be undone.`);
-
-    if (!confirmed) return;
+    const { student, grade, books } = pendingHistoricalAdd;
 
     setIsProcessing(true);
+    setShowAddHistoricalModal(false);
     
     try {
       // Find teacher document ID
@@ -217,24 +228,25 @@ This action cannot be undone.`);
       const teacherSnapshot = await getDocs(teacherQuery);
       const teacherId = teacherSnapshot.docs[0].id;
 
+      const saintMapping = GRADE_SAINT_MAPPINGS[parseInt(grade)];
       const saintsToUnlock = Object.values(saintMapping);
       
-      if (selectedStudent.type === 'manual') {
+      if (student.type === 'manual') {
         // Manual student update
-        const studentRef = doc(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers/${teacherId}/manualStudents`, selectedStudent.id);
+        const studentRef = doc(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers/${teacherId}/manualStudents`, student.id);
         
-        const currentLifetime = selectedStudent.lifetimeBooksSubmitted || 0;
+        const currentLifetime = student.lifetimeBooksSubmitted || 0;
         const newLifetime = currentLifetime + books;
 
         const historicalEntry = {
-          grade: parseInt(selectedGrade),
+          grade: parseInt(grade),
           books: books,
           saintsUnlocked: saintsToUnlock,
           addedAt: new Date(),
           addedBy: 'teacher'
         };
 
-        const existingHistory = selectedStudent.historicalCompletions || [];
+        const existingHistory = student.historicalCompletions || [];
         const updatedHistory = [...existingHistory, historicalEntry];
 
         await updateDoc(studentRef, {
@@ -245,13 +257,13 @@ This action cannot be undone.`);
 
       } else {
         // App student update
-        const studentRef = doc(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/students`, selectedStudent.id);
+        const studentRef = doc(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/students`, student.id);
         
-        const currentLifetime = selectedStudent.lifetimeBooksSubmitted || 0;
+        const currentLifetime = student.lifetimeBooksSubmitted || 0;
         const newLifetime = currentLifetime + books;
 
-        const currentUnlocked = selectedStudent.unlockedSaints || [];
-        const currentTimestamps = selectedStudent.newlyUnlockedSaintsWithTimestamp || {};
+        const currentUnlocked = student.unlockedSaints || [];
+        const currentTimestamps = student.newlyUnlockedSaintsWithTimestamp || {};
 
         const updatedUnlocked = [...new Set([...currentUnlocked, ...saintsToUnlock])];
         
@@ -269,14 +281,14 @@ This action cannot be undone.`);
         });
 
         const historicalEntry = {
-          grade: parseInt(selectedGrade),
+          grade: parseInt(grade),
           books: books,
           saintsUnlocked: saintsToUnlock,
           addedAt: new Date(),
           addedBy: 'teacher'
         };
 
-        const existingHistory = selectedStudent.historicalCompletions || [];
+        const existingHistory = student.historicalCompletions || [];
         const updatedHistory = [...existingHistory, historicalEntry];
 
         await updateDoc(studentRef, {
@@ -296,7 +308,7 @@ This action cannot be undone.`);
       setSelectedGrade('');
       setBookCount('');
       
-      setShowSuccess(`🎉 Added Grade ${selectedGrade} completion! +${books} books for ${selectedStudent.firstName}!`);
+      setShowSuccess(`🎉 Added Grade ${grade} completion! +${books} books for ${student.firstName}!`);
       setTimeout(() => setShowSuccess(''), 4000);
 
     } catch (error) {
@@ -305,23 +317,25 @@ This action cannot be undone.`);
       setTimeout(() => setShowSuccess(''), 3000);
     } finally {
       setIsProcessing(false);
+      setPendingHistoricalAdd(null);
     }
   };
 
-  // Mark student historical data as complete
+  // UPDATED: Mark student historical data as complete - now opens modal
   const markHistoricalDataComplete = async (student) => {
-    const confirmed = window.confirm(`Mark historical data as complete for ${student.firstName} ${student.lastInitial}?
+    setPendingMarkComplete(student);
+    setShowMarkCompleteModal(true);
+  };
 
-This will:
-- Remove them from the "eligible to add" list
-- Indicate no more historical grades need to be added
-- Can be reversed if needed
+  // NEW: Execute mark complete after modal confirmation
+  const executeMarkComplete = async () => {
+    if (!pendingMarkComplete) return;
 
-Continue?`);
-
-    if (!confirmed) return;
+    const student = pendingMarkComplete;
 
     setIsProcessing(true);
+    setShowMarkCompleteModal(false);
+    
     try {
       if (student.type === 'manual') {
         const teachersRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers`);
@@ -352,23 +366,25 @@ Continue?`);
       setTimeout(() => setShowSuccess(''), 3000);
     } finally {
       setIsProcessing(false);
+      setPendingMarkComplete(null);
     }
   };
 
-  // Unmark student historical data as complete
+  // UPDATED: Unmark student historical data as complete - now opens modal
   const unmarkHistoricalDataComplete = async (student) => {
-    const confirmed = window.confirm(`Remove "complete" status for ${student.firstName} ${student.lastInitial}?
+    setPendingUnmarkComplete(student);
+    setShowUnmarkCompleteModal(true);
+  };
 
-This will:
-- Return them to the "eligible to add" list
-- Allow adding more historical grades
-- Not remove any existing data
+  // NEW: Execute unmark complete after modal confirmation
+  const executeUnmarkComplete = async () => {
+    if (!pendingUnmarkComplete) return;
 
-Continue?`);
-
-    if (!confirmed) return;
+    const student = pendingUnmarkComplete;
 
     setIsProcessing(true);
+    setShowUnmarkCompleteModal(false);
+    
     try {
       if (student.type === 'manual') {
         const teachersRef = collection(db, `entities/${userProfile.entityId}/schools/${userProfile.schoolId}/teachers`);
@@ -399,6 +415,7 @@ Continue?`);
       setTimeout(() => setShowSuccess(''), 3000);
     } finally {
       setIsProcessing(false);
+      setPendingUnmarkComplete(null);
     }
   };
 
@@ -501,7 +518,7 @@ Continue?`);
             }}>
               <li>Add books from grades completed before the current school year</li>
               <li>Each grade unlocks 3 saints (Grade + Seasonal + Marian)</li>
-              <li>Maximum 20 books per grade year</li>
+              <li>Maximum {maxBooksPerGrade} books per grade year (based on your selected nominees)</li>
               <li>Only grades BELOW student&apos;s current grade are available</li>
               <li>Saints will sparkle for 24 hours in student&apos;s collection</li>
               <li>Mark students as &quot;complete&quot; if they have gaps but shouldn&apos;t add more</li>
@@ -624,10 +641,10 @@ Continue?`);
             <input
               type="number"
               min="1"
-              max="20"
+              max={maxBooksPerGrade}
               value={bookCount}
               onChange={(e) => setBookCount(e.target.value)}
-              placeholder="1-20"
+              placeholder={`1-${maxBooksPerGrade}`}
               disabled={!selectedStudent || !selectedGrade}
               style={{
                 width: '100%',
@@ -1252,6 +1269,460 @@ Continue?`);
             All eligible students have their historical completions recorded.
             (Grade 4 students have no previous grades to add)
           </p>
+        </div>
+      )}
+
+      {/* NEW: Add Historical Completion Modal */}
+      {showAddHistoricalModal && pendingHistoricalAdd && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          padding: '1rem'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '1rem',
+            maxWidth: '500px',
+            width: '100%',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: '1.5rem',
+              borderBottom: '1px solid #E5E7EB',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}>
+                <span style={{ fontSize: '1.5rem' }}>🏆</span>
+                <h3 style={{
+                  fontSize: '1.125rem',
+                  fontWeight: '700',
+                  color: '#223848',
+                  margin: 0
+                }}>
+                  Add Historical Completion
+                </h3>
+              </div>
+              <button
+                onClick={() => {
+                  setShowAddHistoricalModal(false);
+                  setPendingHistoricalAdd(null);
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '1.5rem',
+                  cursor: 'pointer',
+                  color: '#6B7280',
+                  padding: '0',
+                  lineHeight: 1
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Content */}
+            <div style={{ padding: '1.5rem' }}>
+              <p style={{
+                fontSize: '0.875rem',
+                color: '#374151',
+                marginBottom: '1rem',
+                lineHeight: '1.6'
+              }}>
+                Add Grade {pendingHistoricalAdd.grade} completion for <strong>{pendingHistoricalAdd.student.firstName} {pendingHistoricalAdd.student.lastInitial}.</strong>?
+              </p>
+
+              <div style={{
+                background: '#F3E8FF',
+                border: '1px solid #9370DB',
+                borderRadius: '0.5rem',
+                padding: '0.75rem',
+                marginBottom: '1rem'
+              }}>
+                <div style={{
+                  fontSize: '0.75rem',
+                  color: '#6B46C1',
+                  lineHeight: '1.5'
+                }}>
+                  📚 <strong>Books:</strong> {pendingHistoricalAdd.books}<br />
+                  🎯 <strong>Saints to unlock:</strong> {Object.values(GRADE_SAINT_MAPPINGS[parseInt(pendingHistoricalAdd.grade)] || {}).map(id => SAINT_NAMES[id]).join(', ')}<br />
+                  🏆 <strong>New lifetime total:</strong> {(pendingHistoricalAdd.student.lifetimeBooksSubmitted || 0) + pendingHistoricalAdd.books}
+                </div>
+              </div>
+
+              <div style={{
+                background: '#FEF3C7',
+                border: '1px solid #F59E0B',
+                borderRadius: '0.5rem',
+                padding: '0.75rem',
+                marginBottom: '1.5rem'
+              }}>
+                <div style={{
+                  fontSize: '0.75rem',
+                  color: '#92400E',
+                  lineHeight: '1.5',
+                  fontWeight: '500'
+                }}>
+                  ⚠️ This action cannot be undone.
+                </div>
+              </div>
+
+              {/* Buttons */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '0.75rem'
+              }}>
+                <button
+                  onClick={() => {
+                    setShowAddHistoricalModal(false);
+                    setPendingHistoricalAdd(null);
+                  }}
+                  disabled={isProcessing}
+                  style={{
+                    padding: '0.75rem',
+                    backgroundColor: '#F3F4F6',
+                    color: '#374151',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '0.5rem',
+                    fontWeight: '600',
+                    fontSize: '0.875rem',
+                    cursor: isProcessing ? 'not-allowed' : 'pointer',
+                    opacity: isProcessing ? 0.5 : 1,
+                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={executeHistoricalAddition}
+                  disabled={isProcessing}
+                  style={{
+                    padding: '0.75rem',
+                    background: 'linear-gradient(135deg, #9370DB, #8A2BE2)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    fontWeight: '600',
+                    fontSize: '0.875rem',
+                    cursor: isProcessing ? 'not-allowed' : 'pointer',
+                    opacity: isProcessing ? 0.7 : 1,
+                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+                  }}
+                >
+                  {isProcessing ? '⏳ Adding...' : '🏆 Add Completion'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* NEW: Mark Complete Modal */}
+      {showMarkCompleteModal && pendingMarkComplete && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          padding: '1rem'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '1rem',
+            maxWidth: '450px',
+            width: '100%',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: '1.5rem',
+              borderBottom: '1px solid #E5E7EB',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}>
+                <span style={{ fontSize: '1.5rem' }}>✅</span>
+                <h3 style={{
+                  fontSize: '1.125rem',
+                  fontWeight: '700',
+                  color: '#223848',
+                  margin: 0
+                }}>
+                  Mark as Complete
+                </h3>
+              </div>
+              <button
+                onClick={() => {
+                  setShowMarkCompleteModal(false);
+                  setPendingMarkComplete(null);
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '1.5rem',
+                  cursor: 'pointer',
+                  color: '#6B7280',
+                  padding: '0',
+                  lineHeight: 1
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Content */}
+            <div style={{ padding: '1.5rem' }}>
+              <p style={{
+                fontSize: '0.875rem',
+                color: '#374151',
+                marginBottom: '1rem',
+                lineHeight: '1.6'
+              }}>
+                Mark historical data as complete for <strong>{pendingMarkComplete.firstName} {pendingMarkComplete.lastInitial}.</strong>?
+              </p>
+
+              <div style={{
+                background: '#ECFDF5',
+                border: '1px solid #10B981',
+                borderRadius: '0.5rem',
+                padding: '0.75rem',
+                marginBottom: '1.5rem'
+              }}>
+                <div style={{
+                  fontSize: '0.75rem',
+                  color: '#065F46',
+                  lineHeight: '1.5'
+                }}>
+                  This will:<br />
+                  • Remove them from the &quot;eligible to add&quot; list<br />
+                  • Indicate no more historical grades need to be added<br />
+                  • Can be reversed if needed
+                </div>
+              </div>
+
+              {/* Buttons */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '0.75rem'
+              }}>
+                <button
+                  onClick={() => {
+                    setShowMarkCompleteModal(false);
+                    setPendingMarkComplete(null);
+                  }}
+                  disabled={isProcessing}
+                  style={{
+                    padding: '0.75rem',
+                    backgroundColor: '#F3F4F6',
+                    color: '#374151',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '0.5rem',
+                    fontWeight: '600',
+                    fontSize: '0.875rem',
+                    cursor: isProcessing ? 'not-allowed' : 'pointer',
+                    opacity: isProcessing ? 0.5 : 1,
+                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={executeMarkComplete}
+                  disabled={isProcessing}
+                  style={{
+                    padding: '0.75rem',
+                    background: 'linear-gradient(135deg, #10B981, #059669)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    fontWeight: '600',
+                    fontSize: '0.875rem',
+                    cursor: isProcessing ? 'not-allowed' : 'pointer',
+                    opacity: isProcessing ? 0.7 : 1,
+                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+                  }}
+                >
+                  {isProcessing ? '⏳ Marking...' : '✅ Mark Complete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* NEW: Unmark Complete Modal */}
+      {showUnmarkCompleteModal && pendingUnmarkComplete && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          padding: '1rem'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '1rem',
+            maxWidth: '450px',
+            width: '100%',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: '1.5rem',
+              borderBottom: '1px solid #E5E7EB',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}>
+                <span style={{ fontSize: '1.5rem' }}>🔄</span>
+                <h3 style={{
+                  fontSize: '1.125rem',
+                  fontWeight: '700',
+                  color: '#223848',
+                  margin: 0
+                }}>
+                  Reopen Historical Data
+                </h3>
+              </div>
+              <button
+                onClick={() => {
+                  setShowUnmarkCompleteModal(false);
+                  setPendingUnmarkComplete(null);
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '1.5rem',
+                  cursor: 'pointer',
+                  color: '#6B7280',
+                  padding: '0',
+                  lineHeight: 1
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Content */}
+            <div style={{ padding: '1.5rem' }}>
+              <p style={{
+                fontSize: '0.875rem',
+                color: '#374151',
+                marginBottom: '1rem',
+                lineHeight: '1.6'
+              }}>
+                Remove &quot;complete&quot; status for <strong>{pendingUnmarkComplete.firstName} {pendingUnmarkComplete.lastInitial}.</strong>?
+              </p>
+
+              <div style={{
+                background: '#E0F2FE',
+                border: '1px solid #0EA5E9',
+                borderRadius: '0.5rem',
+                padding: '0.75rem',
+                marginBottom: '1.5rem'
+              }}>
+                <div style={{
+                  fontSize: '0.75rem',
+                  color: '#075985',
+                  lineHeight: '1.5'
+                }}>
+                  This will:<br />
+                  • Return them to the &quot;eligible to add&quot; list<br />
+                  • Allow adding more historical grades<br />
+                  • Not remove any existing data
+                </div>
+              </div>
+
+              {/* Buttons */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '0.75rem'
+              }}>
+                <button
+                  onClick={() => {
+                    setShowUnmarkCompleteModal(false);
+                    setPendingUnmarkComplete(null);
+                  }}
+                  disabled={isProcessing}
+                  style={{
+                    padding: '0.75rem',
+                    backgroundColor: '#F3F4F6',
+                    color: '#374151',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '0.5rem',
+                    fontWeight: '600',
+                    fontSize: '0.875rem',
+                    cursor: isProcessing ? 'not-allowed' : 'pointer',
+                    opacity: isProcessing ? 0.5 : 1,
+                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={executeUnmarkComplete}
+                  disabled={isProcessing}
+                  style={{
+                    padding: '0.75rem',
+                    background: 'linear-gradient(135deg, #0EA5E9, #0284C7)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    fontWeight: '600',
+                    fontSize: '0.875rem',
+                    cursor: isProcessing ? 'not-allowed' : 'pointer',
+                    opacity: isProcessing ? 0.7 : 1,
+                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+                  }}
+                >
+                  {isProcessing ? '⏳ Reopening...' : '🔄 Reopen'}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
