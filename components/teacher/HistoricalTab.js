@@ -637,13 +637,13 @@ export default function HistoricalTab({
               <ul style={{ margin: '0 0 0.75rem 0', paddingLeft: '1.5rem' }}>
                 <li>Add books to their lifetime total</li>
                 <li>Unlock the 3 saints for that grade (Seasonal, Grade, and Marian)</li>
-                <li>Create a permanent record of that grade's completion</li>
+                <li>Create a permanent record of that grade&apos;s completion</li>
               </ul>
               <p style={{ margin: '0 0 0.75rem 0' }}>
                 <strong>Eligibility:</strong> You can only add grades that are BEFORE their current grade.
               </p>
               <p style={{ margin: '0' }}>
-                <strong>Completion:</strong> When all possible historical grades are added (or you manually mark it complete), the student moves to the "Completed" section.
+                <strong>Completion:</strong> When all possible historical grades are added (or you manually mark it complete), the student moves to the &quot;Completed&quot; section.
               </p>
             </div>
           </div>
@@ -1522,7 +1522,7 @@ export default function HistoricalTab({
                     lineHeight: '1.5'
                   }}>
                     <strong>This action cannot be undone.</strong><br />
-                    The historical completion will be permanently added to the student's record.
+                    The historical completion will be permanently added to the student&apos;s record.
                   </div>
                 </div>
               </div>
@@ -1663,7 +1663,7 @@ export default function HistoricalTab({
                   color: '#065F46',
                   lineHeight: '1.5'
                 }}>
-                  This will move them to the "Completed" section. You can reopen them later if needed.
+                  This will move them to the &quot;Completed&quot; section. You can reopen them later if needed.
                 </div>
               </div>
 
@@ -1758,7 +1758,7 @@ export default function HistoricalTab({
                   color: '#223848',
                   margin: 0
                 }}>
-                  Remove "Complete" Status
+                  Remove &quot;Complete&quot; Status
                 </h3>
               </div>
               <button
@@ -1788,7 +1788,7 @@ export default function HistoricalTab({
                 marginBottom: '1rem',
                 lineHeight: '1.6'
               }}>
-                Remove "complete" status for <strong>{pendingReopenStudent.firstName} {pendingReopenStudent.lastInitial}.</strong>?
+                Remove &quot;complete&quot; status for <strong>{pendingReopenStudent.firstName} {pendingReopenStudent.lastInitial}.</strong>?
               </p>
 
               <div style={{
@@ -1804,7 +1804,7 @@ export default function HistoricalTab({
                   lineHeight: '1.5'
                 }}>
                   This will:<br />
-                  • Return them to the "eligible to add" list<br />
+                  • Return them to the &quot;eligible to add&quot; list<br />
                   • Allow adding more historical grades<br />
                   • Not remove any existing data
                 </div>
