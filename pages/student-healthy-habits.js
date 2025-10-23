@@ -290,18 +290,25 @@ export default function StudentHealthyHabits() {
   // Load streak data with smart calculation and timeline calendar
   const loadStreakData = useCallback(async (studentData) => {
     try {
-      // Get sessions from last 6 weeks for thorough streak calculation
-      const sixWeeksAgo = new Date();
-      sixWeeksAgo.setDate(sixWeeksAgo.getDate() - 42);
+      // ✅ NEW: No query needed - just read the Firebase fields!
+      const currentStreak = studentData.currentStreak || 0;
+      const longestStreak = studentData.longestStreak || 0;
+      const totalDaysRead = studentData.totalDaysRead || 0;
+      
+      console.log(`🔥 Streak loaded: Current=${currentStreak}, Longest=${longestStreak}, Total days=${totalDaysRead}`);
+      
+      // Still need to query for calendar display (last 21 days)
+      const threeWeeksAgo = new Date();
+      threeWeeksAgo.setDate(threeWeeksAgo.getDate() - 14);
+      
       const sessionsRef = collection(db, `entities/${studentData.entityId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
       const recentQuery = query(
         sessionsRef,
-        where('date', '>=', getLocalDateString(sixWeeksAgo))
+        where('date', '>=', getLocalDateString(threeWeeksAgo))
       );
       const recentSnapshot = await getDocs(recentQuery);
       const completedSessionsByDate = {};
 
-      // Only count COMPLETED sessions (20+ min) for streaks
       recentSnapshot.forEach(doc => {
         const session = doc.data();
         if (session.completed === true) {
@@ -312,13 +319,10 @@ export default function StudentHealthyHabits() {
       const today = new Date();
       const todayStr = getLocalDateString(today);
 
-      // Calculate smart streak
-      const streakCount = calculateSmartStreak(completedSessionsByDate, todayStr);
-
       // Build timeline calendar (21 days: 2 weeks past + today + 1 week future)
       const timelineCalendar = [];
       const startDate = new Date(today);
-      startDate.setDate(today.getDate() - 14); // Start 2 weeks ago
+      startDate.setDate(today.getDate() - 14);
 
       for (let i = 0; i < 21; i++) {
         const date = new Date(startDate);
@@ -336,19 +340,25 @@ export default function StudentHealthyHabits() {
       }
 
       // Calculate stats
-      const totalCompletedDays = Object.keys(completedSessionsByDate).length;
-      const weeksCompleted = Math.floor(totalCompletedDays / 7);
-      const monthsCompleted = Math.floor(totalCompletedDays / 30);
+      const weeksCompleted = Math.floor(totalDaysRead / 7);
+      const monthsCompleted = Math.floor(totalDaysRead / 30);
 
       setStreakCalendar(timelineCalendar);
-      setCurrentStreak(streakCount);
+      setCurrentStreak(currentStreak);
       setStreakStats({ weeks: weeksCompleted, months: monthsCompleted });
+      
+      return {
+        currentStreak,
+        longestStreak,
+        totalDaysRead
+      };
     } catch (error) {
       console.error('Error loading streak data:', error);
       setCurrentStreak(0);
       setStreakStats({ weeks: 0, months: 0 });
+      return { currentStreak: 0, longestStreak: 0, totalDaysRead: 0 };
     }
-  }, [calculateSmartStreak]);
+  }, []);
 
   // Progressive reading level calculation
   const calculateReadingLevel = useCallback(async (studentData) => {
@@ -625,9 +635,91 @@ if (!isSunday && studentData.familyId && studentData.parentConnected) {
       setShowXPReward(true);
       setTimeout(() => setShowXPReward(false), 4000);
 
-      if (completed && todaysSessions.filter(s => s.completed && s.date === today).length === 0) {
-        await updateStreakData();
+      // ✅ NEW: Update streak tracking fields
+      if (completed) {
+        const yesterday = getLocalDateString(new Date(Date.now() - 86400000));
+        const lastReadingDate = studentData.lastReadingDate;
+        const currentStreak = studentData.currentStreak || 0;
+        const longestStreak = studentData.longestStreak || 0;
+        const totalDaysRead = studentData.totalDaysRead || 0;
+        
+        let newStreak = currentStreak;
+        let newTotalDaysRead = totalDaysRead;
+        
+        // Check if first completed session today
+        const isFirstCompletedToday = todaysSessions.filter(s => s.completed && s.date === today).length === 0;
+        
+        if (isFirstCompletedToday) {
+          // This is the first completed session today
+          if (lastReadingDate === yesterday) {
+            // Consecutive day - increment streak
+            newStreak = currentStreak + 1;
+          } else if (lastReadingDate === today) {
+            // Already read today (shouldn't happen but handle it)
+            newStreak = currentStreak;
+          } else if (!lastReadingDate) {
+            // First ever completed session
+            newStreak = 1;
+          } else {
+            // Streak broken - reset to 1
+            newStreak = 1;
+          }
+          
+          // Update total days read if new day
+          if (lastReadingDate !== today) {
+            newTotalDaysRead = totalDaysRead + 1;
+          }
+          
+          // Update student document with new streak data
+          const studentRef = doc(
+            db,
+            `entities/${studentData.entityId}/schools/${studentData.schoolId}/students/${studentData.id}`
+          );
+          
+          await updateDoc(studentRef, {
+            currentStreak: newStreak,
+            lastReadingDate: today,
+            longestStreak: Math.max(longestStreak, newStreak),
+            totalDaysRead: newTotalDaysRead
+          });
+          
+          // Update local state
+          setStudentData(prev => ({
+            ...prev,
+            currentStreak: newStreak,
+            lastReadingDate: today,
+            longestStreak: Math.max(longestStreak, newStreak),
+            totalDaysRead: newTotalDaysRead
+          }));
+          
+          setCurrentStreak(newStreak);
+          
+          console.log(`✅ Streak updated! Current: ${newStreak}, Longest: ${Math.max(longestStreak, newStreak)}, Total days: ${newTotalDaysRead}`);
+        }
+        
         await calculateReadingLevel(studentData);
+      } else {
+        // Banked session - only update total days read if needed
+        const lastReadingDate = studentData.lastReadingDate;
+        const totalDaysRead = studentData.totalDaysRead || 0;
+        
+        if (lastReadingDate !== today) {
+          const studentRef = doc(
+            db,
+            `entities/${studentData.entityId}/schools/${studentData.schoolId}/students/${studentData.id}`
+          );
+          
+          await updateDoc(studentRef, {
+            totalDaysRead: totalDaysRead + 1
+          });
+          
+          setStudentData(prev => ({
+            ...prev,
+            totalDaysRead: totalDaysRead + 1
+          }));
+          
+          console.log(`📖 Total days read updated: ${totalDaysRead + 1}`);
+        }
       }
 
       setShowSuccess(completed ? 

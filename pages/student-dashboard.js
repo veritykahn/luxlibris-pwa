@@ -451,59 +451,26 @@ export default function StudentDashboard() {
       const today = new Date();
       const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
       
-      const sessionsRef = collection(db, `entities/${studentData.entityId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
-      
-      // Get today's sessions for minutes
-      const todayQuery = query(sessionsRef, where('date', '==', todayStr));
-      const todaySnapshot = await getDocs(todayQuery);
-      
-      let todayMinutes = 0;
-      todaySnapshot.forEach(doc => {
-        const session = doc.data();
-        todayMinutes += session.duration || 0;
-      });
-      
-      // Get recent sessions for streak calculation
-      const sixWeeksAgo = new Date();
-      sixWeeksAgo.setDate(today.getDate() - 42);
-      const sixWeeksAgoStr = `${sixWeeksAgo.getFullYear()}-${String(sixWeeksAgo.getMonth() + 1).padStart(2, '0')}-${String(sixWeeksAgo.getDate()).padStart(2, '0')}`;
-      
-      const recentQuery = query(sessionsRef, where('date', '>=', sixWeeksAgoStr));
-      const recentSnapshot = await getDocs(recentQuery);
-      
-      const completedSessionsByDate = {};
-      recentSnapshot.forEach(doc => {
-        const session = doc.data();
-        if (session.completed === true) {
-          completedSessionsByDate[session.date] = true;
-        }
-      });
-      
-      // Calculate smart streak
-      let streakCount = 0;
-      let checkDate = new Date(today);
-      const yesterdayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate() - 1).padStart(2, '0')}`;
-      
-      // Start from today if completed, otherwise start from yesterday
-      if (!completedSessionsByDate[todayStr] && completedSessionsByDate[yesterdayStr]) {
-        checkDate.setDate(checkDate.getDate() - 1);
-      }
-      
-      // Count consecutive days backwards
-      while (streakCount < 365) {
-        const dateStr = `${checkDate.getFullYear()}-${String(checkDate.getMonth() + 1).padStart(2, '0')}-${String(checkDate.getDate()).padStart(2, '0')}`;
-        if (completedSessionsByDate[dateStr]) {
-          streakCount++;
-          checkDate.setDate(checkDate.getDate() - 1);
-        } else {
-          break;
-        }
-      }
-      
-      setReadingStats({
-        streak: streakCount,
-        todayMinutes: todayMinutes
-      });
+      // ✅ NEW: Read streak directly from Firebase field
+const currentStreak = studentData.currentStreak || 0;
+const totalDaysRead = studentData.totalDaysRead || 0;
+
+// Only query for today's minutes
+const sessionsRef = collection(db, `entities/${studentData.entityId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
+const todayQuery = query(sessionsRef, where('date', '==', todayStr));
+const todaySnapshot = await getDocs(todayQuery);
+
+let todayMinutes = 0;
+todaySnapshot.forEach(doc => {
+  const session = doc.data();
+  todayMinutes += session.duration || 0;
+});
+
+setReadingStats({
+  streak: currentStreak,  // ✅ From Firebase field - no calculation needed!
+  todayMinutes: todayMinutes,
+  totalDaysRead: totalDaysRead  // ✅ Bonus metric available
+});
       
     } catch (error) {
       console.error('❌ Error loading reading stats:', error);
@@ -912,12 +879,24 @@ const getMotivationalMessage = () => {
     if (booksReadThisYear >= currentYearGoal * 0.9) {
       return '⚡ SO close to your goal! One more book might do it!';
     }
-    if (streak >= 14) {
-      return '🔥 Two week streak! You\'re absolutely unstoppable!';
-    }
-    if (streak >= 7) {
-      return '🔥 One week streak! The reading force is strong with you!';
-    }
+    if (streak >= 100) {
+  return '🔥🔥🔥 LEGENDARY 100+ DAY STREAK! You\'re a reading TITAN!';
+}
+if (streak >= 90) {
+  return '🔥🔥🔥 90+ DAY STREAK! Absolutely extraordinary!';
+}
+if (streak >= 60) {
+  return '🔥🔥 TWO MONTH STREAK! Your dedication is incredible!';
+}
+if (streak >= 30) {
+  return '🔥🔥 ONE MONTH STREAK! You\'re on fire!';
+}
+if (streak >= 14) {
+  return '🔥 Two week streak! You\'re absolutely unstoppable!';
+}
+if (streak >= 7) {
+  return '🔥 One week streak! The reading force is strong with you!';
+}
     if (actionItems && actionItems.some(item => item.type === 'ready_submit')) {
       return '🎉 You have books ready to submit! Let\'s celebrate!';
     }

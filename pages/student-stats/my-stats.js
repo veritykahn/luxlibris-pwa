@@ -425,39 +425,6 @@ const checkForNewContentBadges = useCallback(async () => {
     return `${year}-${month}-${day}`;
   };
 
-  // Smart streak calculation (SAME LOGIC AS HEALTHY HABITS)
-  const calculateSmartStreak = useCallback((completedSessionsByDate, todayStr) => {
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate() - 1);
-    const yesterdayStr = getLocalDateString(yesterday);
-
-    let streakCount = 0;
-    let checkDate;
-
-    // Start from today if completed, otherwise start from yesterday
-    if (completedSessionsByDate[todayStr]) {
-      checkDate = new Date(today);
-    } else if (completedSessionsByDate[yesterdayStr]) {
-      checkDate = new Date(yesterday);
-    } else {
-      return 0;
-    }
-
-    // Count consecutive days backwards
-    while (streakCount < 365) {
-      const dateStr = getLocalDateString(checkDate);
-      if (completedSessionsByDate[dateStr]) {
-        streakCount++;
-        checkDate.setDate(checkDate.getDate() - 1);
-      } else {
-        break;
-      }
-    }
-
-    return streakCount;
-  }, []);
-
   // Load leaderboard when unlocked or tab changes
   useEffect(() => {
     if (leaderboardUnlocked && studentData && showLeaderboard) {
@@ -514,29 +481,28 @@ const checkForNewContentBadges = useCallback(async () => {
       const completedBooks = bookshelf.filter(book => book.completed && book.status === 'completed');
       const achievementTiers = studentData.achievementTiers || [];
       
-      // Get reading sessions for streak and habits
+      // ✅ NEW: Read streak directly from Firebase field
+      const currentStreak = studentData.currentStreak || 0;
+      const longestStreak = studentData.longestStreak || 0;
+      const totalDaysRead = studentData.totalDaysRead || 0;
+      
+      // Get reading sessions for other stats (minutes, sessions, reading days)
       const sessionsRef = collection(db, `entities/${studentData.entityId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
       const sessionsSnapshot = await getDocs(sessionsRef);
       
-      let totalReadingMinutes = 0;
+      let totalMinutes = 0;
       let completedSessions = 0;
       const completedSessionsByDate = {};
       
       sessionsSnapshot.forEach(doc => {
         const session = doc.data();
-        totalReadingMinutes += session.duration || 0;
-        if (session.completed) completedSessions++;
+        totalMinutes += session.duration || 0;
         
-        // Only count COMPLETED sessions (20+ min) for streaks
         if (session.completed === true) {
+          completedSessions++;
           completedSessionsByDate[session.date] = true;
         }
       });
-      
-      // Calculate current streak using SMART LOGIC
-      const today = new Date();
-      const todayStr = getLocalDateString(today);
-      const currentStreak = calculateSmartStreak(completedSessionsByDate, todayStr);
       
       // Determine streak tier
       let streakTier = 'Getting Started';
@@ -556,31 +522,32 @@ const checkForNewContentBadges = useCallback(async () => {
       const nextTier = achievementTiers.find(tier => booksThisYear < tier.books);
       
       // Reading habits analysis
-      const averageSessionLength = completedSessions > 0 ? Math.round(totalReadingMinutes / completedSessions) : 0;
+      const averageSessionLength = completedSessions > 0 ? Math.round(totalMinutes / completedSessions) : 0;
       const readingDays = Object.keys(completedSessionsByDate).length;
       
       setPersonalStats({
-        booksThisYear,
-        lifetimeBooks: studentData.lifetimeBooksSubmitted || 0,
-        personalGoal: studentData.personalGoal || 15,
-        currentStreak,
-        longestStreak: Math.max(studentData.longestStreak || 0, currentStreak),
-        totalReadingMinutes,
-        averageSessionLength,
-        readingDays,
-        completedSessions,
-        achievedTiers,
-        nextTier,
-        achievementTiers,
-        saintsUnlocked: (studentData.unlockedSaints || []).length,
-        streakTier,
-        currentReadingLevel: studentData.currentReadingLevel || 'faithful_flame'
-      });
+  booksThisYear,
+  lifetimeBooks: studentData.lifetimeBooksSubmitted || 0,
+  personalGoal: studentData.personalGoal || 15,
+  currentStreak,
+  longestStreak,
+  totalDaysRead,
+  totalReadingMinutes: totalMinutes,  // ✅ FIXED: Changed from totalReadingMinutes to totalMinutes
+  averageSessionLength,
+  readingDays,
+  completedSessions,
+  achievedTiers,
+  nextTier,
+  achievementTiers,
+  saintsUnlocked: (studentData.unlockedSaints || []).length,
+  streakTier,
+  currentReadingLevel: studentData.currentReadingLevel || 'faithful_flame'
+});
       
     } catch (error) {
       console.error('Error calculating personal stats:', error);
     }
-  }, [calculateSmartStreak]);
+  }, []);
 
   // Calculate reading quality stats
   const calculateReadingQuality = useCallback((studentData) => {

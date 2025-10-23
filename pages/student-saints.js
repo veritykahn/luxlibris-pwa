@@ -269,37 +269,34 @@ const [seasonalThemeAlert, setSeasonalThemeAlert] = useState(null); // ADD THIS 
   // 🔥 Load streak data
   const loadStreakData = useCallback(async (studentData) => {
     try {
-      const sixWeeksAgo = new Date();
-      sixWeeksAgo.setDate(sixWeeksAgo.getDate() - 42);
+      // ✅ NEW: No query needed - just read the Firebase field!
+      const currentStreak = studentData.currentStreak || 0;
+      const longestStreak = studentData.longestStreak || 0;
+      const totalDaysRead = studentData.totalDaysRead || 0;
       
+      // Still need to query for today's minutes
+      const todayStr = getLocalDateString(new Date());
       const sessionsRef = collection(db, `entities/${studentData.entityId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
       
-      const recentQuery = query(
+      const todayQuery = query(
         sessionsRef,
-        where('date', '>=', getLocalDateString(sixWeeksAgo))
+        where('date', '==', todayStr)
       );
       
-      const recentSnapshot = await getDocs(recentQuery);
-      const completedSessionsByDate = {};
+      const todaySnapshot = await getDocs(todayQuery);
       let todayMinutes = 0;
-      const todayStr = getLocalDateString(new Date());
       
-      recentSnapshot.forEach(doc => {
+      todaySnapshot.forEach(doc => {
         const session = doc.data();
-        if (session.completed === true) {
-          completedSessionsByDate[session.date] = true;
-        }
-        if (session.date === todayStr) {
-          todayMinutes += session.duration || 0;
-        }
+        todayMinutes += session.duration || 0;
       });
       
-      const streakCount = calculateSmartStreak(completedSessionsByDate, todayStr);
-      
-      setCurrentStreak(streakCount);
+      setCurrentStreak(currentStreak);
       setTodaysMinutes(todayMinutes);
       
-      return streakCount;
+      console.log(`🔥 Saints page - Streak: ${currentStreak}, Today's minutes: ${todayMinutes}`);
+      
+      return currentStreak;
       
     } catch (error) {
       console.error('Error loading streak data:', error);
@@ -307,7 +304,7 @@ const [seasonalThemeAlert, setSeasonalThemeAlert] = useState(null); // ADD THIS 
       setTodaysMinutes(0);
       return 0;
     }
-  }, [calculateSmartStreak]);
+  }, []);
 
 // 🏗️ DYNAMIC: Smart shelf organization with auto-building
 const organizeSaintsIntoShelves = useCallback((saints, unlockedSaints, studentData, calculatedStreak) => {

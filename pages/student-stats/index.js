@@ -310,9 +310,10 @@ const checkForNewContentBadges = useCallback(async () => {
           if (session.duration >= 90) longSessions90++;
           
           // Track time-based sessions
-          const sessionHour = new Date(session.startTime).getHours();
-          if (sessionHour < 9) morningSessions++;
-          if (sessionHour >= 19) eveningSessions++;
+const sessionTime = session.startTime?.toDate ? session.startTime.toDate() : new Date(session.startTime);
+const sessionHour = sessionTime.getHours();
+if (sessionHour < 9) morningSessions++;
+if (sessionHour >= 19) eveningSessions++;
           
           // Track weekend sessions
 // Parse date string as local time, not UTC
@@ -1038,60 +1039,42 @@ case "Roller Progress":
   // Calculate light overview stats
   const calculateQuickStats = useCallback(async (studentData) => {
     try {
-      // Get reading sessions for basic stats
+      // ✅ NEW: Read streak directly from Firebase field
+      const currentStreak = studentData.currentStreak || 0;
+      const totalDaysRead = studentData.totalDaysRead || 0;
+      
+      // Get reading sessions for other stats (minutes, XP)
       const sessionsRef = collection(db, `entities/${studentData.entityId}/schools/${studentData.schoolId}/students/${studentData.id}/readingSessions`);
       const sessionsSnapshot = await getDocs(sessionsRef);
       
       let totalReadingMinutes = 0;
-      let completedSessions = 0;
-      const completedSessionsByDate = {};
       let thisWeekXP = 0;
       
-      // Calculate this week's XP (simplified)
+      // Calculate this week's XP and total minutes
       const oneWeekAgo = new Date();
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
       
       sessionsSnapshot.forEach(doc => {
         const session = doc.data();
         totalReadingMinutes += session.duration || 0;
-        if (session.completed) {
-          completedSessions++;
-          completedSessionsByDate[session.date] = true;
-          
-          // Calculate weekly XP
-          const sessionDate = session.startTime?.toDate ? session.startTime.toDate() : new Date(session.startTime);
-          if (sessionDate && sessionDate >= oneWeekAgo) {
-            thisWeekXP += Math.max(1, Math.floor(session.duration || 0));
-          }
+        
+        // Calculate weekly XP
+        const sessionDate = session.startTime?.toDate ? session.startTime.toDate() : new Date(session.startTime);
+        if (sessionDate && sessionDate >= oneWeekAgo) {
+          thisWeekXP += Math.max(1, Math.floor(session.duration || 0));
         }
       });
-      // Calculate current streak (simplified)
-      const today = new Date();
-      const todayStr = today.toISOString().split('T')[0];
-      const yesterday = new Date(today);
-      yesterday.setDate(today.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().split('T')[0];
       
-      let currentStreak = 0;
-      let checkDate = completedSessionsByDate[todayStr] ? new Date(today) : new Date(yesterday);
-      
-      while (currentStreak < 365) {
-        const dateStr = checkDate.toISOString().split('T')[0];
-        if (completedSessionsByDate[dateStr]) {
-          currentStreak++;
-          checkDate.setDate(checkDate.getDate() - 1);
-        } else {
-          break;
-        }
-      }
       const booksThisYear = studentData.booksSubmittedThisYear || 0;
       const personalGoal = studentData.personalGoal || 15;
       const goalProgress = Math.min(100, Math.round((booksThisYear / personalGoal) * 100));
+      
       setQuickStats({
         booksThisYear,
         personalGoal,
         goalProgress,
-        currentStreak,
+        currentStreak,  // ✅ From Firebase field
+        totalDaysRead,  // ✅ NEW: Total days with any reading
         totalReadingMinutes,
         readingHours: Math.round(totalReadingMinutes / 60),
         saintsUnlocked: (studentData.unlockedSaints || []).length,
@@ -1107,6 +1090,7 @@ case "Roller Progress":
         personalGoal: studentData.personalGoal || 15,
         goalProgress: 0,
         currentStreak: 0,
+        totalDaysRead: 0,
         totalReadingMinutes: 0,
         readingHours: 0,
         saintsUnlocked: 0,
@@ -2661,7 +2645,15 @@ case "Roller Progress":
   flexWrap: 'wrap',
   gap: '4px'
 }}>
-  <span>📈 {challengeProgress.sessionsThisWeek} sessions • {challengeProgress.daysWithReading} days • {challengeProgress.totalMinutes}min</span>
+  <span>📈 {
+(currentWeekBadge?.name === "Macaw Motivation" || currentWeekBadge?.name === "Pheasant Focus" || currentWeekBadge?.name === "Booby Morning")
+  ? `${challengeProgress.current} morning sessions (before 9am) • Need ${challengeProgress.target}`
+  : (currentWeekBadge?.name === "Barn Owl Night Reader")
+  ? `${challengeProgress.current} evening sessions (after 7pm) • Need ${challengeProgress.target}`
+  : (currentWeekBadge?.name === "Puffin Power" || currentWeekBadge?.name === "Secretary Bird Weekend")
+  ? `${challengeProgress.current} weekend sessions • Need ${challengeProgress.target}`
+  : `${challengeProgress.sessionsThisWeek} sessions • ${challengeProgress.daysWithReading} days • ${challengeProgress.totalMinutes}min`
+}</span>
                           {challengeProgress.hasReadToday && <span style={{ color: '#4CAF50', fontWeight: '600' }}>✅ Read today!</span>}
                         </div>
                       </div>
