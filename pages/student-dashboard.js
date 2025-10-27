@@ -13,7 +13,8 @@ import {
   query, 
   where, 
   doc, 
-  getDoc 
+  getDoc,
+  updateDoc 
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import Head from 'next/head';
@@ -743,6 +744,41 @@ setReadingStats({
       }
       
       setStudentData(firebaseStudentData);
+
+      // ✅ CHECK IF STREAK SHOULD BE RESET
+      const getLocalDateString = (date = new Date()) => {
+        const d = new Date(date);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+      
+      const today = getLocalDateString(new Date());
+      const yesterday = getLocalDateString(new Date(Date.now() - 86400000));
+      const lastReadingDate = firebaseStudentData.lastReadingDate;
+      const currentStreak = firebaseStudentData.currentStreak || 0;
+      
+      if (lastReadingDate && lastReadingDate !== today && lastReadingDate !== yesterday) {
+        // They missed yesterday - streak is broken!
+        console.log(`💔 Dashboard: Streak broken! Last read: ${lastReadingDate}, resetting from ${currentStreak} to 0`);
+        
+        // Update Firebase
+        const studentRef = doc(
+          db,
+          `entities/${firebaseStudentData.entityId}/schools/${firebaseStudentData.schoolId}/students/${firebaseStudentData.id}`
+        );
+        await updateDoc(studentRef, {
+          currentStreak: 0
+        });
+        
+        // Update local state
+        firebaseStudentData.currentStreak = 0;
+        setStudentData(prev => ({
+          ...prev,
+          currentStreak: 0
+        }));
+      }
 
       // FIXED: Check for new historical unlocks that haven't been seen yet
 const historicalMessage = await checkForNewHistoricalUnlocks(firebaseStudentData);
